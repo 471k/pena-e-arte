@@ -11,16 +11,17 @@ namespace Pena_e_Arte.Application.Platform.Revenue;
 /// share one read as well as one set of rules. See architecture.md Decisions Log,
 /// "One MRR definition (2026-09-23)".
 ///
-/// Known limitation: <c>adminCancelledAt</c> is the latest SubscriptionCancelledByAdmin audit
-/// timestamp ever recorded for the studio, with no lower bound. Subscription is one row
-/// reused across a studio's whole lifetime (CreatedAt never resets on resubscribe), so a
-/// studio that was admin-cancelled once, resubscribed, and is later cancelled again by any
-/// other means (Stripe deletes it, grace period expires) would have that first cancellation's
-/// timestamp applied to the second cycle's reconstructed history — only ever under-counting
-/// (D3's stated direction), and only reachable once a studio has actually gone through two
-/// full billing cycles, which none has as of this writing. A correct fix needs a real
-/// per-cycle boundary, which the Batch 2b/3 per-invoice ledger will provide — not worth a
-/// schema change here for a history-chart-only edge case.
+/// Known limitation: <c>cancelledAt</c> is the latest SubscriptionCancelledByAdmin OR
+/// SubscriptionCancelledByOwner audit timestamp ever recorded for the studio, with no lower
+/// bound (widened from admin-only — see architecture.md Decisions Log, "Yearly cancellation
+/// refunds (2026-09-24)"). Subscription is one row reused across a studio's whole lifetime
+/// (CreatedAt never resets on resubscribe), so a studio that was cancelled once, resubscribed,
+/// and is later cancelled again by any other means (Stripe deletes it, grace period expires)
+/// would have that first cancellation's timestamp applied to the second cycle's reconstructed
+/// history — only ever under-counting (D3's stated direction), and only reachable once a
+/// studio has actually gone through two full billing cycles, which none has as of this
+/// writing. A correct fix needs a real per-cycle boundary, which the Batch 2b/3 per-invoice
+/// ledger will provide — not worth a schema change here for a history-chart-only edge case.
 /// </summary>
 public static class MrrInputLoader
 {
@@ -51,8 +52,9 @@ public static class MrrInputLoader
                 .ToListAsync(ct);
         }
 
-        Dictionary<Guid, DateTime> adminCancelledAt = await db.AuditLogEntries
-            .Where(a => a.Action == AuditActions.SubscriptionCancelledByAdmin
+        Dictionary<Guid, DateTime> cancelledAt = await db.AuditLogEntries
+            .Where(a => (a.Action == AuditActions.SubscriptionCancelledByAdmin
+                         || a.Action == AuditActions.SubscriptionCancelledByOwner)
                         && a.TargetType == AuditTargetTypes.Subscription)
             .GroupBy(a => a.TargetId)
             .Select(g => new { StudioId = g.Key, At = g.Max(a => a.CreatedAt) })
@@ -67,8 +69,8 @@ public static class MrrInputLoader
         List<SubscriptionRevenueInput> inputs = new(studios.Count);
         foreach (Studio studio in studios)
         {
-            DateTime? adminCancelled = adminCancelledAt.TryGetValue(studio.Id, out DateTime cancelledAt)
-                ? cancelledAt
+            DateTime? cancelled = cancelledAt.TryGetValue(studio.Id, out DateTime cancelledAtValue)
+                ? cancelledAtValue
                 : null;
             DateTime? suspended = !studio.IsActive && suspendedAt.TryGetValue(studio.Id, out DateTime suspAt)
                 ? suspAt
@@ -77,7 +79,7 @@ public static class MrrInputLoader
             inputs.Add(new SubscriptionRevenueInput(
                 studio.Subscription!,
                 studio.TrialExpiresAt,
-                adminCancelled,
+                cancelled,
                 studio.IsActive,
                 suspended));
         }

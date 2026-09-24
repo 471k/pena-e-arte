@@ -45,6 +45,7 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
     public DbSet<PlanPrice> PlanPrices => Set<PlanPrice>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<SubscriptionInvoicePayment> SubscriptionInvoicePayments => Set<SubscriptionInvoicePayment>();
+    public DbSet<SubscriptionRefund> SubscriptionRefunds => Set<SubscriptionRefund>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
     public DbSet<StudioJoinInvite> StudioJoinInvites => Set<StudioJoinInvite>();

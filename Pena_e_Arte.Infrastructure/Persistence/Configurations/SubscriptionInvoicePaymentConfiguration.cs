@@ -15,6 +15,8 @@ public class SubscriptionInvoicePaymentConfiguration : IEntityTypeConfiguration<
         builder.Property(p => p.AmountPaid).HasColumnType("decimal(10,2)").IsRequired();
         builder.Property(p => p.DiscountAmount).HasColumnType("decimal(10,2)").IsRequired();
         builder.Property(p => p.Currency).HasMaxLength(3).IsRequired();
+        builder.Property(p => p.MonthlyReferencePrice).HasPrecision(10, 2);
+        builder.Property(p => p.StripePaymentIntentId).HasMaxLength(255);
 
         builder.HasIndex(p => p.StripeInvoiceId).IsUnique().HasDatabaseName("ix_subscription_invoice_payments_stripe_invoice_id");
         builder.HasIndex(p => p.StudioId).HasDatabaseName("ix_subscription_invoice_payments_studio_id");

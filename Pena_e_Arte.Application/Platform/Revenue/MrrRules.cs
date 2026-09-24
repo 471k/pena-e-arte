@@ -6,13 +6,15 @@ namespace Pena_e_Arte.Application.Platform.Revenue;
 /// <summary>
 /// One studio's subscription plus the extra facts MrrRules needs that don't live on
 /// Subscription itself: the studio's own TrialExpiresAt (survives conversion — Subscription's
-/// copy is nulled), the latest admin-cancellation audit timestamp (Cancelled subscriptions
-/// keep a future CurrentPeriodEnd otherwise), and current/latest suspension state (D6).
+/// copy is nulled), the latest cancellation audit timestamp — owner- or admin-initiated
+/// (Cancelled subscriptions keep a future CurrentPeriodEnd otherwise, or need an immediate
+/// end for a yearly cancellation — see §2.1.C, "AdminCancelledAt" renamed "CancelledAt" since
+/// it's no longer admin-only), and current/latest suspension state (D6).
 /// </summary>
 public sealed record SubscriptionRevenueInput(
     Subscription Subscription,
     DateTime? StudioTrialExpiresAt,
-    DateTime? AdminCancelledAt,
+    DateTime? CancelledAt,
     bool StudioIsActive,
     DateTime? SuspendedAt);
 
@@ -75,7 +77,7 @@ public static class MrrRules
         DateTime start = Min(Max(s.CreatedAt, input.StudioTrialExpiresAt ?? s.CreatedAt), now);
 
         DateTime? end = s.Status == SubscriptionStatus.Cancelled
-            ? (input.AdminCancelledAt is DateTime adminAt ? Min(s.CurrentPeriodEnd, adminAt) : s.CurrentPeriodEnd)
+            ? (input.CancelledAt is DateTime cancelledAt ? Min(s.CurrentPeriodEnd, cancelledAt) : s.CurrentPeriodEnd)
             : null; // Active/PastDue: open — still billing (or was, as of `now`)
 
         // D6: a suspended studio's window closes at the suspension, whatever its status.
