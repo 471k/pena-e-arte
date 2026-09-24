@@ -12,7 +12,8 @@ public class StripeBillingService(
     Stripe.BillingPortal.SessionService portalSessions,
     CustomerBalanceTransactionService balanceTransactions,
     PriceService priceService,
-    RefundService refundService)
+    RefundService refundService,
+    InvoiceService invoiceService)
     : IStripeBillingService
 {
     public async Task<string> CreateCustomerAsync(string email, CancellationToken ct)
@@ -240,6 +241,13 @@ public class StripeBillingService(
             price.Currency,
             price.Recurring?.Interval,
             price.Recurring?.IntervalCount);
+    }
+
+    public async Task<string?> GetInvoicePaymentIntentIdAsync(string stripeInvoiceId, CancellationToken ct)
+    {
+        Invoice invoice = await invoiceService.GetAsync(
+            stripeInvoiceId, new InvoiceGetOptions { Expand = ["payments"] }, null, ct);
+        return invoice.Payments?.Data?.FirstOrDefault()?.Payment?.PaymentIntentId;
     }
 
     public async Task<StripePriceInfo?> GetSubscriptionBilledPriceAsync(string stripeSubscriptionId, CancellationToken ct)

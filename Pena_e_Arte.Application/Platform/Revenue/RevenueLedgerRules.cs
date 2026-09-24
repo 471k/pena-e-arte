@@ -29,6 +29,31 @@ public static class RevenueLedgerRules
             .Where(latest => BillingTypes.Contains(latest.Type))
             .Sum(latest => latest.MrrAfter);
 
+    // Two webhook/request handlers can act on the same real-world transition at the same instant
+    // (observed with real Stripe test-mode webhooks: invoice.paid and customer.subscription.updated
+    // for one recovered payment arrived in the same second, both read the row as PastDue before
+    // either committed, and both wrote a Recovered). The ledger is append-only, so the duplicate row
+    // stays, but it must not be counted twice in a movement total. Rows for the same subscription,
+    // type and amounts within this window are one movement.
+    private static readonly TimeSpan SimultaneousDuplicateWindow = TimeSpan.FromSeconds(60);
+
+    private static List<SubscriptionRevenueEvent> CollapseNearSimultaneousDuplicates(
+        IEnumerable<SubscriptionRevenueEvent> events)
+    {
+        List<SubscriptionRevenueEvent> kept = [];
+        foreach (SubscriptionRevenueEvent e in events.OrderBy(x => x.OccurredAt).ThenBy(x => x.CreatedAt))
+        {
+            bool duplicate = kept.Any(k =>
+                k.SubscriptionId == e.SubscriptionId
+                && k.Type == e.Type
+                && k.MrrBefore == e.MrrBefore
+                && k.MrrAfter == e.MrrAfter
+                && e.OccurredAt - k.OccurredAt <= SimultaneousDuplicateWindow);
+            if (!duplicate) kept.Add(e);
+        }
+        return kept;
+    }
+
     /// <summary>The subscriptions actively billing (with MRR above zero) at instant t — the
     /// "existing customers" cohort a retention rate is measured against.</summary>
     public static HashSet<Guid> BillingSubscriptionsAt(IEnumerable<SubscriptionRevenueEvent> events, DateTime t) =>
@@ -45,7 +70,7 @@ public static class RevenueLedgerRules
     /// and are excluded here even though they're real ledger rows.</summary>
     public static MrrMovementTotals MovementsFor(IEnumerable<SubscriptionRevenueEvent> monthEvents)
     {
-        List<SubscriptionRevenueEvent> events = monthEvents.ToList();
+        List<SubscriptionRevenueEvent> events = CollapseNearSimultaneousDuplicates(monthEvents).ToList();
 
         decimal Sum(RevenueEventType type) =>
             events.Where(e => e.Type == type).Sum(e => e.MrrAfter - e.MrrBefore);

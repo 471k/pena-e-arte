@@ -249,4 +249,38 @@ public class RevenueLedgerRulesTests
         fromLedger.Should().Be(fromRules);
         fromRules.Should().BeGreaterThan(0m); // guard against a vacuous 0 == 0
     }
+
+    [Fact]
+    public void MovementsFor_TheSameTransitionRecordedTwiceWithinSeconds_CountsOnce()
+    {
+        // Two handlers acting on one real transition at the same instant (e.g. checkout finalize and
+        // its webhook both writing New; observed with real Stripe webhooks writing two Recovered).
+        DateTime at = Utc(2026, 3, 2);
+        List<SubscriptionRevenueEvent> events =
+        [
+            Event(SubA, RevenueEventType.New, at, 0m, 59m),
+            Event(SubA, RevenueEventType.New, at.AddSeconds(2), 0m, 59m),
+            Event(SubA, RevenueEventType.Churn, Utc(2026, 3, 20), 49m, 0m),
+            Event(SubA, RevenueEventType.Churn, Utc(2026, 3, 20).AddSeconds(1), 49m, 0m),
+        ];
+
+        MrrMovementTotals totals = RevenueLedgerRules.MovementsFor(events);
+
+        totals.New.Should().Be(59m);
+        totals.Churn.Should().Be(-49m);
+    }
+
+    [Fact]
+    public void MovementsFor_SimilarRowsThatAreNotTheSameTransition_AreAllCounted()
+    {
+        List<SubscriptionRevenueEvent> events =
+        [
+            Event(SubA, RevenueEventType.New, Utc(2026, 3, 2), 0m, 59m),
+            Event(SubB, RevenueEventType.New, Utc(2026, 3, 2), 0m, 59m),                          // other subscription
+            Event(SubA, RevenueEventType.New, Utc(2026, 3, 2).AddMinutes(5), 0m, 59m),            // minutes later
+            Event(SubA, RevenueEventType.New, Utc(2026, 3, 2).AddSeconds(3), 0m, 79m),            // different amount
+        ];
+
+        RevenueLedgerRules.MovementsFor(events).New.Should().Be(59m + 59m + 59m + 79m);
+    }
 }

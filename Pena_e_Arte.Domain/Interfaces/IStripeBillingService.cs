@@ -99,6 +99,12 @@ public interface IStripeBillingService
     /// Batch 2b. Null when the subscription has no items.</summary>
     Task<StripePriceInfo?> GetSubscriptionBilledPriceAsync(string stripeSubscriptionId, CancellationToken ct);
 
+    /// <summary>The PaymentIntent that paid an invoice (the target of a refund), or null when it can't
+    /// be resolved. Fetches the invoice with <c>expand[]=payments</c> because Invoice.payments is an
+    /// expandable field: Stripe omits it from webhook payloads and from a plain retrieve (verified
+    /// against API version 2026-05-27.dahlia in a real test-mode run, 2026-09-24).</summary>
+    Task<string?> GetInvoicePaymentIntentIdAsync(string stripeInvoiceId, CancellationToken ct);
+
     /// <summary>
     /// D6: pauses collection on an active Stripe subscription — renewals during the pause
     /// generate no invoice/charge. The period already paid is not refunded. Idempotent.
