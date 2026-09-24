@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import {
   STUDIO_ID, ARTIST_ID, CLIENT_ID, APPT_ID, PAYMENT_ID,
@@ -22,7 +22,24 @@ function violationSummary(violations: { id: string; help: string; nodes: unknown
     .join("\n");
 }
 
-async function assertNoViolations(builder: AxeBuilder) {
+// A Sonner toast fades/slides in over ~150ms. axe blends a partly transparent element's
+// text colour into the background, so a scan that lands mid-animation reads the toast
+// (opacity ~0.4 at mount) as low-contrast grey and reports a false color-contrast
+// violation — measured: opacity 0.41 at mount, 1.0 (rgb(23,23,23) on white) 150ms later.
+// It only surfaced when a runner happened to be fast enough to scan inside that window,
+// which is how it flaked on main CI and silently skipped the CD deploy (2026-09-24).
+// Waiting for every toast to be fully opaque (or gone) makes the scan deterministic while
+// still checking the toast's real, settled contrast. Resolves immediately when none exist.
+async function waitForToastsToSettle(page: Page) {
+  await page.waitForFunction(() =>
+    Array.from(document.querySelectorAll("[data-sonner-toast]")).every(
+      (el) => getComputedStyle(el).opacity === "1",
+    ),
+  );
+}
+
+async function assertNoViolations(builder: AxeBuilder, page: Page) {
+  await waitForToastsToSettle(page);
   const results = await builder.withTags(WCAG_TAGS).analyze();
   expect(results.violations, violationSummary(results.violations)).toEqual([]);
 }
@@ -31,14 +48,14 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
 
   test("sign-in page has no violations", async ({ page }) => {
     await page.goto("/login");
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
   });
 
   test("studio sign-up page has no violations", async ({ page }) => {
     await page.goto("/register");
     // Leaflet's own generated map markup is third-party and out of this project's
     // control — excluded so this gate only ever flags application code.
-    await assertNoViolations(new AxeBuilder({ page }).exclude(".leaflet-container"));
+    await assertNoViolations(new AxeBuilder({ page }).exclude(".leaflet-container"), page);
   });
 
   test("public guest booking flow has no violations", async ({ page }) => {
@@ -61,7 +78,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
 
     await page.goto("/book?studio=tinta-alma");
     await expect(page.getByRole("heading", { name: "Book an appointment" })).toBeVisible();
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
   });
 
   test("client home (My Studios) has no violations", async ({ page }) => {
@@ -80,7 +97,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
     await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
     await page.goto("/my-studios");
     await expect(page.getByText("Tinta & Alma")).toBeVisible();
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
   });
 
   test("owner dashboard has no violations", async ({ page }) => {
@@ -132,7 +149,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
 
     await loginAs(page, OWNER_TOKEN, "owner@tinta-alma.com", /\/dashboard/i);
     await expect(page.getByText("Awaiting Cash")).toBeVisible();
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
   });
 
   test("deposit payment page (not-found state) has no violations", async ({ page }) => {
@@ -145,7 +162,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
     await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
     await page.goto(`/pay/${PAYMENT_ID}`);
     await expect(page.getByText("Payment not found or you don't have access to it.")).toBeVisible();
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
   });
 
   test("in-flow deposit payment method selector has no violations", async ({ page }) => {
@@ -227,12 +244,12 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
     // of mounting a real Stripe Elements iframe, so this scans real rendered content
     // deterministically, regardless of whether a real Stripe key is configured locally.
     await expect(page.getByText(/Secure your slot with a deposit/)).toBeVisible({ timeout: 10_000 });
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
 
     // Cash tab is the other real, fully-renderable state of this same component.
     await page.getByRole("button", { name: "Cash" }).click();
     await expect(page.getByText("Pay at the studio")).toBeVisible();
-    await assertNoViolations(new AxeBuilder({ page }));
+    await assertNoViolations(new AxeBuilder({ page }), page);
   });
 
 });
