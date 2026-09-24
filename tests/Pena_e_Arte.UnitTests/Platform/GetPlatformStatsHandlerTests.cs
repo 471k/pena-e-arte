@@ -378,21 +378,35 @@ public class GetPlatformStatsHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId = fallback.Id, PlanId = plan.Id, BillingInterval = BillingInterval.Monthly,
-            Status = SubscriptionStatus.Active, TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
-            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), BilledUnitAmount = null,
+            StudioId = fallback.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            BilledUnitAmount = null,
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId = current.Id, PlanId = plan.Id, BillingInterval = BillingInterval.Monthly,
-            Status = SubscriptionStatus.Active, TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
-            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), BilledUnitAmount = 49m, BilledCurrency = "eur",
+            StudioId = current.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            BilledUnitAmount = 49m,
+            BilledCurrency = "eur",
         });
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId = excluded.Id, PlanId = plan.Id, BillingInterval = BillingInterval.Monthly,
-            Status = SubscriptionStatus.Active, TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
-            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30), BilledUnitAmount = 49m, BilledCurrency = "usd",
+            StudioId = excluded.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            BilledUnitAmount = 49m,
+            BilledCurrency = "usd",
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
@@ -421,13 +435,23 @@ public class GetPlatformStatsHandlerTests
         DateTime monthStart = new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         _db.SubscriptionInvoicePayments.Add(new SubscriptionInvoicePayment
         {
-            SubscriptionId = sub.Id, StudioId = studio.Id, StripeInvoiceId = "in_this_month",
-            AmountPaid = 79m, DiscountAmount = 15m, Currency = "eur", PaidAt = monthStart.AddDays(2),
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            StripeInvoiceId = "in_this_month",
+            AmountPaid = 79m,
+            DiscountAmount = 15m,
+            Currency = "eur",
+            PaidAt = monthStart.AddDays(2),
         });
         _db.SubscriptionInvoicePayments.Add(new SubscriptionInvoicePayment
         {
-            SubscriptionId = sub.Id, StudioId = studio.Id, StripeInvoiceId = "in_last_month",
-            AmountPaid = 79m, DiscountAmount = 25m, Currency = "eur", PaidAt = monthStart.AddMonths(-1).AddDays(2),
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            StripeInvoiceId = "in_last_month",
+            AmountPaid = 79m,
+            DiscountAmount = 25m,
+            Currency = "eur",
+            PaidAt = monthStart.AddMonths(-1).AddDays(2),
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

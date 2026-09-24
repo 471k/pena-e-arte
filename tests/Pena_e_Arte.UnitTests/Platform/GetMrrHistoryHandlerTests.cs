@@ -211,9 +211,13 @@ public class GetMrrHistoryHandlerTests
 
         _db.Subscriptions.Add(new Subscription
         {
-            StudioId = studio.Id, PlanId = plan.Id, BillingInterval = BillingInterval.Monthly,
-            Status = SubscriptionStatus.Active, CreatedAt = DateTime.UtcNow.AddMonths(-3),
-            CurrentPeriodEnd = DateTime.UtcNow.AddDays(20), BilledUnitAmount = null,
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            CreatedAt = DateTime.UtcNow.AddMonths(-3),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(20),
+            BilledUnitAmount = null,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
