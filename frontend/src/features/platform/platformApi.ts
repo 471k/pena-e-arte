@@ -107,10 +107,15 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformSubscription", "PlatformStats"],
     }),
-    cancelSubscription: builder.mutation<void, string>({
-      query: (studioId) => ({
+    cancelSubscription: builder.mutation<
+      void,
+      { studioId: string; override?: "AdminFull" | "AdminNone"; reason?: string }
+    >({
+      query: ({ studioId, override: overrideRule, reason }) => ({
         url:    `platform/subscriptions/${studioId}/cancel`,
         method: "PATCH",
+        // Send neither field when not overriding — the default (formula) path.
+        body:   overrideRule ? { override: overrideRule, reason } : undefined,
       }),
       invalidatesTags: ["PlatformSubscription", "PlatformStats"],
     }),

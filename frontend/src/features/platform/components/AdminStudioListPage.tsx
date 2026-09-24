@@ -188,7 +188,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
 
   async function handleCancel() {
     try {
-      await cancelSub(studio.id).unwrap();
+      await cancelSub({ studioId: studio.id }).unwrap();
       toast.success("Subscription cancelled");
       setConfirming(false);
     } catch {
