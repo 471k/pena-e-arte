@@ -79,6 +79,24 @@ export interface MrrMovementsDataPoint {
   net:          number;
 }
 
+export interface CashBilledSnapshot {
+  studioId: string;
+  price:    number;
+}
+
+export interface BackfillBilledAmountsResponse {
+  cardBilledUpdated:   number;
+  cardBilledSkipped:   number;
+  /** Cash-billed subscriptions snapshotted from their plan's Monthly price — listed for review. */
+  cashBilledSnapshots: CashBilledSnapshot[];
+}
+
+export interface BackfillRevenueLedgerResponse {
+  created:               number;
+  skippedAlreadyInLedger: number;
+  skippedNotBilling:     number;
+}
+
 export interface RevenueRetentionResponse {
   /** Fractions (0.95 = 95%); null when there was no MRR at the start of the month. */
   grossRevenueRetention: number | null;

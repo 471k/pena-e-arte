@@ -29,6 +29,7 @@ import {
   useSetDunningExclusionMutation,
 } from "@/features/platform/platformApi";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
+import { DataMaintenanceCard } from "./DataMaintenanceCard";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -608,6 +609,8 @@ export function SubscriptionOversightPage() {
             </Button>
           </div>
         )}
+
+        <DataMaintenanceCard />
       </main>
     </div>
   );
