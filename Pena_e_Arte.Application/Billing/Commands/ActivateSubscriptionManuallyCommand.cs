@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
@@ -42,8 +43,11 @@ public class ActivateSubscriptionManuallyHandler(
             ?? throw new NotFoundException(nameof(Studio), command.StudioId);
 
         Plan plan = await db.Plans
+            .Include(p => p.Prices)
             .FirstOrDefaultAsync(p => p.Id == command.PlanId, ct)
             ?? throw new NotFoundException(nameof(Plan), command.PlanId);
+
+        PlanPrice? monthlyPrice = plan.Prices.FirstOrDefault(pp => pp.Interval == BillingInterval.Monthly);
 
         if (studio.Subscription is null)
         {
@@ -55,6 +59,9 @@ public class ActivateSubscriptionManuallyHandler(
                 Status = SubscriptionStatus.Active,
                 BillingInterval = BillingInterval.Monthly, // cash-billed studios are always Monthly-equivalent
                 CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1),
+                BilledUnitAmount = monthlyPrice?.Price ?? 0m,
+                BilledQuantity = 1,
+                BilledCurrency = MrrRules.PlatformCurrency,
             };
             db.Subscriptions.Add(studio.Subscription);
         }
@@ -66,6 +73,9 @@ public class ActivateSubscriptionManuallyHandler(
             studio.Subscription.BillingInterval = BillingInterval.Monthly;
             studio.Subscription.CurrentPeriodEnd = DateTime.UtcNow.AddMonths(1);
             studio.Subscription.TrialExpiresAt = null;
+            studio.Subscription.BilledUnitAmount = monthlyPrice?.Price ?? 0m;
+            studio.Subscription.BilledQuantity = 1;
+            studio.Subscription.BilledCurrency = MrrRules.PlatformCurrency;
         }
 
         // Note is deliberately not logged — free text could contain PII (Rule #3).

@@ -70,6 +70,18 @@ public class ActivateCheckoutSubscriptionHandler(
             subscription.PlanId = price.PlanId;
             subscription.BillingInterval = price.Interval;
         }
+
+        if (result.PriceId is not null)
+        {
+            StripePriceInfo? stripePrice = await billing.GetPriceAsync(result.PriceId, ct);
+            if (stripePrice is not null)
+            {
+                subscription.BilledUnitAmount = (stripePrice.UnitAmount ?? 0) / 100m;
+                subscription.BilledQuantity = 1;
+                subscription.BilledCurrency = stripePrice.Currency;
+            }
+        }
+
         subscription.Status = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = result.CurrentPeriodEnd;
         subscription.TrialExpiresAt = null;

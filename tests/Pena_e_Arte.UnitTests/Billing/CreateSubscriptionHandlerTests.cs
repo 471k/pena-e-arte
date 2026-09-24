@@ -201,6 +201,35 @@ public class CreateSubscriptionHandlerTests
     }
 
     [Fact]
+    public async Task Handle_CardBilledPlan_SnapshotsBilledAmountFromPlanPrice()
+    {
+        Guid planId = await SeedPlan(stripePriceIdMonthly: "price_monthly_abc", priceMonthly: 59m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        Subscription stored = _db.Subscriptions.Single(s => s.StudioId == _studioId);
+        stored.BilledUnitAmount.Should().Be(59m);
+        stored.BilledQuantity.Should().Be(1);
+        stored.BilledCurrency.Should().Be("eur");
+    }
+
+    [Fact]
+    public async Task Handle_FreePlan_SnapshotsZeroBilledAmount()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 0m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        Subscription stored = _db.Subscriptions.Single(s => s.StudioId == _studioId);
+        stored.BilledUnitAmount.Should().Be(0m);
+        stored.BilledCurrency.Should().Be("eur");
+    }
+
+    [Fact]
     public async Task Handle_SoloStudioStayingOnFreePlan_KeepsIsSolo()
     {
         Guid planId = await SeedPlan(priceMonthly: 0m);

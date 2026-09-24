@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Billing;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -126,6 +127,9 @@ public class CreateSubscriptionHandler(
         subscription.Status = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = periodEnd;
         subscription.TrialExpiresAt = null;
+        subscription.BilledUnitAmount = price.Price;
+        subscription.BilledQuantity = 1;
+        subscription.BilledCurrency = MrrRules.PlatformCurrency;
 
         // Upgrading off the Free plan does NOT clear Studio.IsSolo. IsSolo's own doc comment
         // says "never set any other way" than RegisterSoloArtistCommand for a reason: both

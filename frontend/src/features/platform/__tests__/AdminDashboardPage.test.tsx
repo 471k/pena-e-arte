@@ -30,6 +30,7 @@ const STATS: PlatformStatsResponse = {
   atRiskMrr:           0,
   scheduledChurnMrr:   0,
   pausedMrr:           0,
+  discountsThisMonth:  0,
 };
 
 const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
@@ -219,6 +220,16 @@ describe("AdminDashboardPage", () => {
     );
     renderPage();
     expect(await screen.findByText(/cancelling at period end/i)).toBeInTheDocument();
+  });
+
+  it("shows 'discounted this month' in the MRR card subtitle when discountsThisMonth > 0", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/stats", () =>
+        HttpResponse.json({ ...STATS, discountsThisMonth: 15 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/discounted this month/i)).toBeInTheDocument();
   });
 
   it("renders the ARPA card (not ARPU) as MRR ÷ paying studios", async () => {

@@ -193,18 +193,37 @@ public static class BillingEndpoints
                     {
                         string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
                         if (stripeSubId is not null)
-                            await mediator.Send(new HandleInvoicePaidCommand(stripeSubId, invoice.PeriodEnd), ct);
+                        {
+                            decimal discountAmount = (invoice.TotalDiscountAmounts?.Sum(d => d.Amount) ?? 0) / 100m;
+                            // A customer-balance credit consumed on this invoice also counts as a
+                            // discount (R3, the Yearly-referrer case). Stripe balances are negative
+                            // for credit, so a starting balance more negative than the ending
+                            // balance means credit was consumed this invoice.
+                            decimal balanceCredit = invoice.StartingBalance < invoice.EndingBalance
+                                ? 0m
+                                : (invoice.StartingBalance - (invoice.EndingBalance ?? invoice.StartingBalance)) / 100m;
+                            await mediator.Send(new HandleInvoicePaidCommand(
+                                stripeSubId, invoice.PeriodEnd, invoice.Id,
+                                invoice.AmountPaid / 100m, discountAmount + balanceCredit,
+                                invoice.Currency, invoice.StatusTransitions?.PaidAt ?? DateTime.UtcNow), ct);
+                        }
                         break;
                     }
 
                 case "customer.subscription.updated" when stripeEvent.Data.Object is Stripe.Subscription sub:
                     {
-                        string? priceId = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
-                        DateTime periodEnd = sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd
-                                             ?? DateTime.UtcNow.AddMonths(1);
+                        Stripe.SubscriptionItem? item = sub.Items?.Data?.FirstOrDefault();
+                        DateTime periodEnd = item?.CurrentPeriodEnd ?? DateTime.UtcNow.AddMonths(1);
+                        decimal? recurringDiscountPercent = sub.Discounts?
+                            .Select(d => d.Source?.Coupon)
+                            .FirstOrDefault(c => c?.Duration == "forever" && c.PercentOff is not null)
+                            ?.PercentOff;
+
                         await mediator.Send(
                             new HandleSubscriptionUpdatedCommand(
-                                sub.Id, sub.Status, periodEnd, priceId, sub.CancelAtPeriodEnd), ct);
+                                sub.Id, sub.Status, periodEnd, item?.Price?.Id,
+                                item?.Price?.UnitAmount, item?.Price?.Currency, item?.Quantity,
+                                recurringDiscountPercent, sub.CancelAtPeriodEnd), ct);
                         break;
                     }
 

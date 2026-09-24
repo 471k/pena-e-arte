@@ -23,10 +23,33 @@ public sealed record SubscriptionRevenueInput(
 /// </summary>
 public static class MrrRules
 {
-    public static decimal MonthlyEquivalent(Subscription s) =>
-        s.Plan?.Prices.FirstOrDefault(pp => pp.Interval == s.BillingInterval) is PlanPrice pp
+    /// <summary>The one currency this platform bills in. StripeDemoSeeder and every
+    /// cash-billed snapshot use this; a subscription billed in any other currency is
+    /// excluded from MRR (R7 — never converted) rather than silently misreported.</summary>
+    public const string PlatformCurrency = "eur";
+
+    /// <summary>
+    /// Reads the billed-amount snapshot first (what Stripe/cash actually charges this
+    /// subscription) — see architecture.md Decisions Log, "Subscription billed-amount
+    /// snapshot". Falls back to the live PlanPrice list only pre-snapshot (before Batch 2b's
+    /// backfill, or a missed snapshot write).
+    /// </summary>
+    public static decimal MonthlyEquivalent(Subscription s)
+    {
+        if (s.BilledUnitAmount is decimal billed)
+        {
+            if (s.BilledCurrency is string currency && currency != PlatformCurrency)
+                return 0m;
+
+            decimal discountFactor = 1m - (s.RecurringDiscountPercent ?? 0m) / 100m;
+            decimal monthlyAmount = billed * (s.BilledQuantity ?? 1) * discountFactor;
+            return s.BillingInterval == BillingInterval.Monthly ? monthlyAmount : monthlyAmount / 12m;
+        }
+
+        return s.Plan?.Prices.FirstOrDefault(pp => pp.Interval == s.BillingInterval) is PlanPrice pp
             ? MonthlyEquivalentOf(pp.Price, pp.Interval)
             : 0m;
+    }
 
     /// <summary>
     /// Normalises a price to a per-month cost so Monthly and Yearly compare fairly. Shared

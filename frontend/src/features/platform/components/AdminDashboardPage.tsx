@@ -196,15 +196,20 @@ function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
-function mrrSubtitle(stats: { mrrGrowthPercent: number | null; scheduledChurnMrr: number } | undefined): string | undefined {
+function mrrSubtitle(
+  stats: { mrrGrowthPercent: number | null; scheduledChurnMrr: number; discountsThisMonth: number } | undefined,
+): string | undefined {
   if (!stats) return undefined;
   const growth =
     stats.mrrGrowthPercent === null
       ? "No MRR last month"
       : `${stats.mrrGrowthPercent >= 0 ? "+" : ""}${stats.mrrGrowthPercent.toFixed(1)}% vs last month`;
-  return stats.scheduledChurnMrr > 0
-    ? `${growth} · ${formatCurrency(stats.scheduledChurnMrr)} cancelling at period end`
-    : growth;
+  let subtitle = growth;
+  if (stats.scheduledChurnMrr > 0)
+    subtitle += ` · ${formatCurrency(stats.scheduledChurnMrr)} cancelling at period end`;
+  if (stats.discountsThisMonth > 0)
+    subtitle += ` · ${formatCurrency(stats.discountsThisMonth)} discounted this month`;
+  return subtitle;
 }
 
 export function AdminDashboardPage() {

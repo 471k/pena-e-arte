@@ -11,6 +11,10 @@ public record HandleSubscriptionUpdatedCommand(
     string StripeStatus,
     DateTime CurrentPeriodEnd,
     string? StripePriceId,
+    long? UnitAmount,
+    string? Currency,
+    long? Quantity,
+    decimal? RecurringDiscountPercent,
     bool CancelAtPeriodEnd = false) : IRequest;
 
 public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandler<HandleSubscriptionUpdatedCommand>
@@ -67,6 +71,14 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
                 }
             }
         }
+
+        if (command.UnitAmount is long amount)
+        {
+            subscription.BilledUnitAmount = amount / 100m;
+            subscription.BilledQuantity = command.Quantity is long q ? (int)q : 1;
+            subscription.BilledCurrency = command.Currency;
+        }
+        subscription.RecurringDiscountPercent = command.RecurringDiscountPercent;
 
         await db.SaveChangesAsync(ct);
     }

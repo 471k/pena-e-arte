@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.Platform.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.UnitTests.ConsentForms;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Platform;
@@ -10,8 +11,9 @@ namespace Pena_e_Arte.UnitTests.Platform;
 public class GetPlatformStatsHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly CapturingLogger<GetPlatformStatsHandler> _logger = new();
 
-    private GetPlatformStatsHandler CreateSut() => new(_db);
+    private GetPlatformStatsHandler CreateSut() => new(_db, _logger);
 
     [Fact]
     public async Task Handle_NoData_ReturnsZeroStats()
@@ -30,6 +32,7 @@ public class GetPlatformStatsHandlerTests
         result.AtRiskMrr.Should().Be(0);
         result.ScheduledChurnMrr.Should().Be(0);
         result.PausedMrr.Should().Be(0);
+        result.DiscountsThisMonth.Should().Be(0);
     }
 
     [Fact]
@@ -360,6 +363,102 @@ public class GetPlatformStatsHandlerTests
 
         result.Mrr.Should().Be(79m);
         result.MrrGrowthPercent.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_MixedSnapshotAndCurrencyExclusion_LogsCounts()
+    {
+        Studio fallback = SeedStudio(isActive: true);
+        Studio current = SeedStudio(isActive: true);
+        Studio excluded = SeedStudio(isActive: true);
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = fallback.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            BilledUnitAmount = null,
+        });
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = current.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            BilledUnitAmount = 49m,
+            BilledCurrency = "eur",
+        });
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = excluded.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            BilledUnitAmount = 49m,
+            BilledCurrency = "usd",
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        _logger.Entries.Should().ContainSingle(e =>
+            e.Message.Contains("1") && e.Message.Contains("fallback", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Handle_DiscountsThisMonth_SumsCurrentMonthPaymentsOnly()
+    {
+        Studio studio = SeedStudio(isActive: true);
+        await _db.SaveChangesAsync();
+        Subscription sub = new()
+        {
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.Active,
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        DateTime monthStart = new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        _db.SubscriptionInvoicePayments.Add(new SubscriptionInvoicePayment
+        {
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            StripeInvoiceId = "in_this_month",
+            AmountPaid = 79m,
+            DiscountAmount = 15m,
+            Currency = "eur",
+            PaidAt = monthStart.AddDays(2),
+        });
+        _db.SubscriptionInvoicePayments.Add(new SubscriptionInvoicePayment
+        {
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            StripeInvoiceId = "in_last_month",
+            AmountPaid = 79m,
+            DiscountAmount = 25m,
+            Currency = "eur",
+            PaidAt = monthStart.AddMonths(-1).AddDays(2),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.DiscountsThisMonth.Should().Be(15m);
     }
 
     private Studio SeedStudio(bool isActive, DateTime? trialExpiresAt = null)

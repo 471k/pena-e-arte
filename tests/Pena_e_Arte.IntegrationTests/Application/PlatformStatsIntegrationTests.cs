@@ -74,7 +74,8 @@ public class PlatformStatsIntegrationTests(DatabaseFixture fixture)
         await db.SaveChangesAsync();
 
         await using AppDbContext readDb = fixture.CreateDbContext(Guid.Empty);
-        GetPlatformStatsHandler handler = new(readDb);
+        GetPlatformStatsHandler handler = new(
+            readDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<GetPlatformStatsHandler>.Instance);
 
         PlatformStatsResponse result = await handler.Handle(new GetPlatformStatsQuery(), default);
 

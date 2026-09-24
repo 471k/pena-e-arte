@@ -203,6 +203,41 @@ public class UpdatePlanHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ChangePriceWithSnapshottedSubscriber_Saved()
+    {
+        // G2 relaxation (Batch 2b): once every subscriber on this price has its own
+        // BilledUnitAmount snapshot, changing PlanPrice no longer touches what Stripe bills
+        // them — only new sales read the changed row — so the change is now allowed.
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        await SeedSubscription(plan.Id, BillingInterval.Monthly, billedUnitAmount: 79m);
+
+        PlanResponse result = await CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [new PlanPriceRequest("Monthly", 89m), new PlanPriceRequest("Yearly", 790m)],
+                AllowBrandingRemoval: false)), default);
+
+        result.Prices.Single(p => p.Interval == "Monthly").Price.Should().Be(89m);
+    }
+
+    [Fact]
+    public async Task Handle_ChangePriceWithOneUnsnapshottedSubscriber_Rejected_NamesBackfillEndpoint()
+    {
+        Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
+        await SeedSubscription(plan.Id, BillingInterval.Monthly, billedUnitAmount: 79m);
+        await SeedSubscription(plan.Id, BillingInterval.Monthly, billedUnitAmount: null);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new UpdatePlanCommand(plan.Id, new UpdatePlanRequest(
+                "Premium", 17,
+                [new PlanPriceRequest("Monthly", 89m), new PlanPriceRequest("Yearly", 790m)],
+                AllowBrandingRemoval: false)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*backfill-billed-amounts*");
+    }
+
+    [Fact]
     public async Task Handle_ChangeStripePriceIdWithSubscriber_Rejected()
     {
         Plan plan = await SeedPlanWithBothIntervals("Premium", 79m, 790m);
@@ -299,7 +334,8 @@ public class UpdatePlanHandlerTests
     }
 
     private async Task SeedSubscription(
-        Guid planId, BillingInterval interval, Guid? pendingPlanId = null, BillingInterval? pendingInterval = null)
+        Guid planId, BillingInterval interval, Guid? pendingPlanId = null, BillingInterval? pendingInterval = null,
+        decimal? billedUnitAmount = null)
     {
         _db.Subscriptions.Add(new Subscription
         {
@@ -310,6 +346,8 @@ public class UpdatePlanHandlerTests
             PendingBillingInterval = pendingInterval,
             Status = SubscriptionStatus.Active,
             CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+            BilledUnitAmount = billedUnitAmount,
+            BilledCurrency = billedUnitAmount is not null ? "eur" : null,
         });
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

@@ -58,6 +58,7 @@ public interface IAppDbContext
     DbSet<Plan> Plans { get; }
     DbSet<PlanPrice> PlanPrices { get; }
     DbSet<Subscription> Subscriptions { get; }
+    DbSet<SubscriptionInvoicePayment> SubscriptionInvoicePayments { get; }
     DbSet<ReferralCode> ReferralCodes { get; }
     DbSet<ReferralRedemption> ReferralRedemptions { get; }
 

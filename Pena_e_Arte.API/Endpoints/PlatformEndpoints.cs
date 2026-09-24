@@ -20,6 +20,7 @@ public static class PlatformEndpoints
         group.MapGet("studios/{studioId:guid}/summary", GetStudioSummary);
         group.MapGet("mrr-history", GetMrrHistory);
         group.MapGet("subscriptions", GetSubscriptions);
+        group.MapPost("subscriptions/backfill-billed-amounts", BackfillSubscriptionBilledAmounts);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
         group.MapPost("studios/{studioId:guid}/subscription/dunning-exclusion", SetDunningExclusion);
@@ -78,6 +79,15 @@ public static class PlatformEndpoints
     {
         List<PlatformSubscriptionResponse> result =
             await mediator.Send(new GetPlatformSubscriptionsQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> BackfillSubscriptionBilledAmounts(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        BackfillSubscriptionBilledAmountsResponse result =
+            await mediator.Send(new BackfillSubscriptionBilledAmountsCommand(), ct);
         return Results.Ok(result);
     }
 

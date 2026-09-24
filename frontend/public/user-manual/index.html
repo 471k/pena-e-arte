@@ -3499,6 +3499,7 @@ ol.steps li { margin: 6px 0; }
 <li>Past-due studios aren't in MRR — their revenue shows as "at risk" on the Past Due card until they pay or cancel. Studios cancelling at period end still count until their period ends.</li>
 <li>ARPA is MRR divided by paying studios; Free-plan studios aren't counted.</li>
 <li>Each chart point is MRR at the end of that month (now, for the current month). Past months are estimated from current subscriptions until full revenue history is recorded.</li>
+<li>"Discounts this month" sums referral discounts and credits actually applied to paid invoices — it doesn't reduce MRR (MRR is contracted revenue).</li>
 </ul>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
 </section>
@@ -3650,7 +3651,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">🗑</span> to delete a plan — deleting a plan with active subscribers is blocked from new signups but doesn't affect existing ones.</li>
 </ol>
 <div class="callout callout-warning"><strong>Note:</strong> Free, Starter, Growth and Premium are reset from code on every deploy. To change one, create a new plan instead of editing it. Retired plans (like Pro) show a Retired badge and can't be bought.</div>
-<div class="callout callout-warning"><strong>Note:</strong> a price that studios are subscribed to can't be changed or deleted — deactivate it and create a new plan instead. A linked Stripe price must match the amount and billing interval exactly.</div>
+<div class="callout callout-warning"><strong>Note:</strong> a price that studios are subscribed to can't be changed or deleted until every subscriber on it has been billing-amount-snapshotted (this happens automatically as each one's subscription is created, checked out, or updated). Once snapshotted, the price can be changed — existing subscribers keep their own billed price (grandfathered), and only new sign-ups see the new amount. A linked Stripe price must match the amount and billing interval exactly.</div>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
 </section>
 

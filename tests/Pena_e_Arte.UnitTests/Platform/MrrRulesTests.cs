@@ -240,4 +240,93 @@ public class MrrRulesTests
         MrrRules.MrrAt([input], Now, Now).Should().Be(79m);
         MrrRules.PausedMrr([input]).Should().Be(0m);
     }
+
+    // --- MonthlyEquivalent: billed-amount snapshot (Batch 2b) ---
+
+    [Fact]
+    public void BilledUnitAmountSet_SurvivesPlanPriceChange_SnapshotWins()
+    {
+        Plan plan = PremiumPlan();
+        plan.Prices.Single(pp => pp.Interval == BillingInterval.Monthly).Price = 89m;
+        Subscription sub = new()
+        {
+            PlanId = plan.Id,
+            Plan = plan,
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = 79m,
+            BilledCurrency = "eur",
+        };
+
+        MrrRules.MonthlyEquivalent(sub).Should().Be(79m);
+    }
+
+    [Fact]
+    public void BilledUnitAmountSet_Yearly_FullDecimalPrecision_NotRounded()
+    {
+        Subscription sub = new()
+        {
+            BillingInterval = BillingInterval.Yearly,
+            BilledUnitAmount = 790m,
+            BilledCurrency = "eur",
+        };
+
+        MrrRules.MonthlyEquivalent(sub).Should().Be(790m / 12m);
+    }
+
+    [Fact]
+    public void BilledUnitAmountNull_FallsBackToPlanPrice()
+    {
+        Plan plan = PremiumPlan();
+        plan.Prices.Single(pp => pp.Interval == BillingInterval.Monthly).Price = 49m;
+        Subscription sub = new()
+        {
+            PlanId = plan.Id,
+            Plan = plan,
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = null,
+        };
+
+        MrrRules.MonthlyEquivalent(sub).Should().Be(49m);
+    }
+
+    [Fact]
+    public void BilledUnitAmountSet_NoRecurringDiscount_FullAmountCounted()
+    {
+        Subscription sub = new()
+        {
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = 79m,
+            BilledCurrency = "eur",
+            RecurringDiscountPercent = null,
+        };
+
+        MrrRules.MonthlyEquivalent(sub).Should().Be(79m);
+    }
+
+    [Fact]
+    public void BilledCurrencyNotPlatformCurrency_ExcludedFromMrr()
+    {
+        Subscription sub = new()
+        {
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = 79m,
+            BilledCurrency = "usd",
+        };
+
+        MrrRules.MonthlyEquivalent(sub).Should().Be(0m);
+    }
+
+    [Fact]
+    public void BilledQuantityNull_TreatedAsOne()
+    {
+        Subscription sub = new()
+        {
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = 79m,
+            BilledCurrency = "eur",
+            BilledQuantity = null,
+        };
+
+        MrrRules.MonthlyEquivalent(sub).Should().Be(79m);
+    }
 }

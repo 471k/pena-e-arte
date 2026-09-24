@@ -14,6 +14,7 @@ export interface PlatformStatsResponse {
   atRiskMrr:           number;
   scheduledChurnMrr:   number;
   pausedMrr:           number;
+  discountsThisMonth:  number;
 }
 
 export type SubscriptionStatus =
