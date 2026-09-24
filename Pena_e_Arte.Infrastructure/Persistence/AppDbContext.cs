@@ -67,6 +67,7 @@ public class AppDbContext(
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<SubscriptionInvoicePayment> SubscriptionInvoicePayments => Set<SubscriptionInvoicePayment>();
     public DbSet<SubscriptionRefund> SubscriptionRefunds => Set<SubscriptionRefund>();
+    public DbSet<SubscriptionRevenueEvent> SubscriptionRevenueEvents => Set<SubscriptionRevenueEvent>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<ReferralRedemption> ReferralRedemptions => Set<ReferralRedemption>();
 

@@ -60,6 +60,7 @@ public interface IAppDbContext
     DbSet<Subscription> Subscriptions { get; }
     DbSet<SubscriptionInvoicePayment> SubscriptionInvoicePayments { get; }
     DbSet<SubscriptionRefund> SubscriptionRefunds { get; }
+    DbSet<SubscriptionRevenueEvent> SubscriptionRevenueEvents { get; }
     DbSet<ReferralCode> ReferralCodes { get; }
     DbSet<ReferralRedemption> ReferralRedemptions { get; }
 
