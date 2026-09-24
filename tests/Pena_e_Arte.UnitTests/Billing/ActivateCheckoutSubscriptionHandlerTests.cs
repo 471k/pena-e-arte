@@ -214,4 +214,80 @@ public class ActivateCheckoutSubscriptionHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_FirstActivation_WritesNewLedgerEvent()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Trialing);
+        StripeReturns(complete: true, price: "price_growth");
+        _billing.GetPriceAsync("price_growth", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 5900, "eur", "month", 1));
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.New);
+        ledgerEvent.SubscriptionId.Should().Be(_db.Subscriptions.Single(s => s.StudioId == _studioId).Id);
+        ledgerEvent.MrrBefore.Should().Be(0m);
+        ledgerEvent.MrrAfter.Should().Be(59m);
+        ledgerEvent.Source.Should().Be(nameof(ActivateCheckoutSubscriptionHandler));
+    }
+
+    [Fact]
+    public async Task Handle_StudioThatChurnedBefore_WritesReactivationNotNew()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Cancelled);
+        _db.SubscriptionRevenueEvents.Add(new SubscriptionRevenueEvent
+        {
+            SubscriptionId = _db.Subscriptions.Single(s => s.StudioId == _studioId).Id,
+            StudioId = _studioId,
+            OccurredAt = DateTime.UtcNow.AddMonths(-2),
+            Type = RevenueEventType.Churn,
+            MrrBefore = 59m,
+            MrrAfter = 0m,
+            Source = "seed",
+            StripeEventId = "seed-churn",
+        });
+        await _db.SaveChangesAsync();
+        StripeReturns(complete: true, price: "price_growth");
+        _billing.GetPriceAsync("price_growth", Arg.Any<CancellationToken>())
+            .Returns(new StripePriceInfo(true, 5900, "eur", "month", 1));
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        SubscriptionRevenueEvent added = _db.SubscriptionRevenueEvents.Single(e => e.Source != "seed");
+        added.Type.Should().Be(RevenueEventType.Reactivation);
+        added.MrrBefore.Should().Be(0m);
+        added.MrrAfter.Should().Be(59m);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyLinkedAndActive_WritesNoLedgerEvent()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Active, stripeSubId: "sub_new");
+        StripeReturns(complete: true, subId: "sub_new", price: "price_growth");
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_NoBilledAmountResolvable_WritesNoLedgerEvent()
+    {
+        await SeedStudioSubscription(SubscriptionStatus.Trialing);
+        _billing.GetCheckoutSubscriptionAsync("cs_123", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutSubscriptionResult(
+                true, "sub_new", "cus_new", _studioId.ToString(), null,
+                DateTime.UtcNow.AddMonths(1), HasDiscount: false));
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
 }

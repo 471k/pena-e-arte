@@ -56,6 +56,7 @@ public class CancelMySubscriptionHandler(
                 $"A subscription with status '{subscription.Status}' cannot be cancelled this way.");
 
         DateTime now = DateTime.UtcNow;
+        decimal mrrBefore = MrrRules.MonthlyEquivalent(subscription);
 
         // A3 row 3 — release any scheduled downgrade first; the quote used the current period's invoice.
         if (subscription.PendingPlanId is not null && subscription.StripeSubscriptionId is not null)
@@ -89,6 +90,8 @@ public class CancelMySubscriptionHandler(
             subscription.Status = SubscriptionStatus.Cancelled;
             subscription.CurrentPeriodEnd = now; // §2.1.C — precise access-end for MrrRules' pre-ledger window
             subscription.CancelAtPeriodEnd = false;
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, 0m, RevenueEventType.Churn,
+                nameof(CancelMySubscriptionHandler), stripeEventId: null);
         }
         else if (subscription.StripeSubscriptionId is not null)
         {
@@ -104,6 +107,10 @@ public class CancelMySubscriptionHandler(
             // Cancelled). Deliberate simplification, zero real impact today.
             subscription.Status = SubscriptionStatus.Cancelled;
             subscription.CurrentPeriodEnd = now;
+            // No Stripe subscription exists, so no customer.subscription.deleted webhook will
+            // ever churn this one later — it must be recorded here.
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, 0m, RevenueEventType.Churn,
+                nameof(CancelMySubscriptionHandler), stripeEventId: null);
         }
 
         command.ComputedRefundAmount = refundAmount;

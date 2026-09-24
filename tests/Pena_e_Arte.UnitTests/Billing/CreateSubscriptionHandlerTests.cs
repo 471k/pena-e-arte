@@ -295,4 +295,60 @@ public class CreateSubscriptionHandlerTests
         });
         await _db.SaveChangesAsync();
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_PaidPlan_WritesNewLedgerEvent()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 49m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.New);
+        ledgerEvent.MrrBefore.Should().Be(0m);
+        ledgerEvent.MrrAfter.Should().Be(49m);
+        ledgerEvent.PlanId.Should().Be(planId);
+        ledgerEvent.Source.Should().Be(nameof(CreateSubscriptionHandler));
+    }
+
+    [Fact]
+    public async Task Handle_FreePlan_WritesNoLedgerEvent()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 0m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ResubscribeAfterChurn_WritesReactivationNotNew()
+    {
+        Guid planId = await SeedPlan(priceMonthly: 49m);
+        await SeedSubscription(SubscriptionStatus.Cancelled);
+        _db.SubscriptionRevenueEvents.Add(new SubscriptionRevenueEvent
+        {
+            SubscriptionId = _db.Subscriptions.Single(s => s.StudioId == _studioId).Id,
+            StudioId = _studioId,
+            OccurredAt = DateTime.UtcNow.AddMonths(-2),
+            Type = RevenueEventType.Churn,
+            MrrBefore = 49m,
+            MrrAfter = 0m,
+            Source = "seed",
+            StripeEventId = "seed-churn",
+        });
+        await _db.SaveChangesAsync();
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        _db.SubscriptionRevenueEvents.Single(e => e.Source != "seed").Type
+            .Should().Be(RevenueEventType.Reactivation);
+    }
 }

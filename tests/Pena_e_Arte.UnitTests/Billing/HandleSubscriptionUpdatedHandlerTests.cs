@@ -335,4 +335,120 @@ public class HandleSubscriptionUpdatedHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    private async Task<string> SeedPaidSubscription(
+        SubscriptionStatus status, decimal billedAmount = 59m, Guid? planId = null,
+        Guid? pendingPlanId = null, BillingInterval? pendingInterval = null)
+    {
+        string stripeSubId = $"sub_{Guid.NewGuid():N}";
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = Guid.NewGuid(),
+            StripeSubscriptionId = stripeSubId,
+            Status = status,
+            PlanId = planId,
+            BillingInterval = BillingInterval.Monthly,
+            PendingPlanId = pendingPlanId,
+            PendingBillingInterval = pendingInterval,
+            BilledUnitAmount = billedAmount,
+            BilledQuantity = 1,
+            BilledCurrency = "eur",
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(14),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return stripeSubId;
+    }
+
+    [Fact]
+    public async Task Handle_ActiveToPastDue_WritesPastDueEventWithStripeEventId()
+    {
+        string subId = await SeedPaidSubscription(SubscriptionStatus.Active);
+
+        await CreateSut().Handle(Command(subId, "past_due") with { StripeEventId = "evt_pd" }, default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.PastDue);
+        ledgerEvent.MrrBefore.Should().Be(59m);
+        ledgerEvent.MrrAfter.Should().Be(59m);
+        ledgerEvent.StripeEventId.Should().Be("evt_pd");
+    }
+
+    [Fact]
+    public async Task Handle_PastDueToActive_WritesRecoveredEvent()
+    {
+        string subId = await SeedPaidSubscription(SubscriptionStatus.PastDue);
+
+        await CreateSut().Handle(Command(subId, "active") with { StripeEventId = "evt_rec" }, default);
+
+        _db.SubscriptionRevenueEvents.Single().Type.Should().Be(RevenueEventType.Recovered);
+    }
+
+    [Fact]
+    public async Task Handle_SamePastDueWebhookDeliveredTwice_WritesOneEvent()
+    {
+        string subId = await SeedPaidSubscription(SubscriptionStatus.Active);
+        HandleSubscriptionUpdatedCommand webhook = Command(subId, "past_due") with { StripeEventId = "evt_pd" };
+
+        await CreateSut().Handle(webhook, default);
+        _db.ChangeTracker.Clear();
+        await CreateSut().Handle(webhook, default);
+
+        _db.SubscriptionRevenueEvents.Count().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_ScheduledDowngradeLands_WritesContractionWithStripeEventId()
+    {
+        Plan premium = new() { Name = "Premium" };
+        Plan growth = new() { Name = "Growth" };
+        growth.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 59m, StripePriceId = "price_growth_m" });
+        _db.Plans.AddRange(premium, growth);
+        await _db.SaveChangesAsync();
+        string subId = await SeedPaidSubscription(
+            SubscriptionStatus.Active, billedAmount: 79m, planId: premium.Id,
+            pendingPlanId: growth.Id, pendingInterval: BillingInterval.Monthly);
+
+        await CreateSut().Handle(
+            Command(subId, "active", priceId: "price_growth_m", unitAmount: 5900, currency: "eur", quantity: 1)
+                with
+            { StripeEventId = "evt_land" },
+            default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Contraction);
+        ledgerEvent.MrrBefore.Should().Be(79m);
+        ledgerEvent.MrrAfter.Should().Be(59m);
+        ledgerEvent.StripeEventId.Should().Be("evt_land");
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == subId).PendingPlanId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_BareActiveAmountChangeWithNoPendingChange_WritesNoEvent()
+    {
+        // e.g. an out-of-band Stripe Dashboard price edit, or the echo of an immediate upgrade.
+        string subId = await SeedPaidSubscription(SubscriptionStatus.Active, billedAmount: 59m);
+
+        await CreateSut().Handle(
+            Command(subId, "active", unitAmount: 7900, currency: "eur", quantity: 1), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ActiveToCanceledStatus_WritesChurnAndLaterDeletedEchoAddsNothing()
+    {
+        string subId = await SeedPaidSubscription(SubscriptionStatus.Active, billedAmount: 59m);
+
+        await CreateSut().Handle(Command(subId, "canceled") with { StripeEventId = "evt_can" }, default);
+        _db.ChangeTracker.Clear();
+        await new HandleSubscriptionDeletedHandler(_db).Handle(new HandleSubscriptionDeletedCommand(subId, "evt_del"), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
+        ledgerEvent.MrrBefore.Should().Be(59m);
+        ledgerEvent.MrrAfter.Should().Be(0m);
+    }
 }

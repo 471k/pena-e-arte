@@ -78,9 +78,28 @@ public class ChangePlanHandler(
             DateTime periodEnd = await billing.ChangeSubscriptionPriceAsync(
                 subscription.StripeSubscriptionId, newPrice.StripePriceId, ct);
 
+            // Falls back to the current plan's list price only for a pre-snapshot subscription
+            // (Plan isn't loaded here, so MonthlyEquivalent alone would read 0).
+            decimal mrrBefore = subscription.BilledUnitAmount is null
+                ? MrrRules.MonthlyEquivalentOf(currentPrice.Price, currentPrice.Interval)
+                : MrrRules.MonthlyEquivalent(subscription);
+
             subscription.PlanId = command.Request.PlanId;
             subscription.BillingInterval = requestedInterval;
             subscription.CurrentPeriodEnd = periodEnd;
+
+            // The billed-amount snapshot is refreshed only by the following subscription.updated
+            // webhook (deliberately a no-op for the ledger — see HandleSubscriptionUpdatedHandler),
+            // so the new MRR is the new plan's list price under the subscription's existing
+            // quantity and recurring discount. See architecture.md Decisions Log, "Subscription
+            // revenue ledger (2026-09-24)" for the list-price-approximation flag.
+            decimal discountFactor = 1m - (subscription.RecurringDiscountPercent ?? 0m) / 100m;
+            decimal mrrAfter = MrrRules.MonthlyEquivalentOf(
+                newPrice.Price * (subscription.BilledQuantity ?? 1) * discountFactor, newPrice.Interval);
+            RevenueEventRecorder.Record(
+                db, subscription, mrrBefore, mrrAfter,
+                mrrAfter >= mrrBefore ? RevenueEventType.Expansion : RevenueEventType.Contraction,
+                nameof(ChangePlanHandler), stripeEventId: null);
 
             logger.LogInformation(
                 "Plan upgraded immediately for studio {@StudioId} to plan {@PlanId} ({@Interval})",

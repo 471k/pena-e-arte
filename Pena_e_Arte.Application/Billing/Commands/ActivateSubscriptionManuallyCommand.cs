@@ -49,6 +49,11 @@ public class ActivateSubscriptionManuallyHandler(
 
         PlanPrice? monthlyPrice = plan.Prices.FirstOrDefault(pp => pp.Interval == BillingInterval.Monthly);
 
+        bool isNewSubscriptionRow = studio.Subscription is null;
+        decimal mrrBefore = studio.Subscription is null
+            ? 0m
+            : RevenueEventRecorder.MrrBeforeActivation(studio.Subscription);
+
         if (studio.Subscription is null)
         {
             studio.Subscription = new Subscription
@@ -77,6 +82,11 @@ public class ActivateSubscriptionManuallyHandler(
             studio.Subscription.BilledQuantity = 1;
             studio.Subscription.BilledCurrency = MrrRules.PlatformCurrency;
         }
+
+        // A Subscription row that didn't exist a moment ago cannot have prior ledger rows.
+        await RevenueEventRecorder.RecordActivationAsync(
+            db, studio.Subscription, mrrBefore, MrrRules.MonthlyEquivalent(studio.Subscription),
+            nameof(ActivateSubscriptionManuallyHandler), ct, knownNew: isNewSubscriptionRow);
 
         // Note is deliberately not logged — free text could contain PII (Rule #3).
         logger.LogInformation(

@@ -122,6 +122,8 @@ public class CreateSubscriptionHandler(
                 : DateTime.UtcNow.AddMonths(1);
         }
 
+        decimal mrrBefore = RevenueEventRecorder.MrrBeforeActivation(subscription);
+
         subscription.PlanId = command.Request.PlanId;
         subscription.BillingInterval = requestedInterval;
         subscription.Status = SubscriptionStatus.Active;
@@ -130,6 +132,10 @@ public class CreateSubscriptionHandler(
         subscription.BilledUnitAmount = price.Price;
         subscription.BilledQuantity = 1;
         subscription.BilledCurrency = MrrRules.PlatformCurrency;
+
+        await RevenueEventRecorder.RecordActivationAsync(
+            db, subscription, mrrBefore, MrrRules.MonthlyEquivalent(subscription),
+            nameof(CreateSubscriptionHandler), ct);
 
         // Upgrading off the Free plan does NOT clear Studio.IsSolo. IsSolo's own doc comment
         // says "never set any other way" than RegisterSoloArtistCommand for a reason: both
