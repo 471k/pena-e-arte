@@ -29,6 +29,17 @@ public static class RevenueLedgerRules
             .Where(latest => BillingTypes.Contains(latest.Type))
             .Sum(latest => latest.MrrAfter);
 
+    /// <summary>The subscriptions actively billing (with MRR above zero) at instant t — the
+    /// "existing customers" cohort a retention rate is measured against.</summary>
+    public static HashSet<Guid> BillingSubscriptionsAt(IEnumerable<SubscriptionRevenueEvent> events, DateTime t) =>
+        events
+            .Where(e => e.OccurredAt <= t)
+            .GroupBy(e => e.SubscriptionId)
+            .Select(g => g.OrderByDescending(e => e.OccurredAt).ThenByDescending(e => e.CreatedAt).First())
+            .Where(latest => BillingTypes.Contains(latest.Type) && latest.MrrAfter > 0m)
+            .Select(latest => latest.SubscriptionId)
+            .ToHashSet();
+
     /// <summary>Movement totals for one calendar month — only the five ChartMogul/Baremetrics
     /// movement types feed this; Paused/Resumed/PastDue/Recovered are state, not MRR movement,
     /// and are excluded here even though they're real ledger rows.</summary>

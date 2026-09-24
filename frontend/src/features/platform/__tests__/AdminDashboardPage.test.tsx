@@ -85,6 +85,12 @@ const server = setupServer(
   http.get("http://localhost/api/v1/platform/mrr-history", () =>
     HttpResponse.json([]), // empty — MrrChart renders gracefully with no data
   ),
+  http.get("http://localhost/api/v1/platform/mrr-movements", () =>
+    HttpResponse.json([]), // empty — MrrMovementsChart renders its empty state
+  ),
+  http.get("http://localhost/api/v1/platform/revenue-retention", () =>
+    HttpResponse.json({ grossRevenueRetention: null, netRevenueRetention: null, startMrr: 0 }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -295,15 +301,94 @@ describe("AdminDashboardPage", () => {
     expect(await screen.findByText(/no mrr data yet/i)).toBeInTheDocument();
   });
 
-  it("MRR chart shows the D3 estimation caption when history data is present", async () => {
+  it("MRR chart shows the estimation caption when at least one visible month is estimated", async () => {
     server.use(
       http.get("http://localhost/api/v1/platform/mrr-history", () =>
-        HttpResponse.json([{ month: "2026-05", mrr: 300 }, { month: "2026-06", mrr: 392 }]),
+        HttpResponse.json([
+          { month: "2026-05", mrr: 300, isEstimated: true },
+          { month: "2026-06", mrr: 392, isEstimated: false },
+        ]),
       ),
     );
     renderPage();
-    expect(await screen.findByText(/past months are estimated from current subscriptions/i))
-      .toBeInTheDocument();
+    expect(await screen.findByText(/estimated from current subscriptions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/all figures recorded/i)).not.toBeInTheDocument();
+  });
+
+  it("MRR chart shows a neutral 'All figures recorded' note when no visible month is estimated", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/mrr-history", () =>
+        HttpResponse.json([
+          { month: "2026-05", mrr: 300, isEstimated: false },
+          { month: "2026-06", mrr: 392, isEstimated: false },
+        ]),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/all figures recorded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/estimated from current subscriptions/i)).not.toBeInTheDocument();
+  });
+
+  it("MRR chart draws estimated points hollow and recorded points filled", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/mrr-history", () =>
+        HttpResponse.json([
+          { month: "2026-05", mrr: 300, isEstimated: true },
+          { month: "2026-06", mrr: 392, isEstimated: false },
+        ]),
+      ),
+    );
+    renderPage();
+    await screen.findByText(/estimated from current subscriptions/i);
+    expect(document.querySelectorAll("circle[data-estimated='true']")).toHaveLength(1);
+  });
+
+  it("MRR movements chart shows its empty state when nothing has been recorded", async () => {
+    renderPage();
+    expect(await screen.findByText(/no revenue movements recorded yet/i)).toBeInTheDocument();
+  });
+
+  it("MRR movements chart renders a bar group per month with the net figure in its tooltip", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/mrr-movements", () =>
+        HttpResponse.json([
+          { month: "2026-05", new: 59, expansion: 0, reactivation: 0, contraction: 0, churn: 0, net: 59 },
+          { month: "2026-06", new: 0, expansion: 20, reactivation: 0, contraction: 0, churn: 0, net: 20 },
+          { month: "2026-07", new: 0, expansion: 0, reactivation: 0, contraction: -20, churn: -49.17, net: -69.17 },
+        ]),
+      ),
+    );
+    renderPage();
+    const chart = await screen.findByRole("img", { name: /mrr movements by month/i });
+    const titles = Array.from(chart.querySelectorAll("title")).map((t) => t.textContent);
+    expect(titles).toHaveLength(3);
+    expect(titles[0]).toContain("New €59.00");
+    expect(titles[1]).toContain("Expansion €20.00");
+    expect(titles[2]).toContain("Churn -€49.17");
+    expect(titles[2]).toContain("Net -€69.17");
+    // Legend names every segment type
+    for (const label of ["New", "Expansion", "Reactivation", "Contraction", "Churn", "Net"]) {
+      expect(within(screen.getByRole("list", { name: /legend/i })).getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("retention tiles show '—' when there was no MRR at the start of the month", async () => {
+    renderPage();
+    const grr = (await screen.findByText("Gross Revenue Retention")).closest("div") as HTMLElement;
+    const nrr = (await screen.findByText("Net Revenue Retention")).closest("div") as HTMLElement;
+    expect(within(grr).getByText("—")).toBeInTheDocument();
+    expect(within(nrr).getByText("—")).toBeInTheDocument();
+  });
+
+  it("retention tiles show formatted percentages when the ledger has a start MRR", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/revenue-retention", () =>
+        HttpResponse.json({ grossRevenueRetention: 0.9474, netRevenueRetention: 1.0526, startMrr: 209 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText("94.7%")).toBeInTheDocument();
+    expect(screen.getByText("105.3%")).toBeInTheDocument();
   });
 
   it("At-Risk row: clicking 'Extend trial' reveals the days input and Confirm button", async () => {

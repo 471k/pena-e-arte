@@ -34,10 +34,11 @@ function fmtMonth(iso: string) {
 }
 
 interface TooltipData {
-  x:     number;
-  y:     number;
-  mrr:   number;
-  month: string;
+  x:           number;
+  y:           number;
+  mrr:         number;
+  month:       string;
+  isEstimated: boolean;
 }
 
 interface ChartProps {
@@ -53,7 +54,13 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
 
   const points = data.map((d, i) => ({ x: xAt(i, n), y: yAt(d.mrr, max), d }));
 
-  const linePts = points.map((p) => `${p.x},${p.y}`).join(" ");
+  // A segment is dashed when either end is an estimate — only segments between two recorded
+  // points are solid.
+  const segments = points.slice(1).map((p, i) => ({
+    from:      points[i],
+    to:        p,
+    estimated: points[i].d.isEstimated || p.d.isEstimated,
+  }));
 
   const areaPath = [
     `M ${points[0].x} ${PAD_T + PH}`,
@@ -102,25 +109,36 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
       {/* area fill */}
       <path d={areaPath} style={{ fill: "hsl(var(--primary) / 0.08)" }} />
 
-      {/* line */}
-      <polyline
-        points={linePts}
-        fill="none"
-        style={{ stroke: "hsl(var(--primary))" }}
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
+      {/* line — solid between recorded months, dashed wherever an estimate is involved */}
+      {segments.map(({ from, to, estimated }) => (
+        <line
+          key={`${from.d.month}-${to.d.month}`}
+          x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+          style={{ stroke: "hsl(var(--primary))" }}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray={estimated ? "4 3" : undefined}
+        />
+      ))}
 
       {/* dots + x labels */}
       {points.map(({ x, y, d }, i) => (
         <g
           key={d.month}
-          onMouseEnter={() => onHover({ x, y, mrr: d.mrr, month: d.month })}
+          onMouseEnter={() => onHover({ x, y, mrr: d.mrr, month: d.month, isEstimated: d.isEstimated })}
           onMouseLeave={() => onHover(null)}
           style={{ cursor: "default" }}
         >
-          <circle cx={x} cy={y} r={4} style={{ fill: "hsl(var(--primary))" }} />
+          {/* Filled = recorded; hollow = estimated from current subscriptions */}
+          <circle
+            cx={x} cy={y} r={4}
+            data-estimated={d.isEstimated ? "true" : undefined}
+            style={{
+              fill:        d.isEstimated ? "hsl(var(--background))" : "hsl(var(--primary))",
+              stroke:      "hsl(var(--primary))",
+              strokeWidth: 1.5,
+            }}
+          />
           {/* Larger invisible hit area */}
           <circle cx={x} cy={y} r={10} fill="transparent" />
           {(i % 2 === 0 || i === n - 1) && (
@@ -135,7 +153,7 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
       {/* Tooltip */}
       {activeTooltip && (() => {
         const tipW  = 76;
-        const tipH  = 28;
+        const tipH  = activeTooltip.isEstimated ? 38 : 28;
         const tipX  = Math.min(Math.max(activeTooltip.x - tipW / 2, PAD_L), W - PAD_R - tipW);
         const tipY  = activeTooltip.y - tipH - 6;
         return (
@@ -150,6 +168,12 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
                   fontWeight="600" fill="currentColor">
               {fmtY(activeTooltip.mrr)}
             </text>
+            {activeTooltip.isEstimated && (
+              <text x={tipX + tipW / 2} y={tipY + 32} textAnchor="middle" fontSize={8}
+                    fill="currentColor" fillOpacity={0.6}>
+                estimated
+              </text>
+            )}
           </g>
         );
       })()}
@@ -199,7 +223,9 @@ export function MrrChart() {
           <>
             <Chart data={data} activeTooltip={tooltip} onHover={setTooltip} />
             <p className="text-xs text-muted-foreground mt-1">
-              Past months are estimated from current subscriptions; plan changes aren't reflected yet.
+              {data.some((d) => d.isEstimated)
+                ? "Hollow points and dashed lines are estimated from current subscriptions — plan changes aren't reflected. Solid points are recorded."
+                : "All figures recorded."}
             </p>
           </>
         )}

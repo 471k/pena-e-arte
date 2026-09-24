@@ -315,13 +315,25 @@ public class GetMrrHistoryHandlerTests
         _db.SubscriptionRevenueEvents.AddRange(
             new SubscriptionRevenueEvent
             {
-                SubscriptionId = subscriptionId, StudioId = studio.Id, OccurredAt = MonthStart(3).AddDays(2),
-                Type = RevenueEventType.New, MrrBefore = 0m, MrrAfter = 59m, Source = "seed", StripeEventId = "e1",
+                SubscriptionId = subscriptionId,
+                StudioId = studio.Id,
+                OccurredAt = MonthStart(3).AddDays(2),
+                Type = RevenueEventType.New,
+                MrrBefore = 0m,
+                MrrAfter = 59m,
+                Source = "seed",
+                StripeEventId = "e1",
             },
             new SubscriptionRevenueEvent
             {
-                SubscriptionId = subscriptionId, StudioId = studio.Id, OccurredAt = MonthStart(1).AddDays(2),
-                Type = RevenueEventType.Churn, MrrBefore = 59m, MrrAfter = 0m, Source = "seed", StripeEventId = "e2",
+                SubscriptionId = subscriptionId,
+                StudioId = studio.Id,
+                OccurredAt = MonthStart(1).AddDays(2),
+                Type = RevenueEventType.Churn,
+                MrrBefore = 59m,
+                MrrAfter = 0m,
+                Source = "seed",
+                StripeEventId = "e2",
             });
         await _db.SaveChangesAsync();
 

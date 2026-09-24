@@ -67,6 +67,25 @@ export interface MrrDataPoint {
   isEstimated: boolean;
 }
 
+export interface MrrMovementsDataPoint {
+  month:        string;
+  new:          number;
+  expansion:    number;
+  reactivation: number;
+  /** Negative. */
+  contraction:  number;
+  /** Negative. */
+  churn:        number;
+  net:          number;
+}
+
+export interface RevenueRetentionResponse {
+  /** Fractions (0.95 = 95%); null when there was no MRR at the start of the month. */
+  grossRevenueRetention: number | null;
+  netRevenueRetention:   number | null;
+  startMrr:              number;
+}
+
 export interface RecentRefundResponse {
   amount:        number;
   status:        "Pending" | "Succeeded" | "Failed";

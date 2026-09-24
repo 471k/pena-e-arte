@@ -20,6 +20,8 @@ public static class PlatformEndpoints
         group.MapGet("stats", GetStats);
         group.MapGet("studios/{studioId:guid}/summary", GetStudioSummary);
         group.MapGet("mrr-history", GetMrrHistory);
+        group.MapGet("mrr-movements", GetMrrMovements);
+        group.MapGet("revenue-retention", GetRevenueRetention);
         group.MapGet("subscriptions", GetSubscriptions);
         group.MapPost("subscriptions/backfill-billed-amounts", BackfillSubscriptionBilledAmounts);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
@@ -71,6 +73,24 @@ public static class PlatformEndpoints
     {
         List<MrrDataPointResponse> result =
             await mediator.Send(new GetMrrHistoryQuery(Math.Clamp(months ?? 12, 1, 24)), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMrrMovements(
+        ISender mediator,
+        int? months,
+        CancellationToken ct)
+    {
+        List<MrrMovementsDataPointResponse> result =
+            await mediator.Send(new GetMrrMovementsQuery(Math.Clamp(months ?? 12, 1, 24)), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetRevenueRetention(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        RevenueRetentionResponse result = await mediator.Send(new GetRevenueRetentionQuery(), ct);
         return Results.Ok(result);
     }
 
