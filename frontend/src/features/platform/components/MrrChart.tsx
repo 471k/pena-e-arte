@@ -107,14 +107,14 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
       ))}
 
       {/* area fill */}
-      <path d={areaPath} style={{ fill: "hsl(var(--primary) / 0.08)" }} />
+      <path d={areaPath} style={{ fill: "color-mix(in srgb, var(--color-primary) 8%, transparent)" }} />
 
       {/* line — solid between recorded months, dashed wherever an estimate is involved */}
       {segments.map(({ from, to, estimated }) => (
         <line
           key={`${from.d.month}-${to.d.month}`}
           x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-          style={{ stroke: "hsl(var(--primary))" }}
+          style={{ stroke: "var(--color-primary)" }}
           strokeWidth={2}
           strokeLinecap="round"
           strokeDasharray={estimated ? "4 3" : undefined}
@@ -134,8 +134,8 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
             cx={x} cy={y} r={4}
             data-estimated={d.isEstimated ? "true" : undefined}
             style={{
-              fill:        d.isEstimated ? "hsl(var(--background))" : "hsl(var(--primary))",
-              stroke:      "hsl(var(--primary))",
+              fill:        d.isEstimated ? "var(--color-background)" : "var(--color-primary)",
+              stroke:      "var(--color-primary)",
               strokeWidth: 1.5,
             }}
           />
@@ -159,7 +159,7 @@ function Chart({ data, activeTooltip, onHover }: ChartProps) {
         return (
           <g>
             <rect x={tipX} y={tipY} width={tipW} height={tipH}
-                  rx={4} fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth={0.5} />
+                  rx={4} fill="var(--color-popover)" stroke="var(--color-border)" strokeWidth={0.5} />
             <text x={tipX + tipW / 2} y={tipY + 10} textAnchor="middle" fontSize={9}
                   fill="currentColor" fillOpacity={0.7}>
               {fmtMonth(activeTooltip.month)}

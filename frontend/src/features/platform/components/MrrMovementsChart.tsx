@@ -134,14 +134,14 @@ function Chart({ data }: { data: MrrMovementsDataPoint[] }) {
         <polyline
           points={netPoints}
           fill="none"
-          style={{ stroke: "hsl(var(--primary))" }}
+          style={{ stroke: "var(--color-primary)" }}
           strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
       )}
       {data.map((d, i) => (
-        <circle key={d.month} cx={xMid(i)} cy={zeroY - d.net * scale} r={3} style={{ fill: "hsl(var(--primary))" }} />
+        <circle key={d.month} cx={xMid(i)} cy={zeroY - d.net * scale} r={3} style={{ fill: "var(--color-primary)" }} />
       ))}
     </svg>
   );

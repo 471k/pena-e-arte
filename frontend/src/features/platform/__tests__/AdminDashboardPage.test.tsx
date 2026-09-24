@@ -343,6 +343,30 @@ describe("AdminDashboardPage", () => {
     expect(document.querySelectorAll("circle[data-estimated='true']")).toHaveLength(1);
   });
 
+  it("both charts use the theme's real color tokens — hsl(var(--primary)) is invalid CSS here and silently renders black/nothing", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/mrr-history", () =>
+        HttpResponse.json([
+          { month: "2026-05", mrr: 300, isEstimated: true },
+          { month: "2026-06", mrr: 392, isEstimated: false },
+        ]),
+      ),
+      http.get("http://localhost/api/v1/platform/mrr-movements", () =>
+        HttpResponse.json([
+          { month: "2026-05", new: 59, expansion: 0, reactivation: 0, contraction: 0, churn: 0, net: 59 },
+          { month: "2026-06", new: 0, expansion: 20, reactivation: 0, contraction: -10, churn: 0, net: 10 },
+        ]),
+      ),
+    );
+    renderPage();
+    const movements = await screen.findByRole("img", { name: /mrr movements by month/i });
+    const trend = screen.getByRole("img", { name: /mrr trend/i });
+    for (const svg of [movements, trend]) {
+      expect(svg.outerHTML).not.toContain("hsl(var(--");
+      expect(svg.outerHTML).toContain("var(--color-primary)");
+    }
+  });
+
   it("MRR movements chart shows its empty state when nothing has been recorded", async () => {
     renderPage();
     expect(await screen.findByText(/no revenue movements recorded yet/i)).toBeInTheDocument();
