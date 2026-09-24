@@ -5,4 +5,5 @@ public record AdminStudioSummaryResponse(
     string OwnerDisplayName,
     int ArtistCount,
     int ClientCount,
-    int AppointmentCount);
+    int AppointmentCount,
+    List<RecentRefundResponse> RecentRefunds);

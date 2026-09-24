@@ -33,6 +33,7 @@ public class GetPlatformStatsHandlerTests
         result.ScheduledChurnMrr.Should().Be(0);
         result.PausedMrr.Should().Be(0);
         result.DiscountsThisMonth.Should().Be(0);
+        result.RefundsThisMonth.Should().Be(0);
     }
 
     [Fact]
@@ -459,6 +460,72 @@ public class GetPlatformStatsHandlerTests
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         result.DiscountsThisMonth.Should().Be(15m);
+    }
+
+    [Fact]
+    public async Task Handle_RefundsThisMonth_SumsOnlySucceededRowsCreatedThisCalendarMonth()
+    {
+        Studio studio = SeedStudio(isActive: true);
+        await _db.SaveChangesAsync();
+        Subscription sub = new()
+        {
+            StudioId = studio.Id,
+            Status = SubscriptionStatus.Cancelled,
+            CurrentPeriodEnd = DateTime.UtcNow,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(-5),
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        DateTime monthStart = new(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        SubscriptionRefund SucceededThisMonth() => new()
+        {
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            SubscriptionInvoicePaymentId = Guid.NewGuid(),
+            StripeInvoiceId = "in_1",
+            Amount = 200m,
+            Currency = "eur",
+            Rule = RefundRule.YearlyFormula,
+            InitiatedByUserId = Guid.NewGuid(),
+            Status = RefundStatus.Succeeded,
+            CreatedAt = monthStart.AddDays(2),
+        };
+
+        _db.SubscriptionRefunds.Add(SucceededThisMonth());
+        _db.SubscriptionRefunds.Add(new SubscriptionRefund
+        {
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            SubscriptionInvoicePaymentId = Guid.NewGuid(),
+            StripeInvoiceId = "in_2",
+            Amount = 300m,
+            Currency = "eur",
+            Rule = RefundRule.YearlyFormula,
+            InitiatedByUserId = Guid.NewGuid(),
+            Status = RefundStatus.Succeeded,
+            CreatedAt = monthStart.AddMonths(-1).AddDays(2), // last month — excluded
+        });
+        _db.SubscriptionRefunds.Add(new SubscriptionRefund
+        {
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            SubscriptionInvoicePaymentId = Guid.NewGuid(),
+            StripeInvoiceId = "in_3",
+            Amount = 400m,
+            Currency = "eur",
+            Rule = RefundRule.YearlyFormula,
+            InitiatedByUserId = Guid.NewGuid(),
+            Status = RefundStatus.Pending, // not yet succeeded — excluded
+            CreatedAt = monthStart.AddDays(3),
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.RefundsThisMonth.Should().Be(200m);
     }
 
     private Studio SeedStudio(bool isActive, DateTime? trialExpiresAt = null)

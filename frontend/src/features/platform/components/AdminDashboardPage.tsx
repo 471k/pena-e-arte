@@ -197,7 +197,12 @@ function formatPercent(rate: number): string {
 }
 
 function mrrSubtitle(
-  stats: { mrrGrowthPercent: number | null; scheduledChurnMrr: number; discountsThisMonth: number } | undefined,
+  stats: {
+    mrrGrowthPercent: number | null;
+    scheduledChurnMrr: number;
+    discountsThisMonth: number;
+    refundsThisMonth: number;
+  } | undefined,
 ): string | undefined {
   if (!stats) return undefined;
   const growth =
@@ -209,6 +214,8 @@ function mrrSubtitle(
     subtitle += ` · ${formatCurrency(stats.scheduledChurnMrr)} cancelling at period end`;
   if (stats.discountsThisMonth > 0)
     subtitle += ` · ${formatCurrency(stats.discountsThisMonth)} discounted this month`;
+  if (stats.refundsThisMonth > 0)
+    subtitle += ` · ${formatCurrency(stats.refundsThisMonth)} refunded this month`;
   return subtitle;
 }
 

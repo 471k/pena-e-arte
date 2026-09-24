@@ -23,4 +23,5 @@ public record PlatformStatsResponse(
     decimal AtRiskMrr,
     decimal ScheduledChurnMrr,
     decimal PausedMrr,
-    decimal DiscountsThisMonth);
+    decimal DiscountsThisMonth,
+    decimal RefundsThisMonth);
