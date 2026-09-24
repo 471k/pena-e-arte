@@ -91,4 +91,64 @@ public class AuditMetadataBuilderTests
         metadata.Should().Contain("Professional");
         AssertNoPiiShapedFields(metadata);
     }
+
+    [Fact]
+    public void Build_BilledAmountsBackfill_IncludesCountsOnly()
+    {
+        BackfillSubscriptionBilledAmountsCommand command = new()
+        {
+            CardBilledUpdated = 3,
+            CardBilledSkipped = 1,
+            CashBilledSnapshotted = 21,
+        };
+
+        string metadata = AuditMetadataBuilder.Build(command);
+
+        using JsonDocument doc = JsonDocument.Parse(metadata);
+        doc.RootElement.GetProperty("cardBilledUpdated").GetInt32().Should().Be(3);
+        doc.RootElement.GetProperty("cardBilledSkipped").GetInt32().Should().Be(1);
+        doc.RootElement.GetProperty("cashBilledSnapshotted").GetInt32().Should().Be(21);
+        doc.RootElement.EnumerateObject().Should().HaveCount(3);
+        AssertNoPiiShapedFields(metadata);
+    }
+
+    [Fact]
+    public void Build_RevenueLedgerBackfill_IncludesCountsOnly()
+    {
+        BackfillRevenueLedgerCommand command = new()
+        {
+            Created = 9,
+            SkippedAlreadyInLedger = 0,
+            SkippedNotBilling = 16,
+        };
+
+        string metadata = AuditMetadataBuilder.Build(command);
+
+        using JsonDocument doc = JsonDocument.Parse(metadata);
+        doc.RootElement.GetProperty("created").GetInt32().Should().Be(9);
+        doc.RootElement.GetProperty("skippedAlreadyInLedger").GetInt32().Should().Be(0);
+        doc.RootElement.GetProperty("skippedNotBilling").GetInt32().Should().Be(16);
+        doc.RootElement.EnumerateObject().Should().HaveCount(3);
+        AssertNoPiiShapedFields(metadata);
+    }
+
+    [Fact]
+    public void BackfillCommands_AreAuditedAsPlatformWide_AndNeverAsSubscriptionActions()
+    {
+        // MrrInputLoader reads cancellation timestamps out of the audit table by action + target
+        // type "Subscription"; a backfill must never look like one of those.
+        Pena_e_Arte.Domain.Interfaces.IAuditableCommand[] commands =
+            [new BackfillSubscriptionBilledAmountsCommand(), new BackfillRevenueLedgerCommand()];
+
+        foreach (Pena_e_Arte.Domain.Interfaces.IAuditableCommand command in commands)
+        {
+            command.AuditTargetType.Should().Be(Pena_e_Arte.Domain.Constants.AuditTargetTypes.Platform);
+            command.AuditTargetId.Should().Be(Guid.Empty);
+            command.AuditStudioId.Should().BeNull();
+            command.AuditAction.Should().NotBe(Pena_e_Arte.Domain.Constants.AuditActions.SubscriptionCancelledByAdmin);
+            command.AuditAction.Should().NotBe(Pena_e_Arte.Domain.Constants.AuditActions.SubscriptionCancelledByOwner);
+        }
+        commands[0].AuditAction.Should().Be("Platform.BilledAmountsBackfilled");
+        commands[1].AuditAction.Should().Be("Platform.RevenueLedgerBackfilled");
+    }
 }

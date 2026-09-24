@@ -5,8 +5,10 @@ using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
@@ -17,7 +19,17 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 /// (D3). Idempotent by construction — a subscription with any ledger row, backfilled or
 /// otherwise, is left untouched, so a rerun is a no-op.
 /// </summary>
-public record BackfillRevenueLedgerCommand : IRequest<BackfillRevenueLedgerResponse>;
+public record BackfillRevenueLedgerCommand : IRequest<BackfillRevenueLedgerResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.RevenueLedgerBackfilled;
+    public string AuditTargetType => AuditTargetTypes.Platform;
+    public Guid AuditTargetId => Guid.Empty; // platform-wide, no single target
+
+    // Set by the handler before it returns; read back by AuditLogBehavior for the metadata.
+    public int? Created { get; set; }
+    public int? SkippedAlreadyInLedger { get; set; }
+    public int? SkippedNotBilling { get; set; }
+}
 
 public class BackfillRevenueLedgerHandler(
     IAppDbContext db,
@@ -85,6 +97,10 @@ public class BackfillRevenueLedgerHandler(
         }
 
         await db.SaveChangesAsync(ct);
+
+        command.Created = created;
+        command.SkippedAlreadyInLedger = skippedAlreadyInLedger;
+        command.SkippedNotBilling = skippedNotBilling;
 
         logger.LogInformation(
             "Revenue-ledger backfill: {Created} subscription(s) seeded, "

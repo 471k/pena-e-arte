@@ -36,7 +36,13 @@ function AuditLogTable({ rows }: { rows: AuditLogEntryResponse[] }) {
               <td className="px-3 py-2 whitespace-nowrap">{formatDateTime(row.createdAt)}</td>
               <td className="px-3 py-2 font-medium">{row.action}</td>
               <td className="px-3 py-2 text-muted-foreground">
-                {row.targetType} · <span className="font-mono text-[10px]">{row.targetId.slice(0, 8)}</span>
+                {/* Platform-wide actions (e.g. the subscription backfills) have no single target, so
+                    their id is an all-zero placeholder — show the type alone rather than "00000000". */}
+                {row.targetType === "Platform" ? (
+                  "Platform"
+                ) : (
+                  <>{row.targetType} · <span className="font-mono text-[10px]">{row.targetId.slice(0, 8)}</span></>
+                )}
               </td>
               <td className="px-3 py-2 text-muted-foreground">
                 {row.studioId ? <span className="font-mono text-[10px]">{row.studioId.slice(0, 8)}</span> : "Platform-wide"}

@@ -104,6 +104,23 @@ public class RevenueLedgerEndpointTests(DatabaseFixture fixture)
             (await db.SubscriptionRevenueEvents.CountAsync(e => e.SubscriptionId == subscriptionId)).Should().Be(1);
         }
 
+        // ── both runs were audited (newest first: the rerun, then the first run): platform-wide,
+        //    counts only, through the real pipeline and real MySQL
+        await using (AppDbContext db = fixture.CreateDbContext(Guid.Empty))
+        {
+            List<AuditLogEntry> audits = await db.AuditLogEntries
+                .Where(a => a.Action == "Platform.RevenueLedgerBackfilled")
+                .OrderByDescending(a => a.CreatedAt)
+                .Take(2)
+                .ToListAsync();
+            audits.Should().HaveCount(2);
+            audits.Should().OnlyContain(a => a.TargetType == "Platform" && a.TargetId == Guid.Empty && a.StudioId == null);
+            using System.Text.Json.JsonDocument firstRun = System.Text.Json.JsonDocument.Parse(audits[1].Metadata);
+            using System.Text.Json.JsonDocument rerun = System.Text.Json.JsonDocument.Parse(audits[0].Metadata);
+            firstRun.RootElement.GetProperty("created").GetInt32().Should().Be(firstBody.Created);
+            rerun.RootElement.GetProperty("created").GetInt32().Should().Be(0);
+        }
+
         // ── the MRR trend now reads the ledger for the current month
         HttpResponseMessage history = await client.SendAsync(WithToken("GET", "/api/v1/platform/mrr-history?months=3", admin));
         history.StatusCode.Should().Be(HttpStatusCode.OK);

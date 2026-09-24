@@ -13,6 +13,13 @@ public static class AuditActions
     public const string SubscriptionCancelledByOwner = "Subscription.CancelledByOwner";
     public const string SubscriptionActivatedManually = "Subscription.ActivatedManually";
     public const string SubscriptionDunningExclusionChanged = "Subscription.DunningExclusionChanged";
+
+    /// <summary>Platform-wide bulk writes triggered by an admin (target: TargetType Platform, empty
+    /// TargetId). Metadata carries counts only. Deliberately NOT under "Subscription." with
+    /// TargetType Subscription — MrrInputLoader reads cancellation/suspension timestamps out of this
+    /// table by action + target type, and a backfill must never be mistaken for one.</summary>
+    public const string SubscriptionBilledAmountsBackfilled = "Platform.BilledAmountsBackfilled";
+    public const string RevenueLedgerBackfilled = "Platform.RevenueLedgerBackfilled";
     public const string PlanUpdated = "Plan.Updated";
     public const string ReferralCodeDeactivated = "ReferralCode.Deactivated";
     public const string ReferralCodeReactivated = "ReferralCode.Reactivated";
@@ -87,4 +94,7 @@ public static class AuditTargetTypes
     public const string Campaign = "Campaign";
     public const string ImpersonationSession = "ImpersonationSession";
     public const string Artist = "Artist";
+
+    /// <summary>Actions with no single studio/entity target — TargetId is Guid.Empty.</summary>
+    public const string Platform = "Platform";
 }
