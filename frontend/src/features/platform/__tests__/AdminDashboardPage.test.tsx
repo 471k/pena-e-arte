@@ -31,6 +31,7 @@ const STATS: PlatformStatsResponse = {
   scheduledChurnMrr:   0,
   pausedMrr:           0,
   discountsThisMonth:  0,
+  refundsThisMonth:    0,
 };
 
 const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
