@@ -24,6 +24,7 @@ public static class PlatformEndpoints
         group.MapGet("revenue-retention", GetRevenueRetention);
         group.MapGet("subscriptions", GetSubscriptions);
         group.MapPost("subscriptions/backfill-billed-amounts", BackfillSubscriptionBilledAmounts);
+        group.MapPost("subscriptions/backfill-revenue-ledger", BackfillRevenueLedger);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
         group.MapPost("studios/{studioId:guid}/subscription/dunning-exclusion", SetDunningExclusion);
@@ -109,6 +110,14 @@ public static class PlatformEndpoints
     {
         BackfillSubscriptionBilledAmountsResponse result =
             await mediator.Send(new BackfillSubscriptionBilledAmountsCommand(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> BackfillRevenueLedger(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        BackfillRevenueLedgerResponse result = await mediator.Send(new BackfillRevenueLedgerCommand(), ct);
         return Results.Ok(result);
     }
 
