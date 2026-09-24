@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Interfaces;
 
@@ -17,7 +18,20 @@ namespace Pena_e_Arte.Application.Platform.Commands;
 /// subscriptions are snapshotted from Stripe; cash-billed ones from their plan's Monthly
 /// price, and listed back for the admin to review since nothing is billed by this action.
 /// </summary>
-public record BackfillSubscriptionBilledAmountsCommand : IRequest<BackfillSubscriptionBilledAmountsResponse>;
+public record BackfillSubscriptionBilledAmountsCommand
+    : IRequest<BackfillSubscriptionBilledAmountsResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.SubscriptionBilledAmountsBackfilled;
+    public string AuditTargetType => AuditTargetTypes.Platform;
+    public Guid AuditTargetId => Guid.Empty; // platform-wide, no single target
+
+    // Set by the handler before it returns — AuditLogBehavior builds the audit metadata AFTER
+    // next(ct) completes, reading these back off the same command instance (same pattern as
+    // CancelSubscriptionCommand). Counts only, never studio ids.
+    public int? CardBilledUpdated { get; set; }
+    public int? CardBilledSkipped { get; set; }
+    public int? CashBilledSnapshotted { get; set; }
+}
 
 public class BackfillSubscriptionBilledAmountsHandler(
     IAppDbContext db,
@@ -69,6 +83,10 @@ public class BackfillSubscriptionBilledAmountsHandler(
         }
 
         await db.SaveChangesAsync(ct);
+
+        command.CardBilledUpdated = cardBilledUpdated;
+        command.CardBilledSkipped = cardBilledSkipped;
+        command.CashBilledSnapshotted = cashBilledSnapshots.Count;
 
         logger.LogInformation(
             "Billed-amount backfill: {CardBilledUpdated} card-billed snapshotted, "

@@ -1828,7 +1828,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Filter by action, target type, or a date range.",
       "Each row shows when it happened, what happened, what it targeted, which studio (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
     ],
-    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin."],
+    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled."],
     relatedArticleIds: ["admin-impersonation"],
   },
   {
