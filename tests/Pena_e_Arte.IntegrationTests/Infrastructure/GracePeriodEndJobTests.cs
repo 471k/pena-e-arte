@@ -75,7 +75,8 @@ public class GracePeriodEndJobTests(DatabaseFixture fixture)
         otherSub!.Status.Should().Be(SubscriptionStatus.GracePeriod);
     }
 
-    private async Task<Guid> SeedSubscription(SubscriptionStatus status)
+    private async Task<Guid> SeedSubscription(
+        SubscriptionStatus status, decimal? billedUnitAmount = null, bool withPaidInvoice = false)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
 
@@ -96,9 +97,60 @@ public class GracePeriodEndJobTests(DatabaseFixture fixture)
             Status = status,
             TrialExpiresAt = DateTime.UtcNow.AddDays(-7),
             GracePeriodEnd = DateTime.UtcNow.AddDays(-1),
-            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-7)
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-7),
+            BilledUnitAmount = billedUnitAmount,
+            BilledQuantity = billedUnitAmount is null ? null : 1,
+            BilledCurrency = billedUnitAmount is null ? null : "eur",
         });
         await ctx.SaveChangesAsync();
+
+        if (withPaidInvoice)
+        {
+            Subscription sub = await ctx.Subscriptions.SingleAsync(s => s.StudioId == studio.Id);
+            ctx.SubscriptionInvoicePayments.Add(new SubscriptionInvoicePayment
+            {
+                SubscriptionId = sub.Id,
+                StudioId = studio.Id,
+                StripeInvoiceId = $"in_{Guid.NewGuid():N}",
+                AmountPaid = billedUnitAmount ?? 0m,
+                Currency = "eur",
+                PaidAt = DateTime.UtcNow.AddMonths(-2),
+            });
+            await ctx.SaveChangesAsync();
+        }
+
         return studio.Id;
+    }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ExecuteAsync_GracePeriodWithNoPriorPayment_WritesNoChurnEvent()
+    {
+        Guid studioId = await SeedSubscription(SubscriptionStatus.GracePeriod, billedUnitAmount: 59m);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
+        (await verify.SubscriptionRevenueEvents.CountAsync(e => e.StudioId == studioId)).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_GracePeriodAfterAtLeastOnePaidInvoice_WritesOneChurnEvent()
+    {
+        Guid studioId = await SeedSubscription(
+            SubscriptionStatus.GracePeriod, billedUnitAmount: 59m, withPaidInvoice: true);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).ExecuteAsync(studioId);
+
+        await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
+        SubscriptionRevenueEvent ledgerEvent =
+            await verify.SubscriptionRevenueEvents.SingleAsync(e => e.StudioId == studioId);
+        ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
+        ledgerEvent.MrrBefore.Should().Be(59m);
+        ledgerEvent.MrrAfter.Should().Be(0m);
+        ledgerEvent.Source.Should().Be(nameof(GracePeriodEndJob));
     }
 }

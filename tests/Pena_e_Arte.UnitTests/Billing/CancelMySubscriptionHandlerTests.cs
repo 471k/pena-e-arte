@@ -188,4 +188,56 @@ public class CancelMySubscriptionHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    private async Task SetBilled(decimal amount)
+    {
+        Subscription sub = _db.Subscriptions.Single(s => s.StudioId == _studioId);
+        sub.BilledUnitAmount = amount;
+        sub.BilledQuantity = 1;
+        sub.BilledCurrency = "eur";
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    public async Task Handle_Yearly_WritesChurnOfMonthlyEquivalent()
+    {
+        await SeedYearly("sub_yearly_ledger", amountPaid: 590m, monthlyRef: 59m, periodStartMonthsAgo: 3);
+        await SetBilled(590m);
+
+        await CreateSut().Handle(new CancelMySubscriptionCommand(_studioId), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
+        ledgerEvent.MrrBefore.Should().BeApproximately(49.17m, 0.01m); // 590 / 12
+        ledgerEvent.MrrAfter.Should().Be(0m);
+        ledgerEvent.Source.Should().Be(nameof(CancelMySubscriptionHandler));
+    }
+
+    [Fact]
+    public async Task Handle_MonthlyCardBilled_WritesNoChurnYet_StripeDeletedWebhookWillDoIt()
+    {
+        await SeedSubscription(BillingInterval.Monthly, SubscriptionStatus.Active, "sub_monthly_ledger");
+        await SetBilled(59m);
+
+        await CreateSut().Handle(new CancelMySubscriptionCommand(_studioId), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_CashBilled_WritesChurnImmediately_NoWebhookWillEverFire()
+    {
+        await SeedSubscription(BillingInterval.Monthly, SubscriptionStatus.Active, stripeId: null);
+        await SetBilled(59m);
+
+        await CreateSut().Handle(new CancelMySubscriptionCommand(_studioId), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
+        ledgerEvent.MrrBefore.Should().Be(59m);
+        ledgerEvent.MrrAfter.Should().Be(0m);
+    }
 }

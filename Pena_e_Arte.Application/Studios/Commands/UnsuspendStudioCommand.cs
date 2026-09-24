@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -33,6 +34,21 @@ public class UnsuspendStudioHandler(
             ?? throw new NotFoundException(nameof(Domain.Entities.Studio), command.StudioId);
 
         studio.IsActive = true;
+
+        // Resumed hands back exactly what Paused set aside — so it's only written when this
+        // subscription is still Active AND its latest ledger row is Paused. A subscription
+        // cancelled while suspended must stay churned, not be resurrected by the unsuspend.
+        if (studio.Subscription is { Status: SubscriptionStatus.Active } activeSubscription)
+        {
+            RevenueEventType? latestType = await RevenueEventRecorder.LatestTypeAsync(db, activeSubscription.Id, ct);
+            if (latestType == RevenueEventType.Paused)
+            {
+                decimal mrr = MrrRules.MonthlyEquivalent(activeSubscription);
+                RevenueEventRecorder.Record(db, activeSubscription, mrr, mrr, RevenueEventType.Resumed,
+                    nameof(UnsuspendStudioHandler), stripeEventId: null);
+            }
+        }
+
         await db.SaveChangesAsync(ct);
         await subscriptionAccess.InvalidateCacheAsync(command.StudioId, ct);
 

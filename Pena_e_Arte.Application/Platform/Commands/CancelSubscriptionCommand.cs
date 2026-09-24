@@ -62,6 +62,11 @@ public class CancelSubscriptionHandler(
             throw new BusinessRuleViolationException(
                 $"A subscription with status '{subscription.Status}' cannot be cancelled.");
 
+        // Captured before any mutation — the contract fields survive the cancel, so this is the
+        // MRR the Churn row removes. Only a subscription that was actually billing churns.
+        SubscriptionStatus previousStatus = subscription.Status;
+        decimal mrrBefore = MrrRules.MonthlyEquivalent(subscription);
+
         string? stripeId = subscription.StripeSubscriptionId;
         subscription.Status = SubscriptionStatus.Cancelled;
         subscription.PendingPlanId = null;
@@ -98,6 +103,10 @@ public class CancelSubscriptionHandler(
             }
             subscription.CurrentPeriodEnd = DateTime.UtcNow; // §2.1.C
         }
+
+        if (previousStatus is SubscriptionStatus.Active or SubscriptionStatus.PastDue)
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, 0m, RevenueEventType.Churn,
+                nameof(CancelSubscriptionHandler), stripeEventId: null);
 
         logger.LogInformation(
             "Subscription cancelled for studio {@StudioId} by admin",

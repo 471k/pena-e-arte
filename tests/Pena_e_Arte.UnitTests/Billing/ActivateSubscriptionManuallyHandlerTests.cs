@@ -120,4 +120,81 @@ public class ActivateSubscriptionManuallyHandlerTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_NoExistingSubscriptionRow_WritesNewLedgerEvent()
+    {
+        Guid planId = await SeedPlan(monthlyPrice: 59m);
+        await SeedStudio();
+
+        await CreateSut().Handle(new ActivateSubscriptionManuallyCommand(_studioId, planId, null), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.New);
+        ledgerEvent.MrrBefore.Should().Be(0m);
+        ledgerEvent.MrrAfter.Should().Be(59m);
+        ledgerEvent.Source.Should().Be(nameof(ActivateSubscriptionManuallyHandler));
+    }
+
+    [Fact]
+    public async Task Handle_CancelledSubscriptionWithLedgerHistory_WritesReactivation()
+    {
+        Guid oldPlanId = await SeedPlan(monthlyPrice: 29m);
+        await SeedStudio(new Subscription
+        {
+            PlanId = oldPlanId,
+            Status = SubscriptionStatus.Cancelled,
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = 29m,
+            BilledQuantity = 1,
+            BilledCurrency = "eur",
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-7),
+        });
+        _db.SubscriptionRevenueEvents.Add(new SubscriptionRevenueEvent
+        {
+            SubscriptionId = _db.Subscriptions.Single(s => s.StudioId == _studioId).Id,
+            StudioId = _studioId,
+            OccurredAt = DateTime.UtcNow.AddMonths(-1),
+            Type = RevenueEventType.Churn,
+            MrrBefore = 29m,
+            MrrAfter = 0m,
+            Source = "seed",
+            StripeEventId = "seed-churn",
+        });
+        await _db.SaveChangesAsync();
+        Guid newPlanId = await SeedPlan(monthlyPrice: 79m);
+
+        await CreateSut().Handle(new ActivateSubscriptionManuallyCommand(_studioId, newPlanId, null), default);
+
+        SubscriptionRevenueEvent added = _db.SubscriptionRevenueEvents.Single(e => e.Source != "seed");
+        added.Type.Should().Be(RevenueEventType.Reactivation);
+        added.MrrBefore.Should().Be(0m);   // the cancelled contract was not billing
+        added.MrrAfter.Should().Be(79m);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyActiveOnCheaperPlan_WritesExpansionNotNew()
+    {
+        Guid oldPlanId = await SeedPlan(monthlyPrice: 29m);
+        await SeedStudio(new Subscription
+        {
+            PlanId = oldPlanId,
+            Status = SubscriptionStatus.Active,
+            BillingInterval = BillingInterval.Monthly,
+            BilledUnitAmount = 29m,
+            BilledQuantity = 1,
+            BilledCurrency = "eur",
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+        });
+        Guid newPlanId = await SeedPlan(monthlyPrice: 79m);
+
+        await CreateSut().Handle(new ActivateSubscriptionManuallyCommand(_studioId, newPlanId, null), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Expansion);
+        ledgerEvent.MrrBefore.Should().Be(29m);
+        ledgerEvent.MrrAfter.Should().Be(79m);
+    }
 }

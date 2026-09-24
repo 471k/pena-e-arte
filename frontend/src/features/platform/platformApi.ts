@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   MrrDataPoint,
+  MrrMovementsDataPoint,
+  RevenueRetentionResponse,
   PlatformStatsResponse,
   PlatformSubscriptionResponse,
   PlatformReferralCodeResponse,
@@ -34,6 +36,14 @@ export const platformApi = createApi({
     }),
     getMrrHistory: builder.query<MrrDataPoint[], number | void>({
       query: (months) => months ? `platform/mrr-history?months=${months}` : "platform/mrr-history",
+      providesTags: ["MrrHistory"],
+    }),
+    getMrrMovements: builder.query<MrrMovementsDataPoint[], number | void>({
+      query: (months) => months ? `platform/mrr-movements?months=${months}` : "platform/mrr-movements",
+      providesTags: ["MrrHistory"],
+    }),
+    getRevenueRetention: builder.query<RevenueRetentionResponse, void>({
+      query: () => "platform/revenue-retention",
       providesTags: ["MrrHistory"],
     }),
     getPlatformSubscriptions: builder.query<PlatformSubscriptionResponse[], void>({
@@ -177,6 +187,8 @@ export const {
   useGetPlatformStatsQuery,
   useGetAdminStudioSummaryQuery,
   useGetMrrHistoryQuery,
+  useGetMrrMovementsQuery,
+  useGetRevenueRetentionQuery,
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
   useGetIndustryReportsQuery,

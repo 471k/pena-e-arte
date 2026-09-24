@@ -20,8 +20,11 @@ public static class PlatformEndpoints
         group.MapGet("stats", GetStats);
         group.MapGet("studios/{studioId:guid}/summary", GetStudioSummary);
         group.MapGet("mrr-history", GetMrrHistory);
+        group.MapGet("mrr-movements", GetMrrMovements);
+        group.MapGet("revenue-retention", GetRevenueRetention);
         group.MapGet("subscriptions", GetSubscriptions);
         group.MapPost("subscriptions/backfill-billed-amounts", BackfillSubscriptionBilledAmounts);
+        group.MapPost("subscriptions/backfill-revenue-ledger", BackfillRevenueLedger);
         group.MapPatch("subscriptions/{studioId:guid}/trial", ExtendTrial);
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
         group.MapPost("studios/{studioId:guid}/subscription/dunning-exclusion", SetDunningExclusion);
@@ -74,6 +77,24 @@ public static class PlatformEndpoints
         return Results.Ok(result);
     }
 
+    private static async Task<IResult> GetMrrMovements(
+        ISender mediator,
+        int? months,
+        CancellationToken ct)
+    {
+        List<MrrMovementsDataPointResponse> result =
+            await mediator.Send(new GetMrrMovementsQuery(Math.Clamp(months ?? 12, 1, 24)), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetRevenueRetention(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        RevenueRetentionResponse result = await mediator.Send(new GetRevenueRetentionQuery(), ct);
+        return Results.Ok(result);
+    }
+
     private static async Task<IResult> GetSubscriptions(
         ISender mediator,
         CancellationToken ct)
@@ -89,6 +110,14 @@ public static class PlatformEndpoints
     {
         BackfillSubscriptionBilledAmountsResponse result =
             await mediator.Send(new BackfillSubscriptionBilledAmountsCommand(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> BackfillRevenueLedger(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        BackfillRevenueLedgerResponse result = await mediator.Send(new BackfillRevenueLedgerCommand(), ct);
         return Results.Ok(result);
     }
 

@@ -265,12 +265,12 @@ public static class BillingEndpoints
                             new HandleSubscriptionUpdatedCommand(
                                 sub.Id, sub.Status, periodEnd, item?.Price?.Id,
                                 item?.Price?.UnitAmount, item?.Price?.Currency, item?.Quantity,
-                                recurringDiscountPercent, sub.CancelAtPeriodEnd), ct);
+                                recurringDiscountPercent, sub.CancelAtPeriodEnd, stripeEvent.Id), ct);
                         break;
                     }
 
                 case "customer.subscription.deleted" when stripeEvent.Data.Object is Stripe.Subscription sub:
-                    await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id), ct);
+                    await mediator.Send(new HandleSubscriptionDeletedCommand(sub.Id, stripeEvent.Id), ct);
                     break;
 
                 // Yearly-cancellation-refund status transitions (Batch 3a). Stripe has used

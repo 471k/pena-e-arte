@@ -279,4 +279,75 @@ public class CancelSubscriptionHandlerTests
         _db.ChangeTracker.Clear();
         return studioId;
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    private async Task SetBilled(Guid studioId, decimal amount)
+    {
+        Subscription sub = _db.Subscriptions.Single(s => s.StudioId == studioId);
+        sub.BilledUnitAmount = amount;
+        sub.BilledQuantity = 1;
+        sub.BilledCurrency = "eur";
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+    }
+
+    [Theory]
+    [InlineData(SubscriptionStatus.Active)]
+    [InlineData(SubscriptionStatus.PastDue)]
+    public async Task Handle_BillingMonthlySubscription_WritesChurnToZero(SubscriptionStatus status)
+    {
+        Guid studioId = await SeedStudio(status, stripeId: null);
+        await SetBilled(studioId, 59m);
+
+        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
+        ledgerEvent.MrrBefore.Should().Be(59m);
+        ledgerEvent.MrrAfter.Should().Be(0m);
+        ledgerEvent.Source.Should().Be(nameof(CancelSubscriptionHandler));
+    }
+
+    [Theory]
+    [InlineData(SubscriptionStatus.Trialing)]
+    [InlineData(SubscriptionStatus.GracePeriod)]
+    public async Task Handle_SubscriptionThatNeverBilled_WritesNoChurn(SubscriptionStatus status)
+    {
+        Guid studioId = await SeedStudio(status, stripeId: null);
+        await SetBilled(studioId, 59m);
+
+        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_YearlyCancelledWithRefund_WritesChurnOfMonthlyEquivalent()
+    {
+        (Guid studioId, _) = await SeedYearlyStudioWithInvoice("sub_yr_ledger", 590m, 59m, monthsAgo: 3);
+        await SetBilled(studioId, 590m);
+
+        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
+        ledgerEvent.MrrBefore.Should().BeApproximately(49.17m, 0.01m); // 590 / 12
+        ledgerEvent.MrrAfter.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task Handle_CancelThenStripeDeletedEcho_WritesExactlyOneChurn()
+    {
+        Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: "sub_echo");
+        await SetBilled(studioId, 59m);
+
+        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        _db.ChangeTracker.Clear();
+        await new Pena_e_Arte.Application.Billing.Commands.HandleSubscriptionDeletedHandler(_db).Handle(
+            new Pena_e_Arte.Application.Billing.Commands.HandleSubscriptionDeletedCommand("sub_echo", "evt_echo"),
+            default);
+
+        _db.SubscriptionRevenueEvents.Count().Should().Be(1);
+    }
 }

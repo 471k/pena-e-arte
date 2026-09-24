@@ -314,4 +314,75 @@ public class ChangePlanHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
     }
+
+    // ── Revenue ledger ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_ImmediateUpgrade_WritesOneExpansionEventFromListPrices()
+    {
+        Plan current = await SeedPlan("Basic", 29m, "price_basic");
+        Plan target = await SeedPlan("Pro", 79m, "price_pro");
+        await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
+
+        await CreateSut().Handle(new ChangePlanCommand(new ChangePlanRequest(target.Id, "Monthly")), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Expansion);
+        ledgerEvent.MrrBefore.Should().Be(29m);   // pre-snapshot subscription: falls back to the current list price
+        ledgerEvent.MrrAfter.Should().Be(79m);
+        ledgerEvent.PlanId.Should().Be(target.Id);
+        ledgerEvent.Source.Should().Be(nameof(ChangePlanHandler));
+    }
+
+    [Fact]
+    public async Task Handle_ImmediateUpgrade_AppliesExistingRecurringDiscountToBothSides()
+    {
+        Plan current = await SeedPlan("Basic", 29m, "price_basic");
+        Plan target = await SeedPlan("Pro", 79m, "price_pro");
+        await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
+        Subscription seeded = _db.Subscriptions.Single(s => s.StudioId == _studioId);
+        seeded.BilledUnitAmount = 29m;
+        seeded.BilledQuantity = 1;
+        seeded.BilledCurrency = "eur";
+        seeded.RecurringDiscountPercent = 50m;
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        await CreateSut().Handle(new ChangePlanCommand(new ChangePlanRequest(target.Id, "Monthly")), default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.MrrBefore.Should().Be(14.5m);
+        ledgerEvent.MrrAfter.Should().Be(39.5m);
+    }
+
+    [Fact]
+    public async Task Handle_ImmediateUpgradeFollowedByItsOwnWebhookEcho_WritesExactlyOneExpansion()
+    {
+        Plan current = await SeedPlan("Basic", 29m, "price_basic");
+        Plan target = await SeedPlan("Pro", 79m, "price_pro");
+        await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
+
+        await CreateSut().Handle(new ChangePlanCommand(new ChangePlanRequest(target.Id, "Monthly")), default);
+
+        // The customer.subscription.updated webhook Stripe sends back for the same upgrade.
+        await new HandleSubscriptionUpdatedHandler(_db).Handle(
+            new HandleSubscriptionUpdatedCommand(
+                "sub_123", "active", _newPeriodEnd, "price_pro", 7900, "eur", 1, null, false, "evt_echo"),
+            default);
+
+        _db.SubscriptionRevenueEvents.Should().ContainSingle(e => e.Type == RevenueEventType.Expansion);
+        _db.SubscriptionRevenueEvents.Count().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_ScheduledDowngrade_WritesNoLedgerEventYet()
+    {
+        Plan current = await SeedPlan("Pro", 79m, "price_pro");
+        Plan target = await SeedPlan("Basic", 29m, "price_basic");
+        await SeedSubscription(current.Id, BillingInterval.Monthly, SubscriptionStatus.Active, "sub_123");
+
+        await CreateSut().Handle(new ChangePlanCommand(new ChangePlanRequest(target.Id, "Monthly")), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
 }

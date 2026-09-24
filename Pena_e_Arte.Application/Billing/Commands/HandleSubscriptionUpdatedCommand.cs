@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 
@@ -15,7 +16,8 @@ public record HandleSubscriptionUpdatedCommand(
     string? Currency,
     long? Quantity,
     decimal? RecurringDiscountPercent,
-    bool CancelAtPeriodEnd = false) : IRequest;
+    bool CancelAtPeriodEnd = false,
+    string? StripeEventId = null) : IRequest;
 
 public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandler<HandleSubscriptionUpdatedCommand>
 {
@@ -27,6 +29,8 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
         if (subscription is null) return;
 
         SubscriptionStatus previousStatus = subscription.Status;
+        decimal mrrBefore = MrrRules.MonthlyEquivalent(subscription);
+        bool pendingWasSet = subscription.PendingPlanId is not null;
 
         subscription.Status = command.StripeStatus switch
         {
@@ -79,6 +83,45 @@ public class HandleSubscriptionUpdatedHandler(IAppDbContext db) : IRequestHandle
             subscription.BilledCurrency = command.Currency;
         }
         subscription.RecurringDiscountPercent = command.RecurringDiscountPercent;
+
+        // The PendingPlanId-clearing block above already tells us definitively whether THIS call
+        // is the moment a scheduled change landed — it must not double-write against
+        // ChangePlanHandler's own synchronous Expansion for an immediate upgrade (there
+        // PendingPlanId is never set, so this stays false for the webhook echo).
+        bool pendingLanded = pendingWasSet && subscription.PendingPlanId is null;
+        decimal mrrAfter = MrrRules.MonthlyEquivalent(subscription);
+
+        if (subscription.Status == SubscriptionStatus.PastDue && previousStatus != SubscriptionStatus.PastDue)
+        {
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, mrrAfter, RevenueEventType.PastDue,
+                nameof(HandleSubscriptionUpdatedHandler), command.StripeEventId);
+        }
+        else if (previousStatus == SubscriptionStatus.PastDue && subscription.Status == SubscriptionStatus.Active)
+        {
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, mrrAfter, RevenueEventType.Recovered,
+                nameof(HandleSubscriptionUpdatedHandler), command.StripeEventId);
+        }
+        else if (previousStatus is SubscriptionStatus.Active or SubscriptionStatus.PastDue
+                 && subscription.Status == SubscriptionStatus.Cancelled)
+        {
+            // A status=canceled update that arrives before (or instead of) the deleted event.
+            // Whichever webhook first flips the row to Cancelled records the churn; the other
+            // then sees an already-Cancelled row and writes nothing.
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, 0m, RevenueEventType.Churn,
+                nameof(HandleSubscriptionUpdatedHandler), command.StripeEventId);
+        }
+        else if (pendingLanded && mrrBefore != mrrAfter)
+        {
+            // A landed scheduled change is always a downgrade in practice (ChangePlanHandler only
+            // ever schedules downgrades — upgrades apply immediately), but compare amounts rather
+            // than assume the direction, in case a list-price edit between scheduling and landing
+            // flipped it.
+            RevenueEventRecorder.Record(db, subscription, mrrBefore, mrrAfter,
+                mrrAfter > mrrBefore ? RevenueEventType.Expansion : RevenueEventType.Contraction,
+                nameof(HandleSubscriptionUpdatedHandler), command.StripeEventId);
+        }
+        // Any OTHER active-status amount change (e.g. a bare Stripe Dashboard price edit with no
+        // pending change and no status transition) deliberately writes NO event.
 
         await db.SaveChangesAsync(ct);
     }

@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -57,6 +58,8 @@ public class ActivateCheckoutSubscriptionHandler(
             && subscription.StripeSubscriptionId == result.StripeSubscriptionId)
             return CreateSubscriptionHandler.Map(subscription);
 
+        decimal mrrBefore = RevenueEventRecorder.MrrBeforeActivation(subscription);
+
         PlanPrice? price = result.PriceId is null
             ? null
             : await db.PlanPrices.FirstOrDefaultAsync(pp => pp.StripePriceId == result.PriceId, ct);
@@ -85,6 +88,10 @@ public class ActivateCheckoutSubscriptionHandler(
         subscription.Status = SubscriptionStatus.Active;
         subscription.CurrentPeriodEnd = result.CurrentPeriodEnd;
         subscription.TrialExpiresAt = null;
+
+        await RevenueEventRecorder.RecordActivationAsync(
+            db, subscription, mrrBefore, MrrRules.MonthlyEquivalent(subscription),
+            nameof(ActivateCheckoutSubscriptionHandler), ct);
 
         ReferralRedemption? newRedemption =
             await RecordReferralRedemptionAsync(subscription.Studio, result.HasDiscount, ct);

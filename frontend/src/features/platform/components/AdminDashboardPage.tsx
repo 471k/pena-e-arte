@@ -9,7 +9,9 @@ import {
   Building2,
   Clock,
   CreditCard,
+  Percent,
   PlusCircle,
+  ShieldCheck,
   TrendingUp,
   Users,
   XCircle,
@@ -18,9 +20,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import {
   useGetPlatformStatsQuery,
   useGetPlatformSubscriptionsQuery,
+  useGetRevenueRetentionQuery,
   useExtendTrialMutation,
 } from "@/features/platform/platformApi";
 import { MrrChart } from "./MrrChart";
+import { MrrMovementsChart } from "./MrrMovementsChart";
 import { KpiCard, KpiSkeleton } from "./KpiCard";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
@@ -35,6 +39,9 @@ function KpiGridSkeleton() {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KpiSkeleton /><KpiSkeleton />
       </div>
     </div>
   );
@@ -226,6 +233,8 @@ export function AdminDashboardPage() {
     useGetPlatformStatsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: subscriptions } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: retention, isLoading: retentionLoading } =
+    useGetRevenueRetentionQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const atRisk      = subscriptions?.filter((s) => AT_RISK_STATUSES.has(s.status)) ?? [];
   const atRiskNames = atRisk.map((s) => s.studioName);
@@ -350,11 +359,37 @@ export function AdminDashboardPage() {
                 accent={stats?.suspendedStudios ? "danger" : "default"}
               />
             </div>
+
+            {/* Row 4 — retention (recorded revenue ledger, current month so far) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {retentionLoading ? (
+                <><KpiSkeleton /><KpiSkeleton /></>
+              ) : (
+                <>
+                  <KpiCard
+                    label="Gross Revenue Retention"
+                    value={retention?.grossRevenueRetention == null ? "—" : formatPercent(retention.grossRevenueRetention)}
+                    icon={<ShieldCheck className="h-6 w-6" />}
+                    subtitle="this month · excludes expansion"
+                  />
+                  <KpiCard
+                    label="Net Revenue Retention"
+                    value={retention?.netRevenueRetention == null ? "—" : formatPercent(retention.netRevenueRetention)}
+                    icon={<Percent className="h-6 w-6" />}
+                    subtitle="this month · incl. expansion"
+                    accent={retention?.netRevenueRetention != null && retention.netRevenueRetention >= 1 ? "success" : "default"}
+                  />
+                </>
+              )}
+            </div>
           </div>
         )}
 
         {/* MRR chart */}
         <MrrChart />
+
+        {/* MRR movements (recorded ledger) */}
+        <MrrMovementsChart />
 
         {/* At-risk studios */}
         <Card>
