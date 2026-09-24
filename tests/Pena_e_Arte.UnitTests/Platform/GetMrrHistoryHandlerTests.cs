@@ -242,4 +242,92 @@ public class GetMrrHistoryHandlerTests
         _db.Studios.Add(studio);
         return studio;
     }
+
+    // ── Revenue ledger (recorded vs estimated months) ─────────────────────
+
+    private static DateTime MonthStart(int monthsAgo)
+    {
+        DateTime now = DateTime.UtcNow;
+        return new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-monthsAgo);
+    }
+
+    [Fact]
+    public async Task Handle_EmptyLedger_EveryMonthIsEstimated()
+    {
+        List<MrrDataPointResponse> result = await CreateSut().Handle(new GetMrrHistoryQuery(4), default);
+
+        result.Should().OnlyContain(p => p.IsEstimated);
+    }
+
+    [Fact]
+    public async Task Handle_LedgerStartingMidHistory_SplitsEstimatedAndRecordedAtLedgerStart()
+    {
+        // A long-standing Active subscription the reconstruction would count at 49 in every month...
+        Studio studio = SeedStudio(trialExpiresAt: DateTime.UtcNow.AddMonths(-10));
+        Plan plan = new() { Name = "Pro" };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        Subscription sub = new()
+        {
+            StudioId = studio.Id,
+            PlanId = plan.Id,
+            BillingInterval = BillingInterval.Monthly,
+            Status = SubscriptionStatus.Active,
+            BilledUnitAmount = 49m,
+            BilledQuantity = 1,
+            BilledCurrency = "eur",
+            CreatedAt = DateTime.UtcNow.AddMonths(-8),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(20),
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+
+        // ...but the ledger, starting 10 days into month M-2, recorded it as 59.
+        _db.SubscriptionRevenueEvents.Add(new SubscriptionRevenueEvent
+        {
+            SubscriptionId = sub.Id,
+            StudioId = studio.Id,
+            OccurredAt = MonthStart(2).AddDays(10),
+            Type = RevenueEventType.New,
+            MrrBefore = 0m,
+            MrrAfter = 59m,
+            Source = "seed",
+            StripeEventId = "seed-new",
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<MrrDataPointResponse> result = await CreateSut().Handle(new GetMrrHistoryQuery(4), default);
+
+        result.Should().HaveCount(4);
+        result[0].Should().Be(new MrrDataPointResponse(MonthStart(3).ToString("yyyy-MM"), 49m, IsEstimated: true));
+        result[1].Should().Be(new MrrDataPointResponse(MonthStart(2).ToString("yyyy-MM"), 59m, IsEstimated: false));
+        result[2].Should().Be(new MrrDataPointResponse(MonthStart(1).ToString("yyyy-MM"), 59m, IsEstimated: false));
+        result[3].Should().Be(new MrrDataPointResponse(MonthStart(0).ToString("yyyy-MM"), 59m, IsEstimated: false));
+    }
+
+    [Fact]
+    public async Task Handle_LedgerCoveringWholeWindow_ChurnedSubscriptionDropsOutOfLaterMonths()
+    {
+        Studio studio = SeedStudio();
+        Guid subscriptionId = Guid.NewGuid();
+        _db.SubscriptionRevenueEvents.AddRange(
+            new SubscriptionRevenueEvent
+            {
+                SubscriptionId = subscriptionId, StudioId = studio.Id, OccurredAt = MonthStart(3).AddDays(2),
+                Type = RevenueEventType.New, MrrBefore = 0m, MrrAfter = 59m, Source = "seed", StripeEventId = "e1",
+            },
+            new SubscriptionRevenueEvent
+            {
+                SubscriptionId = subscriptionId, StudioId = studio.Id, OccurredAt = MonthStart(1).AddDays(2),
+                Type = RevenueEventType.Churn, MrrBefore = 59m, MrrAfter = 0m, Source = "seed", StripeEventId = "e2",
+            });
+        await _db.SaveChangesAsync();
+
+        List<MrrDataPointResponse> result = await CreateSut().Handle(new GetMrrHistoryQuery(4), default);
+
+        result.Select(p => p.Mrr).Should().Equal(59m, 59m, 0m, 0m);
+        result.Should().OnlyContain(p => !p.IsEstimated);
+    }
 }

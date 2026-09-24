@@ -176,4 +176,77 @@ public class RevenueLedgerRulesTests
         RevenueLedgerRules.MovementsFor(events.Where(e => e.OccurredAt.Month == 5)).Contraction.Should().Be(-20m);
         RevenueLedgerRules.MovementsFor(events.Where(e => e.OccurredAt.Month == 4)).Net.Should().Be(0m);
     }
+
+    [Fact]
+    public void LedgerMrrAtNow_EqualsMrrRulesMrrAtNow_ToTheCent()
+    {
+        DateTime now = DateTime.UtcNow;
+        DateTime signedUp = now.AddMonths(-5);
+
+        static Subscription Sub(SubscriptionStatus status, BillingInterval interval, decimal billed, decimal? discount = null) => new()
+        {
+            StudioId = Guid.NewGuid(),
+            PlanId = Guid.NewGuid(),
+            Status = status,
+            BillingInterval = interval,
+            BilledUnitAmount = billed,
+            BilledQuantity = 1,
+            BilledCurrency = "eur",
+            RecurringDiscountPercent = discount,
+            CreatedAt = DateTime.UtcNow.AddMonths(-5),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+        };
+
+        Subscription activeMonthly = Sub(SubscriptionStatus.Active, BillingInterval.Monthly, 59m);
+        Subscription activeYearly = Sub(SubscriptionStatus.Active, BillingInterval.Yearly, 590m);       // 49.1666...
+        Subscription activeDiscounted = Sub(SubscriptionStatus.Active, BillingInterval.Monthly, 79m, discount: 33m);
+        Subscription pastDue = Sub(SubscriptionStatus.PastDue, BillingInterval.Monthly, 79m);
+        Subscription suspended = Sub(SubscriptionStatus.Active, BillingInterval.Monthly, 29m);
+        Subscription cancelled = Sub(SubscriptionStatus.Cancelled, BillingInterval.Monthly, 49m);
+        Subscription free = Sub(SubscriptionStatus.Active, BillingInterval.Monthly, 0m);
+
+        List<SubscriptionRevenueInput> inputs =
+        [
+            new(activeMonthly, signedUp, null, true, null),
+            new(activeYearly, signedUp, null, true, null),
+            new(activeDiscounted, signedUp, null, true, null),
+            new(pastDue, signedUp, null, true, null),
+            new(suspended, signedUp, null, false, now.AddDays(-9)),
+            new(cancelled, signedUp, now.AddDays(-20), true, null),
+            new(free, signedUp, null, true, null),
+        ];
+
+        // A fully up-to-date ledger: each subscription's history ends in the state MrrRules sees.
+        SubscriptionRevenueEvent Row(Subscription s, RevenueEventType type, decimal before, decimal after, int daysAgo) =>
+            new()
+            {
+                SubscriptionId = s.Id,
+                StudioId = s.StudioId,
+                OccurredAt = now.AddDays(-daysAgo),
+                Type = type,
+                MrrBefore = before,
+                MrrAfter = after,
+                Source = "test",
+                StripeEventId = Guid.NewGuid().ToString(),
+            };
+
+        List<SubscriptionRevenueEvent> events =
+        [
+            Row(activeMonthly, RevenueEventType.New, 0m, MrrRules.MonthlyEquivalent(activeMonthly), 100),
+            Row(activeYearly, RevenueEventType.New, 0m, MrrRules.MonthlyEquivalent(activeYearly), 90),
+            Row(activeDiscounted, RevenueEventType.New, 0m, MrrRules.MonthlyEquivalent(activeDiscounted), 80),
+            Row(pastDue, RevenueEventType.New, 0m, MrrRules.MonthlyEquivalent(pastDue), 70),
+            Row(pastDue, RevenueEventType.PastDue, MrrRules.MonthlyEquivalent(pastDue), MrrRules.MonthlyEquivalent(pastDue), 5),
+            Row(suspended, RevenueEventType.New, 0m, MrrRules.MonthlyEquivalent(suspended), 60),
+            Row(suspended, RevenueEventType.Paused, MrrRules.MonthlyEquivalent(suspended), MrrRules.MonthlyEquivalent(suspended), 9),
+            Row(cancelled, RevenueEventType.New, 0m, MrrRules.MonthlyEquivalent(cancelled), 50),
+            Row(cancelled, RevenueEventType.Churn, MrrRules.MonthlyEquivalent(cancelled), 0m, 20),
+        ];
+
+        decimal fromRules = MrrRules.MrrAt(inputs, now, now);
+        decimal fromLedger = RevenueLedgerRules.MrrAt(events, now);
+
+        fromLedger.Should().Be(fromRules);
+        fromRules.Should().BeGreaterThan(0m); // guard against a vacuous 0 == 0
+    }
 }

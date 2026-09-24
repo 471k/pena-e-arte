@@ -61,8 +61,10 @@ export interface IndustryReportSummary {
 }
 
 export interface MrrDataPoint {
-  month: string;
-  mrr:   number;
+  month:       string;
+  mrr:         number;
+  /** True when the month predates the revenue ledger and was reconstructed from current state. */
+  isEstimated: boolean;
 }
 
 export interface RecentRefundResponse {

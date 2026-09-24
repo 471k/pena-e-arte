@@ -1,8 +1,10 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Platform.Queries;
 
@@ -28,6 +30,12 @@ public class GetMrrHistoryHandler(IAppDbContext db, ILogger<GetMrrHistoryHandler
                 fallbackCount, currencyExcludedCount);
         }
 
+        // Recorded history: months on or after the ledger's first event read the ledger; earlier
+        // months keep Batch 2's reconstruction from current state, flagged as estimated. Loaded
+        // once and reused across the loop, same as the reconstruction inputs above.
+        List<SubscriptionRevenueEvent> ledgerEvents = await db.SubscriptionRevenueEvents.ToListAsync(ct);
+        DateTime? ledgerStart = ledgerEvents.Count == 0 ? null : ledgerEvents.Min(e => e.OccurredAt);
+
         DateTime now = DateTime.UtcNow;
         var result = new List<MrrDataPointResponse>(months);
 
@@ -37,9 +45,13 @@ public class GetMrrHistoryHandler(IAppDbContext db, ILogger<GetMrrHistoryHandler
 
             // D2: the current month is measured now; every earlier month at its own last moment.
             DateTime t = i == 0 ? now : MrrRules.EndOfMonth(monthStart);
-            decimal mrr = MrrRules.MrrAt(inputs, t, now);
 
-            result.Add(new MrrDataPointResponse(monthStart.ToString("yyyy-MM"), mrr));
+            bool isRecorded = ledgerStart is DateTime start && t >= start;
+            decimal mrr = isRecorded
+                ? RevenueLedgerRules.MrrAt(ledgerEvents, t)
+                : MrrRules.MrrAt(inputs, t, now);
+
+            result.Add(new MrrDataPointResponse(monthStart.ToString("yyyy-MM"), mrr, IsEstimated: !isRecorded));
         }
 
         return result;
