@@ -1706,6 +1706,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Sort by trial end date, period end date, days overdue, or studio name.",
       "Use each row's Extend Trial, Activate, or Cancel Subscription buttons as needed.",
       "For a Past Due studio, the row shows how many days overdue it is, and an \"Exclude From Dunning\" button — use it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you're handling their case manually). Click \"Re-enable Reminders\" to turn them back on.",
+      "At the bottom of the page, the \"Data maintenance\" card runs two one-time backfills for subscriptions that existed before those features: Step 1 records what each subscription is actually billed, Step 2 seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Both are safe to run again — only data that's still missing is filled in.",
+    ],
+    tips: [
+      "Step 1 lists any cash-billed studios it assumed pay their plan's monthly price — check those are right.",
+      "Step 2 only seeds subscriptions that are active now, so a month before a since-cancelled subscription can read lower than the old estimate.",
     ],
   },
   {

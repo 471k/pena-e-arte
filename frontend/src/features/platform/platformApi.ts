@@ -4,6 +4,8 @@ import type {
   MrrDataPoint,
   MrrMovementsDataPoint,
   RevenueRetentionResponse,
+  BackfillBilledAmountsResponse,
+  BackfillRevenueLedgerResponse,
   PlatformStatsResponse,
   PlatformSubscriptionResponse,
   PlatformReferralCodeResponse,
@@ -45,6 +47,16 @@ export const platformApi = createApi({
     getRevenueRetention: builder.query<RevenueRetentionResponse, void>({
       query: () => "platform/revenue-retention",
       providesTags: ["MrrHistory"],
+    }),
+    // One-time, idempotent data backfills (Batch 2b / Batch 3b). Both change what the dashboard's
+    // revenue figures read, so they invalidate the same tags a subscription change would.
+    backfillBilledAmounts: builder.mutation<BackfillBilledAmountsResponse, void>({
+      query: () => ({ url: "platform/subscriptions/backfill-billed-amounts", method: "POST" }),
+      invalidatesTags: ["PlatformStats", "MrrHistory", "PlatformSubscription"],
+    }),
+    backfillRevenueLedger: builder.mutation<BackfillRevenueLedgerResponse, void>({
+      query: () => ({ url: "platform/subscriptions/backfill-revenue-ledger", method: "POST" }),
+      invalidatesTags: ["MrrHistory"],
     }),
     getPlatformSubscriptions: builder.query<PlatformSubscriptionResponse[], void>({
       query: () => "platform/subscriptions",
@@ -189,6 +201,8 @@ export const {
   useGetMrrHistoryQuery,
   useGetMrrMovementsQuery,
   useGetRevenueRetentionQuery,
+  useBackfillBilledAmountsMutation,
+  useBackfillRevenueLedgerMutation,
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
   useGetIndustryReportsQuery,

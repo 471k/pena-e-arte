@@ -3683,7 +3683,9 @@ ol.steps li { margin: 6px 0; }
 <li>Filter by status pill (All / Active / Trialing / Grace Period / Past Due / Cancelled), search by studio name/slug, and sort by trial end, period end, days overdue, or name.</li>
 <li>Per row: <span class="step-title">Extend Trial</span>, <span class="step-title">Activate</span> (cash), or <span class="step-title">Cancel Subscription</span>, matching the studio list's inline pattern.</li>
 <li>A <span class="step-title">Past Due</span> row also shows its days-overdue count and an <span class="step-title">Exclude From Dunning</span> button — click it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you handle their case manually by hand). Click <span class="step-title">Re-enable Reminders</span> to turn them back on.</li>
+<li>At the bottom of the page, the <span class="step-title">Data maintenance</span> card runs two one-time backfills for subscriptions that existed before those features: <span class="step-title">Step 1 — Billed-amount snapshot</span> records what each subscription is actually billed, and <span class="step-title">Step 2 — Revenue ledger</span> seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Both are safe to run again — only data that is still missing is filled in.</li>
 </ol>
+<p><strong>Good to know:</strong> Step 1 lists any cash-billed studios it assumed pay their plan's monthly price — check those are right. Step 2 only seeds subscriptions that are active now, so a month before a since-cancelled subscription can read lower than the old estimate.</p>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-dashboard">Platform overview</a></div>
 </section>
 
