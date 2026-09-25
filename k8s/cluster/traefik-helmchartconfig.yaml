@@ -1,0 +1,88 @@
+# Cluster-level (kube-system) Traefik override for K3s's bundled Traefik — NOT part of any
+# kustomize overlay and NOT applied by CD; apply by hand with:
+#   kubectl apply -f k8s/cluster/traefik-helmchartconfig.yaml
+# K3s's helm-controller then re-renders the bundled 'traefik' HelmChart with these values and
+# rolls the Traefik Deployment. One Traefik serves BOTH app.tattooos.co (namespace tattooos) and
+# staging.tattooos.co (tattooos-staging), so this single change fixes both environments.
+#
+# Why (found 2026-09-25): the Traefik Service was externalTrafficPolicy: Cluster, which SNATs
+# every incoming connection to an internal address, so the visitor's public IP never reached
+# the API. Result: RemoteIpAddress was always a private address, GeoIpService (which skips
+# private ranges by design) returned null so Live Traffic showed Location "Unknown", and every
+# visitor shared one IP-keyed rate-limit bucket. Two changes:
+#   1. externalTrafficPolicy: Local keeps the real peer address (Cloudflare's edge). Safe here
+#      because there is exactly one node (pena-e-arte-k3s) and Traefik runs on it; on a
+#      multi-node cluster 'Local' would drop traffic to nodes without a Traefik pod, so revisit
+#      this if a node is ever added.
+#   2. forwardedHeaders.trustedIPs = Cloudflare's published edge ranges, so Traefik KEEPS the
+#      X-Forwarded-For that Cloudflare sends (which carries the visitor's address) instead of
+#      overwriting it, and still overwrites anything a non-Cloudflare client sends directly to
+#      the origin.
+# The API then peels the chain "client, cloudflare-edge, traefik-pod" using
+# ForwardedHeaders__TrustedProxyCidr (pod CIDR) + ForwardedHeaders__ExtraTrustedCidrs (the same
+# Cloudflare ranges, in k8s/base/api-configmap.yaml) + ForwardedHeaders__ForwardLimit=3.
+#
+# Cloudflare ranges: https://www.cloudflare.com/ips-v4 and https://www.cloudflare.com/ips-v6 —
+# they change rarely; when they do, update BOTH this file and ExtraTrustedCidrs in
+# k8s/base/api-configmap.yaml.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        externalTrafficPolicy: Local
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - 173.245.48.0/20
+            - 103.21.244.0/22
+            - 103.22.200.0/22
+            - 103.31.4.0/22
+            - 141.101.64.0/18
+            - 108.162.192.0/18
+            - 190.93.240.0/20
+            - 188.114.96.0/20
+            - 197.234.240.0/22
+            - 198.41.128.0/17
+            - 162.158.0.0/15
+            - 104.16.0.0/13
+            - 104.24.0.0/14
+            - 172.64.0.0/13
+            - 131.0.72.0/22
+            - 2400:cb00::/32
+            - 2606:4700::/32
+            - 2803:f800::/32
+            - 2405:b500::/32
+            - 2405:8100::/32
+            - 2a06:98c0::/29
+            - 2c0f:f248::/32
+      websecure:
+        forwardedHeaders:
+          trustedIPs:
+            - 173.245.48.0/20
+            - 103.21.244.0/22
+            - 103.22.200.0/22
+            - 103.31.4.0/22
+            - 141.101.64.0/18
+            - 108.162.192.0/18
+            - 190.93.240.0/20
+            - 188.114.96.0/20
+            - 197.234.240.0/22
+            - 198.41.128.0/17
+            - 162.158.0.0/15
+            - 104.16.0.0/13
+            - 104.24.0.0/14
+            - 172.64.0.0/13
+            - 131.0.72.0/22
+            - 2400:cb00::/32
+            - 2606:4700::/32
+            - 2803:f800::/32
+            - 2405:b500::/32
+            - 2405:8100::/32
+            - 2a06:98c0::/29
+            - 2c0f:f248::/32
