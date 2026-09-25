@@ -19,16 +19,26 @@ public static class ForwardedHeadersOptionsBuilder
     public static ForwardedHeadersOptions BuildForwardedHeadersOptions(
         IConfiguration config, ILogger logger)
     {
+        // Hops between the real client and this process in the K3s topology: Cloudflare's edge,
+        // Traefik (cluster ingress), then the frontend Pod's own nginx reverse proxy — three
+        // entries that get appended to X-Forwarded-For after the client's own address (see
+        // docs/claude/overnight-prompt-k3s-production-deploy-2026-07-26.md §8.10/Phase 10).
+        // ForwardLimit bounds how many of them are stripped: too low and RemoteIpAddress
+        // resolves to a proxy instead of the real client, collapsing every client behind the
+        // ingress into one rate-limit bucket and leaving GeoIP nothing public to look up.
+        // Default 2 keeps the pre-Cloudflare topology (Traefik + nginx) working when the setting
+        // is absent, e.g. docker-compose.
+        int forwardLimit = config.GetValue<int?>("ForwardedHeaders:ForwardLimit") ?? 2;
+        if (forwardLimit < 1)
+        {
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:ForwardLimit value '{forwardLimit}' must be at least 1.");
+        }
+
         ForwardedHeadersOptions options = new()
         {
             ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-            // Two trusted proxy hops in the K3s topology: Traefik (cluster ingress), then the
-            // frontend Pod's own nginx reverse proxy (see docs/claude/overnight-prompt-
-            // k3s-production-deploy-2026-07-26.md §8.10/Phase 10). The default ForwardLimit
-            // of 1 would only strip the right-most hop off X-Forwarded-For, leaving
-            // RemoteIpAddress as the Traefik pod's IP instead of the real client's and
-            // collapsing every client behind the ingress into one rate-limit bucket.
-            ForwardLimit = 2,
+            ForwardLimit = forwardLimit,
         };
 
         string? trustedProxyCidr = config["ForwardedHeaders:TrustedProxyCidr"];
@@ -43,19 +53,41 @@ public static class ForwardedHeadersOptionsBuilder
             return options;
         }
 
-        System.Net.IPNetwork parsed;
-        try
-        {
-            parsed = System.Net.IPNetwork.Parse(trustedProxyCidr);
-        }
-        catch (FormatException ex)
-        {
-            throw new InvalidOperationException(
-                $"ForwardedHeaders:TrustedProxyCidr value '{trustedProxyCidr}' is not a valid " +
-                "CIDR (e.g. \"10.0.0.0/8\").", ex);
-        }
+        AddTrustedNetworks(options, trustedProxyCidr, "ForwardedHeaders:TrustedProxyCidr");
 
-        options.KnownNetworks.Add(new IPNetwork(parsed.BaseAddress, parsed.PrefixLength));
+        // Proxies that sit in front of the cluster and must also be peeled off the
+        // X-Forwarded-For chain to reach the real client — Cloudflare's published edge ranges.
+        // A separate, non-secret list (it lives in the ConfigMap, not the CD-populated Secret)
+        // so the ranges are reviewable in the repo. Trusting them here is safe only because the
+        // ingress itself trusts Cloudflare's forwarded headers and overwrites anything sent by a
+        // direct, non-Cloudflare client (k8s/cluster/traefik-helmchartconfig.yaml).
+        AddTrustedNetworks(options, config["ForwardedHeaders:ExtraTrustedCidrs"], "ForwardedHeaders:ExtraTrustedCidrs");
         return options;
+    }
+
+    /// <summary>Adds every CIDR in a comma-, semicolon- or whitespace-separated list.</summary>
+    private static void AddTrustedNetworks(ForwardedHeadersOptions options, string? cidrList, string configKey)
+    {
+        if (string.IsNullOrWhiteSpace(cidrList))
+            return;
+
+        string[] cidrs = cidrList.Split(
+            [',', ';', ' ', '\r', '\n', '\t'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (string cidr in cidrs)
+        {
+            System.Net.IPNetwork parsed;
+            try
+            {
+                parsed = System.Net.IPNetwork.Parse(cidr);
+            }
+            catch (FormatException ex)
+            {
+                throw new InvalidOperationException(
+                    $"{configKey} entry '{cidr}' is not a valid CIDR (e.g. \"10.0.0.0/8\").", ex);
+            }
+
+            options.KnownNetworks.Add(new IPNetwork(parsed.BaseAddress, parsed.PrefixLength));
+        }
     }
 }
