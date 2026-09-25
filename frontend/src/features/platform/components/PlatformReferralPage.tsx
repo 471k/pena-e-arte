@@ -113,10 +113,12 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
       <CardContent className="p-4 space-y-2">
 
         {/* ── Main row ─────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
+        {/* Stacked on phones, side by side from sm up; the badge line wraps. Otherwise the unshrinkable
+            action group overlaps the badges at phone width (seen at 390px on the studio detail page). */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="space-y-0.5 min-w-0">
-            <div className="flex items-center gap-2 flex-nowrap min-w-0">
-              <span className="font-mono font-medium text-sm shrink-0">{code.code}</span>
+            <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
+              <span className="font-mono font-medium text-sm">{code.code}</span>
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${statusClass}`}>
                 {code.isActive ? "Active" : "Inactive"}
               </span>
@@ -139,7 +141,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
 
           {/* ── Action zone ──────────────────────────────────────── */}
           {!anyExpanded && (
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0">
 
               <Button
                 size="sm"
