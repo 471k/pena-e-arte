@@ -21,8 +21,27 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
         }
     }
 
+    /// <summary>nginx's de-facto "Client Closed Request" — not a real HTTP status, but the widely used
+    /// convention for a request the client abandoned before the server answered.</summary>
+    private const int ClientClosedRequest = 499;
+
     private async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
+        // A client that gives up on a request (closed tab, dropped connection, a Kubernetes probe hitting
+        // its own timeout) surfaces here as an OperationCanceledException tied to the request's OWN
+        // cancellation token. That is not a server fault: don't log it as an error (it made every prod
+        // deploy log one "Unhandled exception" from a cancelled health probe) and don't try to write an
+        // error body to a connection nobody is reading. Deliberately gated on RequestAborted, so a
+        // cancellation that did NOT come from the client (a server-side timeout, a bug) still falls
+        // through to the 500 + error log below.
+        if (ex is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            logger.LogDebug("Request cancelled by the client");
+            if (!context.Response.HasStarted)
+                context.Response.StatusCode = ClientClosedRequest;
+            return;
+        }
+
         (int statusCode, string message, string? code) = ex switch
         {
             BadHttpRequestException => (StatusCodes.Status400BadRequest, "Invalid or missing request body.", (string?)null),
