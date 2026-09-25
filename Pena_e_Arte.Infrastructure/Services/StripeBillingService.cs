@@ -243,6 +243,21 @@ public class StripeBillingService(
             price.Recurring?.IntervalCount);
     }
 
+    public async Task<StripeInvoiceInfo?> GetLatestPaidInvoiceAsync(string stripeSubscriptionId, CancellationToken ct)
+    {
+        StripeList<Invoice> invoices = await invoiceService.ListAsync(
+            new InvoiceListOptions
+            {
+                Subscription = stripeSubscriptionId,
+                Status = "paid",
+                Limit = 1,                       // newest first
+                Expand = ["data.payments"],    // Invoice.payments is omitted unless expanded
+            },
+            null, ct);
+        Invoice? invoice = invoices.Data?.FirstOrDefault();
+        return invoice is null ? null : StripeInvoiceMapper.ToInfo(invoice);
+    }
+
     public async Task<string?> GetInvoicePaymentIntentIdAsync(string stripeInvoiceId, CancellationToken ct)
     {
         Invoice invoice = await invoiceService.GetAsync(

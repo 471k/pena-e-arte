@@ -27,6 +27,7 @@ public class ActivateCheckoutSubscriptionHandler(
     IAppDbContext db,
     IStripeBillingService billing,
     IReferralRewardService rewardService,
+    ISender sender,
     ILogger<ActivateCheckoutSubscriptionHandler> logger)
     : IRequestHandler<ActivateCheckoutSubscriptionCommand, SubscriptionResponse?>
 {
@@ -102,6 +103,10 @@ public class ActivateCheckoutSubscriptionHandler(
         // Reward the referrer if the referred studio's discount was applied.
         if (newRedemption is { DiscountApplied: true })
             await rewardService.RewardReferrerAsync(newRedemption.Id, ct);
+
+        // Last on purpose: best-effort, and a failed nested save must not sit in the change tracker
+        // for anything that runs after it.
+        await LatestInvoiceRecorder.RecordAsync(billing, sender, logger, result.StripeSubscriptionId, ct);
 
         return CreateSubscriptionHandler.Map(subscription);
     }

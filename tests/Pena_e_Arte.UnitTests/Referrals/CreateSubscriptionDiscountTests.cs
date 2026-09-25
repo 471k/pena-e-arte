@@ -33,7 +33,7 @@ public class CreateSubscriptionDiscountTests
 
     private CreateSubscriptionHandler CreateSut() =>
         new(_db, _tenant, _billing, _discounts, _rewardService,
-            NullLogger<CreateSubscriptionHandler>.Instance);
+            NSubstitute.Substitute.For<MediatR.ISender>(), NullLogger<CreateSubscriptionHandler>.Instance);
 
     [Fact]
     public async Task Handle_WithValidPendingReferralCode_AppliesDiscountAndCreatesRedemption()

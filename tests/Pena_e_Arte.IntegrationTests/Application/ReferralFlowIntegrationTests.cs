@@ -138,7 +138,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
             billing,
             discounts,
             rewardSvc,
-            NullLogger<CreateSubscriptionHandler>.Instance);
+            NSubstitute.Substitute.For<MediatR.ISender>(), NullLogger<CreateSubscriptionHandler>.Instance);
 
         await subHandler.Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
@@ -224,7 +224,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
 
         CreateSubscriptionHandler subHandler = new(
             fixture.CreateDbContext(Guid.Empty), tenantSvc, billing, discounts,
-            rewardSvc, NullLogger<CreateSubscriptionHandler>.Instance);
+            rewardSvc, NSubstitute.Substitute.For<MediatR.ISender>(), NullLogger<CreateSubscriptionHandler>.Instance);
 
         // 4. New studio subscribes.
         await subHandler.Handle(
@@ -274,7 +274,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
 
         await new CreateSubscriptionHandler(
             fixture.CreateDbContext(Guid.Empty), tenantSvc, billing, discounts,
-            rewardSvc, NullLogger<CreateSubscriptionHandler>.Instance)
+            rewardSvc, NSubstitute.Substitute.For<MediatR.ISender>(), NullLogger<CreateSubscriptionHandler>.Instance)
             .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
 
         await using AppDbContext verifyDb = fixture.CreateDbContext(Guid.Empty);

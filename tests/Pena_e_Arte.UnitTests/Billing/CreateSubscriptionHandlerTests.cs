@@ -18,6 +18,7 @@ public class CreateSubscriptionHandlerTests
     private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
     private readonly IStripeDiscountService _discounts = Substitute.For<IStripeDiscountService>();
     private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
+    private readonly MediatR.ISender _sender = Substitute.For<MediatR.ISender>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public CreateSubscriptionHandlerTests()
@@ -31,7 +32,7 @@ public class CreateSubscriptionHandlerTests
 
     private CreateSubscriptionHandler CreateSut() =>
         new(_db, _tenant, _billing, _discounts, _rewardService,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
+            _sender, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
 
     [Fact]
     public async Task Handle_ValidPlanAndTrialingSubscription_ReturnsActiveSubscription()
@@ -350,5 +351,39 @@ public class CreateSubscriptionHandlerTests
 
         _db.SubscriptionRevenueEvents.Single(e => e.Source != "seed").Type
             .Should().Be(RevenueEventType.Reactivation);
+    }
+
+    // ── First invoice recorded after the Stripe subscription is saved ───────
+
+    [Fact]
+    public async Task Handle_StripeBilledPlan_RecordsTheFirstPaidInvoice()
+    {
+        // CreateSubscriptionAsync returns "sub_test123" (see the constructor). Its invoice.paid webhook
+        // can arrive before this handler has saved that id, and would then be dropped.
+        Guid planId = await SeedPlan(stripePriceIdMonthly: "price_pro_m", priceMonthly: 49m);
+        await SeedSubscription(SubscriptionStatus.Trialing);
+        _billing.GetLatestPaidInvoiceAsync("sub_test123", Arg.Any<CancellationToken>()).Returns(
+            new StripeInvoiceInfo("in_first", 49m, 0m, "eur", DateTime.UtcNow, DateTime.UtcNow,
+                DateTime.UtcNow.AddMonths(1), null));
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        await _sender.Received(1).Send(
+            Arg.Is<Pena_e_Arte.Application.Billing.Commands.HandleInvoicePaidCommand>(c =>
+                c.StripeSubscriptionId == "sub_test123" && c.StripeInvoiceId == "in_first"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PlanWithNoStripeSubscription_DoesNotLookUpAnInvoice()
+    {
+        Guid planId = await SeedPlan(stripePriceIdMonthly: null, priceMonthly: 0m); // free / cash: no Stripe sub
+        await SeedSubscription(SubscriptionStatus.Trialing);
+
+        await CreateSut()
+            .Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
+
+        await _billing.DidNotReceive().GetLatestPaidInvoiceAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

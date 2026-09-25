@@ -102,7 +102,7 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
         IReferralRewardService rewardService = Substitute.For<IReferralRewardService>();
         CreateSubscriptionHandler handler = new(db, tenant, billing, discounts, rewardService,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
+            NSubstitute.Substitute.For<MediatR.ISender>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
 
         SubscriptionResponse result = await handler.Handle(
             new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
@@ -221,7 +221,7 @@ public class BillingHandlerIntegrationTests(DatabaseFixture fixture)
         IStripeDiscountService discounts = Substitute.For<IStripeDiscountService>();
         IReferralRewardService rewardService = Substitute.For<IReferralRewardService>();
         CreateSubscriptionHandler handler = new(db, tenant, billing, discounts, rewardService,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
+            NSubstitute.Substitute.For<MediatR.ISender>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateSubscriptionHandler>.Instance);
         return await handler.Handle(new CreateSubscriptionCommand(new CreateSubscriptionRequest(planId, "Monthly")), default);
     }
 
