@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { incrementUnread } from "@/features/notifications/notificationsSlice";
 
@@ -19,11 +19,7 @@ export function useAdminNotificationHub() {
     // so connect directly to the backend. In production the hubs are on the same origin.
     const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
 
-    const connection = new HubConnectionBuilder()
-      .withUrl(`${hubBase}/hubs/notification`, { accessTokenFactory: () => token! })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+    const connection = createHubConnection(`${hubBase}/hubs/notification`, token!);
 
     // See useSignalR.ts: a single-expression arrow handler implicitly returns
     // dispatch's return value, which SignalR tries to send back as an invocation

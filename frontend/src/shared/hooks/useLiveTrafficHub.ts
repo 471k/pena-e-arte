@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { platformApi } from "@/features/platform/platformApi";
 import type { LiveTrafficSnapshotResponse } from "@/features/platform/platform.types";
 
@@ -35,11 +35,7 @@ export function useLiveTrafficHub(enabled: boolean): {
     const isLocalDevBrowser = import.meta.env.DEV && window.location.hostname === "localhost";
     const hubBase = isLocalDevBrowser ? "http://localhost:5078" : "";
 
-    const connection = new HubConnectionBuilder()
-      .withUrl(`${hubBase}/hubs/traffic`, { accessTokenFactory: () => token! })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+    const connection = createHubConnection(`${hubBase}/hubs/traffic`, token!);
 
     connection.onreconnecting(() => setConnectionState("reconnecting"));
     connection.onreconnected(() => setConnectionState("connected"));
