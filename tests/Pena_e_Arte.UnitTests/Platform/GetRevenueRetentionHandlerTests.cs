@@ -43,9 +43,9 @@ public class GetRevenueRetentionHandlerTests
     }
 
     [Fact]
-    public async Task Handle_OnlyNewSubscriptionsThisMonth_StartMrrZero_ReturnsNullRates()
+    public async Task Handle_OnlyNewSubscriptionsInMeasuredMonth_StartMrrZero_ReturnsNullRates()
     {
-        Add(Guid.NewGuid(), RevenueEventType.New, MonthStart(0), 0m, 59m);
+        Add(Guid.NewGuid(), RevenueEventType.New, MonthStart(1), 0m, 59m);
         await _db.SaveChangesAsync();
 
         RevenueRetentionResponse result = await CreateSut().Handle(new GetRevenueRetentionQuery(), default);
@@ -55,7 +55,7 @@ public class GetRevenueRetentionHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoMovementThisMonth_BothRatesAreOneHundredPercent()
+    public async Task Handle_NoMovementInMeasuredMonth_BothRatesAreOneHundredPercent()
     {
         Add(Guid.NewGuid(), RevenueEventType.New, MonthStart(3), 0m, 59m);
         Add(Guid.NewGuid(), RevenueEventType.New, MonthStart(2), 0m, 100m);
@@ -69,7 +69,7 @@ public class GetRevenueRetentionHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ContractionChurnAndExpansionThisMonth_ComputesGrrAndNrrAgainstStartMrr()
+    public async Task Handle_ContractionChurnAndExpansionInMeasuredMonth_ComputesGrrAndNrrAgainstStartMrr()
     {
         Guid contracts = Guid.NewGuid();
         Guid churns = Guid.NewGuid();
@@ -78,9 +78,9 @@ public class GetRevenueRetentionHandlerTests
         Add(churns, RevenueEventType.New, MonthStart(3), 0m, 100m);
         Add(expands, RevenueEventType.New, MonthStart(3), 0m, 50m);
 
-        Add(contracts, RevenueEventType.Contraction, MonthStart(0), 59m, 49m);   // -10
-        Add(churns, RevenueEventType.Churn, MonthStart(0), 100m, 0m);            // -100
-        Add(expands, RevenueEventType.Expansion, MonthStart(0), 50m, 80m);       // +30
+        Add(contracts, RevenueEventType.Contraction, MonthStart(1), 59m, 49m);   // -10
+        Add(churns, RevenueEventType.Churn, MonthStart(1), 100m, 0m);            // -100
+        Add(expands, RevenueEventType.Expansion, MonthStart(1), 50m, 80m);       // +30
         await _db.SaveChangesAsync();
 
         RevenueRetentionResponse result = await CreateSut().Handle(new GetRevenueRetentionQuery(), default);
@@ -97,9 +97,9 @@ public class GetRevenueRetentionHandlerTests
         Guid newcomer = Guid.NewGuid();
         Add(existing, RevenueEventType.New, MonthStart(2), 0m, 100m);
 
-        Add(newcomer, RevenueEventType.New, MonthStart(0), 0m, 40m);                // new: excluded
-        Add(newcomer, RevenueEventType.Expansion, MonthStart(0), 40m, 60m);         // not an existing customer: excluded
-        Add(Guid.NewGuid(), RevenueEventType.Reactivation, MonthStart(0), 0m, 30m); // reactivation: excluded
+        Add(newcomer, RevenueEventType.New, MonthStart(1), 0m, 40m);                // new: excluded
+        Add(newcomer, RevenueEventType.Expansion, MonthStart(1), 40m, 60m);         // not an existing customer: excluded
+        Add(Guid.NewGuid(), RevenueEventType.Reactivation, MonthStart(1), 0m, 30m); // reactivation: excluded
         await _db.SaveChangesAsync();
 
         RevenueRetentionResponse result = await CreateSut().Handle(new GetRevenueRetentionQuery(), default);
@@ -107,5 +107,29 @@ public class GetRevenueRetentionHandlerTests
         result.StartMrr.Should().Be(100m);
         result.GrossRevenueRetention.Should().Be(1.0);
         result.NetRevenueRetention.Should().Be(1.0);
+    }
+
+    [Fact]
+    public async Task Handle_MovementsInCurrentPartialMonth_AreIgnored()
+    {
+        Guid churnsNow = Guid.NewGuid();
+        Add(churnsNow, RevenueEventType.New, MonthStart(3), 0m, 100m);
+        Add(churnsNow, RevenueEventType.Churn, MonthStart(0), 100m, 0m);   // this month, not yet complete
+
+        await _db.SaveChangesAsync();
+
+        RevenueRetentionResponse result = await CreateSut().Handle(new GetRevenueRetentionQuery(), default);
+
+        result.StartMrr.Should().Be(100m);
+        result.GrossRevenueRetention.Should().Be(1.0);
+        result.NetRevenueRetention.Should().Be(1.0);
+    }
+
+    [Fact]
+    public async Task Handle_ReportsTheMeasuredMonthStart()
+    {
+        RevenueRetentionResponse result = await CreateSut().Handle(new GetRevenueRetentionQuery(), default);
+
+        result.PeriodStart.Should().Be(MonthStart(1));
     }
 }

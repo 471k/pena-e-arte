@@ -98,10 +98,12 @@ export interface BackfillRevenueLedgerResponse {
 }
 
 export interface RevenueRetentionResponse {
-  /** Fractions (0.95 = 95%); null when there was no MRR at the start of the month. */
+  /** Fractions (0.95 = 95%) for the last COMPLETED month; null when there was no MRR at its start. */
   grossRevenueRetention: number | null;
   netRevenueRetention:   number | null;
   startMrr:              number;
+  /** First instant (UTC, ISO 8601) of the month the rates cover. */
+  periodStart:           string;
 }
 
 export interface RecentRefundResponse {

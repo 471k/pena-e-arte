@@ -199,6 +199,16 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+/** "August 2026" for the month a retention rate covers; falls back to a generic label until loaded. */
+function retentionPeriodLabel(periodStart: string | undefined): string {
+  if (!periodStart) return "last full month";
+  return new Date(periodStart).toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
@@ -360,7 +370,7 @@ export function AdminDashboardPage() {
               />
             </div>
 
-            {/* Row 4 — retention (recorded revenue ledger, current month so far) */}
+            {/* Row 4 — retention (recorded revenue ledger, last COMPLETED month — a ratio over a partial month misleads) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {retentionLoading ? (
                 <><KpiSkeleton /><KpiSkeleton /></>
@@ -370,13 +380,13 @@ export function AdminDashboardPage() {
                     label="Gross Revenue Retention"
                     value={retention?.grossRevenueRetention == null ? "—" : formatPercent(retention.grossRevenueRetention)}
                     icon={<ShieldCheck className="h-6 w-6" />}
-                    subtitle="this month · excludes expansion"
+                    subtitle={`${retentionPeriodLabel(retention?.periodStart)} · excludes expansion`}
                   />
                   <KpiCard
                     label="Net Revenue Retention"
                     value={retention?.netRevenueRetention == null ? "—" : formatPercent(retention.netRevenueRetention)}
                     icon={<Percent className="h-6 w-6" />}
-                    subtitle="this month · incl. expansion"
+                    subtitle={`${retentionPeriodLabel(retention?.periodStart)} · incl. expansion`}
                     accent={retention?.netRevenueRetention != null && retention.netRevenueRetention >= 1 ? "success" : "default"}
                   />
                 </>
