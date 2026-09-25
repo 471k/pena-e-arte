@@ -89,7 +89,7 @@ const server = setupServer(
     HttpResponse.json([]), // empty — MrrMovementsChart renders its empty state
   ),
   http.get("http://localhost/api/v1/platform/revenue-retention", () =>
-    HttpResponse.json({ grossRevenueRetention: null, netRevenueRetention: null, startMrr: 0 }),
+    HttpResponse.json({ grossRevenueRetention: null, netRevenueRetention: null, startMrr: 0, periodStart: "2026-08-01T00:00:00Z" }),
   ),
 );
 
@@ -396,7 +396,7 @@ describe("AdminDashboardPage", () => {
     }
   });
 
-  it("retention tiles show '—' when there was no MRR at the start of the month", async () => {
+  it("retention tiles show '—' when there was no MRR at the start of the measured month", async () => {
     renderPage();
     const grr = (await screen.findByText("Gross Revenue Retention")).closest("div") as HTMLElement;
     const nrr = (await screen.findByText("Net Revenue Retention")).closest("div") as HTMLElement;
@@ -407,12 +407,19 @@ describe("AdminDashboardPage", () => {
   it("retention tiles show formatted percentages when the ledger has a start MRR", async () => {
     server.use(
       http.get("http://localhost/api/v1/platform/revenue-retention", () =>
-        HttpResponse.json({ grossRevenueRetention: 0.9474, netRevenueRetention: 1.0526, startMrr: 209 }),
+        HttpResponse.json({ grossRevenueRetention: 0.9474, netRevenueRetention: 1.0526, startMrr: 209, periodStart: "2026-08-01T00:00:00Z" }),
       ),
     );
     renderPage();
     expect(await screen.findByText("94.7%")).toBeInTheDocument();
     expect(screen.getByText("105.3%")).toBeInTheDocument();
+  });
+
+  it("retention tiles name the completed month they cover, not 'this month'", async () => {
+    renderPage();
+    expect(await screen.findByText("August 2026 · excludes expansion")).toBeInTheDocument();
+    expect(screen.getByText("August 2026 · incl. expansion")).toBeInTheDocument();
+    expect(screen.queryByText(/this month · (excludes|incl\.) expansion/)).not.toBeInTheDocument();
   });
 
   it("At-Risk row: clicking 'Extend trial' reveals the days input and Confirm button", async () => {

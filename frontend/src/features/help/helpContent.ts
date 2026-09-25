@@ -1570,7 +1570,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "ARPA is MRR divided by paying studios; Free-plan studios aren't counted.",
       "Each chart point is MRR at the end of that month (now, for the current month). Solid points are recorded from the revenue ledger; hollow points and dashed lines are months from before recording began, estimated from current subscriptions (plan changes aren't reflected in those).",
       "The MRR movements chart below it shows, per month, new, expansion and reactivation revenue stacked upward and contraction and churn stacked downward, with a line for the net change. Only recorded months have movement data — earlier months show as empty.",
-      "Gross and Net Revenue Retention compare this month's contraction and churn (gross), plus expansion (net), against the MRR that existed at the start of the month. New and reactivated studios aren't counted. They show \"—\" until there's MRR at the start of the month.",
+      "Gross and Net Revenue Retention measure the last full calendar month (the tile names it, e.g. \"August 2026\"), never the month in progress — a rate over a half-finished month would read near 100% early on and drift down. They compare that month's contraction and churn (gross), plus expansion (net), against the MRR that existed at the start of it. New and reactivated studios aren't counted. They show \"—\" until a full month of recorded revenue exists.",
       "Suspended studios' revenue is shown as \"paused\" on the Suspended card, not in MRR.",
       "\"Discounts this month\" sums referral discounts and credits actually applied to paid invoices — it doesn't reduce MRR (MRR is contracted revenue).",
     ],
