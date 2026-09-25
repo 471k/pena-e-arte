@@ -1,4 +1,5 @@
 using MediatR;
+using Pena_e_Arte.Application.Billing;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Billing.Commands.CreateBillingPortal;
 using Pena_e_Arte.Application.Billing.Queries;
@@ -243,11 +244,16 @@ public static class BillingEndpoints
                             string? paymentIntentId =
                                 invoice.Payments?.Data?.FirstOrDefault()?.Payment?.PaymentIntentId;
 
+                            // invoice.PeriodEnd is the PREVIOUS period's end on a renewal — see
+                            // InvoicePeriodRules. The line items carry the period being paid for.
+                            DateTime currentPeriodEnd = InvoicePeriodRules.CurrentPeriodEnd(
+                                invoice.Lines?.Data?.Select(l => l.Period?.End) ?? [], invoice.PeriodEnd);
+
                             await mediator.Send(new HandleInvoicePaidCommand(
-                                stripeSubId, invoice.PeriodEnd, invoice.Id,
+                                stripeSubId, currentPeriodEnd, invoice.Id,
                                 invoice.AmountPaid / 100m, discountAmount + balanceCredit,
                                 invoice.Currency, invoice.StatusTransitions?.PaidAt ?? DateTime.UtcNow,
-                                periodStart, paymentIntentId), ct);
+                                periodStart, paymentIntentId, stripeEvent.Id), ct);
                         }
                         break;
                     }

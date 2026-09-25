@@ -1,7 +1,11 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Billing;
@@ -10,7 +14,10 @@ public class HandleInvoicePaidHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
 
-    private HandleInvoicePaidHandler CreateSut() => new(_db);
+    private readonly IStripeBillingService _stripe = Substitute.For<IStripeBillingService>();
+
+    private HandleInvoicePaidHandler CreateSut() =>
+        new(_db, _stripe, NullLogger<HandleInvoicePaidHandler>.Instance);
 
     private static HandleInvoicePaidCommand Command(
         string stripeSubId, DateTime periodEnd, string invoiceId = "in_1",
@@ -99,5 +106,111 @@ public class HandleInvoicePaidHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
         return sub.Id;
+    }
+
+    // ── Found by a real Stripe test-mode run (2026-09-24) ─────────────────
+
+    private async Task<Guid> SeedPaid(
+        string stripeSubId, SubscriptionStatus status, BillingInterval interval, decimal billed)
+    {
+        Subscription sub = new()
+        {
+            StudioId = Guid.NewGuid(),
+            StripeSubscriptionId = stripeSubId,
+            Status = status,
+            BillingInterval = interval,
+            BilledUnitAmount = billed,
+            BilledQuantity = 1,
+            BilledCurrency = "eur",
+            PastDueSince = status == SubscriptionStatus.PastDue ? DateTime.UtcNow.AddDays(-2) : null,
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-1),
+        };
+        _db.Subscriptions.Add(sub);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return sub.Id;
+    }
+
+    [Fact]
+    public async Task Handle_PastDueSubscription_RecordsRecoveredAndClearsPastDueSince()
+    {
+        // invoice.paid and customer.subscription.updated arrive in either order (real Stripe sent
+        // invoice.paid first, in the same second). Whichever flips PastDue -> Active must record it.
+        await SeedPaid("sub_rec", SubscriptionStatus.PastDue, BillingInterval.Yearly, 790m);
+
+        await CreateSut().Handle(
+            Command("sub_rec", DateTime.UtcNow.AddYears(1)) with { StripeEventId = "evt_paid" }, default);
+
+        SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
+        ledgerEvent.Type.Should().Be(RevenueEventType.Recovered);
+        ledgerEvent.MrrBefore.Should().BeApproximately(65.83m, 0.01m);
+        ledgerEvent.MrrAfter.Should().Be(ledgerEvent.MrrBefore);
+        ledgerEvent.Source.Should().Be(nameof(HandleInvoicePaidHandler));
+        ledgerEvent.StripeEventId.Should().Be("evt_paid");
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == "sub_rec").PastDueSince.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(SubscriptionStatus.Active)]
+    [InlineData(SubscriptionStatus.Trialing)]
+    public async Task Handle_SubscriptionThatWasNotPastDue_WritesNoLedgerEvent(SubscriptionStatus status)
+    {
+        await SeedPaid("sub_norec", status, BillingInterval.Monthly, 59m);
+
+        await CreateSut().Handle(Command("sub_norec", DateTime.UtcNow.AddMonths(1)), default);
+
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_YearlyInvoiceWithoutPaymentIntent_ResolvesItFromStripe()
+    {
+        // Real payloads never carry it: Invoice.payments is an expandable field Stripe omits.
+        await SeedPaid("sub_yr", SubscriptionStatus.Active, BillingInterval.Yearly, 790m);
+        _stripe.GetInvoicePaymentIntentIdAsync("in_yr", Arg.Any<CancellationToken>()).Returns("pi_resolved");
+
+        await CreateSut().Handle(Command("sub_yr", DateTime.UtcNow.AddYears(1), "in_yr"), default);
+
+        _db.SubscriptionInvoicePayments.Single(p => p.StripeInvoiceId == "in_yr")
+            .StripePaymentIntentId.Should().Be("pi_resolved");
+    }
+
+    [Fact]
+    public async Task Handle_YearlyInvoiceAlreadyCarryingAPaymentIntent_DoesNotCallStripe()
+    {
+        await SeedPaid("sub_yr2", SubscriptionStatus.Active, BillingInterval.Yearly, 790m);
+
+        await CreateSut().Handle(
+            Command("sub_yr2", DateTime.UtcNow.AddYears(1), "in_yr2") with { StripePaymentIntentId = "pi_from_payload" },
+            default);
+
+        _db.SubscriptionInvoicePayments.Single().StripePaymentIntentId.Should().Be("pi_from_payload");
+        await _stripe.DidNotReceive().GetInvoicePaymentIntentIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_MonthlyInvoice_NeverPaysForTheExtraStripeCall()
+    {
+        // Only Yearly invoices can be refunded, so only they need the PaymentIntent.
+        await SeedPaid("sub_mo", SubscriptionStatus.Active, BillingInterval.Monthly, 59m);
+
+        await CreateSut().Handle(Command("sub_mo", DateTime.UtcNow.AddMonths(1), "in_mo"), default);
+
+        await _stripe.DidNotReceive().GetInvoicePaymentIntentIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _db.SubscriptionInvoicePayments.Single().StripePaymentIntentId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_StripeLookupFails_StillRecordsThePaymentAndActivates()
+    {
+        await SeedPaid("sub_fail", SubscriptionStatus.PastDue, BillingInterval.Yearly, 790m);
+        _stripe.GetInvoicePaymentIntentIdAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("stripe unavailable"));
+
+        Func<Task> act = () => CreateSut().Handle(Command("sub_fail", DateTime.UtcNow.AddYears(1), "in_fail"), default);
+
+        await act.Should().NotThrowAsync();
+        _db.SubscriptionInvoicePayments.Single().StripePaymentIntentId.Should().BeNull();
+        _db.Subscriptions.Single(s => s.StripeSubscriptionId == "sub_fail").Status.Should().Be(SubscriptionStatus.Active);
     }
 }
