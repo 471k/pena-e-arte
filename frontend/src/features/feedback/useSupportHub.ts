@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { feedbackApi } from "./feedbackApi";
 import type { FeedbackMessageResponse } from "./feedback.types";
 
@@ -15,11 +15,7 @@ export function useSupportHub(feedbackReportId: string | null) {
     if (!feedbackReportId || !token) return;
 
     const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
-    const conn = new HubConnectionBuilder()
-      .withUrl(`${hubBase}/hubs/support`, { accessTokenFactory: () => token! })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+    const conn = createHubConnection(`${hubBase}/hubs/support`, token!);
 
     // Block body required — see useSignalR.ts for why an implicit-return arrow breaks
     // SignalR's client (it tries to send dispatch's return value back as an invocation result).

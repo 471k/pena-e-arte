@@ -33,6 +33,7 @@ vi.mock("@microsoft/signalr", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     HubConnectionBuilder: vi.fn(function(this: any) { return builder; }),
     LogLevel:             { Warning: 1, Information: 2, Error: 3, None: 6 },
+    HttpTransportType:    { None: 0, WebSockets: 1, ServerSentEvents: 2, LongPolling: 4 },
   };
 });
 import { cleanup } from "@testing-library/react";

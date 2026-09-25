@@ -92,7 +92,16 @@ public static class InfrastructureServiceExtensions
                 serviceProvider.GetRequiredService<ILogger<HangfireJobFailureLogFilter>>())));
         services.AddHangfireServer();
 
-        services.AddSignalR();
+        // Redis backplane: production runs two API replicas, so a hub message sent from one pod
+        // (a chat message, a notification, a live-traffic snapshot) must also reach the clients
+        // whose connections live on the other pod. Without it those messages silently never
+        // arrive. The backplane only distributes messages between servers — it does NOT make
+        // negotiate + connect land on the same pod; the frontend avoids that by connecting over
+        // WebSockets with skipNegotiation (see frontend/src/shared/signalr/createHubConnection.ts).
+        // The prefix keeps SignalR's channels apart from any other pub/sub use of the same Redis.
+        services.AddSignalR()
+            .AddStackExchangeRedis(redisConnectionString + ",abortConnect=false", options =>
+                options.Configuration.ChannelPrefix = RedisChannel.Literal("pena-e-arte:signalr"));
 
         // Stripe.net stays for Flow B (billing/subscriptions) only. The Flow-A payment-intent /
         // refund services were removed with the deleted Stripe aggregator payment service.

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { messagingApi } from "./messagingApi";
 import type { ChatMessageResponse } from "./messaging.types";
 
@@ -19,11 +19,7 @@ export function useChatHub() {
     if (!token) return;
 
     const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
-    const connection = new HubConnectionBuilder()
-      .withUrl(`${hubBase}/hubs/chat`, { accessTokenFactory: () => token! })
-      .withAutomaticReconnect()
-      .configureLogging(LogLevel.Warning)
-      .build();
+    const connection = createHubConnection(`${hubBase}/hubs/chat`, token!);
 
     // Block bodies required — see useSignalR.ts for why an implicit-return arrow breaks
     // SignalR's client (it tries to send dispatch's return value back as an invocation

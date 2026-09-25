@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
@@ -19,11 +19,7 @@ export function useSignalR(studioId: string | null | undefined) {
     const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
 
     function buildConnection(path: string) {
-      return new HubConnectionBuilder()
-        .withUrl(`${hubBase}${path}`, { accessTokenFactory: () => token! })
-        .withAutomaticReconnect()
-        .configureLogging(LogLevel.Warning)
-        .build();
+      return createHubConnection(`${hubBase}${path}`, token!);
     }
 
     const scheduleConn = buildConnection("/hubs/schedule");
