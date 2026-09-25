@@ -1,0 +1,15 @@
+# Staging's own GeoLite2 .mmdb volume, mirroring k8s/overlays/production/geoip-pvc.yaml so Live
+# Traffic shows real locations on staging too (added 2026-09-25 after the visitor-IP fix in
+# k8s/cluster/traefik-helmchartconfig.yaml made real client addresses reach the API). The
+# namespace below is a placeholder: this overlay's kustomization.yaml rewrites it to
+# tattooos-staging.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tattooos-geoip-data
+  namespace: tattooos
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi

@@ -18,3 +18,7 @@ data:
   Jwt__Audience: "tattoos-staging"
   App__BaseUrl: "https://staging.tattooos.co"
   Cors__AllowedOrigins__0: "https://staging.tattooos.co"
+  # Same paths as production (k8s/overlays/production/api-config-patch.yaml), backed by this
+  # overlay's own geoip-pvc.yaml + geoip-cronjob.yaml.
+  GeoIp__DatabasePath: "/data/geoip/GeoLite2-City.mmdb"
+  GeoIp__AsnDatabasePath: "/data/geoip/GeoLite2-ASN.mmdb"
