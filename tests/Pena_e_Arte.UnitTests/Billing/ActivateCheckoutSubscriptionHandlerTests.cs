@@ -16,10 +16,11 @@ public class ActivateCheckoutSubscriptionHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly IStripeBillingService _billing = Substitute.For<IStripeBillingService>();
     private readonly IReferralRewardService _rewardService = Substitute.For<IReferralRewardService>();
+    private readonly MediatR.ISender _sender = Substitute.For<MediatR.ISender>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     private ActivateCheckoutSubscriptionHandler CreateSut() =>
-        new(_db, _billing, _rewardService, NullLogger<ActivateCheckoutSubscriptionHandler>.Instance);
+        new(_db, _billing, _rewardService, _sender, NullLogger<ActivateCheckoutSubscriptionHandler>.Instance);
 
     private void StripeReturns(
         bool complete, string subId = "sub_new", string cust = "cus_new",
@@ -289,5 +290,55 @@ public class ActivateCheckoutSubscriptionHandlerTests
         await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
 
         _db.SubscriptionRevenueEvents.Should().BeEmpty();
+    }
+
+    // ── First invoice recorded at activation (the invoice.paid webhook can beat the link) ─────
+
+    private static StripeInvoiceInfo FirstInvoice() => new(
+        "in_first", 59m, 0m, "eur", DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow.AddMonths(1), "pi_first");
+
+    [Fact]
+    public async Task Handle_CompletedSession_RecordsTheFirstPaidInvoice()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Trialing);
+        StripeReturns(complete: true, subId: "sub_new", price: "price_growth");
+        _billing.GetLatestPaidInvoiceAsync("sub_new", Arg.Any<CancellationToken>()).Returns(FirstInvoice());
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        await _sender.Received(1).Send(
+            Arg.Is<HandleInvoicePaidCommand>(c =>
+                c.StripeSubscriptionId == "sub_new" && c.StripeInvoiceId == "in_first"
+                && c.StripePaymentIntentId == "pi_first"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_FirstInvoiceLookupFails_ActivationStillSucceeds()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Trialing);
+        StripeReturns(complete: true, subId: "sub_new", price: "price_growth");
+        _billing.GetLatestPaidInvoiceAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<StripeInvoiceInfo?>(new InvalidOperationException("stripe unavailable")));
+
+        SubscriptionResponse? result = await CreateSut()
+            .Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        result!.Status.Should().Be(SubscriptionStatus.Active.ToString());
+        _db.Subscriptions.Single(s => s.StudioId == _studioId).Status.Should().Be(SubscriptionStatus.Active);
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyLinkedAndActive_DoesNotFetchAnInvoice()
+    {
+        await SeedPlan("price_growth");
+        await SeedStudioSubscription(SubscriptionStatus.Active, stripeSubId: "sub_new");
+        StripeReturns(complete: true, subId: "sub_new", price: "price_growth");
+
+        await CreateSut().Handle(new ActivateCheckoutSubscriptionCommand("cs_123", null), default);
+
+        await _billing.DidNotReceive().GetLatestPaidInvoiceAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

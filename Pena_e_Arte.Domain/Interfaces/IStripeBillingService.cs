@@ -14,6 +14,12 @@ public record CheckoutSubscriptionResult(
     bool HasDiscount);
 
 /// <summary>The Stripe-side facts G3 checks a linked PlanPrice against.</summary>
+/// <summary>Everything HandleInvoicePaidCommand needs from one paid Stripe invoice, already resolved
+/// (discount composition, the period actually being paid for, the refund target).</summary>
+public record StripeInvoiceInfo(
+    string InvoiceId, decimal AmountPaid, decimal DiscountAmount, string Currency, DateTime PaidAt,
+    DateTime? PeriodStart, DateTime PeriodEnd, string? PaymentIntentId);
+
 public record StripePriceInfo(
     bool Active, long? UnitAmount, string Currency, string? RecurringInterval, long? IntervalCount);
 
@@ -104,6 +110,11 @@ public interface IStripeBillingService
     /// expandable field: Stripe omits it from webhook payloads and from a plain retrieve (verified
     /// against API version 2026-05-27.dahlia in a real test-mode run, 2026-09-24).</summary>
     Task<string?> GetInvoicePaymentIntentIdAsync(string stripeInvoiceId, CancellationToken ct);
+
+    /// <summary>The most recent PAID invoice of a subscription (payments expanded), or null when it has
+    /// none yet. Used right after a subscription is linked locally, to record its first invoice: the
+    /// invoice.paid webhook for a brand-new subscription can beat that link and is then dropped.</summary>
+    Task<StripeInvoiceInfo?> GetLatestPaidInvoiceAsync(string stripeSubscriptionId, CancellationToken ct);
 
     /// <summary>
     /// D6: pauses collection on an active Stripe subscription — renewals during the pause

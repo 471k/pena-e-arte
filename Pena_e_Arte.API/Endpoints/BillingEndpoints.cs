@@ -8,6 +8,7 @@ using Pena_e_Arte.Application.Plans.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Infrastructure.Services;
 using Stripe;
 using Stripe.Checkout;
 using System.Collections.Generic;
@@ -224,36 +225,13 @@ public static class BillingEndpoints
                         string? stripeSubId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
                         if (stripeSubId is not null)
                         {
-                            decimal discountAmount = (invoice.TotalDiscountAmounts?.Sum(d => d.Amount) ?? 0) / 100m;
-                            // A customer-balance credit consumed on this invoice also counts as a
-                            // discount (R3, the Yearly-referrer case). Stripe balances are negative
-                            // for credit, so a starting balance more negative than the ending
-                            // balance means credit was consumed this invoice.
-                            decimal balanceCredit = invoice.StartingBalance < invoice.EndingBalance
-                                ? 0m
-                                : (invoice.StartingBalance - (invoice.EndingBalance ?? invoice.StartingBalance)) / 100m;
-
-                            // Yearly-cancellation-refund snapshot (Batch 3a) — verified against
-                            // the compiled Stripe.net 52.4.1 SDK's post-"thin invoice" shape (see
-                            // docs/claude/overnight-prompt-yearly-cancellation-refunds-2026-09-24.md
-                            // §3): PeriodStart comes off the first invoice line item, not a
-                            // top-level Invoice property; the refund target comes off
-                            // Payments.Data[0].Payment.PaymentIntentId — Invoice no longer
-                            // exposes PaymentIntentId directly at all in this SDK version.
-                            DateTime? periodStart = invoice.Lines?.Data?.FirstOrDefault()?.Period?.Start;
-                            string? paymentIntentId =
-                                invoice.Payments?.Data?.FirstOrDefault()?.Payment?.PaymentIntentId;
-
-                            // invoice.PeriodEnd is the PREVIOUS period's end on a renewal — see
-                            // InvoicePeriodRules. The line items carry the period being paid for.
-                            DateTime currentPeriodEnd = InvoicePeriodRules.CurrentPeriodEnd(
-                                invoice.Lines?.Data?.Select(l => l.Period?.End) ?? [], invoice.PeriodEnd);
+                            // Discount composition, the paid-for period and the refund target are resolved in
+                            // one shared mapper (also used when recording a brand-new subscription's first invoice).
+                            StripeInvoiceInfo info = StripeInvoiceMapper.ToInfo(invoice);
 
                             await mediator.Send(new HandleInvoicePaidCommand(
-                                stripeSubId, currentPeriodEnd, invoice.Id,
-                                invoice.AmountPaid / 100m, discountAmount + balanceCredit,
-                                invoice.Currency, invoice.StatusTransitions?.PaidAt ?? DateTime.UtcNow,
-                                periodStart, paymentIntentId, stripeEvent.Id), ct);
+                                stripeSubId, info.PeriodEnd, info.InvoiceId, info.AmountPaid, info.DiscountAmount,
+                                info.Currency, info.PaidAt, info.PeriodStart, info.PaymentIntentId, stripeEvent.Id), ct);
                         }
                         break;
                     }

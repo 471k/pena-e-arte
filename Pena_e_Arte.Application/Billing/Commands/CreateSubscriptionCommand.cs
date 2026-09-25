@@ -21,6 +21,7 @@ public class CreateSubscriptionHandler(
     IStripeBillingService billing,
     IStripeDiscountService discounts,
     IReferralRewardService rewardService,
+    ISender sender,
     ILogger<CreateSubscriptionHandler> logger)
     : IRequestHandler<CreateSubscriptionCommand, SubscriptionResponse>
 {
@@ -171,6 +172,11 @@ public class CreateSubscriptionHandler(
         // Non-fatal: failure is logged inside RewardReferrerAsync; subscription is not rolled back.
         if (newRedemption is not null)
             await rewardService.RewardReferrerAsync(newRedemption.Id, ct);
+
+        // The Stripe subscription was created above but its id was only just saved, so its first
+        // invoice.paid webhook may already have been dropped — record it now (best-effort, last).
+        if (subscription.StripeSubscriptionId is string stripeSubscriptionId)
+            await LatestInvoiceRecorder.RecordAsync(billing, sender, logger, stripeSubscriptionId, ct);
 
         return Map(subscription);
     }
