@@ -269,7 +269,9 @@ export function AdminStudioDetailPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-[1fr_288px] gap-4 lg:gap-6 lg:items-start">
+        {/* grid-cols-1 is load-bearing below lg: without an explicit column the implicit track sizes to the
+            widest item's max-content and drags the whole page wider than a phone (measured 539px at 390px). */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_288px] gap-4 lg:gap-6 lg:items-start">
 
           {/* Left column */}
           <div className="space-y-4">
@@ -277,8 +279,8 @@ export function AdminStudioDetailPage() {
             {/* ── Studio Info Card ──────────────────────────────────────────── */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <span>{studio.name}</span>
+                <CardTitle className="text-base font-semibold flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="min-w-0 break-words">{studio.name}</span>
                   <span
                     className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_CLASSES[badgeStatus]}`}
                   >
