@@ -375,7 +375,20 @@ jobs:
           # so a [skip-help-sync] marker placed there was never actually seen.
           # github.event.pull_request.head.sha is the PR's real tip commit; fall
           # back to HEAD for push events, where no synthetic merge exists.
-          MARKER_SHA="${HEAD_SHA:-HEAD}"
+          #
+          # BUT a push to main from a merged PR is a real merge commit whose own message is just
+          # "Merge pull request #N from ..." — the marker lives on the PR branch's tip commit, which
+          # is that merge commit's SECOND parent (the same commit the pull_request run honoured).
+          # Reading only HEAD meant no [skip-help-sync] override could ever pass after merge: the PR
+          # was green, main went red, and CD (gated on CI) silently skipped the deploy (PR #177).
+          MARKER_SHA="$HEAD_SHA"
+          if [ -z "$MARKER_SHA" ]; then
+            if git rev-parse -q --verify "HEAD^2" > /dev/null 2>&1; then
+              MARKER_SHA="HEAD^2"
+            else
+              MARKER_SHA="HEAD"
+            fi
+          fi
           if git log -1 --format='%B' "$MARKER_SHA" | grep -q '\[skip-help-sync\]'; then
             echo "Gated paths changed without a Help update, but [skip-help-sync] override is"
             echo "present in the latest commit message. Allowing (reviewer's call)."
