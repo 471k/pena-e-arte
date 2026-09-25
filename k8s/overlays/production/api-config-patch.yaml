@@ -1,8 +1,9 @@
-# Only production sets GeoIp:* — the PVC + CronJob that keep these paths populated
-# (geoip-pvc.yaml/geoip-cronjob.yaml/geoip-volume-patch.yaml) are production-only. Staging
-# keeps GeoIp:DatabasePath/AsnDatabasePath unset via k8s/base/api-configmap.yaml, and
-# GeoIpService degrades to always-null gracefully rather than erroring — see that class's own
-# doc comment and docs/claude/architecture.md's "K8s .mmdb population" Decisions Log entry.
+# Production sets GeoIp:* here; staging has its own identical copy in
+# k8s/overlays/staging/api-config-patch.yaml (added 2026-09-25). The PVC + CronJob that keep these
+# paths populated (geoip-pvc.yaml/geoip-cronjob.yaml/geoip-volume-patch.yaml) exist per overlay.
+# With the paths unset, GeoIpService degrades to always-null gracefully rather than erroring —
+# see that class's own doc comment and docs/claude/architecture.md's "K8s .mmdb population"
+# Decisions Log entry.
 apiVersion: v1
 kind: ConfigMap
 metadata:

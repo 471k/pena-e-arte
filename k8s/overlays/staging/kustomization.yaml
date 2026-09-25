@@ -8,6 +8,9 @@ kind: Kustomization
 # Grafana stack (environment-labeled), not a second observability stack.
 resources:
   - ../../base
+  # GeoLite2 .mmdb PVC + refresh CronJob, mirroring production (see geoip-pvc.yaml).
+  - geoip-pvc.yaml
+  - geoip-cronjob.yaml
 
 # Kustomize's namespace transformer rewrites every base resource's metadata into this
 # namespace. The cluster-scoped ClusterIssuer is untouched by it (reused as-is per §3.2 of the
@@ -25,6 +28,7 @@ patches:
   - path: replica-patch.yaml
   - path: resources-patch.yaml
   - path: api-config-patch.yaml
+  - path: geoip-volume-patch.yaml
   - path: frontend-staging-env-patch.yaml
   - path: vault-exclude-patch.yaml
 
