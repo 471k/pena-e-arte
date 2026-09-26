@@ -39,7 +39,7 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
 import { WaitlistQueuePage, MyWaitlistPage } from "@/features/waitlist";
@@ -169,6 +169,12 @@ export const routes = [
   { path: "/terms",           element: <TermsOfServicePage /> },
   { path: "/refund-policy",   element: <RefundPolicyPage /> },
   { path: "/contact",         element: <ContactPage /> },
+  { path: "/features",        element: <FeaturesPage /> },
+  { path: "/pricing",         element: <PricingPage /> },
+  { path: "/use/booking",     element: <UseCaseBookingPage /> },
+  { path: "/use/deposits",    element: <UseCaseDepositsPage /> },
+  { path: "/use/consent-forms", element: <UseCaseConsentFormsPage /> },
+  { path: "/faq",             element: <FaqPage /> },
   { path: "/unsubscribe",     element: <UnsubscribePage /> },
 
   {

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -47,6 +47,15 @@ describe("public content pages", () => {
     expect(screen.getByRole("contentinfo")).toBeInTheDocument(); // SiteFooter
     expect(errorSpy).not.toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+
+  it("Home links to the marketing pages in an Explore nav, separate from the Policies nav", () => {
+    renderPublic(<HomePage />);
+    const explore = screen.getByRole("navigation", { name: "Explore" });
+    expect(within(explore).getByRole("link", { name: "Features" })).toHaveAttribute("href", "/features");
+    expect(within(explore).getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/pricing");
+    expect(within(explore).getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq");
+    expect(screen.getByRole("navigation", { name: "Policies" })).toBeInTheDocument();
   });
 
   it("Privacy Policy names special-category health data and the planned payment sub-processors", () => {
