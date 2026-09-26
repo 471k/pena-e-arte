@@ -13,12 +13,30 @@ spec:
       # cert reissues in the new namespace regardless of what this string says; renaming it too
       # would just be unnecessary churn on an internal-only, never-user-visible identifier.
       secretName: pena-e-arte-tls
+    - hosts: ["tattooos.co"] # marketing site at the apex domain (2026-09-26). Own secretName, not
+      # appended to pena-e-arte-tls's hosts, so a first-issuance hiccup here can never block or
+      # force reissuance of the already-working app.tattooos.co cert above. www.tattooos.co has no
+      # entry on purpose: Cloudflare redirects it to the apex at the edge, so it never reaches
+      # this cluster.
+      secretName: pena-e-arte-marketing-tls
   rules:
     - host: app.tattooos.co
       http:
         paths:
           # frontend nginx is already a same-origin reverse proxy for /api/ and /hubs/
           # (frontend/nginx.conf.template) — no second Ingress host needed.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tattooos-frontend
+                port: { number: 8080 }
+    - host: tattooos.co
+      http:
+        paths:
+          # Same Service as app.tattooos.co: one SPA, one image, one Deployment. The marketing
+          # pages are ordinary React Router routes in that bundle (see docs/claude/
+          # architecture.md, "Marketing Site at the Apex Domain — 2026-09-26").
           - path: /
             pathType: Prefix
             backend:

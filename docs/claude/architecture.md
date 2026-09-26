@@ -4623,3 +4623,71 @@ sandbox memory here); `pnpm tsc -b`, `pnpm build` and `eslint` clean; Playwright
 theme projects (page chrome under both layouts, `?tab=` deep link/refresh, 375 px, and axe-clean Social
 tab in every state — the disconnect dialog opts out of `color-contrast` only, for the shared
 destructive-button token recorded in the contrast audit).
+
+## Marketing Site at the Apex Domain — 2026-09-26
+
+### Problem
+`tattooos.co` and `www.tattooos.co` resolved to nothing: only `app.`, `staging.` and `test.` had DNS
+records, so the product had no public marketing surface (home, features, pricing, FAQ).
+
+### Decision
+Extend the existing SPA instead of building a separate static site (e.g. Astro) or using a site
+builder. One SPA, one image, one Deployment, two hostnames.
+
+- The repo already has the public-page system (`PublicContentLayout`, `PublicPageHeader`,
+  `SiteFooter`, `useDocumentMeta`). A second stack would duplicate that design, add a second
+  build/deploy pipeline, image, Ingress host and certificate, and invite the two implementations to
+  drift.
+- The cost is accepted and unchanged: page metadata is still set client-side only, so the raw HTML
+  is identical for every public route. That gap already applies to the existing policy pages and is
+  scoped as the search-visibility follow-up (below). It is not made worse.
+- `www.tattooos.co` is redirected to the apex at the Cloudflare edge (301, path and query
+  preserved), not in the cluster, so it has no Ingress host. The earlier "redirect the apex to
+  `app.`" stopgap was superseded by the real site and never built.
+
+### What shipped
+- **#188 — `GET /api/v1/public/plans`.** Anonymous, `public-read` rate limited, returns
+  `PublicPlanResponse` (tier name, currency, active prices, computed months-free, feature flags and
+  limits). No plan id, Stripe price ids, subscriber count or `PrioritySupport`. The route sits under
+  `/public` with the other anonymous reads rather than under `/billing`. `Plan`/`PlanPrice` have no
+  tenant query filter. AllowAnonymous table row added.
+- **#189 — the pages.** `/features`, `/pricing`, `/use/booking`, `/use/deposits`,
+  `/use/consent-forms`, `/faq`, and an "Explore" nav row on Home, all on `PublicContentLayout`.
+  Pricing bullets are derived from each tier's real limits and flags (`planHighlights.ts`).
+- **Ingress (this change).** `k8s/base/ingress.yaml` gains a `tattooos.co` host with its own TLS
+  secret (`pena-e-arte-marketing-tls`), so a first-issuance problem for the apex can never block or
+  re-trigger the working `app.tattooos.co` certificate. Staging's `ingress-patch.yaml` replaces the
+  whole `tls` and `rules` lists, so staging is unaffected; verified by rendering both overlays with
+  `kubectl kustomize`.
+- **Cloudflare (manual, not in the repo).** Proxied `A` records for `@` and `www` mirroring `app`,
+  plus a Redirect Rule `www` to the apex. Cloudflare's SSL mode is strict: before this Ingress
+  deployed, the apex returned a 526 because Traefik had no certificate for the host.
+
+### Decisions worth knowing
+- **Copy is limited to verified behaviour.** The original draft said clients "pay a deposit through
+  Stripe". That is wrong: Stripe only bills studios for the subscription. Card deposits are
+  per-studio (`CardPaymentsAvailable` is true only for a studio with its own connected payment
+  account) and cash is the path every studio has. The pages say exactly that and name no processor.
+  Flow A is zero-commission (ADR-0001 Amendment B).
+- **Currency** comes from `MrrRules.PlatformCurrency` (`eur`), the currency Stripe prices are created
+  in. `Plan` has no currency column.
+- **CORS is deliberately unchanged.** The SPA reaches `/api/` and `/hubs/` same-origin through nginx
+  on either hostname, so no cross-origin request exists to allow.
+- **Auth state is per origin.** Signing in on `tattooos.co` creates a session separate from
+  `app.tattooos.co`, while emails still link to `App__BaseUrl` (`app.`). Whether the apex "Sign in"
+  should hand off to `app.` is an open product question, not decided here.
+
+### Not done (search-visibility follow-up)
+- Per-page raw-HTML title, description and preview image (prerendering), so link previews and search
+  see distinct pages. **Do not read "marketing site shipped" as "SEO fixed".**
+- **Sitemap.** The API already serves `/sitemap.xml` (`GetSitemapUrlsQuery`, URLs on the apex), but
+  nginx has no location for it, so `https://app.tattooos.co/sitemap.xml` currently returns the SPA's
+  HTML (`text/html`). It needs proxying, and the marketing pages need adding to it. `robots.txt`
+  already points at `https://tattooos.co/sitemap.xml`.
+- The missing `og-image.png`, `noindex` for logged-in app pages, and pinning the marketing pages'
+  canonical to the apex (`useDocumentMeta` builds it from `window.location.origin`, so the same page
+  names itself canonical on both hostnames).
+- The Pricing bullets' wording is a placeholder (`TODO(marketing)` in `planHighlights.ts`) pending
+  the marketing project; the numbers and flags are live.
+- Google Search Console, Analytics, Meta/TikTok/X/LinkedIn domain verification and footer social
+  links, per the domain and website to-do.
