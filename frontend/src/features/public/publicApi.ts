@@ -263,15 +263,41 @@ const publicBaseQuery = fetchBaseQuery({
   },
 });
 
+export interface PublicPlanPriceResponse {
+  interval: string;
+  price:    number;
+}
+
+// Anonymous marketing view of a subscription tier (GET /public/plans). A null limit
+// means unlimited.
+export interface PublicPlanResponse {
+  name:                      string;
+  currency:                  string;
+  prices:                    PublicPlanPriceResponse[];
+  yearlyMonthsFree:          number | null;
+  allowBrandingRemoval:      boolean;
+  allowMarketingCampaigns:   boolean;
+  allowApiAccess:            boolean;
+  maxArtists:                number | null;
+  maxAppointmentsPerMonth:   number | null;
+  maxNotificationsPerMonth:  number | null;
+  maxStorageGb:              number | null;
+  maxLocations:              number | null;
+}
+
 export const publicApi = createApi({
   reducerPath: "publicApi",
   baseQuery: publicBaseQuery,
   tagTypes: [
     "PublicStudio", "PublicArtist", "SharedDesign", "NearbyStudios",
     "StudioReviews", "ArtistReviews", "PortfolioImageReviews", "PortfolioFeed",
-    "StudioReportableAppointments", "ArtistReportableAppointments", "DesignCatalog",
+    "StudioReportableAppointments", "ArtistReportableAppointments", "DesignCatalog", "PublicPlans",
   ],
   endpoints: (builder) => ({
+    getPublicPlans: builder.query<PublicPlanResponse[], void>({
+      query: () => "plans",
+      providesTags: ["PublicPlans"],
+    }),
     getPublicStudio: builder.query<PublicStudioResponse, string>({
       query: (slug) => `studios/${slug}`,
       providesTags: ["PublicStudio"],
@@ -419,6 +445,7 @@ export const publicApi = createApi({
 });
 
 export const {
+  useGetPublicPlansQuery,
   useGetPublicStudioQuery,
   useGetPublicArtistQuery,
   useGetSharedDesignQuery,

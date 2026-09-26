@@ -28,7 +28,19 @@ export function HomePage() {
         </Link>
       </div>
 
-      <nav aria-label="Policies" className="mt-10 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+      <nav aria-label="Explore" className="mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        <Link to="/features" className="underline underline-offset-2 hover:text-foreground">
+          Features
+        </Link>
+        <Link to="/pricing" className="underline underline-offset-2 hover:text-foreground">
+          Pricing
+        </Link>
+        <Link to="/faq" className="underline underline-offset-2 hover:text-foreground">
+          FAQ
+        </Link>
+      </nav>
+
+      <nav aria-label="Policies" className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
         <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
           Privacy Policy
         </Link>
