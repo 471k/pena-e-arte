@@ -54,6 +54,7 @@ public static class PublicEndpoints
              .AllowAnonymous().RequireRateLimiting("public-write");
         group.MapGet("/portfolio/feed", GetPortfolioFeed).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}/design-catalog", GetDesignCatalog).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/plans", GetPublicPlans).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/portfolio/{imageId:guid}/reviews", GetPortfolioImageReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapPost("/portfolio/{imageId:guid}/reviews", CreatePortfolioImageReview)
              .RequireAuthorization("ClientAndAbove").RequireRateLimiting("public-write");
@@ -345,6 +346,14 @@ public static class PublicEndpoints
         CancellationToken ct)
     {
         List<DesignCatalogItemResponse> result = await mediator.Send(new GetDesignCatalogQuery(slug), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPublicPlans(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        List<PublicPlanResponse> result = await mediator.Send(new GetPublicPlansQuery(), ct);
         return Results.Ok(result);
     }
 
