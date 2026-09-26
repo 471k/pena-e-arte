@@ -220,6 +220,9 @@ jobs:
           context: .
           file: frontend/Dockerfile
           push: false
+          # Loaded into the local Docker daemon (not pushed) so the next step can run it.
+          load: true
+          tags: tattooos-frontend:ci
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
           build-args: |
@@ -228,9 +231,51 @@ jobs:
             VITE_GOOGLE_CLIENT_ID=placeholder
             VITE_APPLE_CLIENT_ID=placeholder
             VITE_PUBLIC_URL=http://localhost:8081
-        # Placeholder build-args only — this job proves the image *builds*, it does not
-        # produce anything that gets pushed or deployed. No registry credentials, no
-        # `push: true` — that's out-of-scope CD work.
+        # Placeholder build-args only — this job proves the image *builds* and that its nginx
+        # behaves (next step); it does not produce anything that gets pushed or deployed. No
+        # registry credentials, no `push: true` — that's out-of-scope CD work.
+
+      # nginx was previously never exercised by CI: Playwright runs against `pnpm dev` (Vite) and this
+      # job only built the image, so a broken frontend/nginx.conf.template (or a routing/robots-header
+      # regression) would first surface in the production deploy. This runs the real image and asserts
+      # the behaviour that matters. There is no backend here (BACKEND_HOST=127.0.0.1, a dead port), so
+      # proxied paths answer 502 — enough to prove they are proxied and not answered by the SPA.
+      - name: Smoke-test the frontend image's nginx
+        shell: bash
+        run: |
+          set -euo pipefail
+          B=http://localhost:8081
+          docker run -d --name fe -p 8081:8080 -e BACKEND_HOST=127.0.0.1 -e BACKEND_PORT=9 tattooos-frontend:ci
+          fail() { echo "SMOKE FAIL: $1"; docker logs fe 2>&1 | tail -30; docker rm -f fe >/dev/null 2>&1 || true; exit 1; }
+          up=0; for i in $(seq 1 30); do if curl -fsS -o /dev/null "$B/"; then up=1; break; fi; sleep 1; done
+          [ "$up" = 1 ] || fail "the container never started serving (nginx config invalid?)"
+          docker exec fe nginx -t || fail "nginx -t"
+          # Capture into variables and match with here-strings: `curl | grep -q` under pipefail can
+          # fail intermittently (grep exits on first match, curl gets a broken pipe).
+          body_has() { local out; out=$(curl -fsS "$B$1") || fail "GET $1 failed"; grep -qF -- "$2" <<<"$out" || fail "$3"; }
+          has_header() { local out; out=$(curl -sI "$B$1" | tr -d '\r'); grep -qi -- "$2" <<<"$out"; }
+          # Per-route metadata is in the raw HTML (frontend/scripts/prerender-meta.ts), the home page and
+          # unknown/dynamic routes fall through to the SPA shell (index.html carries &amp; in its title).
+          body_has /pricing '<title>Pricing — TattooOS</title>' "/pricing must carry its own <title>"
+          body_has /use/booking '<title>Online booking for tattoo studios — TattooOS</title>' "/use/booking (nested) must carry its own <title>"
+          body_has / 'booking &amp; studio management' "/ must keep the default title"
+          body_has /s/some-studio 'id="root"' "/s/:slug must fall through to the SPA shell"
+          # The default shell is served for every dynamic route, so it must NOT carry a canonical (a "/"
+          # canonical would tell crawlers each studio/artist page duplicates the home page).
+          out=$(curl -fsS "$B/s/some-studio"); if grep -qi 'rel="canonical"' <<<"$out"; then fail "/s/:slug raw HTML must not carry a canonical"; fi
+          body_has /pricing 'rel="canonical" href="https://tattooos.co/pricing"' "/pricing must carry its apex canonical"
+          # Private routes are noindex (case-insensitive, query string included); public ones carry no header.
+          for r in /dashboard /Dashboard '/dashboard?tab=1' /login /my-studios /platform /embed/x; do
+            has_header "$r" '^x-robots-tag: noindex, nofollow' || fail "$r must be noindex"
+          done
+          for r in / /pricing /faq /discover /s/some-studio /artist/some-artist; do
+            if has_header "$r" '^x-robots-tag'; then fail "$r must not carry X-Robots-Tag"; fi
+          done
+          # The sitemap is proxied to the API (no backend here => 502); the SPA fallback would answer 200.
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$B/sitemap.xml")
+          [ "$code" != 200 ] || fail "/sitemap.xml was answered by the SPA (200); it must be proxied to the API"
+          body_has /robots.txt 'Disallow: /api/' "robots.txt content"
+          docker rm -f fe
 
   guardrails:
     name: Non-negotiable-rules guardrails
