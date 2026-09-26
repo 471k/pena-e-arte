@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /hubs/
+Disallow: /hangfire
 
 Sitemap: https://tattooos.co/sitemap.xml

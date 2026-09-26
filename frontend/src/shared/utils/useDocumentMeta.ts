@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DEFAULT_OG_IMAGE } from "@/shared/seo/siteRoutes";
 
 export interface DocMeta {
   title:        string;
@@ -37,10 +38,11 @@ export function useDocumentMeta({ title, description, ogImage, canonical }: DocM
       inject("meta", { name: "twitter:description",     content: description });
     }
 
-    if (ogImage) {
-      inject("meta", { property: "og:image",  content: ogImage });
-      inject("meta", { name: "twitter:image", content: ogImage });
-    }
+    // The static index.html tags carry data-doc-meta, so the cleanup above removes them; a page
+    // without its own image must therefore fall back to the default one rather than end up with none.
+    const image = ogImage ?? DEFAULT_OG_IMAGE;
+    inject("meta", { property: "og:image",  content: image });
+    inject("meta", { name: "twitter:image", content: image });
 
     inject("link", { rel: "canonical", href: canonical });
 

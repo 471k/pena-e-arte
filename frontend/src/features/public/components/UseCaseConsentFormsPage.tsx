@@ -1,13 +1,14 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { MarketingCtaRow } from "./MarketingCtaRow";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 // Marketing page /use/consent-forms. Copy matches the ConsentForm entity: a signature,
 // a signed-at timestamp and a snapshot of the exact consent text, plus PDF export.
 export function UseCaseConsentFormsPage() {
   return (
     <PublicContentLayout
-      title="Digital consent forms for tattoo studios — TattooOS"
-      description="Clients sign intake and consent forms before their appointment. Each signature is timestamped and stored with the exact wording agreed to."
+      title={ROUTE_META["/use/consent-forms"].title}
+      description={ROUTE_META["/use/consent-forms"].description}
       canonicalPath="/use/consent-forms"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Digital consent forms</h1>

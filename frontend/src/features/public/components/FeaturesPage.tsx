@@ -1,5 +1,6 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { MarketingCtaRow } from "./MarketingCtaRow";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 interface FeatureGroup {
   title: string;
@@ -44,8 +45,8 @@ const FEATURE_GROUPS: ReadonlyArray<FeatureGroup> = [
 export function FeaturesPage() {
   return (
     <PublicContentLayout
-      title="Features — TattooOS"
-      description="Online booking, deposits, digital consent forms, design approvals and client records — everything a tattoo studio needs in one place."
+      title={ROUTE_META["/features"].title}
+      description={ROUTE_META["/features"].description}
       canonicalPath="/features"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Features</h1>

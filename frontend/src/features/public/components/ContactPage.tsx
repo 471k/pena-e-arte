@@ -10,6 +10,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/utils/cn";
 import { useSubmitContactMutation } from "../contactApi";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 const schema = z.object({
   name: z.string().min(1, "Please enter your name").max(100),
@@ -44,8 +45,8 @@ export function ContactPage() {
 
   return (
     <PublicContentLayout
-      title="Contact — TattooOS"
-      description="Get in touch with the TattooOS team."
+      title={ROUTE_META["/contact"].title}
+      description={ROUTE_META["/contact"].description}
       canonicalPath="/contact"
     >
       <h1 className="text-2xl font-semibold tracking-tight">Contact</h1>

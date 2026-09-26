@@ -6,6 +6,7 @@ import { SocialLinkRows } from "@/features/social/components/SocialLinkRows";
 import { useGetSocialLinksQuery } from "@/features/social/socialApi";
 import { useGetInstagramStatusQuery } from "../artistsApi";
 import { InstagramTab } from "./InstagramTab";
+import { SITE_URL } from "@/shared/constants/legalEntity";
 
 interface ArtistSocialTabProps {
   artistId: string;
@@ -72,7 +73,7 @@ export function ArtistSocialTab({ artistId, firstName, slug, canManage, isOwnPro
 
   const publicProfileUrl =
     isOwnProfile && slug
-      ? `${import.meta.env.VITE_PUBLIC_URL ?? window.location.origin}/artist/${slug}`
+      ? `${SITE_URL}/artist/${slug}`
       : null;
 
   return (

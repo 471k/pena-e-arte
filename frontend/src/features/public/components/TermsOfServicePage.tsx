@@ -1,6 +1,7 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { LawyerReviewBanner } from "./LawyerReviewBanner";
 import { LEGAL_ENTITY_NAME, LEGAL_ENTITY_ADDRESS } from "@/shared/constants/legalEntity";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -15,8 +16,8 @@ function Section({ heading, children }: { heading: string; children: React.React
 export function TermsOfServicePage() {
   return (
     <PublicContentLayout
-      title="Terms of Service — TattooOS"
-      description="The terms governing your use of TattooOS."
+      title={ROUTE_META["/terms"].title}
+      description={ROUTE_META["/terms"].description}
       canonicalPath="/terms"
     >
       <h1 className="text-2xl font-semibold tracking-tight">Terms of Service</h1>

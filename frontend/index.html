@@ -12,12 +12,25 @@
       A static HTML file cannot import a TS constant without a Vite templating plugin this
       repo does not have, so the literal defaults below are duplicated here deliberately. If
       this copy and legalEntity.ts ever diverge, legalEntity.ts wins — update this to match.
+      The region between the seo:head markers is REPLACED per route at build time by
+      scripts/prerender-meta.ts (metadata from src/shared/seo/siteRoutes.ts); every tag in it
+      carries data-doc-meta so useDocumentMeta replaces it instead of duplicating it.
+      The default region deliberately has NO canonical and NO og:url: this file is also served for
+      every dynamic route (/s/:slug, /artist/:slug, ...), where a canonical of "/" would tell crawlers
+      each of those pages is a duplicate of the home page. Per-route files get both from renderHead.
     -->
-    <title>TattooOS — booking & studio management for tattoo shops</title>
-    <meta name="description" content="TattooOS — booking, deposits, consent forms, and client records for tattoo studios. Ditch the DMs and paper forms." />
-    <meta property="og:title" content="TattooOS" />
-    <meta property="og:description" content="TattooOS — booking, deposits, consent forms, and client records for tattoo studios. Ditch the DMs and paper forms." />
-    <meta property="og:image" content="/og-image.png" />
+    <!-- seo:head:start -->
+    <title>TattooOS — booking &amp; studio management for tattoo shops</title>
+    <meta data-doc-meta="1" name="description" content="TattooOS — booking, deposits, consent forms, and client records for tattoo studios. Ditch the DMs and paper forms." />
+    <meta data-doc-meta="1" property="og:type" content="website" />
+    <meta data-doc-meta="1" property="og:title" content="TattooOS — booking &amp; studio management for tattoo shops" />
+    <meta data-doc-meta="1" property="og:description" content="TattooOS — booking, deposits, consent forms, and client records for tattoo studios. Ditch the DMs and paper forms." />
+    <meta data-doc-meta="1" property="og:image" content="https://tattooos.co/og-image.png" />
+    <meta data-doc-meta="1" name="twitter:card" content="summary_large_image" />
+    <meta data-doc-meta="1" name="twitter:title" content="TattooOS — booking &amp; studio management for tattoo shops" />
+    <meta data-doc-meta="1" name="twitter:description" content="TattooOS — booking, deposits, consent forms, and client records for tattoo studios. Ditch the DMs and paper forms." />
+    <meta data-doc-meta="1" name="twitter:image" content="https://tattooos.co/og-image.png" />
+    <!-- seo:head:end -->
 
     <!-- Fraunces (Google Fonts) — app-wide font family -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

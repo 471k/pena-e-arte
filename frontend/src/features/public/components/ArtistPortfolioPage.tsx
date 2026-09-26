@@ -37,6 +37,7 @@ import { ConductReportDialog } from "@/features/conduct-reports/components/Condu
 import { CategoryTabs } from "./CategoryTabs";
 import { CATEGORIES } from "./categoryConstants";
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
+import { SITE_URL } from "@/shared/constants/legalEntity";
 
 // ── Document meta ──────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function ArtistMeta({
     title:       `${name} — Tattoo Artist on TattooOS`,
     description: bio ?? `View the tattoo portfolio of ${name}.`,
     ogImage:     coverImage,
-    canonical:   `https://tattooos.co/artist/${slug}`,
+    canonical:   `${SITE_URL}/artist/${slug}`,
   });
   useStructuredData({
     "@context":  "https://schema.org",
@@ -58,7 +59,7 @@ function ArtistMeta({
     name,
     description: bio ?? undefined,
     image:       coverImage,
-    url:         `https://tattooos.co/artist/${slug}`,
+    url:         `${SITE_URL}/artist/${slug}`,
   });
   return null;
 }

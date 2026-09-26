@@ -11,6 +11,10 @@ export const LEGAL_ENTITY_NAME = "Pena e Artë";
 export const LEGAL_ENTITY_NIPT = "M12219042B";
 export const LEGAL_ENTITY_ADDRESS = "Rruga Pirro Goda, Tiranë, Albania";
 
+// The one canonical public host. Every canonical link, sitemap URL and shared public link uses it.
+// Must equal SITE_URL in src/shared/seo/siteRoutes.ts (a unit test asserts it).
+export const SITE_URL = "https://tattooos.co";
+
 // Short brand line — used for <title> and og:title.
 export const SITE_TAGLINE = "TattooOS — booking & studio management for tattoo shops";
 

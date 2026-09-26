@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PublicContentLayout } from "./PublicContentLayout";
 import { MarketingCtaRow } from "./MarketingCtaRow";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/shared/components/ui/accordion";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 interface FaqEntry {
   id: string;
@@ -83,8 +84,8 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
 export function FaqPage() {
   return (
     <PublicContentLayout
-      title="FAQ — TattooOS"
-      description="Answers to common questions about TattooOS: commission, deposits, consent forms, guest booking and getting started."
+      title={ROUTE_META["/faq"].title}
+      description={ROUTE_META["/faq"].description}
       canonicalPath="/faq"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Frequently asked questions</h1>

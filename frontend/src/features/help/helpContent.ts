@@ -1253,6 +1253,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Changing a handle after it's verified removes the badge until it's re-verified — the old proof only covered the previous handle.",
       "Every platform is one row with a status — Verified, Handle added, Not linked, or Unavailable — and at most one button. \"Unavailable\" (\"Not available on this server yet.\") means that platform isn't connected on this server yet — this is expected for some platforms and isn't something you can fix from Settings.",
       "Disconnecting asks you to confirm first, and keeps the handle displayed but removes the Verified badge. On an artist's Instagram row, the photos already synced stay on the portfolio; only new syncing stops.",
+      "Your public profile link — shown on the Social tab and behind \"View public profile\" — uses tattooos.co. That's the address to share with clients.",
       "Artists connect and verify their own accounts — you don't need your studio owner. An artist can only act on their own profile; on a colleague's profile the tab is view-only (\"Only the studio owner manages connections for this profile.\").",
       "The person who signs in on the platform's page is the account that gets linked, so an artist's own Instagram or TikTok is best connected by the artist. An owner who clicks Connect on an artist's profile would be signing in as themselves — use the code method or ask the artist to connect instead.",
     ],
@@ -1293,6 +1294,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Studio Settings and scroll to \"Marketing QR code\".",
       "Click \"Download PNG\" or \"Download SVG\" to save the QR code image.",
       "Optionally copy the plain link shown above the QR code to share directly.",
+    ],
+    tips: [
+      "The link and the QR code use your studio's public address on tattooos.co — that's the address to share and print. The page also opens under the app's own address, but tattooos.co is the one search engines and link previews use.",
     ],
   },
   {

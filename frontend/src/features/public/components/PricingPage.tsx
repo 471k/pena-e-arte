@@ -5,6 +5,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetPublicPlansQuery } from "../publicApi";
 import type { PublicPlanResponse } from "../publicApi";
 import { planHighlights } from "../planHighlights";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 const INTERVAL_UNIT: Readonly<Record<string, string>> = { Monthly: "month", Yearly: "year" };
 
@@ -56,8 +57,8 @@ export function PricingPage() {
 
   return (
     <PublicContentLayout
-      title="Pricing — TattooOS"
-      description="Simple pricing for tattoo studios, with no commission on your bookings."
+      title={ROUTE_META["/pricing"].title}
+      description={ROUTE_META["/pricing"].description}
       canonicalPath="/pricing"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Pricing</h1>

@@ -73,6 +73,7 @@ import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
 import { ArtistSocialTab } from "./ArtistSocialTab";
+import { SITE_URL } from "@/shared/constants/legalEntity";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -637,7 +638,7 @@ export function ArtistDetailPage() {
 
                   {isOwnProfile && artist.slug && (
                     <a
-                      href={`${import.meta.env.VITE_PUBLIC_URL ?? window.location.origin}/artist/${artist.slug}`}
+                      href={`${SITE_URL}/artist/${artist.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
