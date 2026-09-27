@@ -12,7 +12,7 @@ public class BoothRentScheduleConfiguration : TenantEntityConfiguration<BoothRen
     {
         base.Configure(builder);
 
-        builder.Property(b => b.AmountFixed).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(b => b.AmountFixed).HasColumnType("decimal(18,4)").IsRequired();
         builder.Property(b => b.Frequency).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(b => b.NextChargeDate).IsRequired();
 

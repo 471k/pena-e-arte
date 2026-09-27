@@ -354,6 +354,12 @@ public static class DataSeeder
             OwnerEmail = "owner@ink-soul.test",
             Latitude = 38.7169,
             Longitude = -9.1399,
+            // See docs/claude/architecture.md Decisions Log, "Studio currency (2026-09-27)":
+            // every existing studio migrates to CountryCode=AL/Currency=EUR regardless of its
+            // actual location, matching the production backfill. Studio1's seeded prices were
+            // always written as € in the comments below.
+            CountryCode = "AL",
+            Currency = "EUR",
             IsActive = true,
             TrialExpiresAt = now.AddDays(-16),
             CreatedAt = now.AddDays(-30)
@@ -384,6 +390,12 @@ public static class DataSeeder
             OwnerEmail = "owner@dark-canvas.test",
             Latitude = 41.1579,
             Longitude = -8.6291,
+            // Deliberately ALL, not this studio's default (see Studio1's comment above for the
+            // AL/EUR rationale) — dev/staging always needs one studio of each currency kind to
+            // click through. Every seeded price below is a realistic lek amount, not a straight
+            // x1 copy of a euro price.
+            CountryCode = "AL",
+            Currency = "ALL",
             IsActive = true,
             TrialExpiresAt = now.AddDays(10),
             CreatedAt = now.AddDays(-4)
@@ -988,6 +1000,7 @@ public static class DataSeeder
             AppointmentId = S1Appt6Id,
             ClientId = S1Client1Id,
             Amount = 300m,
+            Currency = "EUR",
             Status = PaymentStatus.Paid,
             ProviderReferenceId = "pi_seed_s1_6",
             PaidAt = now.AddDays(-30),
@@ -1002,6 +1015,7 @@ public static class DataSeeder
             AppointmentId = S1Appt7Id,
             ClientId = S1Client2Id,
             Amount = 250m,
+            Currency = "EUR",
             Status = PaymentStatus.Paid,
             ProviderReferenceId = "pi_seed_s1_7",
             PaidAt = now.AddDays(-60),
@@ -1016,6 +1030,7 @@ public static class DataSeeder
             AppointmentId = S1Appt8Id,
             ClientId = S1Client3Id,
             Amount = 450m,
+            Currency = "EUR",
             Status = PaymentStatus.Paid,
             ProviderReferenceId = "pi_seed_s1_8",
             PaidAt = now.AddDays(-20),
@@ -1030,6 +1045,7 @@ public static class DataSeeder
             AppointmentId = S1Appt9Id,
             ClientId = S1Client5Id,
             Amount = 180m,
+            Currency = "EUR",
             Status = PaymentStatus.Paid,
             ProviderReferenceId = "pi_seed_s1_9",
             PaidAt = now.AddDays(-45),
@@ -1044,6 +1060,7 @@ public static class DataSeeder
             AppointmentId = S1Appt10Id,
             ClientId = S1Client4Id,
             Amount = 50m,
+            Currency = "EUR",
             Status = PaymentStatus.Refunded,
             ProviderReferenceId = "pi_seed_s1_10",
             PaidAt = now.AddDays(-20),
@@ -1058,6 +1075,7 @@ public static class DataSeeder
             AppointmentId = S1Appt11Id,
             ClientId = S1Client5Id,
             Amount = 50m,
+            Currency = "EUR",
             Status = PaymentStatus.Refunded,
             ProviderReferenceId = "pi_seed_s1_11",
             PaidAt = now.AddDays(-15),
@@ -1595,7 +1613,7 @@ public static class DataSeeder
             LastName = "Rodrigues",
             Email = "luis.rodrigues@dark-canvas.test",
             Specializations = [TattooStyle.Blackwork],
-            HourlyRate = 80m,
+            HourlyRate = 8000m, // Studio2 (Dark Canvas) prices in ALL — see SeedStudio2EntitiesAsync note.
             UpdatedAt = now
         };
         s2a1.SetSlug("luis-rodrigues");
@@ -1697,7 +1715,7 @@ public static class DataSeeder
                 DurationMinutes = 180,
                 Status = AppointmentStatus.Confirmed,
                 DepositStatus = DepositStatus.Paid,
-                DepositAmount = 45m,
+                DepositAmount = 4500m,
                 Notes = "Blackwork lettering on forearm — 'Memento Mori'.",
                 UpdatedAt = now
             },
@@ -1729,7 +1747,7 @@ public static class DataSeeder
                 DurationMinutes = 120,
                 Status = AppointmentStatus.Completed,
                 DepositStatus = DepositStatus.Paid,
-                DepositAmount = 30m,
+                DepositAmount = 3000m,
                 Notes = "Small blackwork anchor on wrist — completed.",
                 UpdatedAt = now.AddDays(-14)
             },
@@ -1745,7 +1763,7 @@ public static class DataSeeder
                 DurationMinutes = 120,
                 Status = AppointmentStatus.Cancelled,
                 DepositStatus = DepositStatus.Refunded,
-                DepositAmount = 30m,
+                DepositAmount = 3000m,
                 Notes = "Client cancelled — work trip. Full refund issued.",
                 UpdatedAt = now.AddDays(-7)
             },
@@ -1761,7 +1779,7 @@ public static class DataSeeder
                 DurationMinutes = 240,
                 Status = AppointmentStatus.Confirmed,
                 DepositStatus = DepositStatus.Paid,
-                DepositAmount = 60m,
+                DepositAmount = 6000m,
                 Notes = "Dark forest back piece, session 1.",
                 UpdatedAt = now
             }
@@ -1778,7 +1796,8 @@ public static class DataSeeder
                 StudioId = Studio2Id,
                 AppointmentId = S2Appt3Id,
                 ClientId = S2Client1Id,
-                Amount = 100m,
+                Amount = 10000m,
+                Currency = "ALL",
                 Status = PaymentStatus.Paid,
                 ProviderReferenceId = "pi_seed_s2_3",
                 PaidAt = now.AddDays(-14),
@@ -1790,7 +1809,8 @@ public static class DataSeeder
                 StudioId = Studio2Id,
                 AppointmentId = S2Appt4Id,
                 ClientId = S2Client2Id,
-                Amount = 30m,
+                Amount = 3000m,
+                Currency = "ALL",
                 Status = PaymentStatus.Refunded,
                 ProviderReferenceId = "pi_seed_s2_4",
                 PaidAt = now.AddDays(-10),

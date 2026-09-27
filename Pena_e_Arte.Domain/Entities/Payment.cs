@@ -23,8 +23,9 @@ public class Payment : TenantEntity
     /// cash or legacy rows. Tells reconciliation/webhooks which IPaymentProvider to call.</summary>
     public string Provider { get; set; } = string.Empty;
 
-    /// <summary>ISO 4217 currency of the payment. Defaults to Albanian lek.</summary>
-    public string Currency { get; set; } = "ALL";
+    /// <summary>ISO 4217 currency of this payment — copied from Studio.Currency when the row is
+    /// created and never changed after. No default: a missing value must fail, not become lek.</summary>
+    public string Currency { get; set; } = string.Empty;
 
     /// <summary>When an authorization hold expires and must be auto-released (maps onto POK's
     /// expiresAfterMinutes). Enforced server-side by PaymentReconciliationJob's release pass.</summary>

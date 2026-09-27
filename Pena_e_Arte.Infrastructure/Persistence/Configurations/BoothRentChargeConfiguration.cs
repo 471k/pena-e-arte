@@ -12,7 +12,8 @@ public class BoothRentChargeConfiguration : TenantEntityConfiguration<BoothRentC
     {
         base.Configure(builder);
 
-        builder.Property(c => c.Amount).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(c => c.Amount).HasColumnType("decimal(18,4)").IsRequired();
+        builder.Property(c => c.Currency).HasMaxLength(3).IsRequired();
         builder.Property(c => c.ChargedDate).IsRequired();
         builder.Property(c => c.SettledNote).HasMaxLength(500);
 

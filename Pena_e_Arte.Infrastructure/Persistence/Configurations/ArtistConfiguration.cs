@@ -24,7 +24,7 @@ public class ArtistConfiguration : TenantEntityConfiguration<Artist>
                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
                .HasColumnType("json");
 
-        builder.Property(a => a.HourlyRate).HasColumnType("decimal(18,2)");
+        builder.Property(a => a.HourlyRate).HasColumnType("decimal(18,4)");
         builder.Property(a => a.CommissionRate).HasColumnType("decimal(5,2)");
         builder.Property(a => a.Slug).HasMaxLength(60).IsRequired(false);
         builder.Property(a => a.Bio).HasMaxLength(2000);

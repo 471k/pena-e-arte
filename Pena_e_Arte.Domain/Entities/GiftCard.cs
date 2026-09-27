@@ -14,6 +14,10 @@ public class GiftCard : TenantEntity
     public string Code { get; set; } = string.Empty;
     public decimal InitialBalance { get; set; }
     public decimal RemainingBalance { get; set; }
+
+    /// <summary>ISO 4217 currency of this gift card — copied from Studio.Currency at creation and
+    /// never changed after (a record of money that moved keeps its own copy).</summary>
+    public string Currency { get; set; } = string.Empty;
     public string PurchaserEmail { get; set; } = string.Empty;
     public string? RecipientEmail { get; set; }
     public GiftCardStatus Status { get; set; } = GiftCardStatus.Pending;
