@@ -198,5 +198,6 @@ public class RegisterStudioValidatorTests
         string name, string slug, string city, double lat, double lon,
         string ownerEmail = "owner@example.com", string nipt = "L01234567A",
         string addressLine1 = "Rua Central 5") =>
-        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail, nipt, addressLine1));
+        new(new RegisterStudioRequest(name, slug, city, lat, lon, ownerEmail, nipt, addressLine1,
+            CountryCode: "AL"));
 }

@@ -9,6 +9,7 @@ using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Studios.Commands;
 
@@ -39,6 +40,11 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
                                    ? null : command.Request.AddressLine2.Trim();
         studio.PostalCode = string.IsNullOrWhiteSpace(command.Request.PostalCode)
                                    ? null : command.Request.PostalCode.Trim();
+
+        // Country drives only the DEFAULT currency shown at registration — changing it here
+        // never touches studio.Currency.
+        if (!string.IsNullOrWhiteSpace(command.Request.CountryCode))
+            studio.CountryCode = command.Request.CountryCode.Trim().ToUpperInvariant();
 
         // InstagramHandle is deliberately NOT written here anymore. The frontend form no
         // longer collects it (Instagram is now managed via SocialLinksCard →
@@ -79,6 +85,8 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
 
         await db.SaveChangesAsync(ct);
 
+        bool currencyLocked = await StudioCurrencyLock.IsLockedAsync(db, studio.Id, ct);
+
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
             studio.Latitude, studio.Longitude,
@@ -88,7 +96,8 @@ public class UpdateMyStudioHandler(IAppDbContext db, ICurrentTenant tenant, ILog
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
             studio.IsSolo, studio.IsPublished, studio.Timezone,
-            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode,
+            CountryCode: studio.CountryCode, Currency: studio.Currency, CurrencyLocked: currencyLocked);
     }
 }
 
@@ -117,5 +126,10 @@ public class UpdateMyStudioValidator : AbstractValidator<UpdateMyStudioCommand>
         RuleFor(x => x.Request.AddressLine1).MaximumLength(300);
         RuleFor(x => x.Request.AddressLine2).MaximumLength(150);
         RuleFor(x => x.Request.PostalCode).MaximumLength(20);
+        RuleFor(x => x.Request.CountryCode)
+            .Length(2)
+            .Must(c => CountryCurrency.IsKnownCountry(c!.ToUpperInvariant()))
+            .WithMessage("Country must be a known ISO 3166-1 alpha-2 code.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.CountryCode));
     }
 }

@@ -30,6 +30,8 @@ public static class PublicEndpoints
 
         RouteGroupBuilder group = app.MapGroup("/api/v1/public");
 
+        group.MapGet("/countries/{countryCode}/default-currency", GetCountryDefaultCurrency)
+             .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}", GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}", GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
         // Crawler-facing HTML shell for link-preview bots and crawlers that read only the raw HTML
@@ -91,6 +93,16 @@ public static class PublicEndpoints
 
         http.Response.Headers.CacheControl = "public, max-age=3600";
         return Results.Text(SitemapXmlWriter.Build(urls, SiteBaseUrl), "application/xml");
+    }
+
+    private static async Task<IResult> GetCountryDefaultCurrency(
+        string countryCode,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        CountryDefaultCurrencyResponse result = await mediator.Send(
+            new GetCountryDefaultCurrencyQuery(countryCode), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetPublicStudio(

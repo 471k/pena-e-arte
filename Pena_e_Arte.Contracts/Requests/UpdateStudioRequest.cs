@@ -11,4 +11,7 @@ public record UpdateStudioRequest(
     string? Timezone = null,
     string? AddressLine1 = null,
     string? AddressLine2 = null,
-    string? PostalCode = null);
+    string? PostalCode = null,
+    /// <summary>ISO 3166-1 alpha-2. Never changes Currency — see Studio.CountryCode's doc
+    /// comment.</summary>
+    string? CountryCode = null);

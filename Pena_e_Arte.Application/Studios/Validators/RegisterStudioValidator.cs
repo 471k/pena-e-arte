@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentValidation;
 using Pena_e_Arte.Application.Studios.Commands;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Studios.Validators;
 
@@ -27,5 +28,19 @@ public class RegisterStudioValidator : AbstractValidator<RegisterStudioCommand>
         RuleFor(x => x.Request.PostalCode).MaximumLength(20);
         RuleFor(x => x.Request.Latitude).InclusiveBetween(-90, 90);
         RuleFor(x => x.Request.Longitude).InclusiveBetween(-180, 180);
+
+        RuleFor(x => x.Request.CountryCode)
+            .NotEmpty().Length(2)
+            .Must(CountryCurrency.IsKnownCountry)
+            .WithMessage("Country must be a known ISO 3166-1 alpha-2 code.");
+        RuleFor(x => x.Request.Currency)
+            .Must(c => CurrencyCatalog.IsSupported(c!))
+            .WithMessage("Currency must be a known ISO 4217 code.")
+            .When(x => x.Request.Currency is not null);
+        RuleFor(x => x.Request)
+            .Must(r => r.Currency is not null || CountryCurrency.DefaultCurrencyFor(r.CountryCode ?? "") is not null)
+            .WithMessage("Please choose your studio's currency.")
+            .WithName("Currency")
+            .When(x => x.Request.Currency is null && x.Request.CountryCode is not null);
     }
 }

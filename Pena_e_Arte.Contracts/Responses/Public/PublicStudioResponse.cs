@@ -22,4 +22,5 @@ public record PublicStudioResponse(
     string Timezone,
     string? AddressLine1 = null,
     string? AddressLine2 = null,
-    string? PostalCode = null);
+    string? PostalCode = null,
+    string Currency = "");

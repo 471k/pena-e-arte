@@ -24,4 +24,7 @@ public record StudioResponse(
     DateTime? PastDueSince = null,
     string? AddressLine1 = null,
     string? AddressLine2 = null,
-    string? PostalCode = null);
+    string? PostalCode = null,
+    string CountryCode = "",
+    string Currency = "",
+    bool CurrencyLocked = false);

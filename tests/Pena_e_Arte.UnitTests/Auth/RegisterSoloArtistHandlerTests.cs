@@ -127,6 +127,42 @@ public class RegisterSoloArtistHandlerTests
         _db.Studios.Select(s => s.Slug).Distinct().Count().Should().Be(2);
     }
 
+    // ── Studio currency (2026-09-27) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_NoCountry_DefaultsToAlbanianLek()
+    {
+        IdentitySucceeds();
+
+        await CreateSut().Handle(new RegisterSoloArtistCommand(ValidRequest()), default);
+
+        Studio studio = _db.Studios.Single();
+        studio.CountryCode.Should().Be("AL");
+        studio.Currency.Should().Be("ALL");
+    }
+
+    [Fact]
+    public async Task Handle_PolishCountry_StudioCurrencyIsPln()
+    {
+        IdentitySucceeds();
+        RegisterSoloArtistRequest req = ValidRequest() with { CountryCode = "PL" };
+
+        await CreateSut().Handle(new RegisterSoloArtistCommand(req), default);
+
+        _db.Studios.Single().Currency.Should().Be("PLN");
+    }
+
+    [Fact]
+    public async Task Handle_ExplicitCurrency_OverridesCountryDefault()
+    {
+        IdentitySucceeds();
+        RegisterSoloArtistRequest req = ValidRequest() with { CountryCode = "AL", Currency = "EUR" };
+
+        await CreateSut().Handle(new RegisterSoloArtistCommand(req), default);
+
+        _db.Studios.Single().Currency.Should().Be("EUR");
+    }
+
     [Fact]
     public async Task Handle_NoFreePlanSeeded_ThrowsInvalidOperationException()
     {

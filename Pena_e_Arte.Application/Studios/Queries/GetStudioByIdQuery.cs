@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 
 namespace Pena_e_Arte.Application.Studios.Queries;
@@ -15,25 +16,24 @@ public class GetStudioByIdHandler(IAppDbContext db)
     {
         // AdminOnly endpoint — IgnoreQueryFilters approved: usage #8 (cross-tenant read).
         // See architecture.md Approved Usages table.
-        StudioResponse? studio = await db.Studios
+        Studio studio = await db.Studios
             .IgnoreQueryFilters()
-            .Where(s => s.Id == query.StudioId)
-            .Select(s => new StudioResponse(
-                s.Id, s.Name, s.Slug, s.City,
-                s.Latitude, s.Longitude,
-                s.ShowPlatformBranding,
-                AllowBrandingRemoval: false,
-                AllowApiAccess: false,
-                s.TrialExpiresAt, s.CreatedAt, s.IsActive,
-                s.SlugLockedAt, s.PhoneNumber, s.InstagramHandle, s.Nipt,
-                s.IsSolo, s.IsPublished, s.Timezone,
-                SubscriptionStatus: null, PastDueSince: null,
-                AddressLine1: s.AddressLine1, AddressLine2: s.AddressLine2, PostalCode: s.PostalCode))
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(s => s.Id == query.StudioId, ct)
+            ?? throw new NotFoundException("Studio", query.StudioId);
 
-        if (studio is null)
-            throw new NotFoundException("Studio", query.StudioId);
+        bool currencyLocked = await StudioCurrencyLock.IsLockedAsync(db, studio.Id, ct);
 
-        return studio;
+        return new StudioResponse(
+            studio.Id, studio.Name, studio.Slug, studio.City,
+            studio.Latitude, studio.Longitude,
+            studio.ShowPlatformBranding,
+            AllowBrandingRemoval: false,
+            AllowApiAccess: false,
+            studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
+            studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
+            studio.IsSolo, studio.IsPublished, studio.Timezone,
+            SubscriptionStatus: null, PastDueSince: null,
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode,
+            CountryCode: studio.CountryCode, Currency: studio.Currency, CurrencyLocked: currencyLocked);
     }
 }

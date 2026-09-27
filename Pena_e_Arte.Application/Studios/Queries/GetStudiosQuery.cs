@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Entities;
 
 namespace Pena_e_Arte.Application.Studios.Queries;
 
@@ -12,9 +13,18 @@ public class GetStudiosHandler(IAppDbContext db)
 {
     public async Task<List<StudioResponse>> Handle(GetStudiosQuery query, CancellationToken ct)
     {
-        return await db.Studios
+        List<Studio> studios = await db.Studios
             .OrderBy(s => s.Name)
-            .Select(s => new StudioResponse(
+            .ToListAsync(ct);
+
+        List<StudioResponse> result = new(studios.Count);
+        foreach (Studio s in studios)
+        {
+            // Admin studio list — not hot-path/paginated at any real scale today, so a per-row
+            // lock check (four cheap EXISTS queries each) is simpler than hand-writing a
+            // correlated-subquery projection for the same result.
+            bool currencyLocked = await StudioCurrencyLock.IsLockedAsync(db, s.Id, ct);
+            result.Add(new StudioResponse(
                 s.Id, s.Name, s.Slug, s.City,
                 s.Latitude, s.Longitude,
                 s.ShowPlatformBranding,
@@ -24,7 +34,10 @@ public class GetStudiosHandler(IAppDbContext db)
                 s.SlugLockedAt, s.PhoneNumber, s.InstagramHandle, s.Nipt,
                 s.IsSolo, s.IsPublished, s.Timezone,
                 SubscriptionStatus: null, PastDueSince: null,
-                AddressLine1: s.AddressLine1, AddressLine2: s.AddressLine2, PostalCode: s.PostalCode))
-            .ToListAsync(ct);
+                AddressLine1: s.AddressLine1, AddressLine2: s.AddressLine2, PostalCode: s.PostalCode,
+                CountryCode: s.CountryCode, Currency: s.Currency, CurrencyLocked: currencyLocked));
+        }
+
+        return result;
     }
 }
