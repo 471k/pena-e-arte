@@ -15,6 +15,7 @@ import {
 } from "../billingApi";
 import { priceFor, purchasablePriceFor, type PlanResponse, type PlanPriceResponse } from "../billing.types";
 import { yearlySavingLabel, yearlySavingPercentFloor } from "../utils/yearlySavingLabel";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 
 // Purchasable price for a plan card at the given cycle. Free is a special case: it has
 // no Yearly PlanPrice row (D5) but must still render as a selectable "Free" card while
@@ -25,10 +26,6 @@ function purchasableCardPrice(plan: PlanResponse, cycle: "Monthly" | "Yearly"): 
     if (monthly && monthly.price === 0) return monthly;
   }
   return purchasablePriceFor(plan, cycle);
-}
-
-function formatPrice(price: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(price);
 }
 
 function PlanCard({
@@ -89,11 +86,11 @@ function PlanCard({
           {unavailable ? null : price.price === 0 ? (
             <p className="font-semibold text-green-600 dark:text-green-400">Free</p>
           ) : (
-            <p className="font-semibold">{formatPrice(price.price)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
+            <p className="font-semibold">{formatCurrency(price.price, plan.currency)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
           )}
           {!unavailable && isYearly && price.price > 0 && (
             <p className="text-xs text-green-600 dark:text-green-400">
-              {formatPrice(perMonth)}/mo{label ? ` · ${label}` : ""}
+              {formatCurrency(perMonth, plan.currency)}/mo{label ? ` · ${label}` : ""}
             </p>
           )}
           {!unavailable && !isYearly && deferredUntilLabel && (

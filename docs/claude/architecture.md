@@ -4779,3 +4779,49 @@ matching assertions (a bot UA must not get the 200 SPA shell; a normal UA still 
   and Boulevard, and absolute on GlossGenius and Boulevard. So per-route raw-HTML metadata is the category
   norm and this change matches it. **Not measured:** whether those products server-render their provider
   pages (the studio/artist equivalent) — decide that with the crawler-shell follow-up, not from this sample.
+
+## Plan currency — one source of truth — 2026-09-27
+
+### Problem
+Found while making the public Pricing page (PR #189) reflect the live `Plan`/`PlanPrice` tables:
+every surface that shows a plan's price formatted money independently, and one of them had it
+wrong. `SubscribePage.tsx` (the owner's plan picker) hardcoded `Intl.NumberFormat("en-US", {
+currency: "USD" })` — it showed **$** while the platform bills in **EUR** (`MrrRules.
+PlatformCurrency`) everywhere else: Stripe prices, `Subscription.BilledCurrency`,
+`BillingPage.tsx`'s own formatter, and the new public `PublicPlanResponse.currency`. Three more
+components (`BillingPage.tsx`, the admin `PlanEditPage.tsx`/`PlanManagementPage.tsx`) each
+independently hardcoded their own `Intl.NumberFormat` call — all three happened to say EUR
+correctly, in three different locales (`pt-PT`, `en-GB`, `en-GB`) with no shared fractional-amount
+handling, so a fractional price (e.g. a local dev DB's `98.6`) would have rendered `€98.6` instead
+of `€98.60` on all three, the same rendering bug already found and fixed once on the public Pricing
+page (PR #189) but not carried to the others. Separately, the backend had two independent `"eur"`
+literals (`MrrRules.PlatformCurrency` and a private copy in `CreatePlanCommand.cs`) that could have
+silently drifted apart.
+
+### What shipped
+- **Backend:** `PlanResponse` (the authenticated/admin plan contract) gained a `Currency` field,
+  sourced from `MrrRules.PlatformCurrency.ToUpperInvariant()` — the same source `PublicPlanResponse`
+  already used. Populated by `GetPlansHandler` and `CreatePlanHandler.Map` (shared by Create/Update).
+  `CreatePlanCommand.cs`'s private `"eur"` constant was removed in favour of reading `MrrRules.
+  PlatformCurrency` directly, so there is exactly one place the currency literal is defined.
+- **Frontend:** one shared `formatCurrency(amount, currencyCode)` (`shared/utils/formatCurrency.ts`)
+  replaces five independent `Intl.NumberFormat` call sites (`PricingPage.tsx`, `SubscribePage.tsx`,
+  `BillingPage.tsx`, `PlanEditPage.tsx`, `PlanManagementPage.tsx`), each now passing the plan's own
+  `.currency` field instead of a component-local guess. Fixes the actual bug (SubscribePage showing
+  $) and the fractional-decimal inconsistency in the same change.
+- Confirmed live end to end, not just in tests: created a plan through the real admin API — it
+  appeared on the public plans endpoint immediately (correct currency, correct price, sorted by
+  price); deleted it — it disappeared immediately. No caching anywhere in the read path (backend or
+  nginx) that could make an admin's change lag behind what any of these pages show. Real-browser
+  pass across all four authenticated/public surfaces with two different seeded owner accounts
+  confirmed every one now reads `€`, none read `$`.
+
+### Scope note — "automatically synced" across already-open tabs
+This fixes single-source-of-truth correctness (every page reads the live `Plan`/`PlanPrice` rows,
+with no separate hardcoded copy anywhere, and now with one currency source too) and confirms there
+is no caching layer to go stale. It does **not** add real-time push (e.g. a SignalR event) that
+would update an already-open browser tab the moment an admin saves a change elsewhere — every
+surface here already refetches on navigation/mount (`SubscribePage.tsx` uses
+`refetchOnMountOrArgChange: true`; the public Pricing page is fetched fresh on every visit), so a
+change is live for the next page load, not pushed into a tab a visitor already has open. That would
+be a distinct, larger feature; flagged here rather than silently built or silently skipped.

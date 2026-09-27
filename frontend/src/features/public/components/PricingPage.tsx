@@ -6,18 +6,9 @@ import { useGetPublicPlansQuery } from "../publicApi";
 import type { PublicPlanResponse } from "../publicApi";
 import { planHighlights } from "../planHighlights";
 import { ROUTE_META } from "@/shared/seo/siteRoutes";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 
 const INTERVAL_UNIT: Readonly<Record<string, string>> = { Monthly: "month", Yearly: "year" };
-
-function formatMoney(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-    // Whole amounts read "€29", fractional ones "€98.60" — never "€98.6".
-    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
 
 function PlanCard({ plan }: { plan: PublicPlanResponse }) {
   const monthly = plan.prices.find((p) => p.interval === "Monthly");
@@ -31,7 +22,7 @@ function PlanCard({ plan }: { plan: PublicPlanResponse }) {
       <h2 className="text-lg font-semibold">{plan.name}</h2>
       {headline && (
         <p className="mt-1 text-2xl font-semibold">
-          {formatMoney(headline.price, plan.currency)}
+          {formatCurrency(headline.price, plan.currency)}
           <span className="text-sm font-normal text-muted-foreground">
             {" "}/ {INTERVAL_UNIT[headline.interval] ?? headline.interval.toLowerCase()}
           </span>
@@ -39,7 +30,7 @@ function PlanCard({ plan }: { plan: PublicPlanResponse }) {
       )}
       {monthly && yearly && (
         <p className="mt-1 text-sm text-muted-foreground">
-          or {formatMoney(yearly.price, plan.currency)} / year
+          or {formatCurrency(yearly.price, plan.currency)} / year
           {monthsFree >= 1 && ` — ${monthsFree} ${monthsFree === 1 ? "month" : "months"} free`}
         </p>
       )}

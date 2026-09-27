@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Billing;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 
@@ -39,7 +40,8 @@ public class GetPlansHandler(IAppDbContext db, ILogger<GetPlansHandler> logger)
                 p.Prices.Select(pp => new PlanPriceResponse(
                     pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList(),
                 null,
-                null))
+                null,
+                MrrRules.PlatformCurrency.ToUpperInvariant()))
             .ToListAsync(ct);
 
         // D7 — the yearly saving is computed here, from the materialised active

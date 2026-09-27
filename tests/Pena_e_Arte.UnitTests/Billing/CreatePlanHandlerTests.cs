@@ -29,6 +29,20 @@ public class CreatePlanHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ValidRequest_ReturnsThePlatformCurrency()
+    {
+        PlanResponse result = await CreateSut().Handle(
+            new CreatePlanCommand(new CreatePlanRequest(
+                "Pro", 17, [new PlanPriceRequest("Monthly", 49m)])), default);
+
+        // Not hardcoded in this test on purpose — asserted against the same constant the
+        // handler reads (MrrRules.PlatformCurrency), so a future currency change can't make
+        // this test pass while the handler and the constant it reads have drifted apart.
+        result.Currency.Should().Be(
+            Pena_e_Arte.Application.Platform.Revenue.MrrRules.PlatformCurrency.ToUpperInvariant());
+    }
+
+    [Fact]
     public async Task Handle_ValidRequest_PersistsPlan()
     {
         await CreateSut().Handle(

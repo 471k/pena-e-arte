@@ -21,6 +21,7 @@ const PLAN_STARTER: PlanResponse = {
   id:                    "plan-starter",
   name:                  "Starter",
   yearlyDiscountPercent: 0,
+  currency:              "EUR",
   yearlySavingAmount:    null,
   yearlyMonthsFree:      null,
   allowBrandingRemoval:  false,
@@ -44,6 +45,7 @@ const PLAN_PREMIUM: PlanResponse = {
   id:                    "plan-premium",
   name:                  "Premium",
   yearlyDiscountPercent: 17,
+  currency:              "EUR",
   yearlySavingAmount:    null,
   yearlyMonthsFree:      null,
   allowBrandingRemoval:  true,
@@ -69,6 +71,7 @@ const PLAN_GROWTH_UNLINKED_YEARLY: PlanResponse = {
   id:                    "plan-growth",
   name:                  "Growth",
   yearlyDiscountPercent: 17,
+  currency:              "EUR",
   yearlySavingAmount:    null,
   yearlyMonthsFree:      null,
   allowBrandingRemoval:  true,
@@ -93,6 +96,7 @@ const FREE_PLAN: PlanResponse = {
   id:                    "plan-free",
   name:                  "Free",
   yearlyDiscountPercent: 0,
+  currency:              "EUR",
   yearlySavingAmount:    null,
   yearlyMonthsFree:      null,
   allowBrandingRemoval:  false,
@@ -317,8 +321,11 @@ describe("SubscribePage", () => {
     await user.click(screen.getByRole("button", { name: /^yearly/i }));
     await screen.findByText("Premium");
 
-    // $490 / 12 ≈ $40.83 shown in the plan card (not the toggle badge)
-    expect(screen.getByText(/\$40\.83\/mo/i)).toBeInTheDocument();
+    // €490 / 12 ≈ €40.83 shown in the plan card (not the toggle badge). The platform bills
+    // in EUR (MrrRules.PlatformCurrency) — this used to read $40.83 before the plan's own
+    // .currency field existed and SubscribePage's formatter was hardcoded to USD (found
+    // 2026-09-27 via the public Pricing page showing € while this page showed $).
+    expect(screen.getByText(/€40\.83\/mo/i)).toBeInTheDocument();
     expect(screen.getByText(/2 months free/i, { selector: "p" })).toBeInTheDocument();
   });
 
