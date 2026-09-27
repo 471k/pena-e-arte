@@ -32,6 +32,10 @@ public static class PublicEndpoints
 
         group.MapGet("/studios/{slug}", GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}", GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
+        // Crawler-facing HTML shell for link-preview bots and crawlers that read only the raw HTML
+        // (search-visibility Phase 5) — nginx routes matching User-Agents here instead of the SPA.
+        group.MapGet("/seo/studios/{slug}", GetStudioSeoShell).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/seo/artists/{slug}", GetArtistSeoShell).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/nearby", GetNearbyStudios).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}/reviews", GetStudioReviews).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}/reviews", GetArtistReviews).AllowAnonymous().RequireRateLimiting("public-read");
@@ -111,6 +115,32 @@ public static class PublicEndpoints
         PublicArtistResponse? result =
             await mediator.Send(new GetPublicArtistQuery(slug, currentUserId), ct);
         return result is null ? Results.NotFound() : Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetStudioSeoShell(
+        string slug,
+        HttpContext http,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PublicStudioResponse? result = await mediator.Send(new GetPublicStudioQuery(slug), ct);
+        if (result is null) return Results.NotFound();
+
+        http.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Text(SeoShellHtmlWriter.BuildStudioShell(result, SiteBaseUrl), "text/html; charset=utf-8");
+    }
+
+    private static async Task<IResult> GetArtistSeoShell(
+        string slug,
+        HttpContext http,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        PublicArtistResponse? result = await mediator.Send(new GetPublicArtistQuery(slug, null), ct);
+        if (result is null) return Results.NotFound();
+
+        http.Response.Headers.CacheControl = "public, max-age=300";
+        return Results.Text(SeoShellHtmlWriter.BuildArtistShell(result, SiteBaseUrl), "text/html; charset=utf-8");
     }
 
     private static async Task<IResult> GetNearbyStudios(
