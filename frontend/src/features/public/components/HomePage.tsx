@@ -28,6 +28,9 @@ export function HomePage() {
         </Link>
       </div>
 
+      {/* Policy links are not repeated here — SiteFooter (below, via PublicContentLayout) already
+          renders them identically on every public page, Home included; a second copy on this page
+          was pure duplication (found 2026-09-27, both rows visible on screen at once). */}
       <nav aria-label="Explore" className="mt-8 flex flex-wrap gap-x-4 gap-y-2 text-sm">
         <Link to="/features" className="underline underline-offset-2 hover:text-foreground">
           Features
@@ -37,21 +40,6 @@ export function HomePage() {
         </Link>
         <Link to="/faq" className="underline underline-offset-2 hover:text-foreground">
           FAQ
-        </Link>
-      </nav>
-
-      <nav aria-label="Policies" className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-        <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">
-          Privacy Policy
-        </Link>
-        <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
-          Terms of Service
-        </Link>
-        <Link to="/refund-policy" className="underline underline-offset-2 hover:text-foreground">
-          Refund Policy
-        </Link>
-        <Link to="/contact" className="underline underline-offset-2 hover:text-foreground">
-          Contact
         </Link>
       </nav>
     </PublicContentLayout>
