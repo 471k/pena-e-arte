@@ -1,13 +1,14 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { MarketingCtaRow } from "./MarketingCtaRow";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 // Marketing page /use/booking. Copy describes shipped behaviour only (guest checkout,
 // artist schedules/time off/closures, waitlist, client self-service cancel/reschedule).
 export function UseCaseBookingPage() {
   return (
     <PublicContentLayout
-      title="Online booking for tattoo studios — TattooOS"
-      description="Let clients book the artist and time they want, without an account. Availability is checked before a booking is confirmed."
+      title={ROUTE_META["/use/booking"].title}
+      description={ROUTE_META["/use/booking"].description}
       canonicalPath="/use/booking"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Online booking for tattoo studios</h1>

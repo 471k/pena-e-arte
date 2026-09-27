@@ -3,6 +3,7 @@ import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useGetMyStudioQuery, useGetStudioQrCodeQuery, useLazyGetStudioQrCodeQuery } from "../studiosApi";
+import { SITE_URL } from "@/shared/constants/legalEntity";
 
 export function QrCodeSection() {
   const { data: studio } = useGetMyStudioQuery();
@@ -49,7 +50,7 @@ export function QrCodeSection() {
         </p>
 
         <a
-          href={`https://tattooos.co/s/${studio.slug}`}
+          href={`${SITE_URL}/s/${studio.slug}`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs font-mono text-muted-foreground hover:text-foreground underline underline-offset-2 break-all"

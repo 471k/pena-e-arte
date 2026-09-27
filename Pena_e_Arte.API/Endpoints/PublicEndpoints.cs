@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Public;
 using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Application.Reviews.Commands;
@@ -78,24 +79,14 @@ public static class PublicEndpoints
     }
 
     private static async Task<IResult> GetSitemap(
+        HttpContext http,
         ISender mediator,
         CancellationToken ct)
     {
         List<SitemapUrlEntry> urls = await mediator.Send(new GetSitemapUrlsQuery(), ct);
 
-        var sb = new System.Text.StringBuilder();
-        sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        sb.Append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
-        foreach (SitemapUrlEntry url in urls)
-        {
-            sb.Append("<url>");
-            sb.Append($"<loc>{SiteBaseUrl}{url.Path}</loc>");
-            sb.Append($"<lastmod>{url.LastModified:yyyy-MM-dd}</lastmod>");
-            sb.Append("</url>");
-        }
-        sb.Append("</urlset>");
-
-        return Results.Text(sb.ToString(), "application/xml");
+        http.Response.Headers.CacheControl = "public, max-age=3600";
+        return Results.Text(SitemapXmlWriter.Build(urls, SiteBaseUrl), "application/xml");
     }
 
     private static async Task<IResult> GetPublicStudio(

@@ -32,6 +32,7 @@ import { ReviewSection }            from "./ReviewSection";
 import { PublicPageHeader }         from "./PublicPageHeader";
 import { useIsClientRole } from "@/shared/hooks/useIsClientRole";
 import { ConductReportDialog } from "@/features/conduct-reports/components/ConductReportDialog";
+import { SITE_URL } from "@/shared/constants/legalEntity";
 
 const SCHEMA_DAY_NAMES = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
@@ -48,7 +49,7 @@ function StudioMeta({
     title:       `${name} — Book a Tattoo on TattooOS`,
     description: description ?? `Book your next tattoo at ${name}.`,
     ogImage:     coverImageUrl ?? undefined,
-    canonical:   `https://tattooos.co/s/${slug}`,
+    canonical:   `${SITE_URL}/s/${slug}`,
   });
   const openHours = hours.filter((h) => h.isOpen);
   useStructuredData({
@@ -56,7 +57,7 @@ function StudioMeta({
     "@type":       "TattooParlor",
     name,
     description:   description ?? undefined,
-    url:           `https://tattooos.co/s/${slug}`,
+    url:           `${SITE_URL}/s/${slug}`,
     image:         coverImageUrl ?? undefined,
     address:       { "@type": "PostalAddress", addressLocality: city },
     ...(hasPinnedLocation(latitude, longitude)

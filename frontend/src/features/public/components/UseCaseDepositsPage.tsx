@@ -1,5 +1,6 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { MarketingCtaRow } from "./MarketingCtaRow";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 // Marketing page /use/deposits. Copy is limited to what is verified in the code: deposit
 // rules (fixed amount or percentage, cancellation window, refund share on late cancel),
@@ -9,8 +10,8 @@ import { MarketingCtaRow } from "./MarketingCtaRow";
 export function UseCaseDepositsPage() {
   return (
     <PublicContentLayout
-      title="Tattoo deposits without the chasing — TattooOS"
-      description="Set your own deposit rules and take deposits at booking. Deposits go to your studio, with no commission on bookings."
+      title={ROUTE_META["/use/deposits"].title}
+      description={ROUTE_META["/use/deposits"].description}
       canonicalPath="/use/deposits"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Deposits for tattoo bookings</h1>

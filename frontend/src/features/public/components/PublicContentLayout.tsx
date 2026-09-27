@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { PublicPageHeader } from "./PublicPageHeader";
 import { SiteFooter } from "@/shared/components/SiteFooter";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { SITE_URL } from "@/shared/constants/legalEntity";
 
 interface PublicContentLayoutProps {
   title: string;
@@ -23,7 +24,7 @@ export function PublicContentLayout({
   useDocumentMeta({
     title,
     description,
-    canonical: `${window.location.origin}${canonicalPath}`,
+    canonical: `${SITE_URL}${canonicalPath}`,
   });
 
   return (

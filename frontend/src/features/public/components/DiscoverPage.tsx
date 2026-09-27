@@ -13,6 +13,8 @@ import {
 } from "../publicApi";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useAppSelector } from "@/app/hooks";
+import { SITE_URL } from "@/shared/constants/legalEntity";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -151,9 +153,9 @@ function StudioSkeleton() {
 
 function DiscoverMeta() {
   useDocumentMeta({
-    title:       "Discover Tattoo Art Near You — TattooOS",
-    description: "Browse tattoo portfolios and studios near your location.",
-    canonical:   "https://tattooos.co/discover",
+    title:       ROUTE_META["/discover"].title,
+    description: ROUTE_META["/discover"].description,
+    canonical:   `${SITE_URL}/discover`,
   });
   return null;
 }

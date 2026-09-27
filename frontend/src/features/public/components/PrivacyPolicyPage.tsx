@@ -6,6 +6,7 @@ import {
   LEGAL_ENTITY_NIPT,
   LEGAL_ENTITY_ADDRESS,
 } from "@/shared/constants/legalEntity";
+import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -22,8 +23,8 @@ function Section({ heading, children }: { heading: string; children: React.React
 export function PrivacyPolicyPage() {
   return (
     <PublicContentLayout
-      title="Privacy Policy — TattooOS"
-      description="How TattooOS collects, uses, and protects your personal data."
+      title={ROUTE_META["/privacy"].title}
+      description={ROUTE_META["/privacy"].description}
       canonicalPath="/privacy"
     >
       <h1 className="text-2xl font-semibold tracking-tight">Privacy Policy</h1>

@@ -45,11 +45,14 @@ describe("useDocumentMeta", () => {
     cleanup();
   });
 
-  it("skips og:image when ogImage is undefined", () => {
+  it("falls back to the default og:image and twitter:image when ogImage is undefined", () => {
     renderHook(() =>
       useDocumentMeta({ title: "T", canonical: "https://example.com/" }),
     );
-    expect(document.head.querySelector('meta[property="og:image"]')).toBeNull();
+    expect(document.head.querySelector('meta[property="og:image"]')?.getAttribute("content"))
+      .toBe("https://tattooos.co/og-image.png");
+    expect(document.head.querySelector('meta[name="twitter:image"]')?.getAttribute("content"))
+      .toBe("https://tattooos.co/og-image.png");
     cleanup();
   });
 

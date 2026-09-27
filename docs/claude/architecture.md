@@ -1143,7 +1143,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 37 | `DataSeeder` | Startup seed data — runs before any request or tenant scope exists | System (startup) |
 | 38 | `NotificationPreferenceService` | Cross-tenant `StudioNotificationPreference` lookup when sending a notification about a studio outside the current scope (job/system context) | System/Hangfire job |
 | 39 | `GetHelpSearchInsightsHandler` | Cross-tenant aggregate of help search queries for the admin product-insights view | AdminOnly |
-| 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — active studio/artist slugs across all tenants for `/sitemap.xml` | Anonymous |
+| 40 | `GetSitemapUrlsHandler` | Public SEO sitemap — studio slugs (active AND published) and artist slugs (active, of an active studio) across all tenants for `/sitemap.xml`, so only pages that actually render are listed; the studio join inside the artist query uses `IgnoreQueryFilters()` too | Anonymous |
 | 41 | `RecordTrafficEventHandler` | Cross-tenant artist-slug lookup to resolve `StudioId` for an anonymous `/artist/{slug}` traffic beacon, mirroring `RecordArtistView`'s own lookup (#13) | Anonymous |
 | 42 | `ExchangeSocialOAuthCodeHandler` (Artists + Studios) | Resolve the OAuth subject's real `StudioId` from an anonymous social-verification callback (studio Instagram, TikTok, Facebook, X, YouTube), and check the studio isn't suspended before writing a verified `SocialAccountLink`; subjectId is pre-authenticated via `ISocialOAuthStateSigner` HMAC before this handler runs — same shape as entry #22 for the artist-Instagram callback | Anonymous (state-signed) |
 | 43 | `FileArtistConductReportCommand`, `FileStudioConductReportCommand` | Cross-tenant artist/studio + appointment/client lookup for conduct-report filing — identical join shape to entry #34's review submission, minus the `Completed`/dedup filters (see Decisions Log, "Client Conduct Reports") | ClientOnly |
@@ -4691,3 +4691,72 @@ builder. One SPA, one image, one Deployment, two hostnames.
   the marketing project; the numbers and flags are live.
 - Google Search Console, Analytics, Meta/TikTok/X/LinkedIn domain verification and footer social
   links, per the domain and website to-do.
+
+## Search Visibility — 2026-09-27
+
+### Problem
+The marketing site was live on `tattooos.co` but search engines and link-preview bots still saw one shared
+`<title>` for every route, a `/sitemap.xml` that returned the SPA's HTML, no `noindex` on logged-in pages,
+duplicate `og:*` tags on every page, a relative and missing `og:image`, and marketing pages whose canonical
+followed the request host instead of the apex.
+
+### What shipped
+- **Sitemap.** `/sitemap.xml` is proxied to the API by nginx (an exact-match location). The generator now
+  lists only pages that render: studios need `IsActive && IsPublished` (mirroring `GetPublishedStudioBySlugAsync`),
+  artists need an active studio (and deliberately not `IsPublished`), plus the marketing pages. XML is escaped
+  by a pure `SitemapXmlWriter`, `lastmod` is omitted for static pages, and the response is cacheable for an hour.
+- **`noindex` for private routes.** nginx sets `X-Robots-Tag: noindex, nofollow` for authenticated and
+  utility routes and for `/embed`. The map is keyed on `$request_uri`, NOT `$uri` (`try_files ... /index.html`
+  rewrites `$uri` before `add_header` runs, so a `$uri` map never matches), is case-insensitive (React Router
+  matches paths that way) and covers query strings. Its default is `${IS_STAGING}` so staging stays blanket
+  `noindex` without concatenating two identical values into a malformed header. `robots.txt` disallows only
+  `/api/`, `/hubs/`, `/hangfire`: a disallowed URL is never fetched, so its `noindex` would never be seen.
+- **Per-route metadata in the raw HTML.** `frontend/src/shared/seo/siteRoutes.ts` is the single source of truth
+  for the static routes' title and description; the pages and `scripts/prerender-meta.ts` both read it. After
+  `vite build` the script writes `dist/<route>.html` (the marked head region of `index.html` replaced), and
+  nginx serves it via `try_files $uri $uri.html ...`. The page body is unchanged, still client-rendered.
+- **One canonical host.** `SITE_URL` (`legalEntity.ts`) replaces every hard-coded apex literal, and
+  `PublicContentLayout` now uses it instead of `window.location.origin`. The `index.html` head region is
+  tagged `data-doc-meta` so `useDocumentMeta` replaces those tags instead of duplicating them, and the hook
+  falls back to the default og-image (otherwise a page without its own image would end up with none). The
+  default region deliberately has NO canonical and NO `og:url`: that file is also served for every dynamic
+  route, and a canonical of `/` there would tell crawlers each studio/artist page duplicates the home page
+  (caught by checking the raw HTML in a real browser; now a permanent CI assertion). Only the per-route files
+  carry them.
+- **og-image.** A generated placeholder (`scripts/generate-og-image.mjs`, wordmark and tagline), absolute
+  URL. Marketing should replace `frontend/public/og-image.png` with real artwork.
+- **Owner-facing links use the apex.** The artist's "View public profile" and Social-tab links moved from
+  `VITE_PUBLIC_URL` to `SITE_URL`; the QR code already did. The embed snippet stays on `VITE_PUBLIC_URL`.
+  Help and the standalone manual say so.
+
+### The finding behind the CI change
+nginx was never exercised by CI: Playwright runs against `pnpm dev` (Vite) and the `docker-build` job only
+built the image. Running the template through a real nginx while developing this exposed three bugs that no
+unit test could have caught (the `$uri` map, a wrong content-type assertion, and the malformed
+`noindex, nofollownoindex, nofollow` header on staging). The `docker-build` job now loads the image, runs it
+and asserts routing, robots headers, per-route titles, the sitemap proxy and `nginx -t`; a deliberately
+broken routing rule was confirmed to make it fail.
+
+### Guards added
+`seoRouteCoverage.test.ts` walks the real route tree and fails, naming the path, if a route is neither in its
+public-indexable list nor matched by the nginx `noindex` map. `siteRoutes.test.ts` asserts the backend
+sitemap's marketing list equals the manifest, and that `index.html`'s defaults match `legalEntity.ts`.
+
+### Not done
+- **Crawler HTML shell for `/s/:slug` and `/artist/:slug`** (prompt Phase 5). Metadata for those pages is
+  still client-side only (canonical and JSON-LD are set by the SPA); link-preview bots that do not run JS see
+  the default metadata. Tracked as a separate follow-up PR because it adds two anonymous endpoints and the
+  most delicate nginx routing (`if`/`error_page`/named-location rewrite).
+- Full server-side rendering or a prerendered page body; JSON-LD for the marketing pages.
+- Trailing-slash variants (`/pricing/`) fall through to the SPA shell and get the default metadata; the
+  client-side canonical still names the right URL.
+- 301 from the app host to the apex for marketing paths (decision D3: canonical links are enough for now).
+- Search Console, Analytics and platform domain verification (manual, per the to-do).
+- **Benchmark (rule 6), raw HTML fetched with curl on 2026-09-27** (marketing home pages only): Fresha
+  (`www.fresha.com`), Booksy (`booksy.com/en-us`), GlossGenius (`glossgenius.com`), Mangomint
+  (`www.mangomint.com`) and Boulevard (`www.joinblvd.com`) all carry a distinct `<title>` and a canonical
+  link in the raw HTML (5 of 5 reachable; Vagaro returned 403 to the fetch). Fresha, Mangomint and Boulevard
+  serve an XML sitemap at `/sitemap.xml`. `og:image` was present in the raw HTML on GlossGenius, Mangomint
+  and Boulevard, and absolute on GlossGenius and Boulevard. So per-route raw-HTML metadata is the category
+  norm and this change matches it. **Not measured:** whether those products server-render their provider
+  pages (the studio/artist equivalent) — decide that with the crawler-shell follow-up, not from this sample.
