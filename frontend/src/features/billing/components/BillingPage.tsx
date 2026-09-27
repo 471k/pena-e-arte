@@ -28,6 +28,12 @@ import {
 } from "../billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { priceFor, type SubscriptionResponse, type PlanResponse, type PlanUsageDimension, type PlanUsageResponse } from "../billing.types";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
+
+// GetCancellationQuoteQuery's response has no currency field of its own (there's only ever
+// one platform currency, MrrRules.PlatformCurrency) — used only where no PlanResponse with
+// its own .currency is in scope (the cancel-quote dialog below).
+const PLATFORM_CURRENCY = "EUR";
 
 function daysUntil(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
@@ -35,14 +41,6 @@ function daysUntil(iso: string): number {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatEur(euros: number): string {
-  return new Intl.NumberFormat("pt-PT", {
-    style:                 "currency",
-    currency:              "EUR",
-    minimumFractionDigits: 0,
-  }).format(euros);
 }
 
 // Owner-facing cancel flow — replaces Stripe-portal cancellation (A4). Shown from both the
@@ -79,7 +77,7 @@ function CancelSubscriptionDialog({ open, onOpenChange, isCashBilled, isYearly }
     }
     if (quote.billingInterval === "Yearly") {
       return quote.refundAmount > 0
-        ? `You'll get ${formatEur(quote.refundAmount)} back and lose access today.`
+        ? `You'll get ${formatCurrency(quote.refundAmount, PLATFORM_CURRENCY)} back and lose access today.`
         : "You won't get a refund (you've used the full value of this year's plan) and you'll lose access today.";
     }
     return `You'll keep access until ${formatDate(quote.accessEndDate)}. No refund — you've already paid for this period.`;
@@ -87,7 +85,7 @@ function CancelSubscriptionDialog({ open, onOpenChange, isCashBilled, isYearly }
 
   const breakdown =
     !isCashBilled && quote?.billingInterval === "Yearly" && quote.monthsUsed !== null
-      ? `${quote.monthsUsed} month${quote.monthsUsed === 1 ? "" : "s"} used of ${formatEur(quote.amountPaid ?? 0)} paid`
+      ? `${quote.monthsUsed} month${quote.monthsUsed === 1 ? "" : "s"} used of ${formatCurrency(quote.amountPaid ?? 0, PLATFORM_CURRENCY)} paid`
       : null;
 
   return (
@@ -393,7 +391,7 @@ export function BillingPage() {
                     <p className="text-sm font-medium text-green-600 dark:text-green-400">Free</p>
                   ) : (
                     <p className="text-sm font-medium">
-                      {formatEur(currentPrice?.price ?? 0)}
+                      {formatCurrency(currentPrice?.price ?? 0, currentPlan.currency)}
                       <span className="text-muted-foreground font-normal"> / {sub.billingInterval === "Yearly" ? "year" : "month"}</span>
                     </p>
                   )
@@ -407,7 +405,7 @@ export function BillingPage() {
                       : isCashBilled
                         ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
                         : currentPlan
-                          ? <span>Next charge: {formatEur(currentPrice?.price ?? 0)} on {formatDate(sub.currentPeriodEnd)}</span>
+                          ? <span>Next charge: {formatCurrency(currentPrice?.price ?? 0, currentPlan.currency)} on {formatDate(sub.currentPeriodEnd)}</span>
                           : <span>Renews {formatDate(sub.currentPeriodEnd)}</span>
                     }
                   </div>

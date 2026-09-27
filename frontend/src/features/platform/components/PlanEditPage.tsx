@@ -29,6 +29,7 @@ import {
   type PlanPriceRequest,
 } from "@/features/billing/billingApi";
 import { priceFor, type PlanResponse } from "@/features/billing/billing.types";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 
 // Blank input, undefined, or NaN all mean "unlimited" (null) — anything else must be a
 // positive integer. Used for the five Plan usage-limit fields below.
@@ -131,15 +132,6 @@ function toPrices(values: FormValues): PlanPriceRequest[] {
     prices.push({ interval: "Yearly", price: values.yearly.price ?? 0, stripePriceId: values.yearly.stripePriceId });
   }
   return prices;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-GB", {
-    style:                 "currency",
-    currency:              "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 // The API returns a single joined FluentValidation message on 422, not a per-field
@@ -418,7 +410,10 @@ export function PlanEditPage() {
                         {...register("yearly.price", { valueAsNumber: true })} />
                       {suggestedYearly !== null && paidMonths !== null && (
                         <p className="text-[11px] text-muted-foreground">
-                          Suggested: {formatCurrency(suggestedYearly)} (monthly × {paidMonths})
+                          {/* No plan (or no .currency) yet when creating a brand-new plan — there is only
+                              ever one platform currency (MrrRules.PlatformCurrency), so "EUR" is a safe,
+                              always-correct fallback here, not a guess. */}
+                          Suggested: {formatCurrency(suggestedYearly, plan?.currency ?? "EUR")} (monthly × {paidMonths})
                         </p>
                       )}
                       {errors.yearly?.price && <p className="text-xs text-destructive-text">{errors.yearly.price.message}</p>}

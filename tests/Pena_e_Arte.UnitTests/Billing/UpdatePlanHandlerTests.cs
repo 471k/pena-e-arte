@@ -30,6 +30,9 @@ public class UpdatePlanHandlerTests
 
         result.Name.Should().Be("New Name");
         result.Prices.Single().Price.Should().Be(59m);
+        // Not hardcoded on purpose — see CreatePlanHandlerTests' matching test for why.
+        result.Currency.Should().Be(
+            Pena_e_Arte.Application.Platform.Revenue.MrrRules.PlatformCurrency.ToUpperInvariant());
     }
 
     [Fact]

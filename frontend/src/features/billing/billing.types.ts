@@ -41,6 +41,9 @@ export interface PlanResponse {
   // yearlyDiscountPercent for owner-facing copy; it's admin-input-only.
   yearlySavingAmount:       number | null;
   yearlyMonthsFree:         number | null;
+  // The platform's one billing currency (MrrRules.PlatformCurrency, uppercased) — read this
+  // instead of hardcoding a currency per component. See shared/utils/formatCurrency.ts.
+  currency:                 string;
 }
 
 export interface CreateSubscriptionRequest {

@@ -23,6 +23,22 @@ public class GetPlansHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithPlan_ReturnsThePlatformCurrency()
+    {
+        Plan plan = new() { Id = Guid.NewGuid(), Name = "Starter", YearlyDiscountPercent = 17 };
+        plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 29m });
+        _db.Plans.Add(plan);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        List<PlanResponse> result = await CreateSut().Handle(new GetPlansQuery(), default);
+
+        // Not hardcoded on purpose — see CreatePlanHandlerTests' matching test for why.
+        result.Single().Currency.Should().Be(
+            Pena_e_Arte.Application.Platform.Revenue.MrrRules.PlatformCurrency.ToUpperInvariant());
+    }
+
+    [Fact]
     public async Task Handle_WithPlan_ReturnsZeroSubscribers_WhenNoneExist()
     {
         Plan plan = new() { Id = Guid.NewGuid(), Name = "Starter", YearlyDiscountPercent = 17 };

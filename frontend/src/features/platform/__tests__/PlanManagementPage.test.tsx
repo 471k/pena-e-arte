@@ -30,6 +30,7 @@ const NO_LIMITS = {
   allowMarketingCampaigns: false,
   yearlySavingAmount:       null,
   yearlyMonthsFree:         null,
+  currency:                 "EUR",
 };
 
 const PLANS: PlanResponse[] = [

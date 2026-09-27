@@ -19,6 +19,7 @@ const PLANS: PlanResponse[] = [
     id:                    "plan-1",
     name:                  "Starter",
     yearlyDiscountPercent: 17,
+    currency:              "EUR",
     yearlySavingAmount:    null,
     yearlyMonthsFree:      null,
     allowBrandingRemoval:  false,

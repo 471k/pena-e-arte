@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Platform.Revenue;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -58,13 +59,13 @@ public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
         return Map(plan, subscriberCount: 0);
     }
 
-    // Every Stripe price in this codebase is created in EUR (see StripeDemoSeeder) — no
-    // multi-currency support exists anywhere else, so G3 rejects any other currency outright
-    // rather than silently accepting an amount match in the wrong currency.
-    private const string PlatformCurrency = "eur";
-
     // G3 — shared with UpdatePlanHandler, which calls this directly (see architecture.md
-    // Decisions Log, "One MRR definition (2026-09-23)").
+    // Decisions Log, "One MRR definition (2026-09-23)"). Every Stripe price in this codebase
+    // is created in MrrRules.PlatformCurrency (see StripeDemoSeeder) — no multi-currency
+    // support exists anywhere else, so this rejects any other currency outright rather than
+    // silently accepting an amount match in the wrong currency. Reads MrrRules.PlatformCurrency
+    // rather than its own copy of the literal — a second, independent "eur" constant here used
+    // to exist and could have silently drifted from MrrRules' (found 2026-09-27).
     internal static async Task ValidateStripePriceAsync(
         IStripeBillingService stripe, string stripePriceId, decimal price, BillingInterval interval, CancellationToken ct)
     {
@@ -77,10 +78,10 @@ public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
         string expectedInterval = interval == BillingInterval.Monthly ? "month" : "year";
         decimal stripeAmount = (info.UnitAmount ?? 0) / 100m;
 
-        if (!string.Equals(info.Currency, PlatformCurrency, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(info.Currency, MrrRules.PlatformCurrency, StringComparison.OrdinalIgnoreCase))
             throw new BusinessRuleViolationException(
                 $"Stripe price {stripePriceId} is billed in {info.Currency}; this platform bills in "
-                + $"{PlatformCurrency.ToUpperInvariant()}.");
+                + $"{MrrRules.PlatformCurrency.ToUpperInvariant()}.");
 
         if (stripeAmount != price || info.RecurringInterval != expectedInterval || info.IntervalCount != 1)
         {
@@ -103,7 +104,7 @@ public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
         plan.AllowMarketingCampaigns,
         plan.Prices.Select(pp => new PlanPriceResponse(
             pp.Id, pp.Interval.ToString(), pp.Price, pp.StripePriceId, pp.IsActive)).ToList(),
-        null, null);
+        null, null, MrrRules.PlatformCurrency.ToUpperInvariant());
 }
 
 public class CreatePlanValidator : AbstractValidator<CreatePlanCommand>

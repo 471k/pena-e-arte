@@ -8,19 +8,11 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetAdminPlansQuery, useDeletePlanMutation } from "@/features/billing/billingApi";
 import { priceFor, type PlanResponse } from "@/features/billing/billing.types";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 
 // null = unlimited on the plan
 function formatLimit(value: number | null, unit: string): string {
   return value === null ? `Unlimited ${unit}` : `${value} ${unit}`;
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-GB", {
-    style:                 "currency",
-    currency:              "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
 }
 
 function PlanCardSkeleton() {
@@ -105,13 +97,13 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                 <>
                   {monthly && (
                     <p className="text-sm font-mono">
-                      <span className="font-medium">{formatCurrency(monthly.price)}</span>
+                      <span className="font-medium">{formatCurrency(monthly.price, plan.currency)}</span>
                       <span className="text-xs text-muted-foreground">/mo</span>
                     </p>
                   )}
                   {yearly && (
                     <p className="text-sm font-mono">
-                      <span className="font-medium">{formatCurrency(yearly.price)}</span>
+                      <span className="font-medium">{formatCurrency(yearly.price, plan.currency)}</span>
                       <span className="text-xs text-muted-foreground">/yr</span>
                     </p>
                   )}
