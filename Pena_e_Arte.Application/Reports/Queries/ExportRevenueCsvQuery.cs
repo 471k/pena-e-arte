@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Reports.Queries;
 
@@ -25,7 +27,7 @@ public class ExportRevenueCsvHandler(IAppDbContext db, ICurrentTenant tenant)
         StringBuilder sb = new();
         sb.Append(CsvUtils.Bom);
         CsvUtils.AppendRow(sb, "Paid At", "Client", "Artist", "Appointment Date", "Amount",
-            "Retained Amount", "Status", "Method", "Provider");
+            "Retained Amount", "Currency", "Status", "Method", "Provider");
 
         IQueryable<Payment> paymentsQuery = db.Payments
             .AsNoTracking()
@@ -42,13 +44,18 @@ public class ExportRevenueCsvHandler(IAppDbContext db, ICurrentTenant tenant)
 
         await foreach (Payment p in paymentsQuery.AsAsyncEnumerable().WithCancellation(ct))
         {
+            // Each row is a single payment, so it always formats in its own currency — this
+            // export never sums rows together (unlike GetRevenueSummaryQuery's totals), so there
+            // is nothing to exclude here, just the right number of decimals per row.
+            string amountFormat = "F" + CurrencyCatalog.MinorUnits(p.Currency).ToString(CultureInfo.InvariantCulture);
             CsvUtils.AppendRow(sb,
                 p.PaidAt!.Value.ToString("yyyy-MM-dd HH:mm"),
                 $"{p.Client.FirstName} {p.Client.LastName}",
                 p.Appointment.Artist is null ? "" : $"{p.Appointment.Artist.FirstName} {p.Appointment.Artist.LastName}",
                 p.Appointment.Date.ToString("yyyy-MM-dd HH:mm"),
-                p.Amount.ToString("F2"),
-                p.RetainedAmount().ToString("F2"),
+                p.Amount.ToString(amountFormat, CultureInfo.InvariantCulture),
+                p.RetainedAmount().ToString(amountFormat, CultureInfo.InvariantCulture),
+                p.Currency,
                 p.Status.ToString(),
                 p.Method.ToString(),
                 p.Provider);

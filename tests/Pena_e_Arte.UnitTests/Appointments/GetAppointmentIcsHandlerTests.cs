@@ -12,6 +12,12 @@ public class GetAppointmentIcsHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly Guid _studioId = Guid.NewGuid();
 
+    public GetAppointmentIcsHandlerTests()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
+        _db.SaveChanges();
+    }
+
     private GetAppointmentIcsHandler CreateSut() => new(_db);
 
     private Guid SeedAppointment(bool includeArtist = true)
@@ -82,6 +88,31 @@ public class GetAppointmentIcsHandlerTests
         string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
 
         ics.Should().Contain("DESCRIPTION:Deposit: 50.00 EUR");
+    }
+
+    [Fact]
+    public async Task Handle_JpyStudioAppointment_FormatsDepositWithZeroDecimals()
+    {
+        Guid jpyStudioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = jpyStudioId, Name = "Tokyo", Slug = "tokyo", CountryCode = "JP", Currency = "JPY" });
+        Appointment appt = new()
+        {
+            StudioId = jpyStudioId,
+            ArtistId = Guid.NewGuid(),
+            ClientId = Guid.NewGuid(),
+            Date = new DateTime(2026, 9, 15, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc),
+            DurationMinutes = 120,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 3000m,
+        };
+        _db.Appointments.Add(appt);
+        _db.SaveChanges();
+
+        string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(appt.Id), default);
+
+        ics.Should().Contain("DESCRIPTION:Deposit: 3,000 JPY");
     }
 
     [Fact]

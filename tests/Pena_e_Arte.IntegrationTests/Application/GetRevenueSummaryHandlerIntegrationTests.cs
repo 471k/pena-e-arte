@@ -1,9 +1,11 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pena_e_Arte.Application.Reports.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Infrastructure.Persistence;
+using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
 
 namespace Pena_e_Arte.IntegrationTests.Application;
@@ -24,7 +26,9 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
         await SeedPayment(tenantB, apptB, clientB, 500m);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantA);
-        GetRevenueSummaryHandler handler = new(db);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantA);
+        GetRevenueSummaryHandler handler = new(db, tenant, NullLogger<GetRevenueSummaryHandler>.Instance);
         RevenueSummaryResponse result = await handler.Handle(new GetRevenueSummaryQuery(), default);
 
         result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistA && a.Revenue == 100m);
@@ -40,7 +44,9 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
         await SeedPayment(tenantId, apptId, clientId, 100m, refundedAmount: 40m);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        GetRevenueSummaryHandler handler = new(db);
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(tenantId);
+        GetRevenueSummaryHandler handler = new(db, tenant, NullLogger<GetRevenueSummaryHandler>.Instance);
         RevenueSummaryResponse result = await handler.Handle(new GetRevenueSummaryQuery(), default);
 
         result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistId && a.Revenue == 60m);
@@ -50,6 +56,11 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<(Guid ArtistId, Guid ClientId, Guid AppointmentId)> SeedArtistAndAppointment(Guid tenantId)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
+
+        ctx.Studios.Add(new Studio
+        {
+            Id = tenantId, Name = "Test", Slug = tenantId.ToString("N")[..8], CountryCode = "AL", Currency = "EUR",
+        });
 
         Artist artist = new()
         {
@@ -96,6 +107,7 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
             AppointmentId = appointmentId,
             ClientId = clientId,
             Amount = amount,
+            Currency = "EUR",
             Status = refundedAmount is null ? PaymentStatus.Paid : PaymentStatus.Refunded,
             Method = ClientPaymentMethod.Card,
             PaidAt = DateTime.UtcNow,

@@ -84,7 +84,17 @@ public class GetPaymentInvoiceHandlerTests
             Arg.Is<PaymentInvoiceData>(d => d.TotalAmount == 150m));
     }
 
-    private async Task<Guid> SeedPayment(Guid? userId = null, decimal amount = 100m)
+    [Fact]
+    public async Task Handle_InvoiceDataCarriesThePaymentsCurrency()
+    {
+        Guid paymentId = await SeedPayment(currency: "ALL");
+
+        await CreateSut().Handle(new GetPaymentInvoiceQuery(paymentId), default);
+
+        _invoiceService.Received(1).Generate(Arg.Is<PaymentInvoiceData>(d => d.Currency == "ALL"));
+    }
+
+    private async Task<Guid> SeedPayment(Guid? userId = null, decimal amount = 100m, string currency = "EUR")
     {
         Client client = new()
         {
@@ -103,6 +113,7 @@ public class GetPaymentInvoiceHandlerTests
             AppointmentId = Guid.NewGuid(),
             ClientId = client.Id,
             Amount = amount,
+            Currency = currency,
             Status = PaymentStatus.Paid,
             PaidAt = DateTime.UtcNow,
         };

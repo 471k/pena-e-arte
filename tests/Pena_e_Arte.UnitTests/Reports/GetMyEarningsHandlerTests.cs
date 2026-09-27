@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Reports.Queries;
 using Pena_e_Arte.Contracts.Responses;
@@ -14,12 +15,20 @@ public class GetMyEarningsHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
 
-    public GetMyEarningsHandlerTests() => _currentUser.UserId.Returns(_userId);
+    public GetMyEarningsHandlerTests()
+    {
+        _currentUser.UserId.Returns(_userId);
+        _tenant.StudioId.Returns(_studioId);
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
+        _db.SaveChanges();
+    }
 
-    private GetMyEarningsHandler CreateSut() => new(_db, _currentUser);
+    private GetMyEarningsHandler CreateSut() =>
+        new(_db, _currentUser, _tenant, NullLogger<GetMyEarningsHandler>.Instance);
 
     [Fact]
     public async Task Handle_NoArtistProfileForCaller_ThrowsNotFoundException()
@@ -142,6 +151,40 @@ public class GetMyEarningsHandlerTests
         line.Splits.Should().Contain(s => s.Label == "Studio fee" && s.Amount == 20m);
     }
 
+    [Fact]
+    public async Task Handle_PaymentInAnotherCurrency_ExcludedFromTrendAndPayments()
+    {
+        Guid artistId = await SeedArtistAsync();
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(1));
+        Guid appt2Id = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(1));
+        await SeedPayment(apptId, 80m, PaymentStatus.Paid, DateTime.UtcNow, "Client", "One");
+        Client otherCurrencyClient = new()
+        {
+            StudioId = _studioId, FirstName = "All", LastName = "Payer", Email = $"{Guid.NewGuid():N}@test.com",
+        };
+        _db.Clients.Add(otherCurrencyClient);
+        await _db.SaveChangesAsync();
+        _db.Payments.Add(new Payment
+        {
+            StudioId = _studioId,
+            AppointmentId = appt2Id,
+            ClientId = otherCurrencyClient.Id,
+            Amount = 5000m,
+            Currency = "ALL",
+            Status = PaymentStatus.Paid,
+            Method = ClientPaymentMethod.Card,
+            PaidAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.PeriodTotal.Should().Be(80m);
+        result.Payments.Should().ContainSingle(p => p.Amount == 80m);
+        result.Currency.Should().Be("EUR");
+        result.ExcludedOtherCurrencyCount.Should().Be(1);
+    }
+
     private async Task<Guid> SeedArtistAsync()
     {
         Artist artist = new()
@@ -195,6 +238,7 @@ public class GetMyEarningsHandlerTests
             AppointmentId = appointmentId,
             ClientId = client.Id,
             Amount = amount,
+            Currency = "EUR",
             Status = status,
             Method = ClientPaymentMethod.Card,
             PaidAt = paidAt,

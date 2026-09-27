@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
@@ -21,7 +22,7 @@ namespace Pena_e_Arte.Application.Reports.Queries;
 /// </summary>
 public record GetMyEarningsQuery(DateTime? From = null, DateTime? To = null) : IRequest<ArtistEarningsResponse>;
 
-public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser)
+public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser, ICurrentTenant tenant, ILogger<GetMyEarningsHandler> logger)
     : IRequestHandler<GetMyEarningsQuery, ArtistEarningsResponse>
 {
     public async Task<ArtistEarningsResponse> Handle(GetMyEarningsQuery query, CancellationToken ct)
@@ -31,6 +32,11 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser)
         if (artist is null)
             throw new NotFoundException(nameof(Artist), currentUser.UserId);
 
+        string studioCurrency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+
         DateTime now = DateTime.UtcNow;
 
         Dictionary<Guid, DateTime> appointmentDates = await db.Appointments
@@ -38,7 +44,7 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser)
             .Select(a => new { a.Id, a.Date })
             .ToDictionaryAsync(a => a.Id, a => a.Date, ct);
 
-        List<Payment> collectedPayments = appointmentDates.Count == 0
+        List<Payment> allCollectedPayments = appointmentDates.Count == 0
             ? []
             : await db.Payments
                 .AsNoTracking()
@@ -47,6 +53,23 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser)
                     && (p.Status == PaymentStatus.Paid || p.Status == PaymentStatus.Refunded)
                     && p.PaidAt != null)
                 .ToListAsync(ct);
+
+        // Never sum across currencies — same rule as GetRevenueSummaryQuery.
+        List<Payment> collectedPayments = allCollectedPayments
+            .Where(p => string.Equals(p.Currency, studioCurrency, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        int excludedOtherCurrencyCount = allCollectedPayments.Count - collectedPayments.Count;
+        if (excludedOtherCurrencyCount > 0)
+        {
+            string[] excludedCurrencies = allCollectedPayments
+                .Where(p => !string.Equals(p.Currency, studioCurrency, StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Currency)
+                .Distinct()
+                .ToArray();
+            logger.LogWarning(
+                "Revenue query {Query} excluded {ExcludedCount} payment(s) not in studio currency {StudioCurrency}: {ExcludedCurrencies}",
+                nameof(GetMyEarningsQuery), excludedOtherCurrencyCount, studioCurrency, excludedCurrencies);
+        }
 
         List<MonthlyRevenuePoint> monthlyTrend = new(12);
         for (int i = 11; i >= 0; i--)
@@ -69,7 +92,7 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser)
             .ToList();
 
         if (periodPayments.Count == 0)
-            return new ArtistEarningsResponse(monthlyTrend, 0m, []);
+            return new ArtistEarningsResponse(monthlyTrend, 0m, [], studioCurrency, excludedOtherCurrencyCount);
 
         List<Guid> paymentIds = periodPayments.Select(p => p.Id).ToList();
         List<SessionSplit> splits = await db.SessionSplits
@@ -92,6 +115,6 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser)
 
         decimal periodTotal = periodPayments.Sum(p => p.RetainedAmount());
 
-        return new ArtistEarningsResponse(monthlyTrend, periodTotal, lines);
+        return new ArtistEarningsResponse(monthlyTrend, periodTotal, lines, studioCurrency, excludedOtherCurrencyCount);
     }
 }

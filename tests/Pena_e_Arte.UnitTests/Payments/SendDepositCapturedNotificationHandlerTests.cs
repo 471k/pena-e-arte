@@ -64,6 +64,7 @@ public class SendDepositCapturedNotificationHandlerTests
             Client = client,
             Appointment = appointment,
             Amount = 100m,
+            Currency = "EUR",
             Status = PaymentStatus.Paid,
             Method = ClientPaymentMethod.Card,
         };

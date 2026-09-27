@@ -15,7 +15,8 @@ public record PaymentInvoiceData(
     string? ProviderReferenceId,
     string? CashNote,
     DateTime IssuedAt,
-    IReadOnlyList<InvoiceLineItem> LineItems);
+    IReadOnlyList<InvoiceLineItem> LineItems,
+    string Currency = "");
 
 public interface IPaymentInvoiceService
 {

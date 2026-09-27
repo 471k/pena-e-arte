@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Appointments.Queries;
 
@@ -16,6 +17,11 @@ public class GetAppointmentIcsHandler(IAppDbContext db)
             .Include(a => a.Artist)
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException("Appointment", query.AppointmentId);
+
+        string studioCurrency = await db.Studios
+            .Where(s => s.Id == appt.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
 
         string dtStart = appt.Date.ToString("yyyyMMddTHHmmssZ");
         string dtEnd = appt.EndDate.ToString("yyyyMMddTHHmmssZ");
@@ -36,7 +42,7 @@ DTSTAMP:{dtStamp}
 DTSTART:{dtStart}
 DTEND:{dtEnd}
 SUMMARY:{summary}{artist}
-DESCRIPTION:Deposit: {appt.DepositAmount:F2} EUR
+DESCRIPTION:Deposit: {MoneyText.Format(appt.DepositAmount, studioCurrency)}
 END:VEVENT
 END:VCALENDAR
 """;

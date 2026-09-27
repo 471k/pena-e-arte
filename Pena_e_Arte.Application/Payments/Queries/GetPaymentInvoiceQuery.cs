@@ -70,7 +70,8 @@ public class GetPaymentInvoiceHandler(
             ProviderReferenceId: payment.ProviderReferenceId,
             CashNote: payment.CashNote,
             IssuedAt: payment.PaidAt ?? DateTime.UtcNow,
-            LineItems: lineItems);
+            LineItems: lineItems,
+            Currency: payment.Currency);
 
         return invoiceService.Generate(data);
     }

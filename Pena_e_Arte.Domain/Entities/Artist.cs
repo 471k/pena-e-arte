@@ -9,7 +9,8 @@ public class Artist : TenantEntity
     /// <summary>Canonical <see cref="Pena_e_Arte.Domain.Constants.TattooStyle"/> values this artist specializes in.</summary>
     public List<string> Specializations { get; set; } = [];
 
-    /// <summary>Hourly rate in EUR — the base for percent deposit rules. Null = not set.</summary>
+    /// <summary>Hourly rate in the studio's currency (Studio.Currency) — the base for percent
+    /// deposit rules. Null = not set.</summary>
     public decimal? HourlyRate { get; set; }
 
     /// <summary>Booth-rent commission percent, informational only — not used in any charge

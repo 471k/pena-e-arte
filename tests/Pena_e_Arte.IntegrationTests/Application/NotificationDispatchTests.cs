@@ -152,6 +152,7 @@ public class NotificationDispatchTests
             ClientId = clientId,
             AppointmentId = appointmentId,
             Amount = 100m,
+            Currency = "EUR",
             Status = PaymentStatus.Paid,
             Method = ClientPaymentMethod.Card,
         };

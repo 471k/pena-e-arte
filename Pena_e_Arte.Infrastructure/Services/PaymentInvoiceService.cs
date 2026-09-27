@@ -1,5 +1,5 @@
-using System.Globalization;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -103,7 +103,7 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                             table.Cell().BorderBottom(0.5f).BorderColor("#eeeeee").Padding(6)
                                 .Text(line.Label);
                             table.Cell().BorderBottom(0.5f).BorderColor("#eeeeee").Padding(6)
-                                .Text(FormatCurrency(line.Amount)).AlignRight();
+                                .Text(FormatCurrency(line.Amount, d.Currency)).AlignRight();
                         }
                     });
 
@@ -119,7 +119,7 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                         table.Cell().Background("#111111").Padding(8)
                             .Text("TOTAL").Bold().FontSize(10).FontColor("#ffffff");
                         table.Cell().Background("#111111").Padding(8)
-                            .Text(FormatCurrency(d.TotalAmount)).Bold().FontSize(10)
+                            .Text(FormatCurrency(d.TotalAmount, d.Currency)).Bold().FontSize(10)
                             .FontColor("#ffffff").AlignRight();
                     });
 
@@ -160,6 +160,6 @@ public class PaymentInvoiceService : IPaymentInvoiceService
         }).GeneratePdf();
     }
 
-    private static string FormatCurrency(decimal amount)
-        => amount.ToString("C2", new CultureInfo("pt-PT"));
+    private static string FormatCurrency(decimal amount, string currency)
+        => MoneyText.Format(amount, currency);
 }
