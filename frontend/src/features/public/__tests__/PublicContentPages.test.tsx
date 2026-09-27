@@ -49,13 +49,22 @@ describe("public content pages", () => {
     errorSpy.mockRestore();
   });
 
-  it("Home links to the marketing pages in an Explore nav, separate from the Policies nav", () => {
+  it("Home links to the marketing pages in an Explore nav", () => {
     renderPublic(<HomePage />);
     const explore = screen.getByRole("navigation", { name: "Explore" });
     expect(within(explore).getByRole("link", { name: "Features" })).toHaveAttribute("href", "/features");
     expect(within(explore).getByRole("link", { name: "Pricing" })).toHaveAttribute("href", "/pricing");
     expect(within(explore).getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/faq");
-    expect(screen.getByRole("navigation", { name: "Policies" })).toBeInTheDocument();
+  });
+
+  it("Home does not repeat the footer's policy links in its own body (found 2026-09-27, both were visible on screen at once)", () => {
+    renderPublic(<HomePage />);
+    // The footer (SiteFooter, asserted elsewhere by role "contentinfo") already carries these —
+    // Home's own content should link to Privacy/Terms/Refund/Contact exactly once, from the footer.
+    expect(screen.getAllByRole("link", { name: "Privacy Policy" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Terms of Service" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Refund Policy" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Contact" })).toHaveLength(1);
   });
 
   it("Privacy Policy names special-category health data and the planned payment sub-processors", () => {
