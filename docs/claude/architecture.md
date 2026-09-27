@@ -1208,6 +1208,8 @@ The following are the only documented exceptions:
 | `GET /api/v1/gift-cards/{code}/balance` | Public balance lookup by code alone (no per-studio scope in the route) | Rate-limited (`public-read`); enumeration risk from brute-forcing 12-char codes is accepted at that rate limit; response (`GiftCardBalanceResponse`) carries only `RemainingBalance`/`Status` — never `PurchaserEmail`/`RecipientEmail` |
 | `GET /api/v1/public/studios/{slug}/design-catalog` | Public flash/design catalog browse (P1 backlog Group 4, item #9) | None — read-only, only `IsCatalogItem && ClientId == null` designs, no client PII |
 | `GET /api/v1/public/plans` | Public marketing Pricing page (`/pricing`) needs the live subscription tiers and prices without a login | Rate-limited (`public-read`); read-only. Returns only tier name, currency, active prices, computed months-free and feature flags/limits (`PublicPlanResponse`) — no plan id, Stripe price ids, subscriber count or `PrioritySupport`. `Plan`/`PlanPrice` are platform-wide catalogue rows with no tenant query filter (confirmed), so no `IgnoreQueryFilters()` is involved. Tiers with no active price (retired) are never returned |
+| `GET /api/v1/public/seo/studios/{slug}` | Crawler-facing HTML shell for link-preview bots (Facebook/WhatsApp/Slack/X/...) and crawlers that read only the raw HTML — search-visibility Phase 5. nginx routes matching User-Agents here instead of the SPA | Rate-limited (`public-read`); read-only, sends the existing `GetPublicStudioQuery` (no new data access) — only fields the public studio page already exposes. Every dynamic value is HTML-encoded (`WebUtility.HtmlEncode`); JSON-LD is serialised with `System.Text.Json`'s default encoder, which escapes `<` so a name can never close the `<script>` tag. A missing/unpublished slug returns a real 404, not a 200 |
+| `GET /api/v1/public/seo/artists/{slug}` | Crawler-facing HTML shell for `/artist/{slug}`, same purpose as the studio row above | Rate-limited (`public-read`); read-only, sends the existing `GetPublicArtistQuery` — same encoding and 404-on-missing guarantees as the studio row above |
 | `POST /api/v1/marketing/unsubscribe` | Anonymous unsubscribe link in campaign emails | Signed token (HMAC-SHA256, `IMarketingOptOutSigner`, own key — separate from `IInstagramStateSigner`/`ISocialOAuthStateSigner`) validated before trusting clientId; rate-limited (`public-write`); single studio+client pair per token |
 | `POST /api/v1/webhooks/pok` | Called by POK's servers, no JWT | **None** — POK documents no webhook signature at all (ADR-0001 accepted risk), weaker than the two Stripe rows above. The handler never reads the request body to decide payment state; it only enqueues an immediate `PaymentReconciliationJob` run, which re-fetches every in-flight payment's real status from POK directly. Rate-limited (`billing`) as the only abuse guard available. `PaymentArchitectureTests.PokWebhookHandler_NeverReadsRequestBodyOrAssignsPaymentState` fails the build if this handler is ever changed to trust the body. |
 
@@ -4742,11 +4744,28 @@ broken routing rule was confirmed to make it fail.
 public-indexable list nor matched by the nginx `noindex` map. `siteRoutes.test.ts` asserts the backend
 sitemap's marketing list equals the manifest, and that `index.html`'s defaults match `legalEntity.ts`.
 
+### Phase 5 — crawler HTML shell for `/s/:slug` and `/artist/:slug` (2026-09-27, separate PR)
+Shipped as planned, in its own PR after Phases 1–4/6/7 were live and verified. Two new anonymous endpoints,
+`GET /api/v1/public/seo/studios/{slug}` and `.../seo/artists/{slug}`, send the existing `GetPublicStudioQuery`/
+`GetPublicArtistQuery` unchanged and render a minimal HTML document (`SeoShellHtmlWriter`, pure/unit-tested):
+title, description and canonical matching the SPA's `useDocumentMeta` for that page, OG/Twitter tags (image
+only when it is an `https` URL), `<meta name="robots" content="index,follow">`, a JSON-LD block equivalent to
+`useStructuredData`'s (`TattooParlor`/`Person`), and a short visible body ending with a link to the same
+canonical URL. A missing/unpublished slug returns a real 404. Every dynamic value is HTML-encoded
+(`WebUtility.HtmlEncode`); JSON-LD is serialised with `System.Text.Json`'s default encoder (escapes `<`, so a
+name can never close the `<script>` tag) — tested directly against a name containing `</script><script>`.
+
+nginx (`$seo_bot` map of link-preview/crawler User-Agents, a regex location on `/(s|artist)/[^/]+/?$` using
+`if`/`error_page`/named-location `rewrite … break` to hand only bot traffic to `@seo_shell`, which proxies to
+the new endpoints) was verified against a real nginx 1.27.5 **with the real API running** (not just `nginx -t`):
+a bot User-Agent on a real seeded slug returns the studio/artist-specific `<title>`, canonical and JSON-LD; an
+ordinary browser User-Agent on the same URL still gets the plain SPA shell; a bot on a nested path
+(`/s/:slug/gift-cards/buy`) still falls through to the SPA (the regex's `[^/]+/?$` excludes it); a bot on an
+unknown slug gets a real 404; staging's blanket `noindex` still applies to the shell. The CI smoke test gained
+matching assertions (a bot UA must not get the 200 SPA shell; a normal UA still must); a negative control
+(disabling the bot-pattern match) was confirmed to make it fail.
+
 ### Not done
-- **Crawler HTML shell for `/s/:slug` and `/artist/:slug`** (prompt Phase 5). Metadata for those pages is
-  still client-side only (canonical and JSON-LD are set by the SPA); link-preview bots that do not run JS see
-  the default metadata. Tracked as a separate follow-up PR because it adds two anonymous endpoints and the
-  most delicate nginx routing (`if`/`error_page`/named-location rewrite).
 - Full server-side rendering or a prerendered page body; JSON-LD for the marketing pages.
 - Trailing-slash variants (`/pricing/`) fall through to the SPA shell and get the default metadata; the
   client-side canonical still names the right URL.

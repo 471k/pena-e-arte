@@ -18,6 +18,15 @@ map $request_uri $robots_tag {
     ~*^/(login|register|client-register|forgot-password|reset-password|verify-email|confirm-change-email|change-email|change-password|unsubscribe|share|embed)(/|\?|$) "noindex, nofollow";
 }
 
+# Crawler/link-preview bots that read only the raw HTML (search-visibility Phase 5). Matched
+# case-insensitively against the User-Agent; everyone else continues to the ordinary SPA route
+# below. Kept narrow (named bots only) rather than "anything not a browser" to avoid accidentally
+# shell-serving a real visitor whose UA string happens to match something unexpected.
+map $http_user_agent $seo_bot {
+    default 0;
+    ~*(facebookexternalhit|facebot|twitterbot|linkedinbot|whatsapp|slackbot|telegrambot|discordbot|pinterest|applebot|skypeuripreview|redditbot|googlebot|bingbot|duckduckbot|yandex|baiduspider) 1;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -135,6 +144,36 @@ server {
         add_header Referrer-Policy strict-origin-when-cross-origin always;
         add_header X-Robots-Tag $robots_tag always;
         rewrite ^ /index.html break;
+    }
+
+    # Studio/artist public pages: a crawler/link-preview bot (matched above) gets the minimal HTML
+    # shell from the API (GetPublicStudioQuery/GetPublicArtistQuery, unchanged) via @seo_shell below;
+    # everyone else gets the ordinary SPA route. `[^/]+/?$` deliberately does not match a longer path
+    # like /s/:slug/gift-cards/buy, which stays on the plain SPA route below.
+    location ~ ^/(s|artist)/[^/]+/?$ {
+        if ($seo_bot) { return 418; }
+        error_page 418 = @seo_shell;   # the `return 418` above (bots only) is handed to @seo_shell
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        # A location with its own add_header does not inherit server-level ones, so every header
+        # this template sets elsewhere (X-Frame-Options above included) is repeated here too.
+        add_header X-Robots-Tag $robots_tag always;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location @seo_shell {
+        rewrite ^/s/([^/]+)/?$      /api/v1/public/seo/studios/$1 break;
+        rewrite ^/artist/([^/]+)/?$ /api/v1/public/seo/artists/$1 break;
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Vary "User-Agent" always;
+        add_header X-Robots-Tag $robots_tag always;
     }
 
     # SPA fallback — client-side routes resolve to index.html. Clickjacking

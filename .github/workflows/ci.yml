@@ -275,6 +275,13 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' "$B/sitemap.xml")
           [ "$code" != 200 ] || fail "/sitemap.xml was answered by the SPA (200); it must be proxied to the API"
           body_has /robots.txt 'Disallow: /api/' "robots.txt content"
+          # Crawler-shell routing (search-visibility Phase 5): a bot UA on /s/:slug or /artist/:slug is
+          # handed to @seo_shell and proxied to the API (no backend here => not 200/SPA); an ordinary
+          # browser UA on the same URL still gets the plain SPA shell.
+          bot_code=$(curl -s -A "facebookexternalhit/1.1" -o /dev/null -w '%{http_code}' "$B/s/some-studio")
+          [ "$bot_code" != 200 ] || fail "a bot User-Agent on /s/:slug must not get the 200 SPA shell"
+          out=$(curl -s -A "Mozilla/5.0" "$B/s/some-studio"); grep -qF 'id="root"' <<<"$out" || fail "a normal User-Agent on /s/:slug must still get the SPA shell"
+          out=$(curl -s -A "facebookexternalhit/1.1" -D - -o /dev/null "$B/artist/some-artist" | tr -d '\r'); grep -qi '^vary: user-agent' <<<"$out" || fail "/artist/:slug bot response must vary on User-Agent"
           docker rm -f fe
 
   guardrails:
