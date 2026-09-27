@@ -7,6 +7,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
@@ -35,11 +36,20 @@ public class CreatePaymentIntentHandler(
         if (existing is not null && existing.Status != PaymentStatus.Failed)
             throw new BusinessRuleViolationException("A payment already exists for this appointment.");
 
+        string currency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+        CardCurrencyGuard.EnsureSupported(paymentProvider, currency);
+
+        if (!CurrencyCatalog.HasAtMostMinorUnits(req.Amount, currency))
+            throw new BusinessRuleViolationException($"Amount has more decimal places than {currency} allows.");
+        decimal amount = CurrencyCatalog.Round(req.Amount, currency);
+
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
-        long amountInCents = (long)(req.Amount * 100);
 
         (string intentId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
-            new PaymentHoldRequest(tenant.StudioId, paymentId, amountInCents, req.Currency), ct);
+            new PaymentHoldRequest(tenant.StudioId, paymentId, amount, currency), ct);
 
         Payment payment;
         if (existing is null)
@@ -50,7 +60,8 @@ public class CreatePaymentIntentHandler(
                 StudioId = tenant.StudioId,
                 AppointmentId = req.AppointmentId,
                 ClientId = req.ClientId,
-                Amount = req.Amount,
+                Amount = amount,
+                Currency = currency,
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
                 Provider = "pok",
@@ -63,7 +74,8 @@ public class CreatePaymentIntentHandler(
         {
             // Retry after a failed attempt — reuse the row with a fresh intent
             payment = existing;
-            payment.Amount = req.Amount;
+            payment.Amount = amount;
+            payment.Currency = currency;
             payment.Status = PaymentStatus.Pending;
             payment.Method = ClientPaymentMethod.Card;
             payment.Provider = "pok";

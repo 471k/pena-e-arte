@@ -7,6 +7,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
@@ -44,10 +45,11 @@ public class RefundPaymentHandler(
         decimal refundAmount = command.Amount ?? payment.Amount;
         if (refundAmount > payment.Amount)
             throw new BusinessRuleViolationException("Refund amount cannot exceed the original payment amount.");
+        if (!CurrencyCatalog.HasAtMostMinorUnits(refundAmount, payment.Currency))
+            throw new BusinessRuleViolationException($"Amount has more decimal places than {payment.Currency} allows.");
 
-        long amountInCents = (long)(refundAmount * 100);
         await paymentProvider.RefundAsync(
-            payment.StudioId, payment.ProviderReferenceId, amountInCents, ct);
+            payment.StudioId, payment.ProviderReferenceId, refundAmount, payment.Currency, ct);
 
         payment.Status = PaymentStatus.Refunded;
         payment.RefundedAmount = refundAmount;

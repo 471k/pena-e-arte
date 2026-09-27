@@ -34,6 +34,6 @@ public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser current
         if (payment.ClientToken is null)
             throw new NotFoundException("ClientToken", query.PaymentId);
 
-        return new PaymentClientTokenResponse(payment.ClientToken);
+        return new PaymentClientTokenResponse(payment.ClientToken, payment.Amount, payment.Currency);
     }
 }

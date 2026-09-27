@@ -34,6 +34,11 @@ public class DeclareCashDepositHandler(
                 throw new NotFoundException(nameof(Appointment), command.AppointmentId);
         }
 
+        string studioCurrency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+
         // Single payment row per appointment (unique index) — unauthorized card intents
         // and failed attempts are converted in place, never duplicated.
         Payment? existing = await db.Payments
@@ -77,6 +82,7 @@ public class DeclareCashDepositHandler(
 
             existing.Method = ClientPaymentMethod.Cash;
             existing.Status = PaymentStatus.CashPending;
+            existing.Currency = studioCurrency;
             existing.CashNote = command.Note;
             existing.ProviderReferenceId = null;
             existing.ClientToken = null;
@@ -95,6 +101,7 @@ public class DeclareCashDepositHandler(
             AppointmentId = appointment.Id,
             ClientId = appointment.ClientId,
             Amount = appointment.DepositAmount,
+            Currency = studioCurrency,
             Method = ClientPaymentMethod.Cash,
             Status = PaymentStatus.CashPending,
             CashNote = command.Note,

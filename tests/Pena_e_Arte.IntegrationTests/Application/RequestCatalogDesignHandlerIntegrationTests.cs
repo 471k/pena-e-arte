@@ -134,6 +134,20 @@ public class RequestCatalogDesignHandlerIntegrationTests
     {
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
 
+        // CreateAppointmentCoreAsync now loads the studio's currency up front — see the
+        // identical comment in AppointmentHandlerIntegrationTests.SeedArtistAndClient.
+        if (!await ctx.Studios.AnyAsync(s => s.Id == tenantId))
+        {
+            ctx.Studios.Add(new Studio
+            {
+                Id = tenantId,
+                Name = "Test Studio",
+                Slug = tenantId.ToString("N")[..8],
+                CountryCode = "AL",
+                Currency = "EUR",
+            });
+        }
+
         Artist artist = new() { StudioId = tenantId, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@a.com" };
         Client client = new() { StudioId = tenantId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
         ctx.Artists.Add(artist);

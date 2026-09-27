@@ -41,5 +41,5 @@ public class GetBoothRentChargesHandler(IAppDbContext db, ICurrentUser currentUs
 
     internal static BoothRentChargeResponse Map(BoothRentCharge c, string? artistName = null) => new(
         c.Id, c.StudioId, c.ArtistId, artistName, c.BoothRentScheduleId,
-        c.Amount, c.ChargedDate, c.IsSettled, c.SettledAt, c.SettledNote, c.CreatedAt);
+        c.Amount, c.Currency, c.ChargedDate, c.IsSettled, c.SettledAt, c.SettledNote, c.CreatedAt);
 }

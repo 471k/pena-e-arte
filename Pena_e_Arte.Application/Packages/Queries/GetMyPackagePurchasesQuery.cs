@@ -23,7 +23,8 @@ public class GetMyPackagePurchasesHandler(IAppDbContext db, ICurrentUser current
             .Where(p => p.ClientId == client.Id)
             .OrderByDescending(p => p.CreatedAt)
             .Select(p => new PackagePurchaseResponse(
-                p.Id, p.StudioId, p.PackageId, p.Package.Name, p.ClientId, p.SessionsRemaining, p.CreatedAt))
+                p.Id, p.StudioId, p.PackageId, p.Package.Name, p.ClientId, p.SessionsRemaining, p.CreatedAt,
+                p.Amount, p.Currency))
             .ToListAsync(ct);
     }
 }

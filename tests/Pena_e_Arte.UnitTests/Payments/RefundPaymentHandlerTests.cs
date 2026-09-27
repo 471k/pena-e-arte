@@ -22,7 +22,7 @@ public class RefundPaymentHandlerTests
     public RefundPaymentHandlerTests()
     {
         _stripe.RefundAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("re_test_123");
     }
 
@@ -60,7 +60,7 @@ public class RefundPaymentHandlerTests
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
 
         await _stripe.Received(1).RefundAsync(
-            _studioId, "pi_test", 20000L, Arg.Any<CancellationToken>());
+            _studioId, "pi_test", 200m, "EUR", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class RefundPaymentHandlerTests
         await CreateSut().Handle(new RefundPaymentCommand(paymentId, 50m), default);
 
         await _stripe.Received(1).RefundAsync(
-            _studioId, "pi_test", 5000L, Arg.Any<CancellationToken>());
+            _studioId, "pi_test", 50m, "EUR", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -121,6 +121,18 @@ public class RefundPaymentHandlerTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*exceed*");
+    }
+
+    [Fact]
+    public async Task Handle_RefundAmountHasMoreDecimalsThanCurrencyAllows_ThrowsBusinessRuleViolationException()
+    {
+        await SeedStudio();
+        Guid paymentId = await SeedPayment(200m, PaymentStatus.Paid, "pi_test");
+
+        Func<Task> act = () => CreateSut().Handle(new RefundPaymentCommand(paymentId, 12.345m), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage("*EUR*");
     }
 
     [Fact]
@@ -173,6 +185,7 @@ public class RefundPaymentHandlerTests
             AppointmentId = Guid.NewGuid(),
             ClientId = client.Id,
             Amount = amount,
+            Currency = "EUR",
             Status = status,
             ProviderReferenceId = stripeIntentId
         };

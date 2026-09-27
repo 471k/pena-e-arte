@@ -363,6 +363,20 @@ public class AppointmentHandlerIntegrationTests
     {
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
 
+        // CreateAppointmentCoreAsync now loads the studio's currency up front — this helper can
+        // be called more than once for the same tenantId, so guard against a duplicate insert.
+        if (!await ctx.Studios.AnyAsync(s => s.Id == tenantId))
+        {
+            ctx.Studios.Add(new Studio
+            {
+                Id = tenantId,
+                Name = "Test Studio",
+                Slug = tenantId.ToString("N")[..8],
+                CountryCode = "AL",
+                Currency = "EUR",
+            });
+        }
+
         Artist artist = new() { StudioId = tenantId, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@a.com" };
         Client client = new() { StudioId = tenantId, UserId = clientUserId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
         ctx.Artists.Add(artist);

@@ -1,12 +1,14 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Packages.Commands;
 
@@ -29,11 +31,16 @@ public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICu
             .FirstOrDefaultAsync(p => p.Id == command.Request.PackageId && p.IsActive, ct)
             ?? throw new NotFoundException(nameof(Package), command.Request.PackageId);
 
+        string currency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+        CardCurrencyGuard.EnsureSupported(paymentProvider, currency);
+
         Guid purchaseId = Guid.NewGuid();
-        long amountInCents = (long)(package.Price * 100);
 
         (string providerReferenceId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
-            new PaymentHoldRequest(tenant.StudioId, purchaseId, amountInCents, "ALL"), ct);
+            new PaymentHoldRequest(tenant.StudioId, purchaseId, package.Price, currency), ct);
 
         PackagePurchase purchase = new()
         {
@@ -42,6 +49,8 @@ public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICu
             PackageId = package.Id,
             ClientId = client.Id,
             SessionsRemaining = 0,
+            Amount = package.Price,
+            Currency = currency,
             ProviderReferenceId = providerReferenceId,
             ClientToken = clientToken,
             Provider = "pok",

@@ -26,7 +26,11 @@ public sealed record PaymentProviderCapabilities(
 public sealed record PaymentHoldRequest(
     Guid StudioId,
     Guid PaymentId,
-    long AmountInCents,
+    /// <summary>Major units, already rounded to Currency's ISO 4217 minor unit (see
+    /// CurrencyCatalog.Round) — e.g. 50.00 for EUR, 5000 for ALL, 12.345 for KWD. The provider
+    /// converts to whatever wire format its own API expects (see IPaymentProvider's remarks);
+    /// callers never do that conversion themselves.</summary>
+    decimal Amount,
     string Currency,
     /// <summary>How long the hold stays payable before it self-expires. Only meaningful when
     /// Capabilities.SupportsHoldExpiry is true; a provider without it ignores this and the
@@ -67,6 +71,9 @@ public interface IPaymentProvider
     /// <summary>Returns the payment's normalized status, or null if unknown/not found.</summary>
     Task<PaymentProviderStatus?> GetStatusAsync(Guid studioId, string providerReferenceId, CancellationToken ct);
 
-    /// <summary>Refunds a captured payment (full when amountInCents is null). Returns the refund id.</summary>
-    Task<string> RefundAsync(Guid studioId, string providerReferenceId, long? amountInCents, CancellationToken ct);
+    /// <summary>Refunds a captured payment (full when amount is null). Amount is major units,
+    /// already rounded to currency's ISO 4217 minor unit — the same convention as
+    /// PaymentHoldRequest.Amount; the provider converts to its own wire format. Returns the
+    /// refund id.</summary>
+    Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal? amount, string currency, CancellationToken ct);
 }

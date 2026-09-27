@@ -26,6 +26,8 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
         string slug = await SeedPublishedStudio(tenantId);
 
         IPaymentProvider provider = Substitute.For<IPaymentProvider>();
+        provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
         provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(("pi_gift_test", "secret_gift_test"));
 
@@ -75,7 +77,7 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
         string slug = $"studio-{Guid.NewGuid():N}";
-        ctx.Studios.Add(new Studio { Id = tenantId, Name = "Test Studio", Slug = slug, IsActive = true, IsPublished = true });
+        ctx.Studios.Add(new Studio { Id = tenantId, Name = "Test Studio", Slug = slug, CountryCode = "AL", Currency = "EUR", IsActive = true, IsPublished = true });
         await ctx.SaveChangesAsync();
         return slug;
     }

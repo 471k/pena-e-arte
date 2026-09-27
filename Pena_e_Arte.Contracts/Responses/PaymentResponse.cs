@@ -12,4 +12,5 @@ public record PaymentResponse(
     DateTime? PaidAt,
     string ClientName,
     DateTime? AppointmentDate = null,
-    IReadOnlyList<SessionSplitResponse>? Splits = null);
+    IReadOnlyList<SessionSplitResponse>? Splits = null,
+    string Currency = "");

@@ -31,6 +31,9 @@ public class CreateAppointmentHandlerTests
         _user.Role.Returns("artist");
         _locker.TryAcquireLockAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                .Returns(true);
+
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
+        _db.SaveChanges();
     }
 
     private CreateAppointmentHandler CreateSut() =>

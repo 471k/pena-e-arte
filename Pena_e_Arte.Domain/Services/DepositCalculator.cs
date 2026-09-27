@@ -1,4 +1,5 @@
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Domain.Services;
 
@@ -10,7 +11,7 @@ namespace Pena_e_Arte.Domain.Services;
 /// </summary>
 public static class DepositCalculator
 {
-    public static decimal Calculate(DepositRule? rule, decimal? artistHourlyRate, int durationMinutes)
+    public static decimal Calculate(DepositRule? rule, decimal? artistHourlyRate, int durationMinutes, string currency)
     {
         if (rule is null) return 0m;
 
@@ -20,7 +21,7 @@ public static class DepositCalculator
         if (rule.AmountPercent is decimal percent && artistHourlyRate is > 0m)
         {
             decimal estimatedSessionPrice = artistHourlyRate.Value * durationMinutes / 60m;
-            return Math.Round(estimatedSessionPrice * percent / 100m, 2, MidpointRounding.AwayFromZero);
+            return CurrencyCatalog.Round(estimatedSessionPrice * percent / 100m, currency);
         }
 
         return 0m;

@@ -26,6 +26,13 @@ public class BoothRentChargeJob(IAppDbContext db, ILogger<BoothRentChargeJob> lo
 
         if (due.Count == 0) return;
 
+        // One query for every due studio's currency, not N+1 — Studio has no tenant filter, so
+        // no IgnoreQueryFilters() needed here (only BoothRentSchedules/Charges are tenant-scoped).
+        List<Guid> studioIds = due.Select(s => s.StudioId).Distinct().ToList();
+        Dictionary<Guid, string> currencyByStudio = await db.Studios
+            .Where(s => studioIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Currency, ct);
+
         foreach (BoothRentSchedule schedule in due)
         {
             db.BoothRentCharges.Add(new BoothRentCharge
@@ -34,6 +41,7 @@ public class BoothRentChargeJob(IAppDbContext db, ILogger<BoothRentChargeJob> lo
                 BoothRentScheduleId = schedule.Id,
                 ArtistId = schedule.ArtistId,
                 Amount = schedule.AmountFixed,
+                Currency = currencyByStudio[schedule.StudioId],
                 ChargedDate = schedule.NextChargeDate,
                 IsSettled = false,
             });

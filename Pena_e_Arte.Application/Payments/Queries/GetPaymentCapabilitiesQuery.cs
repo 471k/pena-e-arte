@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
@@ -23,12 +24,31 @@ public class GetPaymentCapabilitiesHandler(IPaymentProvider paymentProvider, IAp
 {
     public async Task<PaymentCapabilitiesResponse> Handle(GetPaymentCapabilitiesQuery query, CancellationToken ct)
     {
+        string currency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+
         if (!paymentProvider.Capabilities.SupportsAuthCapture)
-            return new PaymentCapabilitiesResponse(CardPaymentsAvailable: false);
+        {
+            return new PaymentCapabilitiesResponse(
+                CardPaymentsAvailable: false, Currency: currency, CardUnavailableReason: CardUnavailableReasons.ProviderDisabled);
+        }
+
+        if (!paymentProvider.Capabilities.SupportedCurrencies.Contains(currency, StringComparer.OrdinalIgnoreCase))
+        {
+            return new PaymentCapabilitiesResponse(
+                CardPaymentsAvailable: false, Currency: currency, CardUnavailableReason: CardUnavailableReasons.ProviderUnsupportedCurrency);
+        }
 
         (bool connected, _) = await PokConnectionCheck.ResolveAsync(db, tenant.StudioId, ct);
+        if (!connected)
+        {
+            return new PaymentCapabilitiesResponse(
+                CardPaymentsAvailable: false, Currency: currency, CardUnavailableReason: CardUnavailableReasons.ProviderNotConnected);
+        }
+
         return new PaymentCapabilitiesResponse(
-            CardPaymentsAvailable: connected,
-            PokEnvironment: connected ? paymentProvider.Capabilities.Environment : null);
+            CardPaymentsAvailable: true, PokEnvironment: paymentProvider.Capabilities.Environment, Currency: currency);
     }
 }

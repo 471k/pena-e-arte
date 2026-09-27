@@ -9,7 +9,8 @@ public record GiftCardResponse(
     string PurchaserEmail,
     string? RecipientEmail,
     string Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string Currency);
 
 /// <summary>Public lookup shape — deliberately excludes PurchaserEmail/RecipientEmail
 /// (enumeration-risk endpoint; see architecture.md AllowAnonymous Exceptions table).</summary>

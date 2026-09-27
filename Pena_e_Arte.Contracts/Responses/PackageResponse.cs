@@ -10,6 +10,8 @@ public record PackagePurchaseResponse(
     string? PackageName,
     Guid ClientId,
     int SessionsRemaining,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    decimal Amount,
+    string Currency);
 
 public record PurchasePackageResponse(Guid PackagePurchaseId, string? ClientToken);

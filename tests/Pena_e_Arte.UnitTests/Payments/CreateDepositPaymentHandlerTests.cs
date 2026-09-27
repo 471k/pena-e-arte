@@ -24,8 +24,14 @@ public class CreateDepositPaymentHandlerTests
         _tenant.StudioId.Returns(_studioId);
         _currentUser.UserId.Returns(_clientUserId);
         _currentUser.Role.Returns("client");
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
         _provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
                .Returns(("pi_new", "secret_new"));
+
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "ALL" });
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
     }
 
     private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _provider);
@@ -44,9 +50,44 @@ public class CreateDepositPaymentHandlerTests
         stored.Method.Should().Be(ClientPaymentMethod.Card);
         stored.Status.Should().Be(PaymentStatus.Pending);
         stored.Amount.Should().Be(80m);
+        stored.Currency.Should().Be("ALL");
         await _provider.Received(1).CreatePaymentHoldAsync(
-            Arg.Is<PaymentHoldRequest>(r => r.AmountInCents == 8000 && r.Currency == "ALL"),
+            Arg.Is<PaymentHoldRequest>(r => r.Amount == 80m && r.Currency == "ALL"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_EuroStudio_CreatesCardHoldInEuro()
+    {
+        _db.Studios.Single(s => s.Id == _studioId).Currency = "EUR";
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId, depositAmount: 50m);
+
+        await CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        Payment stored = _db.Payments.Single(p => p.AppointmentId == appointmentId);
+        stored.Currency.Should().Be("EUR");
+        await _provider.Received(1).CreatePaymentHoldAsync(
+            Arg.Is<PaymentHoldRequest>(r => r.Amount == 50m && r.Currency == "EUR"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_JpyStudio_ThrowsBusinessRuleViolationAndNeverCallsProvider()
+    {
+        _db.Studios.Single(s => s.Id == _studioId).Currency = "JPY";
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId, depositAmount: 3000m);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*JPY*");
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(
+            Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

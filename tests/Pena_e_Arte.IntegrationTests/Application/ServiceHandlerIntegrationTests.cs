@@ -154,13 +154,15 @@ public class ServiceHandlerIntegrationTests(DatabaseFixture fixture)
         Guid otherTenantServiceId = await SeedService(tenantB, "Not Yours", durationMinutes: 45);
 
         await using AppDbContext seedCtx = fixture.CreateDbContext(tenantA);
+        seedCtx.Studios.Add(new Studio { Id = tenantA, Name = "Tenant A", Slug = tenantA.ToString("N")[..8], CountryCode = "AL", Currency = "EUR" });
         Client client = new() { StudioId = tenantA, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@test.com" };
         seedCtx.Clients.Add(client);
         await seedCtx.SaveChangesAsync();
 
         // Service resolution runs before any artist-availability check in
-        // CreateAppointmentCoreAsync, so this throws NotFoundException without needing an
-        // artist/StudioHours seeded — the cross-tenant service lookup is what's under test.
+        // CreateAppointmentCoreAsync (after the studio-currency load), so this throws
+        // NotFoundException without needing an artist/StudioHours seeded — the cross-tenant
+        // service lookup is what's under test.
         CreateAppointmentRequest req = new(
             null, client.Id, DateTime.UtcNow.AddDays(3), 90, null, ServiceId: otherTenantServiceId);
 

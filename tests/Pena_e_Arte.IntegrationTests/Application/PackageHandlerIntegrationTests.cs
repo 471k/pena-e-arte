@@ -37,6 +37,8 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
             .Returns(true);
 
         IPaymentProvider provider = Substitute.For<IPaymentProvider>();
+        provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
         provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(("pi_pkg_test", "secret_pkg_test"));
 
@@ -102,6 +104,7 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
     private async Task<(Guid ClientId, Guid PackageId)> SeedClientAndPackage(Guid tenantId, Guid userId, int sessionCount)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
+        ctx.Studios.Add(new Studio { Id = tenantId, Name = "Test Studio", Slug = tenantId.ToString("N")[..8], CountryCode = "AL", Currency = "EUR" });
         Client client = new() { StudioId = tenantId, UserId = userId, FirstName = "C", LastName = "L", Email = $"{Guid.NewGuid()}@c.com" };
         Package package = new() { StudioId = tenantId, Name = "Pack", SessionCount = sessionCount, Price = 300m, IsActive = true };
         ctx.Clients.Add(client);

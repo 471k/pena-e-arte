@@ -82,7 +82,7 @@ public class PokPaymentProviderTests
         PokPaymentProvider sut = CreateSut(handler);
 
         Func<Task> act = () => sut.CreatePaymentHoldAsync(
-            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 10000, "ALL"), default);
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 100m, "ALL"), default);
 
         await act.Should().ThrowAsync<PaymentProviderNotConnectedException>();
         handler.Requests.Should().BeEmpty();
@@ -103,17 +103,52 @@ public class PokPaymentProviderTests
         PokPaymentProvider sut = CreateSut(handler);
 
         (string providerReferenceId, string clientToken) = await sut.CreatePaymentHoldAsync(
-            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 15000, "ALL", HoldDurationMinutes: 1440), default);
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 150m, "ALL", HoldDurationMinutes: 1440), default);
 
         providerReferenceId.Should().Be("order-abc");
         clientToken.Should().Be("order-abc");
         handler.Requests.Should().Contain(r => r.Path == "/auth/sdk/login");
         CapturedRequest createReq = handler.Requests.Single(r => r.Path.EndsWith("/sdk-orders"));
         createReq.Path.Should().Be($"/merchants/{MerchantId}/sdk-orders");
-        // 15000 "amountInCents" → 150.00 in POK's own unit, per AmountInCentsToPok's documented
-        // (unverified-against-a-real-sandbox) assumption.
+        // Whole-unit decimal in, whole-unit decimal out — ToPokAmount's documented
+        // (unverified-against-a-real-sandbox) assumption. No more x100/÷100 anywhere.
         createReq.Body.Should().Contain("\"amount\":150");
         createReq.Body.Should().Contain("\"autoCapture\":false");
+    }
+
+    [Fact]
+    public async Task CreatePaymentHoldAsync_UnsupportedCurrency_ThrowsWithoutAnyHttpCall()
+    {
+        // Defence in depth behind CardCurrencyGuard (which every caller already runs) — this
+        // provider must never accept a currency it can't actually charge in.
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));
+        PokPaymentProvider sut = CreateSut(handler);
+
+        Func<Task> act = () => sut.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 3000m, "JPY"), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*JPY*");
+        handler.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RefundAsync_SendsWholeUnitDecimalAmount()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/refund") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler);
+
+        await sut.RefundAsync(_studioId, "order-abc", 22.78m, "EUR", default);
+
+        CapturedRequest refundReq = handler.Requests.Single(r => r.Path.EndsWith("/refund"));
+        refundReq.Body.Should().Contain("\"refundAmount\":22.78");
     }
 
     [Fact]
@@ -131,7 +166,7 @@ public class PokPaymentProviderTests
         });
         PokPaymentProvider sut = CreateSut(handler);
 
-        await sut.CreatePaymentHoldAsync(new PaymentHoldRequest(_studioId, Guid.NewGuid(), 1000, "ALL"), default);
+        await sut.CreatePaymentHoldAsync(new PaymentHoldRequest(_studioId, Guid.NewGuid(), 10m, "ALL"), default);
 
         handler.Requests.Should().ContainSingle().Which.BearerToken.Should().Be("cached-token");
     }

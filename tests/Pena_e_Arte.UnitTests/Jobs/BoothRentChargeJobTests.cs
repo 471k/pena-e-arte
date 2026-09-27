@@ -100,8 +100,49 @@ public class BoothRentChargeJobTests
         _db.BoothRentCharges.Single().Amount.Should().Be(75m);
     }
 
+    [Fact]
+    public async Task RunAsync_DueSchedule_ChargeTakesItsStudiosCurrency()
+    {
+        await SeedArtist();
+        await SeedSchedule(RentFrequency.Weekly, DateTime.UtcNow.AddDays(-1));
+
+        await CreateSut().RunAsync();
+
+        _db.BoothRentCharges.Single().Currency.Should().Be("EUR");
+    }
+
+    [Fact]
+    public async Task RunAsync_TwoDueSchedulesInDifferentStudios_EachChargeTakesItsOwnStudiosCurrency()
+    {
+        await SeedArtist(); // studio EUR
+
+        Guid otherStudioId = Guid.NewGuid();
+        Guid otherArtistId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = otherStudioId, Name = "Other", Slug = "other", CountryCode = "AL", Currency = "ALL" });
+        _db.Artists.Add(new Artist { Id = otherArtistId, StudioId = otherStudioId, FirstName = "C", LastName = "D", Email = "c@d.com" });
+        await _db.SaveChangesAsync(default);
+
+        await SeedSchedule(RentFrequency.Weekly, DateTime.UtcNow.AddDays(-1));
+        _db.BoothRentSchedules.Add(new BoothRentSchedule
+        {
+            StudioId = otherStudioId,
+            ArtistId = otherArtistId,
+            AmountFixed = 5000m,
+            Frequency = RentFrequency.Weekly,
+            NextChargeDate = DateTime.UtcNow.AddDays(-1),
+            IsActive = true,
+        });
+        await _db.SaveChangesAsync(default);
+
+        await CreateSut().RunAsync();
+
+        _db.BoothRentCharges.Single(c => c.StudioId == _studioId).Currency.Should().Be("EUR");
+        _db.BoothRentCharges.Single(c => c.StudioId == otherStudioId).Currency.Should().Be("ALL");
+    }
+
     private async Task SeedArtist()
     {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
         _db.Artists.Add(new Artist
         {
             Id = _artistId,

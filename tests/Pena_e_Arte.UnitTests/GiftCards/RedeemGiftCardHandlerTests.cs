@@ -22,6 +22,9 @@ public class RedeemGiftCardHandlerTests
     {
         _tenant.StudioId.Returns(_studioId);
         _currentUser.Role.Returns("owner");
+
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
+        _db.SaveChanges();
     }
 
     private RedeemGiftCardHandler CreateSut() => new(_db, _tenant, _currentUser);
@@ -97,6 +100,22 @@ public class RedeemGiftCardHandlerTests
     }
 
     [Fact]
+    public async Task Handle_GiftCardCurrencyDoesNotMatchStudioCurrency_Throws()
+    {
+        // Can't happen today while the currency lock holds — guards the future §4.1 admin
+        // currency-change tool.
+        GiftCard card = await SeedGiftCard(50m, GiftCardStatus.Active);
+        card.Currency = "ALL";
+        await _db.SaveChangesAsync(default);
+        Guid apptId = await SeedAppointment(10m);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new RedeemGiftCardCommand(new RedeemGiftCardRequest(card.Code, apptId, 10m)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*ALL*EUR*");
+    }
+
+    [Fact]
     public async Task Handle_VoidedCard_Throws()
     {
         GiftCard card = await SeedGiftCard(50m, GiftCardStatus.Voided);
@@ -116,6 +135,7 @@ public class RedeemGiftCardHandlerTests
             Code = "TESTCODE1234",
             InitialBalance = balance,
             RemainingBalance = balance,
+            Currency = "EUR",
             PurchaserEmail = "buyer@example.com",
             Status = status,
             Provider = "pok",
