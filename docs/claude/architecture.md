@@ -1116,7 +1116,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 2 | Public portfolio handlers (`GetPublicStudioQuery`, `GetPublicArtistQuery`) | SEO public endpoints, no tenant scope | Anonymous |
 | 3 | `IndustryReportJob` | Monthly aggregate report generation, no PII | Hangfire job (admin-scoped) |
 | 4 | `GetPlatformStatsHandler`, `MrrInputLoader` (used by `GetPlatformStatsHandler`, `GetMrrHistoryHandler`) | Platform KPI aggregate (total studios, conversion; MRR read shared via `MrrInputLoader`) | AdminOnly |
-| 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler` | All subscriptions cross-tenant; trial extension | AdminOnly |
+| 5 | `GetPlatformSubscriptionsHandler`, `ExtendTrialHandler`, `BackfillSubscriptionBilledAmountsHandler` (studio name/slug for the review list) | All subscriptions cross-tenant; trial extension | AdminOnly |
 | 6 | `GetPlatformReferralCodesHandler`, `DeactivateReferralCodeHandler` | All referral codes cross-tenant | AdminOnly |
 | 7  | `CancelSubscriptionHandler`             | Subscription cancellation cross-tenant                           | AdminOnly |
 | 8  | `GetStudioByIdHandler`                  | Cross-tenant single-studio read for admin detail page            | AdminOnly |

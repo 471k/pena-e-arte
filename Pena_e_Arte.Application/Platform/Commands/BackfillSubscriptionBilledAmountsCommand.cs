@@ -70,6 +70,14 @@ public class BackfillSubscriptionBilledAmountsHandler(
             .Where(s => s.StripeSubscriptionId == null && s.BilledUnitAmount == null)
             .ToListAsync(ct);
 
+        // IgnoreQueryFilters approved: usage #5 — the admin-only backfill is cross-tenant, and the
+        // review list needs each studio's name + slug (not a bare id) to be readable.
+        List<Guid> cashStudioIds = cashBilled.Select(s => s.StudioId).ToList();
+        Dictionary<Guid, (string Name, string Slug)> studioLabels = await db.Studios
+            .IgnoreQueryFilters()
+            .Where(s => cashStudioIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => (s.Name, s.Slug), ct);
+
         List<CashBilledSnapshotResponse> cashBilledSnapshots = [];
         foreach (Subscription sub in cashBilled)
         {
@@ -79,7 +87,9 @@ public class BackfillSubscriptionBilledAmountsHandler(
             sub.BilledUnitAmount = monthlyPrice;
             sub.BilledQuantity = 1;
             sub.BilledCurrency = MrrRules.PlatformCurrency;
-            cashBilledSnapshots.Add(new CashBilledSnapshotResponse(sub.StudioId, monthlyPrice));
+            (string Name, string Slug) label = studioLabels.GetValueOrDefault(sub.StudioId);
+            cashBilledSnapshots.Add(new CashBilledSnapshotResponse(
+                sub.StudioId, label.Name ?? string.Empty, label.Slug ?? string.Empty, monthlyPrice));
         }
 
         await db.SaveChangesAsync(ct);

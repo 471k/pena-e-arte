@@ -73,6 +73,7 @@ public class BackfillSubscriptionBilledAmountsHandlerTests
     public async Task Handle_CashBilledSubscriptionWithNullSnapshot_PopulatesFromMonthlyPriceAndListsIt()
     {
         Guid studioId = Guid.NewGuid();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "Ink & Iron Studio", Slug = "ink-and-iron-studio" });
         Plan plan = new() { Name = "Pro" };
         plan.Prices.Add(new PlanPrice { Interval = BillingInterval.Monthly, Price = 49m });
         _db.Plans.Add(plan);
@@ -93,7 +94,8 @@ public class BackfillSubscriptionBilledAmountsHandlerTests
         BackfillSubscriptionBilledAmountsResponse result =
             await CreateSut().Handle(new BackfillSubscriptionBilledAmountsCommand(), default);
 
-        result.CashBilledSnapshots.Should().ContainSingle(s => s.StudioId == studioId && s.Price == 49m);
+        result.CashBilledSnapshots.Should().ContainSingle(s => s.StudioId == studioId && s.Price == 49m
+            && s.StudioName == "Ink & Iron Studio" && s.StudioSlug == "ink-and-iron-studio");
         _db.Subscriptions.Single(s => s.StudioId == studioId).BilledUnitAmount.Should().Be(49m);
     }
 
