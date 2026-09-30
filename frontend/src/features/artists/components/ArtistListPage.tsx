@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
@@ -19,6 +20,8 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import {
   useGetArtistsQuery, useDeleteArtistMutation,
   useGetMyArtistQuery, useCreateOwnArtistProfileMutation,
@@ -62,6 +65,7 @@ export function ArtistListPage() {
   }, [inputValue]);
 
   const { data: artists, isLoading, isError } = useGetArtistsQuery(search);
+  const { currency: studioCurrency } = useStudioCurrency();
   const errorMessage = useSuspensionAwareError(isError, "Failed to load artists. Please try again.");
   // Plan usage endpoint is OwnerOnly — skip for artist role to avoid a guaranteed 403.
   const { data: usage } = useGetPlanUsageQuery(undefined, { skip: !canManage });
@@ -453,15 +457,26 @@ export function ArtistListPage() {
               <SpecializationsField id="ba-specializations" value={baSpecializations} onChange={setBaSpecializations} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="ba-hourly-rate">Hourly rate (€, optional)</Label>
-              <Input
-                id="ba-hourly-rate"
-                type="number"
-                step="0.01"
-                min="0"
-                value={baHourlyRate}
-                onChange={(e) => setBaHourlyRate(e.target.value)}
-              />
+              <Label htmlFor="ba-hourly-rate">
+                Hourly rate{studioCurrency ? ` (${currencyLabel(studioCurrency)}, optional)` : " (optional)"}
+              </Label>
+              {studioCurrency ? (
+                <MoneyInput
+                  id="ba-hourly-rate"
+                  currency={studioCurrency}
+                  value={baHourlyRate}
+                  onChange={(e) => setBaHourlyRate(e.target.value)}
+                />
+              ) : (
+                <Input
+                  id="ba-hourly-rate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={baHourlyRate}
+                  onChange={(e) => setBaHourlyRate(e.target.value)}
+                />
+              )}
             </div>
           </div>
           <DialogFooter>

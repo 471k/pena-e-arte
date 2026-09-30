@@ -7,8 +7,11 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import { SpecializationsField } from "@/shared/components/SpecializationsField";
 import { useInviteSoloArtistToJoinMutation } from "@/features/studios/studiosApi";
@@ -37,11 +40,20 @@ export function CreateArtistPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<CreateFormValues>({ resolver: zodResolver(createSchema) });
+  const { currency: studioCurrency } = useStudioCurrency();
 
   async function onSubmit(values: CreateFormValues) {
     setAlreadyTakenValues(null);
+    if (
+      values.hourlyRate != null && studioCurrency &&
+      !hasAtMostCurrencyMinorUnits(values.hourlyRate, studioCurrency)
+    ) {
+      setError("hourlyRate", { message: tooManyDecimalsMessage(studioCurrency) });
+      return;
+    }
     const result = await createArtist({
       firstName:       values.firstName,
       lastName:        values.lastName,
@@ -149,16 +161,28 @@ export function CreateArtistPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="hourlyRate">Hourly rate (€, optional)</Label>
-            <Input
-              id="hourlyRate"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="e.g. 90"
-              {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
-              className={cn(errors.hourlyRate && "border-destructive")}
-            />
+            <Label htmlFor="hourlyRate">
+              Hourly rate{studioCurrency ? ` (${currencyLabel(studioCurrency)}, optional)` : " (optional)"}
+            </Label>
+            {studioCurrency ? (
+              <MoneyInput
+                id="hourlyRate"
+                currency={studioCurrency}
+                placeholder="e.g. 90"
+                {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
+                className={cn(errors.hourlyRate && "border-destructive")}
+              />
+            ) : (
+              <Input
+                id="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="e.g. 90"
+                {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
+                className={cn(errors.hourlyRate && "border-destructive")}
+              />
+            )}
             <p className="text-xs text-muted-foreground">
               Used to calculate percentage-based booking deposits.
             </p>

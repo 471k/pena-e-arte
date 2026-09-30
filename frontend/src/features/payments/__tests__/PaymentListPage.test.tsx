@@ -27,6 +27,7 @@ const PAYMENT_CARD: PaymentResponse = {
   paidAt:                "2026-06-10T10:00:00Z",
   clientName:            "Maria Silva",
   appointmentDate:       "2026-06-15T14:00:00Z",
+  currency:              "EUR",
 };
 
 const PAYMENT_CASH: PaymentResponse = {
@@ -41,6 +42,7 @@ const PAYMENT_CASH: PaymentResponse = {
   paidAt:                null,
   clientName:            "João Santos",
   appointmentDate:       "2026-06-20T11:00:00Z",
+  currency:              "EUR",
 };
 
 // 20 identical payments to trigger "Load more"

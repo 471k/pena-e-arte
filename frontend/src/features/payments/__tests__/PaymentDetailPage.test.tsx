@@ -28,6 +28,7 @@ const PAYMENT_CARD_CAPTURED: PaymentResponse = {
   paidAt:                null,
   clientName:            "Maria Silva",
   appointmentDate:       "2026-06-15T14:00:00Z",
+  currency:              "EUR",
 };
 
 const PAYMENT_CARD_PAID: PaymentResponse = {
@@ -50,6 +51,7 @@ const PAYMENT_CASH_PENDING: PaymentResponse = {
   paidAt:                null,
   clientName:            "João Santos",
   appointmentDate:       "2026-06-20T11:00:00Z",
+  currency:              "EUR",
 };
 
 const PAYMENT_PENDING: PaymentResponse = {

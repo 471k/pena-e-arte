@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { DepositRuleListPage } from "@/features/deposit-rules/components/DepositRuleListPage";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 import { Role } from "@/shared/types/roles";
@@ -45,6 +46,9 @@ const RULE_PERCENT: DepositRuleResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/deposit-rules", () =>
     HttpResponse.json([RULE_FIXED, RULE_PERCENT]),
   ),
@@ -62,8 +66,9 @@ function makeStore(role: Role = Role.Owner) {
       auth:                          authReducer,
       ui:                            uiReducer,
       [depositRulesApi.reducerPath]: depositRulesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(depositRulesApi.middleware),
+    middleware: (gd) => gd().concat(depositRulesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -122,7 +127,7 @@ describe("DepositRuleListPage", () => {
   it("shows the fixed amount and Active badge for an active fixed rule", async () => {
     renderPage();
     await screen.findByText("Standard Deposit");
-    expect(screen.getByText(/fixed · 50,00\s?€/i)).toBeInTheDocument();
+    expect(await screen.findByText(/fixed · €50/i)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 

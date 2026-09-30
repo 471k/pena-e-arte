@@ -15,7 +15,7 @@ public class GetDesignCatalogHandlerTests
 
     private Studio SeedStudio(string slug = "ink-studio")
     {
-        Studio studio = new() { Name = "Ink Studio", Slug = slug, IsActive = true, IsPublished = true };
+        Studio studio = new() { Name = "Ink Studio", Slug = slug, IsActive = true, IsPublished = true, Currency = "EUR" };
         _db.Studios.Add(studio);
         _db.SaveChanges();
         return studio;
@@ -84,5 +84,6 @@ public class GetDesignCatalogHandlerTests
         result.Single().ArtistName.Should().Be("Jamie Lee");
         result.Single().ImageUrl.Should().Be("https://r2/v2.png");
         result.Single().Price.Should().Be(80m);
+        result.Single().Currency.Should().Be("EUR");
     }
 }

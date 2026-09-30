@@ -21,7 +21,7 @@ const MONDAY_HOURS: StudioHoursEntry[] = [
 
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: STUDIO_ID, timezone: "Europe/Tirane" }),
+    HttpResponse.json({ id: STUDIO_ID, timezone: "Europe/Tirane", currency: "EUR" }),
   ),
   http.get(`http://localhost/api/v1/studios/${STUDIO_ID}/hours`, () =>
     HttpResponse.json(EMPTY_HOURS),

@@ -60,6 +60,7 @@ const ARTIST: PublicArtistResponse = {
   socialLinks: [
     { platform: "Instagram", handle: "mariasilva.ink", isVerified: true, profileUrl: "https://instagram.com/mariasilva.ink" },
   ],
+  currency: "EUR",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -105,8 +106,8 @@ describe("ArtistPortfolioPage", () => {
     it("renders a Flash section with items belonging to this artist", () => {
       mockUseGetDesignCatalogQuery.mockReturnValue({
         data: [
-          { id: "d1", title: "Rose", description: null, price: 100, artistId: "artist-001", artistName: "Maria Silva", imageUrl: "https://cdn.example.com/flash1.jpg" },
-          { id: "d2", title: "Other artist's flash", description: null, price: 80, artistId: "artist-002", artistName: "Someone Else", imageUrl: null },
+          { id: "d1", title: "Rose", description: null, price: 100, artistId: "artist-001", artistName: "Maria Silva", imageUrl: "https://cdn.example.com/flash1.jpg", currency: "EUR" },
+          { id: "d2", title: "Other artist's flash", description: null, price: 80, artistId: "artist-002", artistName: "Someone Else", imageUrl: null, currency: "EUR" },
         ],
         isLoading: false,
       });
@@ -119,12 +120,12 @@ describe("ArtistPortfolioPage", () => {
     it("shows the price and a 'Book this design' link for each item", () => {
       mockUseGetDesignCatalogQuery.mockReturnValue({
         data: [
-          { id: "d1", title: "Rose", description: null, price: 100, artistId: "artist-001", artistName: "Maria Silva", imageUrl: null },
+          { id: "d1", title: "Rose", description: null, price: 100, artistId: "artist-001", artistName: "Maria Silva", imageUrl: null, currency: "EUR" },
         ],
         isLoading: false,
       });
       renderPage();
-      expect(screen.getByText(/100,00\s?€/)).toBeInTheDocument();
+      expect(screen.getByText("€100")).toBeInTheDocument();
       const link = screen.getByRole("link", { name: /book this design/i });
       expect(link.getAttribute("href")).toContain("/book?studio=ink-soul&artist=maria-silva");
     });

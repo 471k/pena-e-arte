@@ -1,10 +1,8 @@
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetBoothRentSchedulesQuery, useGetBoothRentChargesQuery } from "../boothRentApi";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -17,6 +15,7 @@ function formatDate(iso: string): string {
 export function MyBoothRentSection() {
   const { data: schedules, isLoading: schedulesLoading } = useGetBoothRentSchedulesQuery();
   const { data: charges, isLoading: chargesLoading } = useGetBoothRentChargesQuery();
+  const { currency } = useStudioCurrency();
 
   if (schedulesLoading || chargesLoading) return <Skeleton className="h-24 w-full rounded-lg" />;
   if (!schedules || schedules.length === 0) return null;
@@ -26,14 +25,14 @@ export function MyBoothRentSection() {
       <h2 className="text-sm font-semibold text-muted-foreground">Booth Rent</h2>
       {schedules.map((s) => (
         <p key={s.id} className="text-sm text-muted-foreground">
-          {formatCurrency(s.amountFixed)} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
+          {currency ? formatCurrency(s.amountFixed, currency) : s.amountFixed} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
         </p>
       ))}
       {charges && charges.length > 0 && (
         <div className="space-y-1.5">
           {charges.map((c) => (
             <div key={c.id} className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-sm">{formatCurrency(c.amount)} — {formatDate(c.chargedDate)}</span>
+              <span className="text-sm">{formatCurrency(c.amount, c.currency)} — {formatDate(c.chargedDate)}</span>
               <Badge
                 variant="outline"
                 className={c.isSettled

@@ -7,4 +7,5 @@ public record DesignCatalogItemResponse(
     decimal? Price,
     Guid ArtistId,
     string ArtistName,
-    string? ImageUrl);
+    string? ImageUrl,
+    string Currency);

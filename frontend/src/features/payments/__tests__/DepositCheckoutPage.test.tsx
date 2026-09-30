@@ -28,9 +28,13 @@ vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
 
 const SECRET_RESP: ClientTokenResponse = {
   clientToken: "order-abc-xyz",
+  amount:      100.5,
+  currency:    "EUR",
 };
 
-const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true, pokEnvironment: "staging" };
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = {
+  cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "EUR", cardUnavailableReason: null,
+};
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
@@ -120,17 +124,18 @@ describe("DepositCheckoutPage", () => {
     expect(form.dataset.orderId).toBe("order-abc-xyz");
   });
 
-  it("shows the amount in the form description when ?amount param is provided", async () => {
-    renderPage("pay-001", "?amount=100.00+EUR");
-    await screen.findByTestId("pok-checkout-form");
-    expect(screen.getByText(/100\.00 EUR/)).toBeInTheDocument();
-  });
-
-  it("does NOT show the amount text when no ?amount param", async () => {
+  it("shows the server's own amount and currency in the form description", async () => {
     renderPage("pay-001");
     await screen.findByTestId("pok-checkout-form");
-    // The <p> with "authorising a deposit of" should not appear
-    expect(screen.queryByText(/authorising a deposit of/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/authorising a deposit of/i)).toBeInTheDocument();
+    expect(screen.getByText("€100.50")).toBeInTheDocument();
+  });
+
+  it("ignores a forged ?amount in the URL and renders the server amount instead", async () => {
+    renderPage("pay-001", "?amount=1.00+EUR");
+    await screen.findByTestId("pok-checkout-form");
+    expect(screen.getByText("€100.50")).toBeInTheDocument();
+    expect(screen.queryByText(/1\.00/)).not.toBeInTheDocument();
   });
 
   it("shows the POK security footer", async () => {

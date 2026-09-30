@@ -21,6 +21,7 @@ import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
@@ -47,10 +48,6 @@ function formatDateTime(dateStr: string, studioTimezone: string | undefined): st
     hour:    "2-digit",
     minute:  "2-digit",
   }, studioTimezone));
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -309,7 +306,7 @@ export function AppointmentDetailPage() {
                   label="Deposit"
                   value={
                     <span className="flex items-center gap-1.5">
-                      {formatCurrency(appt.depositAmount)}
+                      {studio ? formatCurrency(appt.depositAmount, studio.currency) : appt.depositAmount}
                       <DepositStatusBadge status={appt.depositStatus} />
                     </span>
                   }

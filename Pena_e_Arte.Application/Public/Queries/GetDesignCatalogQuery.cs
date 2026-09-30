@@ -39,7 +39,7 @@ public class GetDesignCatalogHandler(IAppDbContext db)
             return new DesignCatalogItemResponse(
                 d.Id, d.Title, d.Description, d.Price,
                 d.ArtistId, $"{d.Artist.FirstName} {d.Artist.LastName}".Trim(),
-                latest?.FileUrl);
+                latest?.FileUrl, studio.Currency);
         }).ToList();
     }
 }

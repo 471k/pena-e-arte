@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { promoCodesApi } from "@/features/promo-codes/promoCodesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { CreatePromoCodePage } from "@/features/promo-codes/components/CreatePromoCodePage";
 import type { PromoCodeResponse } from "@/features/promo-codes/promoCode.types";
 
@@ -33,6 +34,9 @@ const CREATED_CODE: PromoCodeResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.post("http://localhost/api/v1/promo-codes", () =>
     HttpResponse.json(CREATED_CODE, { status: 201 }),
   ),
@@ -50,8 +54,9 @@ function makeStore() {
       auth:                        authReducer,
       ui:                          uiReducer,
       [promoCodesApi.reducerPath]: promoCodesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(promoCodesApi.middleware),
+    middleware: (gd) => gd().concat(promoCodesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null } as any,
@@ -84,18 +89,18 @@ describe("CreatePromoCodePage", () => {
     expect(screen.getByText("New Promo Code")).toBeInTheDocument();
   });
 
-  it("renders Code, Discount type, Amount and Active fields", () => {
+  it("renders Code, Discount type, Amount and Active fields", async () => {
     renderPage();
     expect(screen.getByLabelText("Code")).toBeInTheDocument();
     expect(screen.getByText("Fixed amount")).toBeInTheDocument();
     expect(screen.getByText("Percentage")).toBeInTheDocument();
-    expect(screen.getByLabelText("Discount (€)")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Discount (€)")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
-  it("defaults to fixed amount with the Discount (€) label", () => {
+  it("defaults to fixed amount with the Discount (€) label", async () => {
     renderPage();
-    expect(screen.getByLabelText("Discount (€)")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Discount (€)")).toBeInTheDocument();
   });
 
   it("switching to Percentage updates the amount label", async () => {

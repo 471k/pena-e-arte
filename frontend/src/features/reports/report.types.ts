@@ -12,8 +12,10 @@ export interface ArtistRevenuePoint {
 }
 
 export interface RevenueSummaryResponse {
-  monthlyTrend: MonthlyRevenuePoint[];
-  perArtist:    ArtistRevenuePoint[];
+  monthlyTrend:               MonthlyRevenuePoint[];
+  perArtist:                  ArtistRevenuePoint[];
+  currency:                   string;
+  excludedOtherCurrencyCount: number;
 }
 
 export interface EarningsPaymentLine {
@@ -26,7 +28,9 @@ export interface EarningsPaymentLine {
 }
 
 export interface ArtistEarningsResponse {
-  monthlyTrend: MonthlyRevenuePoint[];
-  periodTotal:  number;
-  payments:     EarningsPaymentLine[];
+  monthlyTrend:               MonthlyRevenuePoint[];
+  periodTotal:                number;
+  payments:                   EarningsPaymentLine[];
+  currency:                   string;
+  excludedOtherCurrencyCount: number;
 }

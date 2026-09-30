@@ -2,21 +2,24 @@ import { Link } from "react-router-dom";
 import { ChevronRight, DollarSign, Percent } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import type { DepositRuleResponse } from "../depositRule.types";
 
 interface DepositRuleCardProps {
   rule: DepositRuleResponse;
 }
 
-function formatAmount(rule: DepositRuleResponse): string {
+function formatAmount(rule: DepositRuleResponse, currency: string | undefined): string {
   if (rule.amountFixed !== null) {
-    return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(rule.amountFixed);
+    return currency ? formatCurrency(rule.amountFixed, currency) : String(rule.amountFixed);
   }
   return `${rule.amountPercent}%`;
 }
 
 export function DepositRuleCard({ rule }: DepositRuleCardProps) {
   const isFixed = rule.amountFixed !== null;
+  const { currency } = useStudioCurrency();
 
   return (
     <Link
@@ -35,7 +38,7 @@ export function DepositRuleCard({ rule }: DepositRuleCardProps) {
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-sm font-medium leading-none">{rule.name}</p>
             <p className="text-xs text-muted-foreground">
-              {isFixed ? "Fixed" : "Percent"} · {formatAmount(rule)}
+              {isFixed ? "Fixed" : "Percent"} · {formatAmount(rule, currency)}
             </p>
           </div>
 

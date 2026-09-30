@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { DepositRuleDetailPage } from "@/features/deposit-rules/components/DepositRuleDetailPage";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 import { Role } from "@/shared/types/roles";
@@ -42,6 +43,9 @@ const UPDATED_RULE: DepositRuleResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/deposit-rules/:id", () => HttpResponse.json(RULE)),
   http.put("http://localhost/api/v1/deposit-rules/:id", () => HttpResponse.json(UPDATED_RULE)),
   http.delete("http://localhost/api/v1/deposit-rules/:id", () => new HttpResponse(null, { status: 204 })),
@@ -59,8 +63,9 @@ function makeStore(role: Role = Role.Owner) {
       auth:                          authReducer,
       ui:                            uiReducer,
       [depositRulesApi.reducerPath]: depositRulesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(depositRulesApi.middleware),
+    middleware: (gd) => gd().concat(depositRulesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -115,7 +120,7 @@ describe("DepositRuleDetailPage", () => {
   it("renders the fixed amount", async () => {
     renderPage();
     await screen.findByText("Standard Deposit");
-    expect(screen.getByText(/fixed · 50,00\s?€/i)).toBeInTheDocument();
+    expect(screen.getByText(/fixed · €50/i)).toBeInTheDocument();
   });
 
   it("renders a percent rule correctly", async () => {

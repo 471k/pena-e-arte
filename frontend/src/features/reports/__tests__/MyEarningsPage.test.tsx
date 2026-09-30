@@ -37,16 +37,20 @@ const EARNINGS: ArtistEarningsResponse = {
       ],
     },
   ],
+  currency: "EUR",
+  excludedOtherCurrencyCount: 0,
 };
 
-const EMPTY_EARNINGS: ArtistEarningsResponse = { monthlyTrend: [], periodTotal: 0, payments: [] };
+const EMPTY_EARNINGS: ArtistEarningsResponse = {
+  monthlyTrend: [], periodTotal: 0, payments: [], currency: "EUR", excludedOtherCurrencyCount: 0,
+};
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
   http.get("http://localhost/api/v1/reports/my-earnings", () => HttpResponse.json(EARNINGS)),
   http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
   // MyEarningsPage embeds MyBoothRentSection — empty schedules means it renders nothing,
   // matching the typical "no booth-rent schedule" artist and leaving existing assertions
@@ -100,7 +104,7 @@ describe("MyEarningsPage", () => {
   it("renders the payment line date in the studio's timezone, not the test environment's local timezone", async () => {
     server.use(
       http.get("http://localhost/api/v1/studios/me", () =>
-        HttpResponse.json({ id: "s-001", timezone: "America/New_York" }),
+        HttpResponse.json({ id: "s-001", timezone: "America/New_York", currency: "EUR" }),
       ),
     );
     renderPage();
@@ -166,7 +170,7 @@ describe("MyEarningsPage", () => {
 
   it("formats the period total as currency", async () => {
     renderPage();
-    expect(await screen.findAllByText(/380,00\s?€/)).not.toHaveLength(0);
+    expect(await screen.findAllByText("€380")).not.toHaveLength(0);
   });
 
   it("shows a specific message and no futile retry when the caller has no artist profile", async () => {

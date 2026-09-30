@@ -14,6 +14,8 @@ export interface RegisterStudioRequest {
   addressLine2?: string;
   postalCode?:   string;
   referralCode?: string;
+  countryCode?:  string;
+  currency?:     string;
 }
 
 export interface StudioResponse {
@@ -41,6 +43,9 @@ export interface StudioResponse {
   addressLine1:         string | null;
   addressLine2:         string | null;
   postalCode:           string | null;
+  countryCode:          string;
+  currency:             string;
+  currencyLocked:       boolean;
 }
 
 export interface StudioApiKeyStatusResponse {
@@ -133,6 +138,11 @@ export interface UpdateStudioRequest {
   addressLine1?:    string | null;
   addressLine2?:    string | null;
   postalCode?:      string | null;
+  countryCode?:     string | null;
+}
+
+export interface UpdateStudioCurrencyRequest {
+  currency: string;
 }
 
 export interface StudioClosureResponse {
@@ -179,6 +189,10 @@ export const studiosApi = createApi({
     }),
     updateMyStudio: builder.mutation<StudioResponse, UpdateStudioRequest>({
       query: (body) => ({ url: "studios/me", method: "PUT", body }),
+      invalidatesTags: ["Studio"],
+    }),
+    updateMyStudioCurrency: builder.mutation<StudioResponse, UpdateStudioCurrencyRequest>({
+      query: (body) => ({ url: "studios/me/currency", method: "PUT", body }),
       invalidatesTags: ["Studio"],
     }),
     getMyStudioAuditLog: builder.query<AuditLogPageResponse, AuditLogQueryParams | void>({
@@ -331,6 +345,7 @@ export const {
   useGetStudioMapQuery,
   useGetMyStudioQuery,
   useUpdateMyStudioMutation,
+  useUpdateMyStudioCurrencyMutation,
   useUpdateStudioBrandingMutation,
   useGetApiKeyStatusQuery,
   useGenerateApiKeyMutation,

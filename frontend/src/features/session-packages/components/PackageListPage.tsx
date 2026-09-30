@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Package as PackageIcon, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -10,22 +11,27 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/shared/components/ui/dialog";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetPackagesQuery, useCreatePackageMutation, useUpdatePackageMutation } from "../packagesApi";
 import type { PackageResponse } from "../packages.types";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
 function NewPackageDialog() {
   const [createPackage, { isLoading }] = useCreatePackageMutation();
+  const { currency } = useStudioCurrency();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [sessionCount, setSessionCount] = useState("");
   const [price, setPrice] = useState("");
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (!name || !sessionCount || !price) return;
+    setPriceError(null);
+    if (currency && !hasAtMostCurrencyMinorUnits(Number(price), currency)) {
+      setPriceError(tooManyDecimalsMessage(currency));
+      return;
+    }
     const result = await createPackage({
       name, sessionCount: Number(sessionCount), price: Number(price), isActive: true,
     });
@@ -55,8 +61,18 @@ function NewPackageDialog() {
             <Input id="package-sessions" type="number" min="1" step="1" value={sessionCount} onChange={(e) => setSessionCount(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="package-price">Price (€)</Label>
-            <Input id="package-price" type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <Label htmlFor="package-price">Price{currency ? ` (${currencyLabel(currency)})` : ""}</Label>
+            {currency ? (
+              <MoneyInput
+                id="package-price"
+                currency={currency}
+                value={price}
+                onChange={(e) => { setPrice(e.target.value); setPriceError(null); }}
+              />
+            ) : (
+              <Input id="package-price" type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+            )}
+            {priceError && <p className="text-xs text-destructive-text">{priceError}</p>}
           </div>
         </div>
         <DialogFooter>
@@ -76,6 +92,7 @@ export function PackageListPage() {
 
   const { data: packages, isLoading, isError } = useGetPackagesQuery();
   const [updatePackage] = useUpdatePackageMutation();
+  const { currency } = useStudioCurrency();
 
   async function toggleActive(id: string, current: PackageResponse) {
     const result = await updatePackage({
@@ -121,7 +138,7 @@ export function PackageListPage() {
             <div>
               <p className="text-sm font-medium">{pkg.name}</p>
               <p className="text-xs text-muted-foreground">
-                {pkg.sessionCount} sessions — {formatCurrency(pkg.price)}
+                {pkg.sessionCount} sessions — {currency ? formatCurrency(pkg.price, currency) : pkg.price}
               </p>
             </div>
             <Badge

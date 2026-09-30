@@ -39,6 +39,7 @@ export interface BoothRentChargeResponse {
   artistName:           string | null;
   boothRentScheduleId:  string;
   amount:               number;
+  currency:             string;
   chargedDate:          string;
   isSettled:            boolean;
   settledAt:            string | null;

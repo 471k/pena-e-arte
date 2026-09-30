@@ -7,8 +7,11 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { useAppSelector } from "@/app/hooks";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
+import { useGetPublicStudioQuery } from "@/features/public/publicApi";
 import { usePurchaseGiftCardMutation } from "../giftCardsApi";
 
 const PRESET_AMOUNTS = [25, 50, 100, 200];
@@ -29,14 +32,24 @@ export function PurchaseGiftCardPage() {
   const isAuthenticated = !!useAppSelector((s) => s.auth.token);
   const { data: capabilities } = useGetPaymentCapabilitiesQuery(undefined, { skip: !isAuthenticated });
   const cardPaymentsAvailable = !isAuthenticated || capabilities?.cardPaymentsAvailable !== false;
+  // Guests have no ambient tenant scope for /payments/capabilities (401 for anonymous callers) —
+  // fall back to the public studio response's currency, same source GuestBookAppointmentForm uses.
+  const { data: publicStudio } = useGetPublicStudioQuery(slug ?? "", { skip: !slug || isAuthenticated });
+  const currency = capabilities?.currency ?? publicStudio?.currency;
 
   const [amount, setAmount] = useState<number>(50);
   const [purchaserEmail, setPurchaserEmail] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [purchase, { isLoading, isSuccess }] = usePurchaseGiftCardMutation();
 
   async function handleSubmit() {
     if (!slug || !purchaserEmail) return;
+    setAmountError(null);
+    if (currency && !hasAtMostCurrencyMinorUnits(amount, currency)) {
+      setAmountError(tooManyDecimalsMessage(currency));
+      return;
+    }
     const result = await purchase({
       studioSlug: slug,
       amount,
@@ -68,22 +81,31 @@ export function PurchaseGiftCardPage() {
           ) : (
             <>
               <div className="space-y-1.5">
-                <Label>Amount (€)</Label>
+                <Label>Amount{currency ? ` (${currencyLabel(currency)})` : ""}</Label>
                 <div className="flex flex-wrap gap-2">
                   {PRESET_AMOUNTS.map((preset) => (
                     <Button
                       key={preset} type="button" size="sm"
                       variant={amount === preset ? "default" : "outline"}
-                      onClick={() => setAmount(preset)}
+                      onClick={() => { setAmount(preset); setAmountError(null); }}
                     >
-                      €{preset}
+                      {currency ? formatCurrency(preset, currency) : preset}
                     </Button>
                   ))}
                 </div>
-                <Input
-                  type="number" min="1" step="1" value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                />
+                {currency ? (
+                  <MoneyInput
+                    currency={currency}
+                    value={amount}
+                    onChange={(e) => { setAmount(Number(e.target.value)); setAmountError(null); }}
+                  />
+                ) : (
+                  <Input
+                    type="number" min="1" step="1" value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                  />
+                )}
+                {amountError && <p className="text-xs text-destructive-text">{amountError}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="gift-card-purchaser-email">Your email</Label>

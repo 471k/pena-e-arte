@@ -72,6 +72,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
             studio.Slug,
             ShowBookingCta: true,
             isOwnProfile,
-            socialLinks);
+            socialLinks,
+            studio.Currency);
     }
 }

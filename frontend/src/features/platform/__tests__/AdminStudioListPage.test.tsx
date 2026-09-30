@@ -40,6 +40,9 @@ const STUDIO_ACTIVE: StudioResponse = {
   addressLine1:         null,
   addressLine2:         null,
   postalCode:           null,
+  countryCode: "AL",
+  currency: "EUR",
+  currencyLocked: false,
 };
 
 const STUDIO_SUSPENDED: StudioResponse = {

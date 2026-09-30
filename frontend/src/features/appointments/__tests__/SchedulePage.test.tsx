@@ -88,7 +88,7 @@ const server = setupServer(
   ),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
 );
 

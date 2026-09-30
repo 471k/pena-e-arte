@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { servicesApi } from "@/features/services/servicesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { CreateServicePage } from "@/features/services/components/CreateServicePage";
 import type { ServiceResponse } from "@/features/services/service.types";
 
@@ -27,6 +28,9 @@ const CREATED_SERVICE: ServiceResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.post("http://localhost/api/v1/services", () =>
     HttpResponse.json(CREATED_SERVICE, { status: 201 }),
   ),
@@ -44,8 +48,9 @@ function makeStore() {
       auth:                      authReducer,
       ui:                        uiReducer,
       [servicesApi.reducerPath]: servicesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(servicesApi.middleware),
+    middleware: (gd) => gd().concat(servicesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null, impersonation: null } as any,

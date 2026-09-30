@@ -50,7 +50,7 @@ const server = setupServer(
     HttpResponse.json({ available: true, reason: null }),
   ),
   http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
 );
 
@@ -98,7 +98,7 @@ describe("AppointmentCard", () => {
   it("renders appointment time in the studio's timezone, not the test environment's local timezone", async () => {
     server.use(
       http.get("http://localhost/api/v1/studios/me", () =>
-        HttpResponse.json({ id: "s-001", timezone: "America/New_York" }),
+        HttpResponse.json({ id: "s-001", timezone: "America/New_York", currency: "EUR" }),
       ),
     );
     const fixedAppt: AppointmentResponse = {

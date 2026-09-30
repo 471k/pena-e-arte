@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { servicesApi } from "@/features/services/servicesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { ServiceDetailPage } from "@/features/services/components/ServiceDetailPage";
 import type { ServiceResponse } from "@/features/services/service.types";
 import { Role } from "@/shared/types/roles";
@@ -37,6 +38,9 @@ const UPDATED_SERVICE: ServiceResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/services/:id", () => HttpResponse.json(SERVICE)),
   http.put("http://localhost/api/v1/services/:id", () => HttpResponse.json(UPDATED_SERVICE)),
   http.delete("http://localhost/api/v1/services/:id", () => new HttpResponse(null, { status: 204 })),
@@ -54,8 +58,9 @@ function makeStore(role: Role = Role.Owner) {
       auth:                      authReducer,
       ui:                        uiReducer,
       [servicesApi.reducerPath]: servicesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(servicesApi.middleware),
+    middleware: (gd) => gd().concat(servicesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -112,8 +117,8 @@ describe("ServiceDetailPage", () => {
     await screen.findByText("New Tattoo Session");
     expect(screen.getByText("Full session")).toBeInTheDocument();
     expect(screen.getByText("90 minutes")).toBeInTheDocument();
-    expect(screen.getByText(/price: from 150,00\s?€/i)).toBeInTheDocument();
-    expect(screen.getByText(/deposit: 50,00\s?€ \(overrides the studio's deposit rule\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/price: from €150/i)).toBeInTheDocument();
+    expect(screen.getByText(/deposit: €50 \(overrides the studio's deposit rule\)/i)).toBeInTheDocument();
   });
 
   it("shows 'not shown' and studio deposit-rule fallback text when price/deposit are unset", async () => {

@@ -18,8 +18,11 @@ import {
 import { Button }                          from "@/shared/components/ui/button";
 import { Card, CardContent }               from "@/shared/components/ui/card";
 import { Input }                           from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Badge }                           from "@/shared/components/ui/badge";
 import { cn }                              from "@/shared/utils/cn";
+import { formatCurrency }                  from "@/shared/utils/formatCurrency";
+import { useStudioCurrency }               from "@/shared/hooks/useStudioCurrency";
 import { useGetAppointmentsQuery }         from "@/features/appointments/appointmentsApi";
 import { useGetClientsQuery }              from "@/features/clients/clientsApi";
 import {
@@ -45,10 +48,6 @@ function fmtTime(iso: string) {
   });
 }
 
-function fmtCurrency(amount: number) {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
 // ── CheckoutLinkPanel ─────────────────────────────────────────────────────────
 
 function CheckoutLinkPanel({
@@ -57,16 +56,20 @@ function CheckoutLinkPanel({
   clientName,
   appointmentDate,
   amount,
+  currency,
 }: {
   result:          PaymentIntentResponse;
   appointmentId:   string;
   clientName:      string;
   appointmentDate: string;
   amount:          number;
+  currency:        string;
 }) {
   const navigate       = useNavigate();
   const [copied, setCopied] = useState(false);
-  const checkoutUrl    = `${window.location.origin}/pay/${result.paymentId}?amount=${amount.toFixed(2)}+EUR`;
+  // No amount/currency in the URL — DepositCheckoutPage renders the server's own client-token
+  // figures (§2.10); a query-string amount is forgeable and no longer trusted anywhere.
+  const checkoutUrl    = `${window.location.origin}/pay/${result.paymentId}`;
 
   async function copyLink() {
     await navigator.clipboard.writeText(checkoutUrl);
@@ -105,7 +108,7 @@ function CheckoutLinkPanel({
         </p>
       </div>
 
-      <SessionSplitsEditor paymentId={result.paymentId} paymentAmount={amount} currentSplits={[]} />
+      <SessionSplitsEditor paymentId={result.paymentId} paymentAmount={amount} currency={currency} currentSplits={[]} />
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1 gap-2" onClick={() => window.open(checkoutUrl, "_blank")}>
@@ -153,7 +156,7 @@ function CashResultPanel({
         </p>
       </div>
 
-      <SessionSplitsEditor paymentId={result.id} paymentAmount={result.amount} currentSplits={[]} />
+      <SessionSplitsEditor paymentId={result.id} paymentAmount={result.amount} currency={result.currency} currentSplits={[]} />
 
       <Button className="w-full" onClick={() => navigate(`/payments/${result.appointmentId}`, { replace: true })}>
         View payment
@@ -174,6 +177,7 @@ function AppointmentPicker({
   onSelect: (appt: EnrichedAppointment) => void;
 }) {
   const [search, setSearch] = useState("");
+  const { currency } = useStudioCurrency();
 
   const { data: appointments = [], isLoading: loadingAppts } = useGetAppointmentsQuery({});
   const { data: clients      = [], isLoading: loadingClients } = useGetClientsQuery(undefined);
@@ -261,7 +265,7 @@ function AppointmentPicker({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Badge variant="outline" className="text-xs font-semibold">
-                  {fmtCurrency(appt.depositAmount)}
+                  {currency ? formatCurrency(appt.depositAmount, currency) : appt.depositAmount}
                 </Badge>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -290,6 +294,7 @@ function ConfirmPanel({
 }) {
   const { data: capabilities } = useGetPaymentCapabilitiesQuery();
   const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
+  const { currency } = useStudioCurrency();
 
   const [method, setMethod]         = useState<PaymentMethodChoice>("card");
   const [amount, setAmount]         = useState(
@@ -312,6 +317,10 @@ function ConfirmPanel({
       setAmountError("Enter a deposit amount greater than 0.");
       return false;
     }
+    if (currency && !hasAtMostCurrencyMinorUnits(amount, currency)) {
+      setAmountError(tooManyDecimalsMessage(currency));
+      return false;
+    }
     setAmountError(null);
     return true;
   }
@@ -324,7 +333,6 @@ function ConfirmPanel({
         appointmentId: appointment.id,
         clientId:      appointment.clientId,
         amount:        amount!,
-        currency:      "EUR",
       });
       if ("data" in result && result.data) onCardCreated(result.data, amount!);
     } else {
@@ -403,7 +411,7 @@ function ConfirmPanel({
       {/* Deposit amount */}
       <div className="space-y-1.5">
         <label htmlFor="amount" className="text-sm font-medium">
-          Deposit amount (EUR)
+          Deposit amount{currency ? ` (${currency})` : ""}
         </label>
 
         {noDepositRule && (
@@ -415,24 +423,21 @@ function ConfirmPanel({
           </div>
         )}
 
-        <div className="relative">
-          <Input
+        {currency ? (
+          <MoneyInput
             id="amount"
-            type="number"
-            min="0.01"
-            step="0.01"
+            currency={currency}
             placeholder="0.00"
             value={amount ?? ""}
             onChange={(e) => {
               setAmount(e.target.value ? parseFloat(e.target.value) : undefined);
               setAmountError(null);
             }}
-            className={cn("pr-12", amountError && "border-destructive")}
+            className={cn(amountError && "border-destructive")}
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-            EUR
-          </span>
-        </div>
+        ) : (
+          <div className="h-10 rounded-md border bg-muted/30 animate-pulse" aria-hidden="true" />
+        )}
 
         {amountError && (
           <p className="text-xs text-destructive-text">{amountError}</p>
@@ -454,7 +459,11 @@ function ConfirmPanel({
         </Card>
       )}
 
-      <Button className="w-full gap-2" onClick={handleSubmit} disabled={isLoading || !amount}>
+      <Button
+        className="w-full gap-2"
+        onClick={handleSubmit}
+        disabled={isLoading || !amount || (effectiveMethod === "card" && !currency)}
+      >
         {isLoading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -463,12 +472,12 @@ function ConfirmPanel({
         ) : effectiveMethod === "card" ? (
           <>
             <CreditCard className="h-4 w-4" />
-            Create card payment{amount ? ` · ${fmtCurrency(amount)}` : ""}
+            Create card payment{amount && currency ? ` · ${formatCurrency(amount, currency)}` : ""}
           </>
         ) : (
           <>
             <Banknote className="h-4 w-4" />
-            Record cash payment{amount ? ` · ${fmtCurrency(amount)}` : ""}
+            Record cash payment{amount && currency ? ` · ${formatCurrency(amount, currency)}` : ""}
           </>
         )}
       </Button>
@@ -485,6 +494,7 @@ type PageResult =
 export function CreatePaymentIntentPage() {
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
+  const { currency: studioCurrency } = useStudioCurrency();
 
   const preselectedId = searchParams.get("appointmentId");
 
@@ -547,6 +557,9 @@ export function CreatePaymentIntentPage() {
               clientName={selected?.clientName ?? "Client"}
               appointmentDate={selected ? fmtDate(selected.date) : ""}
               amount={pageResult.amount}
+              // Non-null: ConfirmPanel's submit button is disabled for the card method until
+              // studioCurrency resolves, so a "card" pageResult can't exist without it.
+              currency={studioCurrency!}
             />
           ) : (
             <CashResultPanel

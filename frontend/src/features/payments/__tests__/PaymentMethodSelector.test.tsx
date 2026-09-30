@@ -70,9 +70,12 @@ const CASH_PAYMENT: PaymentResponse = {
   paidAt:                null,
   clientName:            "",
   appointmentDate:       null,
+  currency:              "EUR",
 };
 
-const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true, pokEnvironment: "staging" };
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = {
+  cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "EUR", cardUnavailableReason: null,
+};
 
 const SAVED_METHOD = {
   id: "spm-001", cardBrand: "Visa", maskedPan: "**** 4242",
@@ -240,7 +243,7 @@ describe("PaymentMethodSelector", () => {
 
     await user.click(screen.getByRole("button", { name: /cash/i }));
 
-    expect(screen.getByText(/75\.00/)).toBeInTheDocument();
+    expect(screen.getByText("€75")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /confirm.*cash/i })).toBeInTheDocument();
   });
 
@@ -293,6 +296,32 @@ describe("PaymentMethodSelector", () => {
 
     expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
     expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
+    expect(depositRequested).toBe(false);
+  });
+
+  it("hides Card entirely and shows cash-only copy when the provider doesn't support the studio's currency", async () => {
+    let depositRequested = false;
+    server.use(
+      http.get("http://localhost/api/v1/payments/capabilities", () =>
+        HttpResponse.json({
+          cardPaymentsAvailable: false, pokEnvironment: null,
+          currency: "ALL", cardUnavailableReason: "provider_unsupported_currency",
+        }),
+      ),
+      http.post("http://localhost/api/v1/payments/deposit", () => {
+        depositRequested = true;
+        return HttpResponse.json(INTENT_RESP);
+      }),
+    );
+
+    renderSelector();
+
+    expect(
+      await screen.findByText(/card payments aren't available in ALL for this studio yet/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^card$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /saved card/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/pay at the studio/i)).toBeInTheDocument();
     expect(depositRequested).toBe(false);
   });
 

@@ -59,6 +59,11 @@ vi.mock("@/features/billing/useSubscriptionGuard", () => ({
 vi.mock("@/features/studios/components/BrandingSettingsCard", () => ({
   BrandingSettingsCard: () => <div data-testid="branding-settings-card" />,
 }));
+// Covered by its own test file (CurrencySettingsCard.test.tsx) — mocked here so its own
+// "Save" button doesn't collide with the slug-edit "Save" button in these save-behaviour tests.
+vi.mock("@/features/studios/components/CurrencySettingsCard", () => ({
+  CurrencySettingsCard: () => <div data-testid="currency-settings-card" />,
+}));
 vi.mock("@/features/studios/components/QrCodeSection", () => ({
   QrCodeSection: () => <div data-testid="qr-code-section" />,
 }));
@@ -97,6 +102,9 @@ const STUDIO = {
   addressLine1:         null as string | null,
   addressLine2:         null as string | null,
   postalCode:           null as string | null,
+  countryCode:          "AL",
+  currency:             "EUR",
+  currencyLocked:       false,
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
@@ -170,6 +178,7 @@ describe("StudioProfilePage — after data loads", () => {
     renderPage();
     await waitForForm();
     expect(screen.getByTestId("branding-settings-card")).toBeInTheDocument();
+    expect(screen.getByTestId("currency-settings-card")).toBeInTheDocument();
     expect(screen.getByTestId("qr-code-section")).toBeInTheDocument();
     expect(screen.getByTestId("referral-code-card")).toBeInTheDocument();
   });
@@ -184,6 +193,12 @@ describe("StudioProfilePage — after data loads", () => {
     renderPage();
     await waitForForm();
     expect(screen.getByText("Studio URL:")).toBeInTheDocument();
+  });
+
+  it("pre-fills the Country select with the studio's country", async () => {
+    renderPage();
+    await waitForForm();
+    expect(screen.getByRole("combobox", { name: /^country$/i })).toHaveTextContent(/albania/i);
   });
 
   it("shows the map helper text below the Location label", async () => {

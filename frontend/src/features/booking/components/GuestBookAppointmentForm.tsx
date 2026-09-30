@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
 import { useCategorizedImageUpload } from "@/shared/hooks/useCategorizedImageUpload";
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
@@ -20,6 +21,7 @@ import {
   useCheckPublicSlotAvailabilityQuery,
   useGetPublicDepositRuleQuery,
   useGetPublicServicesQuery,
+  useGetPublicStudioQuery,
   useCreateGuestAppointmentMutation,
   usePresignGuestUploadMutation,
 } from "../../public/publicApi";
@@ -112,10 +114,12 @@ function DepositPreview({
   durationMinutes,
   hourlyRate,
   rule,
+  currency,
 }: {
   durationMinutes: number;
   hourlyRate:       number | null;
   rule:             { name: string; amountFixed: number | null; amountPercent: number | null };
+  currency:         string | undefined;
 }) {
   let estimated: number | null = null;
   if (rule.amountFixed !== null) {
@@ -130,20 +134,24 @@ function DepositPreview({
     <div className="flex items-center justify-between rounded-md
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Estimated deposit</span>
-      <span className="text-sm font-semibold tabular-nums">€{estimated.toFixed(2)}</span>
+      <span className="text-sm font-semibold tabular-nums">
+        {currency ? formatCurrency(estimated, currency) : estimated}
+      </span>
     </div>
   );
 }
 
 // Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
 // (see CreateAppointmentCommand.cs) — mirrors DepositPreview above but for that override.
-function ServiceDepositPreview({ service }: { service: PublicServiceResponse }) {
+function ServiceDepositPreview({ service, currency }: { service: PublicServiceResponse; currency: string | undefined }) {
   if (service.depositAmount === null) return null;
   return (
     <div className="flex items-center justify-between rounded-md
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Deposit for this service</span>
-      <span className="text-sm font-semibold tabular-nums">€{service.depositAmount.toFixed(2)}</span>
+      <span className="text-sm font-semibold tabular-nums">
+        {currency ? formatCurrency(service.depositAmount, currency) : service.depositAmount}
+      </span>
     </div>
   );
 }
@@ -159,6 +167,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
   const { data: artists, isLoading: loadingArtists } = useGetPublicBookingArtistsQuery(slug);
   const { data: depositRule } = useGetPublicDepositRuleQuery(slug);
   const { data: services } = useGetPublicServicesQuery(slug);
+  const { data: publicStudio } = useGetPublicStudioQuery(slug);
   const [createGuestAppointment, { isLoading: submitting }] = useCreateGuestAppointmentMutation();
 
   const [booked, setBooked] = useState(false);
@@ -519,13 +528,14 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
       )}
 
       {selectedService && selectedService.depositAmount !== null ? (
-        <ServiceDepositPreview service={selectedService} />
+        <ServiceDepositPreview service={selectedService} currency={publicStudio?.currency} />
       ) : (
         depositRule && watchedDuration > 0 && (
           <DepositPreview
             durationMinutes={watchedDuration}
             hourlyRate={selectedArtist?.hourlyRate ?? null}
             rule={depositRule}
+            currency={publicStudio?.currency}
           />
         )
       )}

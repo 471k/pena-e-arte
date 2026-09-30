@@ -27,7 +27,7 @@ const DEFAULT_ZOOM = 5;
 async function reverseGeocode(
   lat: number,
   lng: number
-): Promise<{ city: string; country: string; streetAddress: string }> {
+): Promise<{ city: string; country: string; countryCode: string; streetAddress: string }> {
   try {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
@@ -39,10 +39,11 @@ async function reverseGeocode(
     return {
       city:          a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? "",
       country:       a.country ?? "",
+      countryCode:   (a.country_code ?? "").toUpperCase(),
       streetAddress: [road, a.house_number].filter(Boolean).join(" "),
     };
   } catch {
-    return { city: "", country: "", streetAddress: "" };
+    return { city: "", country: "", countryCode: "", streetAddress: "" };
   }
 }
 
@@ -89,7 +90,7 @@ interface LocationPickerProps {
   // the pin's current position — "" when a pin has been placed but no road name resolved
   // (e.g. a rural point), so callers should only use it to overwrite their own address
   // field when it's non-empty, never to blank one out.
-  onChange:  (val: LocationPickerValue & { streetAddress: string }) => void;
+  onChange:  (val: LocationPickerValue & { streetAddress: string; countryCode: string }) => void;
   error?:    string;
   className?: string;
 }
@@ -150,7 +151,7 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
     const geo = await reverseGeocode(lat, lng);
     setResolving(false);
     setLabel(geo);
-    onChange({ lat, lng, city: geo.city, streetAddress: geo.streetAddress });
+    onChange({ lat, lng, city: geo.city, streetAddress: geo.streetAddress, countryCode: geo.countryCode });
   }
 
   function handleUseMyLocation() {

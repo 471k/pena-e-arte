@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -50,10 +50,61 @@ vi.mock("@/shared/components/ui/location-picker", () => ({
 // ── Mock useAddressGeocode ──────────────────────────────────────────────────────
 // Real Nominatim calls aren't viable in a unit test — same reasoning as mocking
 // LocationPicker above. Tests exercise the plain form-field wiring, not geocoding.
+// The onResolved callback is captured so country/currency tests can fire it by hand —
+// there's only ever one mounted caller (the studio-mode form's street-address field).
+
+let capturedOnResolved:
+  | ((v: { lat: number; lng: number; city: string; countryCode: string }) => void)
+  | null = null;
 
 vi.mock("@/shared/hooks/useAddressGeocode", () => ({
-  useAddressGeocode: () => ({ status: "idle" as const }),
+  useAddressGeocode: (
+    _address: string,
+    onResolved: (v: { lat: number; lng: number; city: string; countryCode: string }) => void,
+  ) => {
+    capturedOnResolved = onResolved;
+    return { status: "idle" as const };
+  },
 }));
+
+// ── Mock GetCountryDefaultCurrencyQuery ──────────────────────────────────────────
+// Real network call — stubbed so country/currency tests control exactly which
+// default currency each country code resolves to, independent of Nominatim/geocode mocks.
+// A real RTK Query hook returns a stable object reference for an unchanged result; a naive
+// mock that builds a fresh `{ data, isFetching }` object on every call does not, and
+// RegisterStudioPage's effect depends on that reference — a fresh one every render becomes
+// an infinite render loop (mount → effect fires → setValue → re-render → new object → repeat).
+// This cache keeps one reference per code so the effect only fires when the value truly changes.
+
+// AL -> EUR matches this codebase's existing seed/fixture convention (every seeded Albanian
+// studio's prices were always shown in € pre-migration — see architecture.md Decisions Log,
+// "Studio currency"), not real-world ISO 4217 (which would say ALL). Any other code falls back
+// to USD rather than null, mirroring how .NET's real RegionInfo resolves a currency for
+// virtually every actual country — null is reserved for a genuinely unknown code, not the
+// common case, so the solo form's browser-locale-guessed country isn't left without a default.
+const mockGetCountryDefaultCurrency = vi.fn((code: string) => ({
+  data: { currency: code === "AL" ? "EUR" : code ? "USD" : null }, isFetching: false,
+}));
+
+const countryDefaultCurrencyResultCache = new Map<string, { data: { currency: string | null }; isFetching: boolean }>();
+
+function stableGetCountryDefaultCurrencyResult(code: string) {
+  const fresh = mockGetCountryDefaultCurrency(code);
+  const cached = countryDefaultCurrencyResultCache.get(code);
+  if (cached && cached.data.currency === fresh.data.currency && cached.isFetching === fresh.isFetching) {
+    return cached;
+  }
+  countryDefaultCurrencyResultCache.set(code, fresh);
+  return fresh;
+}
+
+vi.mock("@/features/public/publicApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
+  return {
+    ...actual,
+    useGetCountryDefaultCurrencyQuery: (code: string) => stableGetCountryDefaultCurrencyResult(code),
+  };
+});
 
 // ── Fake JWT ───────────────────────────────────────────────────────────────────
 
@@ -108,7 +159,14 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); localStorage.clear(); cleanup(); });
+afterEach(() => {
+  server.resetHandlers();
+  localStorage.clear();
+  cleanup();
+  countryDefaultCurrencyResultCache.clear();
+  mockGetCountryDefaultCurrency.mockClear();
+  capturedOnResolved = null;
+});
 afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -580,5 +638,49 @@ describe("RegisterStudioPage — solo artist mode", () => {
 
     expect(screen.getByRole("heading", { name: /register your studio/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/studio name/i)).toBeInTheDocument();
+  });
+});
+
+describe("RegisterStudioPage — country and currency", () => {
+  it("defaults Country to Albania and preselects its default currency", async () => {
+    renderPage();
+
+    expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/albania/i);
+    expect(await screen.findByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/EUR/i);
+  });
+
+  it("a geocode result with country_code 'pl' preselects Poland and its default currency (PLN)", async () => {
+    mockGetCountryDefaultCurrency.mockImplementation((code: string) => ({
+      data: { currency: code === "PL" ? "PLN" : "EUR" }, isFetching: false,
+    }));
+    renderPage();
+
+    act(() => {
+      capturedOnResolved?.({ lat: 52.2297, lng: 21.0122, city: "Warsaw", countryCode: "PL" });
+    });
+
+    expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/poland/i);
+    expect(await screen.findByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/PLN/i);
+  });
+
+  it("a manually picked currency survives a later country change", async () => {
+    mockGetCountryDefaultCurrency.mockImplementation((code: string) => ({
+      data: { currency: code === "PL" ? "PLN" : "EUR" }, isFetching: false,
+    }));
+    const user = userEvent.setup();
+    renderPage();
+
+    // Manually pick a currency that differs from Albania's (EUR) or Poland's (PLN) default.
+    await user.click(await screen.findByRole("combobox", { name: /^currency$/i }));
+    await user.click(await screen.findByRole("option", { name: /US Dollar \(USD\)/i }));
+    expect(screen.getByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/USD/i);
+
+    // A later country change (via geocode) must not overwrite the manual pick.
+    act(() => {
+      capturedOnResolved?.({ lat: 52.2297, lng: 21.0122, city: "Warsaw", countryCode: "PL" });
+    });
+
+    expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/poland/i);
+    expect(screen.getByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/USD/i);
   });
 });

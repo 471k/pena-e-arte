@@ -12,10 +12,12 @@ import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { CreatePaymentIntentPage } from "@/features/payments/components/CreatePaymentIntentPage";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import type { ClientResponse } from "@/features/clients/clientsApi";
 import type { PaymentIntentResponse, PaymentResponse } from "@/features/payments/payment.types";
+import type { StudioResponse } from "@/features/studios/studiosApi";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +86,35 @@ const CASH_RESULT: PaymentResponse = {
   paidAt:                null,
   clientName:            "Maria Silva",
   appointmentDate:       FUTURE,
+  currency:              "EUR",
+};
+
+const STUDIO: StudioResponse = {
+  id:                   "s-001",
+  name:                 "Ink & Soul Studio",
+  slug:                 "ink-soul-studio",
+  city:                 "Lisbon",
+  latitude:             38.7169,
+  longitude:            -9.1395,
+  showPlatformBranding: true,
+  allowBrandingRemoval: false,
+  allowApiAccess:       false,
+  trialExpiresAt:       "2099-01-01T00:00:00Z",
+  createdAt:            "2025-01-01T00:00:00Z",
+  isActive:             true,
+  slugLockedAt:         null,
+  phoneNumber:          null,
+  instagramHandle:      null,
+  nipt:                 null,
+  isSolo:               false,
+  isPublished:          true,
+  timezone:             "Europe/Tirane",
+  addressLine1:         null,
+  addressLine2:         null,
+  postalCode:           null,
+  countryCode:          "AL",
+  currency:             "EUR",
+  currencyLocked:       false,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -105,8 +136,9 @@ const server = setupServer(
     HttpResponse.json({ ...CASH_RESULT, id: params.id as string }),
   ),
   http.get("http://localhost/api/v1/payments/capabilities", () =>
-    HttpResponse.json({ cardPaymentsAvailable: true }),
+    HttpResponse.json({ cardPaymentsAvailable: true, currency: "EUR", cardUnavailableReason: null }),
   ),
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO)),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -123,11 +155,13 @@ function makeStore() {
       [paymentsApi.reducerPath]:     paymentsApi.reducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [clientsApi.reducerPath]:      clientsApi.reducer,
+      [studiosApi.reducerPath]:      studiosApi.reducer,
     },
     middleware: (gd) => gd().concat(
       paymentsApi.middleware,
       appointmentsApi.middleware,
       clientsApi.middleware,
+      studiosApi.middleware,
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

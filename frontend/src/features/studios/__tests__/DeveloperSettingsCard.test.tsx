@@ -37,6 +37,9 @@ const STUDIO_NO_API_ACCESS: StudioResponse = {
   addressLine1:         null,
   addressLine2:         null,
   postalCode:           null,
+  countryCode: "AL",
+  currency: "EUR",
+  currencyLocked: false,
 };
 
 const STUDIO_WITH_API_ACCESS: StudioResponse = { ...STUDIO_NO_API_ACCESS, allowApiAccess: true };

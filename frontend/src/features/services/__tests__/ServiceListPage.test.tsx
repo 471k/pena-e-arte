@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { servicesApi } from "@/features/services/servicesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { ServiceListPage } from "@/features/services/components/ServiceListPage";
 import type { ServiceResponse } from "@/features/services/service.types";
 import { Role } from "@/shared/types/roles";
@@ -35,6 +36,9 @@ const SERVICE_INACTIVE: ServiceResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/services", () =>
     HttpResponse.json([SERVICE_WITH_DEPOSIT, SERVICE_INACTIVE]),
   ),
@@ -52,8 +56,9 @@ function makeStore(role: Role = Role.Owner) {
       auth:                      authReducer,
       ui:                        uiReducer,
       [servicesApi.reducerPath]: servicesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(servicesApi.middleware),
+    middleware: (gd) => gd().concat(servicesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -112,7 +117,7 @@ describe("ServiceListPage", () => {
   it("shows duration, price, and deposit for a service that has them", async () => {
     renderPage();
     await screen.findByText("New Tattoo Session");
-    expect(screen.getByText(/90 min · from 150,00\s?€ · 50,00\s?€ deposit/i)).toBeInTheDocument();
+    expect(await screen.findByText(/90 min · from €150 · €50 deposit/i)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 

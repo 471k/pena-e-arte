@@ -27,6 +27,7 @@ public class GetPublicArtistHandlerTests
             Slug = "ink-studio",
             City = "Lisbon",
             IsActive = true,
+            Currency = "EUR",
         };
         _db.Studios.Add(studio);
 
@@ -207,6 +208,17 @@ public class GetPublicArtistHandlerTests
             new GetPublicArtistQuery("maria-silva", null), CancellationToken.None);
 
         result!.HourlyRate.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Currency_is_projected_from_the_studio()
+    {
+        await SeedArtistWithStudioAsync();
+
+        PublicArtistResponse? result = await CreateSut().Handle(
+            new GetPublicArtistQuery("maria-silva", null), CancellationToken.None);
+
+        result!.Currency.Should().Be("EUR");
     }
 
     [Fact]

@@ -4,13 +4,14 @@ import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { Banknote, CheckCircle2, CreditCard, Loader2, Star } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import {
   useCreateDepositPaymentMutation,
   useDeclareCashDepositMutation,
   useGetPaymentCapabilitiesQuery,
   usePayWithSavedCardMutation,
 } from "@/features/payments/paymentsApi";
-import type { PayWithSavedCardSetupResponse } from "@/features/payments/payment.types";
+import { CardUnavailableReasons, type PayWithSavedCardSetupResponse } from "@/features/payments/payment.types";
 import { useGetSavedPaymentMethodsQuery } from "@/features/saved-payment-methods/savedPaymentMethodsApi";
 import type { SavedPaymentMethodResponse } from "@/features/saved-payment-methods/savedPaymentMethod.types";
 import { RedeemGiftCardField } from "@/features/gift-cards/components/RedeemGiftCardField";
@@ -351,6 +352,7 @@ function CashInfoPanel({
   onError,
 }: Pick<PaymentMethodSelectorProps, "appointmentId" | "amount" | "onSuccess" | "onError">) {
   const [declareCash, { isLoading }] = useDeclareCashDepositMutation();
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery();
 
   async function handleSelect() {
     try {
@@ -368,7 +370,7 @@ function CashInfoPanel({
         <p className="text-muted-foreground">
           Your deposit of{" "}
           <span className="font-medium text-foreground">
-            €{amount.toFixed(2)}
+            {capabilities?.currency ? formatCurrency(amount, capabilities.currency) : amount}
           </span>{" "}
           will be collected in cash when you arrive.
           Your booking will be held as pending until the studio confirms receipt.
@@ -395,14 +397,20 @@ export function PaymentMethodSelector({
   onError,
 }: PaymentMethodSelectorProps) {
   const { data: savedMethods } = useGetSavedPaymentMethodsQuery();
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery();
   const hasSavedMethods = (savedMethods?.length ?? 0) > 0;
+  // A currency the connected provider can't take at all is a studio-level fact, unlike the
+  // generic "not connected"/"disabled" reasons — card (new or saved) is never coming back for
+  // this appointment, so both card tabs are hidden rather than shown-then-erroring.
+  const cardCurrencyUnsupported =
+    capabilities?.cardUnavailableReason === CardUnavailableReasons.ProviderUnsupportedCurrency;
 
   // Derived, not effect-driven: defaults to the saved-card tab once we know the client has one,
   // until they explicitly click a different tab (setTab below) — a client removing their last
   // saved card mid-session doesn't yank them off whichever tab they're already on, since a
   // non-null tab always wins over this default.
   const [tab, setTab] = useState<Tab | null>(null);
-  const effectiveTab: Tab = tab ?? (hasSavedMethods ? "saved" : "card");
+  const effectiveTab: Tab = cardCurrencyUnsupported ? "cash" : tab ?? (hasSavedMethods ? "saved" : "card");
 
   const tabClass = (active: boolean) =>
     cn(
@@ -416,23 +424,29 @@ export function PaymentMethodSelector({
     <div className="space-y-4">
       {amount > 0 && <RedeemGiftCardField appointmentId={appointmentId} amount={amount} />}
 
-      {/* Tab bar */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1">
-        {hasSavedMethods && (
-          <button type="button" className={tabClass(effectiveTab === "saved")} onClick={() => setTab("saved")}>
-            <Star className="h-4 w-4" />
-            Saved card
+      {cardCurrencyUnsupported ? (
+        <p className="text-sm text-muted-foreground">
+          Card payments aren't available in {capabilities?.currency} for this studio yet — you can
+          pay the deposit in cash.
+        </p>
+      ) : (
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {hasSavedMethods && (
+            <button type="button" className={tabClass(effectiveTab === "saved")} onClick={() => setTab("saved")}>
+              <Star className="h-4 w-4" />
+              Saved card
+            </button>
+          )}
+          <button type="button" className={tabClass(effectiveTab === "card")} onClick={() => setTab("card")}>
+            <CreditCard className="h-4 w-4" />
+            {hasSavedMethods ? "New card" : "Card"}
           </button>
-        )}
-        <button type="button" className={tabClass(effectiveTab === "card")} onClick={() => setTab("card")}>
-          <CreditCard className="h-4 w-4" />
-          {hasSavedMethods ? "New card" : "Card"}
-        </button>
-        <button type="button" className={tabClass(effectiveTab === "cash")} onClick={() => setTab("cash")}>
-          <Banknote className="h-4 w-4" />
-          Cash
-        </button>
-      </div>
+          <button type="button" className={tabClass(effectiveTab === "cash")} onClick={() => setTab("cash")}>
+            <Banknote className="h-4 w-4" />
+            Cash
+          </button>
+        </div>
+      )}
 
       {effectiveTab === "saved" && (
         <SavedCardTab appointmentId={appointmentId} onSuccess={onSuccess} onError={onError} />

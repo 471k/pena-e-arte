@@ -113,6 +113,7 @@ const CASH_PAYMENT: PaymentResponse = {
   paidAt:                null,
   clientName:            "João Silva",
   appointmentDate:       null,
+  currency:              "EUR",
 };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ const server = setupServer(
     HttpResponse.json([]),
   ),
   http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Tirane" }),
+    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
   http.get("http://localhost/api/v1/studios/stud-0001/hours", () =>
     HttpResponse.json([]),
@@ -310,7 +311,7 @@ describe("DashboardPage", () => {
     renderPage();
     await screen.findByText("Awaiting Cash");
     expect(screen.getByText("João Silva")).toBeInTheDocument();
-    expect(screen.getByText(/75\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/€75/)).toBeInTheDocument();
   });
 
   it("shows the count of CashPending payments in the section header", async () => {

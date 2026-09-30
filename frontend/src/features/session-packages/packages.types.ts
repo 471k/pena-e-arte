@@ -30,6 +30,8 @@ export interface PackagePurchaseResponse {
   clientId:          string;
   sessionsRemaining: number;
   createdAt:         string;
+  amount:            number;
+  currency:          string;
 }
 
 export interface PurchasePackageRequest {

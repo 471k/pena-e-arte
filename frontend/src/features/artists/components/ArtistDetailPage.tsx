@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
@@ -55,6 +56,8 @@ import {
   TabsTrigger,
 } from "@/shared/components/ui/tabs";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
@@ -127,7 +130,7 @@ function isValidTab(value: string | null): value is ArtistDetailTab {
   return value !== null && (VALID_TABS as readonly string[]).includes(value);
 }
 
-function DesignCatalogControls({ design }: { design: DesignResponse }) {
+function DesignCatalogControls({ design, currency }: { design: DesignResponse; currency: string | undefined }) {
   const [markAsCatalogItem, { isLoading }] = useMarkDesignAsCatalogItemMutation();
   const [priceInput, setPriceInput] = useState(design.price != null ? String(design.price) : "");
 
@@ -166,17 +169,30 @@ function DesignCatalogControls({ design }: { design: DesignResponse }) {
         Flash catalog item
       </label>
       {design.isCatalogItem && (
-        <Input
-          type="number"
-          min="0.01"
-          step="0.01"
-          placeholder="Price (€)"
-          value={priceInput}
-          onChange={(e) => setPriceInput(e.target.value)}
-          onBlur={() => void handlePriceBlur()}
-          disabled={isLoading}
-          className="h-7 w-24 text-xs"
-        />
+        currency ? (
+          <MoneyInput
+            currency={currency}
+            min="0.01"
+            placeholder="Price"
+            value={priceInput}
+            onChange={(e) => setPriceInput(e.target.value)}
+            onBlur={() => void handlePriceBlur()}
+            disabled={isLoading}
+            className="h-7 w-24 text-xs pl-6"
+          />
+        ) : (
+          <Input
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="Price"
+            value={priceInput}
+            onChange={(e) => setPriceInput(e.target.value)}
+            onBlur={() => void handlePriceBlur()}
+            disabled={isLoading}
+            className="h-7 w-24 text-xs"
+          />
+        )
       )}
     </div>
   );
@@ -191,6 +207,7 @@ export function ArtistDetailPage() {
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
 
   const { data: artist, isLoading, isError } = useGetArtistByIdQuery(id!);
+  const { currency: studioCurrency } = useStudioCurrency();
 
   const isOwnProfile = isArtistRole && artist?.userId != null && artist.userId === currentUserId;
 
@@ -269,6 +286,7 @@ export function ArtistDetailPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    setError,
   } = useForm<EditFormValues>({
     resolver: zodResolver(editSchema),
   });
@@ -288,6 +306,13 @@ export function ArtistDetailPage() {
 
   async function onSave(values: EditFormValues) {
     if (!id) return;
+    if (
+      values.hourlyRate != null && studioCurrency &&
+      !hasAtMostCurrencyMinorUnits(values.hourlyRate, studioCurrency)
+    ) {
+      setError("hourlyRate", { message: tooManyDecimalsMessage(studioCurrency) });
+      return;
+    }
     const result = await updateArtist({
       id,
       body: {
@@ -529,15 +554,26 @@ export function ArtistDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="hourlyRate">Hourly rate (€, optional)</Label>
-              <Input
-                id="hourlyRate"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="e.g. 90"
-                {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
-              />
+              <Label htmlFor="hourlyRate">
+                Hourly rate{studioCurrency ? ` (${currencyLabel(studioCurrency)}, optional)` : " (optional)"}
+              </Label>
+              {studioCurrency ? (
+                <MoneyInput
+                  id="hourlyRate"
+                  currency={studioCurrency}
+                  placeholder="e.g. 90"
+                  {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
+                />
+              ) : (
+                <Input
+                  id="hourlyRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="e.g. 90"
+                  {...register("hourlyRate", { setValueAs: (v) => (v === "" || v == null ? undefined : Number(v)) })}
+                />
+              )}
               <p className="text-xs text-muted-foreground">
                 Used to calculate percentage-based booking deposits.
               </p>
@@ -627,7 +663,9 @@ export function ArtistDetailPage() {
                   {artist.hourlyRate != null && (
                     <div className="flex items-center gap-2 text-sm">
                       <Banknote className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span>€{artist.hourlyRate.toFixed(2)} / hour</span>
+                      <span>
+                        {studioCurrency ? formatCurrency(artist.hourlyRate, studioCurrency) : artist.hourlyRate} / hour
+                      </span>
                     </div>
                   )}
 
@@ -880,7 +918,7 @@ export function ArtistDetailPage() {
                         </CardContent>
                       </Link>
                       {canManagePortfolio && (
-                        <DesignCatalogControls design={design} />
+                        <DesignCatalogControls design={design} currency={studioCurrency} />
                       )}
                     </Card>
                   ))}

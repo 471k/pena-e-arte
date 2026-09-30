@@ -2,15 +2,17 @@ import { Link } from "react-router-dom";
 import { ChevronRight, DollarSign, Percent } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import type { PromoCodeResponse } from "../promoCode.types";
 
 interface PromoCodeCardProps {
   promoCode: PromoCodeResponse;
 }
 
-function formatAmount(code: PromoCodeResponse): string {
+function formatAmount(code: PromoCodeResponse, currency: string | undefined): string {
   if (code.amountFixed !== null) {
-    return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(code.amountFixed);
+    return currency ? formatCurrency(code.amountFixed, currency) : String(code.amountFixed);
   }
   return `${code.amountPercent}%`;
 }
@@ -28,6 +30,7 @@ export function PromoCodeCard({ promoCode }: PromoCodeCardProps) {
   const expired = isExpired(promoCode);
   const exhausted = isExhausted(promoCode);
   const effectivelyActive = promoCode.isActive && !expired && !exhausted;
+  const { currency } = useStudioCurrency();
 
   return (
     <Link
@@ -46,7 +49,7 @@ export function PromoCodeCard({ promoCode }: PromoCodeCardProps) {
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-sm font-medium leading-none font-mono">{promoCode.code}</p>
             <p className="text-xs text-muted-foreground">
-              {isFixed ? "Fixed" : "Percent"} · {formatAmount(promoCode)}
+              {isFixed ? "Fixed" : "Percent"} · {formatAmount(promoCode, currency)}
               {promoCode.maxRedemptions !== null && ` · ${promoCode.redemptionCount}/${promoCode.maxRedemptions} used`}
             </p>
           </div>

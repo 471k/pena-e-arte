@@ -50,6 +50,12 @@ export interface PublicStudioResponse {
   addressLine1:   string | null;
   addressLine2:   string | null;
   postalCode:     string | null;
+  currency:       string;
+}
+
+export interface CountryDefaultCurrencyResponse {
+  countryCode: string;
+  currency:    string | null;
 }
 
 export interface ArtistPortfolioImage {
@@ -75,6 +81,7 @@ export interface PublicArtistResponse {
   showBookingCta:  boolean;
   isOwnProfile:    boolean;
   socialLinks:     PublicSocialLinkResponse[];
+  currency:        string;
 }
 
 export interface SharedDesignResponse {
@@ -116,6 +123,7 @@ export interface DesignCatalogItemResponse {
   artistId:    string;
   artistName:  string;
   imageUrl:    string | null;
+  currency:    string;
 }
 
 export interface PortfolioImageResponse {
@@ -302,6 +310,9 @@ export const publicApi = createApi({
       query: (slug) => `studios/${slug}`,
       providesTags: ["PublicStudio"],
     }),
+    getCountryDefaultCurrency: builder.query<CountryDefaultCurrencyResponse, string>({
+      query: (countryCode) => `countries/${countryCode}/default-currency`,
+    }),
     getPublicArtist: builder.query<PublicArtistResponse, string>({
       query: (slug) => `artists/${slug}`,
       providesTags: ["PublicArtist"],
@@ -447,6 +458,7 @@ export const publicApi = createApi({
 export const {
   useGetPublicPlansQuery,
   useGetPublicStudioQuery,
+  useGetCountryDefaultCurrencyQuery,
   useGetPublicArtistQuery,
   useGetSharedDesignQuery,
   useGetNearbyStudiosQuery,

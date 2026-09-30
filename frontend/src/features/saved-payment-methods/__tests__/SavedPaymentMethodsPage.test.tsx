@@ -59,7 +59,9 @@ const METHOD_2: SavedPaymentMethodResponse = {
   expiryMonth: "6", expiryYear: "2028", isDefault: false, createdAt: "2024-02-01T00:00:00Z",
 };
 
-const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = { cardPaymentsAvailable: true, pokEnvironment: "staging" };
+const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = {
+  cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "EUR", cardUnavailableReason: null,
+};
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 

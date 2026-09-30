@@ -6,12 +6,9 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { DataTable } from "@/shared/components/DataTable";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetGiftCardsQuery, useVoidGiftCardMutation } from "../giftCardsApi";
 import { GiftCardStatus, type GiftCardResponse } from "../giftCards.types";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -95,7 +92,7 @@ export function GiftCardListPage() {
           <DataTable<GiftCardResponse>
             columns={[
               { header: "Code", cell: (c) => <span className="font-mono text-sm">{c.code}</span> },
-              { header: "Balance", cell: (c) => <span className="font-semibold">{formatCurrency(c.remainingBalance)} / {formatCurrency(c.initialBalance)}</span> },
+              { header: "Balance", cell: (c) => <span className="font-semibold">{formatCurrency(c.remainingBalance, c.currency)} / {formatCurrency(c.initialBalance, c.currency)}</span> },
               { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
               { header: "Purchased", cell: (c) => formatDate(c.createdAt) },
               { header: "", cell: (c) => <VoidButton card={c} /> },
@@ -109,7 +106,7 @@ export function GiftCardListPage() {
                   <StatusBadge status={c.status} />
                 </div>
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span>{formatCurrency(c.remainingBalance)} / {formatCurrency(c.initialBalance)}</span>
+                  <span>{formatCurrency(c.remainingBalance, c.currency)} / {formatCurrency(c.initialBalance, c.currency)}</span>
                   <VoidButton card={c} />
                 </div>
               </div>

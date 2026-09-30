@@ -33,6 +33,7 @@ describe("chart SVGs use the theme's real color tokens", () => {
           { month: "2026-08", revenue: 250 },
           { month: "2026-09", revenue: 180 },
         ]}
+        currency="EUR"
       />,
     );
     const html = container.innerHTML;

@@ -27,9 +27,13 @@ const SUMMARY: RevenueSummaryResponse = {
     { artistId: "a-001", artistName: "Luna Artista", revenue: 500 },
     { artistId: "a-002", artistName: "Besa Klienti", revenue: 150 },
   ],
+  currency: "EUR",
+  excludedOtherCurrencyCount: 0,
 };
 
-const EMPTY_SUMMARY: RevenueSummaryResponse = { monthlyTrend: [], perArtist: [] };
+const EMPTY_SUMMARY: RevenueSummaryResponse = {
+  monthlyTrend: [], perArtist: [], currency: "EUR", excludedOtherCurrencyCount: 0,
+};
 
 vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
   downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
@@ -143,7 +147,7 @@ describe("ReportsPage", () => {
 
   it("formats per-artist revenue as currency", async () => {
     renderPage();
-    expect(await screen.findByText(/500,00\s?€/)).toBeInTheDocument();
+    expect(await screen.findByText("€500")).toBeInTheDocument();
   });
 
   // ── Export CSV ──────────────────────────────────────────────────────────────
