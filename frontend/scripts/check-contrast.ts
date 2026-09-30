@@ -42,6 +42,8 @@ const light = {
   border: { h: 240, s: 5.9, l: 58 },
   input: { h: 240, s: 5.9, l: 58 },
   destructiveText: { h: 0, s: 74, l: 42 },
+  destructive: { h: 0, s: 84.2, l: 45 },
+  destructiveForeground: { h: 0, s: 0, l: 98 },
 };
 
 const dark = {
@@ -49,6 +51,8 @@ const dark = {
   border: { h: 240, s: 5, l: 40 },
   input: { h: 240, s: 5, l: 40 },
   destructiveText: { h: 0, s: 90, l: 65 },
+  destructive: { h: 0, s: 62.8, l: 30.6 },
+  destructiveForeground: { h: 0, s: 0, l: 98 },
 };
 
 type Check = {
@@ -62,20 +66,22 @@ const checks: Check[] = [
   { theme: "light", pair: "border / background", ratio: contrastRatio(light.border, light.background), threshold: 3.0 },
   { theme: "light", pair: "input / background", ratio: contrastRatio(light.input, light.background), threshold: 3.0 },
   { theme: "light", pair: "destructive-text / background", ratio: contrastRatio(light.destructiveText, light.background), threshold: 4.5 },
+  { theme: "light", pair: "destructive-foreground / destructive", ratio: contrastRatio(light.destructiveForeground, light.destructive), threshold: 4.5 },
   { theme: "dark", pair: "border / background", ratio: contrastRatio(dark.border, dark.background), threshold: 3.0 },
   { theme: "dark", pair: "input / background", ratio: contrastRatio(dark.input, dark.background), threshold: 3.0 },
   { theme: "dark", pair: "destructive-text / background", ratio: contrastRatio(dark.destructiveText, dark.background), threshold: 4.5 },
+  { theme: "dark", pair: "destructive-foreground / destructive", ratio: contrastRatio(dark.destructiveForeground, dark.destructive), threshold: 4.5 },
 ];
 
 let allPass = true;
 
-console.log("theme  pair                              ratio    threshold  result");
-console.log("-----  --------------------------------  -------  ---------  ------");
+console.log("theme  pair                                  ratio    threshold  result");
+console.log("-----  ------------------------------------  -------  ---------  ------");
 for (const c of checks) {
   const pass = c.ratio >= c.threshold;
   if (!pass) allPass = false;
   console.log(
-    `${c.theme.padEnd(5)}  ${c.pair.padEnd(34)}  ${c.ratio.toFixed(2).padStart(5)}:1  ${(c.threshold + ":1").padEnd(9)}  ${pass ? "PASS" : "FAIL"}`
+    `${c.theme.padEnd(5)}  ${c.pair.padEnd(38)}  ${c.ratio.toFixed(2).padStart(5)}:1  ${(c.threshold + ":1").padEnd(9)}  ${pass ? "PASS" : "FAIL"}`
   );
 }
 

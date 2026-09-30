@@ -190,11 +190,7 @@ test.describe("Artist Social tab", () => {
     const dialog = page.getByRole("dialog", { name: "Disconnect TikTok?" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
-    // color-contrast is skipped for this one state on purpose: the shared destructive button token
-    // (white on #ef4444) measures 3.6:1 in the light theme — a design-token issue affecting every
-    // destructive button in the app, recorded in docs/claude/contrast-audit-2026-09-20.md and
-    // deferred to the token-level fix PR rather than patched per component here.
-    await expectAxeClean(page, ["color-contrast"]);
+    await expectAxeClean(page);
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
