@@ -348,6 +348,15 @@ describe("RegisterStudioPage — step 1", () => {
 });
 
 describe("RegisterStudioPage — step 2", () => {
+  // advanceToStep2() now also resolves the country-default-currency query fired by the
+  // location-picker mock's onResolved callback, which is one extra render/effect cycle per test
+  // beyond what existed before the currency work — enough to occasionally exceed the default
+  // 10s budget on CI's shared runner. Same reasoning as the two tests further down in this file
+  // that already carry an explicit 15_000ms override.
+  beforeAll(() => {
+    vi.setConfig({ testTimeout: 20_000 });
+  });
+
   it("renders step 2 form fields", async () => {
     const user = userEvent.setup();
     renderPage();
