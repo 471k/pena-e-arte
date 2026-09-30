@@ -9,6 +9,7 @@ import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { NavDrawer } from "@/shared/components/NavDrawer";
 import { AppSidebar } from "@/shared/components/AppSidebar";
+import { SidebarToggle } from "@/shared/components/SidebarToggle";
 import { useNavShell } from "@/shared/hooks/useNavShell";
 import type { NavSection } from "@/shared/types/navItem";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
@@ -86,6 +87,7 @@ export function ClientLayout() {
       <ReadOnlyBanner />
       <PlanLimitBanner />
       <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+        <SidebarToggle />
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
 

@@ -3,6 +3,7 @@ import { Activity, BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard
 import { UserMenu } from "@/shared/components/UserMenu";
 import { NavDrawer } from "@/shared/components/NavDrawer";
 import { AppSidebar } from "@/shared/components/AppSidebar";
+import { SidebarToggle } from "@/shared/components/SidebarToggle";
 import { useNavShell } from "@/shared/hooks/useNavShell";
 import { withNavBadges } from "@/shared/utils/navSections";
 import type { NavSection } from "@/shared/types/navItem";
@@ -80,6 +81,7 @@ export function AdminLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+        <SidebarToggle />
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Platform Admin</span>
 

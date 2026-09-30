@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -96,6 +96,14 @@ afterEach(() => { server.resetHandlers(); cleanup(); });
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("ClientLayout", () => {
+  it("has the sidebar toggle in the header (always on screen), not inside the sidebar", () => {
+    renderLayout();
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument();
+    const aside = screen.getByRole("complementary", { name: /sidebar/i });
+    expect(within(aside).queryByRole("button", { name: /collapse sidebar/i })).not.toBeInTheDocument();
+  });
+
   it("renders the brand name", () => {
     renderLayout();
     expect(screen.getByText("TattooOS")).toBeInTheDocument();

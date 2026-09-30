@@ -1,10 +1,11 @@
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Home } from "lucide-react";
 
 import { AppSidebar } from "@/shared/components/AppSidebar";
+import { SidebarToggle } from "@/shared/components/SidebarToggle";
 import type { NavSection } from "@/shared/types/navItem";
 
 const icon = <Home className="h-4 w-4" />;
@@ -27,6 +28,8 @@ function renderSidebar(props: Partial<React.ComponentProps<typeof AppSidebar>> =
   return render(
     <MemoryRouter initialEntries={["/dashboard"]}>
       <input aria-label="notes" />
+      {/* In the real layouts the toggle lives in the header, beside (not inside) the sidebar. */}
+      <SidebarToggle />
       <AppSidebar sections={SECTIONS} {...props} />
     </MemoryRouter>,
   );
@@ -49,6 +52,12 @@ describe("AppSidebar", () => {
     renderSidebar();
     expect(screen.getByText("Main")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /collapse sidebar/i })).toBeInTheDocument();
+  });
+
+  it("no longer carries its own collapse button at the bottom (it lives in the header, where banners cannot push it off screen)", () => {
+    renderSidebar();
+    const aside = screen.getByRole("complementary", { name: /sidebar/i });
+    expect(within(aside).queryByRole("button", { name: /collapse sidebar|expand sidebar/i })).not.toBeInTheDocument();
   });
 
   it("collapses to an icon rail, persists that, and expands again", async () => {
