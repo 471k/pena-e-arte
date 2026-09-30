@@ -59,7 +59,11 @@ public class GetRevenueSummaryHandlerIntegrationTests(DatabaseFixture fixture)
 
         ctx.Studios.Add(new Studio
         {
-            Id = tenantId, Name = "Test", Slug = tenantId.ToString("N")[..8], CountryCode = "AL", Currency = "EUR",
+            Id = tenantId,
+            Name = "Test",
+            Slug = tenantId.ToString("N")[..8],
+            CountryCode = "AL",
+            Currency = "EUR",
         });
 
         Artist artist = new()

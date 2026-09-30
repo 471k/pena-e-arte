@@ -20,8 +20,12 @@ public class GetMyStudioHandlerTests
     {
         Studio studio = new()
         {
-            Name = "Test", Slug = "test", City = "Tirana",
-            CountryCode = "AL", Currency = "ALL", IsActive = true,
+            Name = "Test",
+            Slug = "test",
+            City = "Tirana",
+            CountryCode = "AL",
+            Currency = "ALL",
+            IsActive = true,
         };
         _db.Studios.Add(studio);
         await _db.SaveChangesAsync();

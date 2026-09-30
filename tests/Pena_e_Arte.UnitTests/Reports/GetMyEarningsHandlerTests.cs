@@ -160,7 +160,10 @@ public class GetMyEarningsHandlerTests
         await SeedPayment(apptId, 80m, PaymentStatus.Paid, DateTime.UtcNow, "Client", "One");
         Client otherCurrencyClient = new()
         {
-            StudioId = _studioId, FirstName = "All", LastName = "Payer", Email = $"{Guid.NewGuid():N}@test.com",
+            StudioId = _studioId,
+            FirstName = "All",
+            LastName = "Payer",
+            Email = $"{Guid.NewGuid():N}@test.com",
         };
         _db.Clients.Add(otherCurrencyClient);
         await _db.SaveChangesAsync();
