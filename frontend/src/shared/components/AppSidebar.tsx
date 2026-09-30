@@ -1,27 +1,9 @@
-import { useEffect, useState } from "react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useEffect } from "react";
 import { cn } from "@/shared/utils/cn";
 import { SidebarNav } from "@/shared/components/SidebarNav";
+import { useSidebarCollapsed } from "@/shared/hooks/useSidebarCollapsed";
 import { isNavGroup } from "@/shared/utils/navSections";
 import type { NavSection } from "@/shared/types/navItem";
-
-const COLLAPSED_KEY = "sidebar-collapsed";
-
-function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeCollapsed(value: boolean) {
-  try {
-    localStorage.setItem(COLLAPSED_KEY, value ? "1" : "0");
-  } catch {
-    // storage unavailable — the preference just won't persist
-  }
-}
 
 interface AppSidebarProps {
   sections: NavSection[];
@@ -30,15 +12,11 @@ interface AppSidebarProps {
 
 /**
  * Persistent desktop navigation: a vertical, scrollable rail of labelled sections and expandable
- * groups that folds down to an icon-only strip (button at the bottom, or Ctrl/Cmd+B). Sticks below the
- * 3.5rem layout header; below `lg` the NavDrawer takes over instead.
+ * groups that folds down to an icon-only strip (the toggle in the layout header's SidebarToggle, or Ctrl/Cmd+B).
+ * Sticks below the 3.5rem layout header; below `lg` the NavDrawer takes over instead.
  */
 export function AppSidebar({ sections, revealTourId = null }: AppSidebarProps) {
-  const [collapsed, setCollapsed] = useState<boolean>(readCollapsed);
-
-  useEffect(() => {
-    writeCollapsed(collapsed);
-  }, [collapsed]);
+  const { collapsed, setCollapsed, toggle } = useSidebarCollapsed();
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
@@ -47,11 +25,11 @@ export function AppSidebar({ sections, revealTourId = null }: AppSidebarProps) {
       // Ctrl+B is "bold" inside text fields and rich-text editors — leave it alone there.
       if (target && (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)) return;
       e.preventDefault();
-      setCollapsed((prev) => !prev);
+      toggle();
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [toggle]);
 
   // A tour step aimed at a link inside a group can't be measured while the rail hides every group's
   // children, so hold the rail open for that step (without touching the saved preference).
@@ -75,27 +53,6 @@ export function AppSidebar({ sections, revealTourId = null }: AppSidebarProps) {
           revealTourId={revealTourId}
           onExpandRequest={() => setCollapsed(false)}
         />
-      </div>
-      <div className="border-t p-2">
-        <button
-          type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-keyshortcuts="Control+B Meta+B"
-          title={collapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
-          className={cn(
-            "flex h-9 items-center rounded-md text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-            railed ? "mx-auto w-9 justify-center" : "w-full gap-3 px-3",
-          )}
-        >
-          {collapsed ? <PanelLeftOpen className="h-4 w-4 shrink-0" /> : <PanelLeftClose className="h-4 w-4 shrink-0" />}
-          {!railed && (
-            <>
-              <span>Collapse</span>
-              <kbd className="ml-auto rounded border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Ctrl B</kbd>
-            </>
-          )}
-        </button>
       </div>
     </aside>
   );
