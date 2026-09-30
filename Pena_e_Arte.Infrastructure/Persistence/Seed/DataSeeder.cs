@@ -127,6 +127,7 @@ public static class DataSeeder
         // Always run: ensure seed credentials + artist slugs are correct
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
+        await EnsureStudioHoursAsync(db);
 
         // Always run: platform-default consent templates are system-defined (like the core
         // plan tiers), not demo data — a studio with no custom template falls back to these.
@@ -470,6 +471,44 @@ public static class DataSeeder
             "sara.lima@dark-canvas.test", "client", Studio2Id, "Sara");
         await EnsureUserAsync(userManager, S2Client2UserId,
             "tomas.gomes@dark-canvas.test", "client", Studio2Id, "Tomás");
+    }
+
+    // Without StudioHours a studio counts as closed every day ("absence = closed"), so every
+    // booking against a seeded studio fails with 422 "Studio is closed that day" and local
+    // booking/notification testing needed hand-inserted rows. Always runs (not only on a fresh
+    // database) so an already-seeded dev DB picks it up; only fills a studio that has NO hours
+    // at all, so hours an owner has since edited are never overwritten. Mon-Fri 09:00-18:00,
+    // Sat 10:00-16:00, Sunday closed (no row).
+    private static async Task EnsureStudioHoursAsync(AppDbContext db)
+    {
+        foreach (Guid studioId in new[] { Studio1Id, Studio2Id })
+        {
+            // IgnoreQueryFilters approved: dev seeder — no tenant context, runs only when Seeding:Enabled.
+            bool studioExists = await db.Studios.IgnoreQueryFilters().AnyAsync(s => s.Id == studioId);
+            bool hasHours = await db.StudioHours.IgnoreQueryFilters().AnyAsync(h => h.StudioId == studioId);
+            if (!studioExists || hasHours)
+                continue;
+
+            foreach (DayOfWeek day in new[]
+            {
+                DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday,
+            })
+            {
+                db.StudioHours.Add(new StudioHours
+                {
+                    StudioId = studioId, DayOfWeek = day,
+                    StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(18, 0, 0), IsOpen = true,
+                });
+            }
+
+            db.StudioHours.Add(new StudioHours
+            {
+                StudioId = studioId, DayOfWeek = DayOfWeek.Saturday,
+                StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(16, 0, 0), IsOpen = true,
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task EnsureArtistSlugsAsync(AppDbContext db)
