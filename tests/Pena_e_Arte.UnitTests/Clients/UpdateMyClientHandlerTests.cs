@@ -16,8 +16,14 @@ public class UpdateMyClientHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
 
-    private UpdateMyClientHandler CreateSut() => new(_db, _currentUser);
+    public UpdateMyClientHandlerTests()
+    {
+        _currentUser.Role.Returns("client");
+    }
+
+    private UpdateMyClientHandler CreateSut() => new(_db, _currentUser, _identity);
 
     private static UpdateMyClientCommand Command(
         string firstName = "Ana", string lastName = "Silva", string? phone = "+355691234567") =>
@@ -39,6 +45,37 @@ public class UpdateMyClientHandlerTests
         saved.Phone.Should().Be("+355691234567");
         result.FirstName.Should().Be("Ana");
         result.Phone.Should().Be("+355691234567");
+    }
+
+    [Fact]
+    public async Task Handle_ClientRole_SyncsTheLoginIdentityGivenNameSoTheHeaderFollows()
+    {
+        Guid myUserId = Guid.NewGuid();
+        await SeedClient(myUserId);
+        _currentUser.UserId.Returns(myUserId);
+
+        await CreateSut().Handle(Command("  Anita ", "Silva", null), default);
+
+        await _identity.Received(1).SetUserGivenNameAsync(myUserId, "Anita", Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("artist")]
+    [InlineData("admin")]
+    public async Task Handle_NonClientRole_NeverRenamesTheSharedLoginIdentity(string role)
+    {
+        // An owner/artist/admin who also has a Client row (dual role) must not have their
+        // studio-facing identity renamed as a side effect of editing a client profile.
+        Guid myUserId = Guid.NewGuid();
+        await SeedClient(myUserId);
+        _currentUser.UserId.Returns(myUserId);
+        _currentUser.Role.Returns(role);
+
+        await CreateSut().Handle(Command("Anita", "Silva", null), default);
+
+        await _identity.DidNotReceive().SetUserGivenNameAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

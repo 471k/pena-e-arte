@@ -8,6 +8,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
+import { authApi } from "@/features/auth/authApi";
 import { clientsApi } from "@/features/clients/clientsApi";
 import type { ClientResponse, ClientProfileResponse, TattooRecordResponse } from "@/features/clients/clientsApi";
 import { MyProfilePage } from "@/features/clients/components/MyProfilePage";
@@ -314,5 +315,105 @@ describe("MyProfilePage", () => {
       await user.click(screen.getByRole("button", { name: "Edit contact details" }));
       expect(screen.getByLabelText("First name")).toHaveValue("Ana");
     });
+  });
+});
+
+// ── Header name follows the edit ────────────────────────────────────────────────
+
+function b64url(obj: unknown): string {
+  return btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** A structurally valid JWT (decodeToken never verifies the signature). */
+function fakeJwt(givenName: string): string {
+  const claims = {
+    sub: "u1", email: "ana.ferreira@ink-soul.test", given_name: givenName,
+    tenant_id: "t1", exp: Math.floor(Date.now() / 1000) + 900,
+    "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": "client",
+  };
+  return `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url(claims)}.sig`;
+}
+
+function renderPageWithSession(role: string) {
+  const store = configureStore({
+    reducer: {
+      auth: authReducer,
+      [clientsApi.reducerPath]: clientsApi.reducer,
+      [authApi.reducerPath]: authApi.reducer,
+    },
+    middleware: (gd) => gd().concat(clientsApi.middleware, authApi.middleware),
+    preloadedState: {
+      auth: {
+        user: { id: "u1", email: "ana.ferreira@ink-soul.test", name: "Ana" },
+        token: "old-token", refreshToken: "old-refresh", tenantId: "t1", role,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+    },
+  });
+  render(
+    <Provider store={store}>
+      <MemoryRouter>
+        <MyProfilePage />
+      </MemoryRouter>
+    </Provider>,
+  );
+  return store;
+}
+
+describe("MyProfilePage — the header name follows a saved name edit", () => {
+  async function saveNewFirstName(name: string) {
+    const user = userEvent.setup();
+    await screen.findByText("Ana Ferreira");
+    await user.click(screen.getByRole("button", { name: "Edit contact details" }));
+    const first = screen.getByLabelText("First name");
+    await user.clear(first);
+    await user.type(first, name);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+  }
+
+  it("a client account refreshes its session token after saving, so the header shows the new name", async () => {
+    capturePatch();
+    let refreshBody: unknown = null;
+    server.use(
+      http.post("http://localhost/api/v1/auth/refresh", async ({ request }) => {
+        refreshBody = await request.json();
+        return HttpResponse.json({
+          accessToken: fakeJwt("Anita"), refreshToken: "new-refresh", tokenType: "Bearer", expiresIn: 900,
+        });
+      }),
+    );
+    const store = renderPageWithSession("client");
+
+    await saveNewFirstName("Anita");
+
+    await waitFor(() => expect(store.getState().auth.user?.name).toBe("Anita"));
+    expect(refreshBody).toEqual({ refreshToken: "old-refresh" });
+    expect(store.getState().auth.refreshToken).toBe("new-refresh");
+  });
+
+  it("does not touch the session for an owner account that also has a client profile", async () => {
+    capturePatch();
+    // No /auth/refresh handler: onUnhandledRequest is "error", so any refresh call would fail the test.
+    const store = renderPageWithSession("owner");
+
+    await saveNewFirstName("Anita");
+
+    await waitFor(() => expect(screen.queryByLabelText("First name")).not.toBeInTheDocument());
+    expect(store.getState().auth.user?.name).toBe("Ana");
+    expect(store.getState().auth.token).toBe("old-token");
+  });
+
+  it("keeps the old name, without an error, when the token refresh fails", async () => {
+    capturePatch();
+    server.use(
+      // A transient server failure (a 401 would be the app-wide "session invalid -> sign out" path).
+      http.post("http://localhost/api/v1/auth/refresh", () => HttpResponse.json({ message: "down" }, { status: 500 })),
+    );
+    const store = renderPageWithSession("client");
+
+    await saveNewFirstName("Anita");
+
+    await waitFor(() => expect(screen.queryByLabelText("First name")).not.toBeInTheDocument());
+    expect(store.getState().auth.user?.name).toBe("Ana");
   });
 });

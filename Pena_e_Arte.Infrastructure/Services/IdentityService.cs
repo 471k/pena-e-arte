@@ -213,6 +213,21 @@ public class IdentityService(
         return claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName)?.Value;
     }
 
+    public async Task SetUserGivenNameAsync(Guid userId, string givenName, CancellationToken ct)
+    {
+        IdentityUser? user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null) return;
+
+        IList<Claim> claims = await userManager.GetClaimsAsync(user);
+        Claim? existing = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName);
+        Claim updated = new(JwtRegisteredClaimNames.GivenName, givenName);
+
+        if (existing is null)
+            await userManager.AddClaimAsync(user, updated);
+        else if (existing.Value != givenName)
+            await userManager.ReplaceClaimAsync(user, existing, updated);
+    }
+
     public async Task<(bool Success, string? AccessToken, string? Error)> LoginWithVerifiedEmailAsync(
         string email)
     {

@@ -58,6 +58,13 @@ public interface IIdentityService
     Task<string?> GetUserDisplayNameAsync(string email, CancellationToken ct);
 
     /// <summary>
+    /// Replaces (or adds) the user's given-name Identity claim — the name the header shows,
+    /// baked into the JWT at login/refresh. No-op if the account does not exist. Callers decide
+    /// WHEN it is appropriate: it renames the login identity shared by every role the person holds.
+    /// </summary>
+    Task SetUserGivenNameAsync(Guid userId, string givenName, CancellationToken ct);
+
+    /// <summary>
     /// Issues a JWT for a user identified only by their verified email address.
     /// The caller is responsible for having already validated the OAuth ID token.
     /// Returns an error if no account exists with that email.

@@ -2,7 +2,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { decodeToken } from "@/shared/utils/jwt";
 import type { AuthPayload, Role, User } from "@/shared/types/roles";
 
-const TOKEN_KEY         = "auth_token";
+export const TOKEN_KEY  = "auth_token";
 const REFRESH_TOKEN_KEY = "auth_refresh_token";
 
 // Support Impersonation — kept in sessionStorage only (never localStorage), deliberately
