@@ -338,7 +338,7 @@ describe("RegisterStudioPage — step 1", () => {
 
     expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument();
     expect(screen.getByText(/owner account/i)).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it("dispatches the referral code from ?ref= query param", () => {
     const store = renderPage("/register?ref=PROMO50");
@@ -347,16 +347,14 @@ describe("RegisterStudioPage — step 1", () => {
   });
 });
 
-describe("RegisterStudioPage — step 2", () => {
-  // advanceToStep2() now also resolves the country-default-currency query fired by the
-  // location-picker mock's onResolved callback, which is one extra render/effect cycle per test
-  // beyond what existed before the currency work — enough to occasionally exceed the default
-  // 10s budget on CI's shared runner. Same reasoning as the two tests further down in this file
-  // that already carry an explicit 15_000ms override.
-  beforeAll(() => {
-    vi.setConfig({ testTimeout: 20_000 });
-  });
+// advanceToStep2() also resolves the country-default-currency query fired by the location-picker
+// mock's onResolved callback — one extra render/effect cycle per test beyond what existed before
+// the currency work, enough to occasionally exceed the default 10s budget on CI's shared runner.
+// Every test below that calls it gets an explicit 20_000ms timeout (matching the two tests further
+// down that already carried an explicit 15_000ms override for the same reason).
+const STEP2_TIMEOUT = 20_000;
 
+describe("RegisterStudioPage — step 2", () => {
   it("renders step 2 form fields", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -368,7 +366,7 @@ describe("RegisterStudioPage — step 2", () => {
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /register/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
-  });
+  }, STEP2_TIMEOUT);
 
   it("Back button returns to step 1", async () => {
     const user = userEvent.setup();
@@ -378,7 +376,7 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /back/i }));
 
     expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument();
-  });
+  }, STEP2_TIMEOUT);
 
   it("shows email-required error on empty submit", async () => {
     const user = userEvent.setup();
@@ -388,7 +386,7 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/email is required/i)).toBeInTheDocument();
-  });
+  }, STEP2_TIMEOUT);
 
   it("shows password-min-length error when password is too short", async () => {
     const user = userEvent.setup();
@@ -401,7 +399,7 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
-  });
+  }, STEP2_TIMEOUT);
 
   it("shows password-mismatch error when passwords differ", async () => {
     const user = userEvent.setup();
@@ -414,7 +412,7 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
-  });
+  }, STEP2_TIMEOUT);
 
   it("successful registration navigates to /dashboard", async () => {
     const user = userEvent.setup({ delay: null });
@@ -427,7 +425,7 @@ describe("RegisterStudioPage — step 2", () => {
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
-  });
+  }, STEP2_TIMEOUT);
 
   it("dispatches credentials after successful registration", async () => {
     const user  = userEvent.setup({ delay: null });
@@ -445,7 +443,7 @@ describe("RegisterStudioPage — step 2", () => {
     expect(store.getState().auth.token).toBeTruthy();
     // A missing refresh token here silently breaks silent-refresh on access-token expiry.
     expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
-  });
+  }, STEP2_TIMEOUT);
 
   it("clears the pending referral code after successful registration", async () => {
     const user  = userEvent.setup({ delay: null });
@@ -460,7 +458,7 @@ describe("RegisterStudioPage — step 2", () => {
     await screen.findByTestId("dashboard");
 
     expect(store.getState().auth.pendingReferralCode).toBeNull();
-  });
+  }, STEP2_TIMEOUT);
 
   it("includes the NIPT in the registerStudio mutation payload", async () => {
     let capturedBody: Record<string, unknown> | null = null;
@@ -483,7 +481,7 @@ describe("RegisterStudioPage — step 2", () => {
     await screen.findByTestId("dashboard");
 
     expect(capturedBody).toMatchObject({ nipt: "L01234567A" });
-  });
+  }, STEP2_TIMEOUT);
 
   it("includes the street address in the registerStudio mutation payload", async () => {
     let capturedBody: Record<string, unknown> | null = null;
@@ -506,7 +504,7 @@ describe("RegisterStudioPage — step 2", () => {
     await screen.findByTestId("dashboard");
 
     expect(capturedBody).toMatchObject({ addressLine1: "Rua Central 5" });
-  });
+  }, STEP2_TIMEOUT);
 
   it("shows server error when studio registration fails", async () => {
     server.use(
