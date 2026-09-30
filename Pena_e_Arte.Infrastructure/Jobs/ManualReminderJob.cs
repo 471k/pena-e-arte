@@ -52,6 +52,7 @@ public class ManualReminderJob(
         if (reminder.Client is not null && reminder.Client.SmsOptOut)
         {
             reminder.Status = ManualReminderStatus.Failed;
+            reminder.FailureReason = ManualReminderFailureReason.SmsOptOut;
             reminder.SentAt = DateTime.UtcNow;
             reminder.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
@@ -88,6 +89,7 @@ public class ManualReminderJob(
             if (usedThisMonth >= maxNotifications)
             {
                 reminder.Status = ManualReminderStatus.Failed;
+                reminder.FailureReason = ManualReminderFailureReason.PlanLimit;
                 reminder.UpdatedAt = DateTime.UtcNow;
                 await db.SaveChangesAsync(ct);
                 logger.LogInformation(
@@ -109,6 +111,7 @@ public class ManualReminderJob(
                 "with no recorded outcome — likely a retry after a crash. Not re-sending.",
                 manualReminderId, reminder.SendAttemptedAt);
             reminder.Status = ManualReminderStatus.Failed;
+            reminder.FailureReason = ManualReminderFailureReason.UnknownOutcome;
             reminder.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
             return;
@@ -141,6 +144,7 @@ public class ManualReminderJob(
         db.NotificationLogs.Add(log);
 
         reminder.Status = success ? ManualReminderStatus.Sent : ManualReminderStatus.Failed;
+        reminder.FailureReason = success ? null : ManualReminderFailureReason.ProviderError;
         reminder.SentAt = DateTime.UtcNow;
         reminder.UpdatedAt = DateTime.UtcNow;
 

@@ -23,6 +23,7 @@ import {
   useCancelManualReminderMutation,
 } from "../remindersApi";
 import { ReminderStatusBadge } from "./ReminderStatusBadge";
+import { FAILURE_REASON_LABELS } from "../reminder.types";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
@@ -251,6 +252,11 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
                       {formatDateTime(r.scheduledFor)}
                     </span>
                   </div>
+                  {r.status === "Failed" && r.failureReason && (
+                    <span className="text-muted-foreground text-right">
+                      {FAILURE_REASON_LABELS[r.failureReason] ?? "Couldn't be sent"}
+                    </span>
+                  )}
                   {r.status === "Scheduled" && (
                     <Button
                       variant="ghost"

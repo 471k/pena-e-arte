@@ -42,7 +42,8 @@ public class GetManualRemindersHandler(IAppDbContext db, ICurrentUser currentUse
             .OrderByDescending(m => m.ScheduledFor)
             .Select(m => new ManualReminderResponse(
                 m.Id, m.AppointmentId, m.ClientId, m.RecipientName, m.RecipientPhone, m.Message,
-                m.ScheduledFor, m.Status.ToString(), m.SentAt, m.CreatedAt))
+                m.ScheduledFor, m.Status.ToString(), m.SentAt, m.CreatedAt,
+                m.FailureReason == null ? null : m.FailureReason.ToString()))
             .ToListAsync(ct);
     }
 }

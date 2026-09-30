@@ -154,6 +154,7 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(studioId);
         ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
         reminder.Status.Should().Be(ManualReminderStatus.Failed);
+        reminder.FailureReason.Should().Be(ManualReminderFailureReason.SmsOptOut);
     }
 
     [Fact]
@@ -199,6 +200,7 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(studioId);
         ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
         reminder.Status.Should().Be(ManualReminderStatus.Sent);
+        reminder.FailureReason.Should().BeNull();
         reminder.SentAt.Should().NotBeNull();
 
         NotificationLog log = await verify.NotificationLogs.SingleAsync();
@@ -220,6 +222,7 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(studioId);
         ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
         reminder.Status.Should().Be(ManualReminderStatus.Failed);
+        reminder.FailureReason.Should().Be(ManualReminderFailureReason.ProviderError);
 
         NotificationLog log = await verify.NotificationLogs.SingleAsync();
         log.IsSuccess.Should().BeFalse();
@@ -270,6 +273,7 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(studioId);
         ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
         reminder.Status.Should().Be(ManualReminderStatus.Failed);
+        reminder.FailureReason.Should().Be(ManualReminderFailureReason.UnknownOutcome);
     }
 
     [Fact]
@@ -318,5 +322,6 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(studioId);
         ManualReminder reminder = await verify.ManualReminders.SingleAsync(m => m.Id == reminderId);
         reminder.Status.Should().Be(ManualReminderStatus.Failed);
+        reminder.FailureReason.Should().Be(ManualReminderFailureReason.PlanLimit);
     }
 }

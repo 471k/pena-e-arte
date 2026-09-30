@@ -10,4 +10,5 @@ public record ManualReminderResponse(
     DateTime ScheduledFor,
     string Status,
     DateTime? SentAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? FailureReason = null);
