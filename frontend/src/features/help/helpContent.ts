@@ -350,6 +350,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "Your card isn't charged immediately — it's authorised, and the studio captures the payment closer to your appointment. Payment is by card, or by cash arranged with the studio.",
+      "You pay the deposit in the studio's currency — exactly the amount shown. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
       "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
       "Your full deposit goes to the studio or artist — TattooOS never takes a cut of it.",
     ],
@@ -1078,7 +1079,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Go to Deposit Rules and click \"New Rule\".",
       "Enter a name for the rule (e.g. \"Standard Deposit\").",
-      "Choose \"Fixed amount\" (a set euro amount) or \"Percentage\" (a % of the session cost).",
+      "Choose \"Fixed amount\" (a set amount in your studio's currency) or \"Percentage\" (a % of the session cost).",
       "Enter the amount or percentage.",
       "Optionally set a \"Cancellation notice window\" — how many hours' notice a client must give to self-cancel without forfeiting their deposit. Leave blank to use the 48-hour platform default.",
       "Optionally set \"Refund if cancelled late\" — the percentage of the deposit refunded if a client cancels within that window. 0% (the default) forfeits the deposit entirely.",
@@ -1100,12 +1101,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Promo Codes to see all your codes.",
       "Click \"New Code\" to create one, or click an existing code to view, edit, or delete it.",
       "Enter the code exactly as clients should type it — it's not case-sensitive, and is stored uppercased.",
-      "Choose \"Fixed amount\" (a set euro amount off) or \"Percentage\" (a % off the deposit).",
+      "Choose \"Fixed amount\" (a set amount in your studio's currency off) or \"Percentage\" (a % off the deposit).",
       "Optionally set an expiry date and a maximum number of redemptions.",
       "Leave \"Active\" checked if you want the code usable immediately.",
     ],
     tips: [
-      "The discount applies to the client's deposit amount only, floored at €0 — it never makes the deposit negative.",
+      "The discount applies to the client's deposit amount only, floored at 0 — it never makes the deposit negative.",
       "A code that's expired, deactivated, or has hit its redemption limit is silently ignored at booking — the client's booking still goes through, just without the discount.",
       "Deleting a code doesn't affect appointments already booked with it.",
     ],
@@ -1157,6 +1158,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Until you connect an account, the Card option is unavailable at checkout and clients see Cash only.",
       "To switch to a different POK account, click \"Reconnect / change account\" and enter the new credentials — this replaces the old ones.",
       "Card deposits settle directly to your own merchant account — TattooOS never takes a commission or fee from any client deposit, card or cash, now or in the future.",
+      "POK takes card deposits in ALL and EUR. If your studio's currency is anything else, clients see Cash only even after you connect.",
     ],
     warnings: [
       "Use your POK production credentials, not the staging/sandbox pair — sandbox keys will not process real payments.",
@@ -1197,6 +1199,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "If no deposit rule applies to the appointment, you'll need to type in the amount manually.",
       "If card payments are temporarily unavailable, the \"Card\" option is disabled with an explanatory message — use \"Cash\" instead.",
+      "The checkout link always shows the client the exact amount recorded on the payment, in your studio's currency — you never choose a currency when creating one.",
     ],
     relatedArticleIds: ["owner-connect-pok"],
   },
@@ -1218,13 +1221,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Edit your studio profile",
     route: "/studios/me",
-    keywords: ["studio settings", "studio name", "address", "street address", "description", "nipt", "tax id", "business id", "timezone", "hours", "opening hours", "studio hours"],
+    keywords: ["studio settings", "studio name", "address", "street address", "description", "nipt", "tax id", "business id", "timezone", "hours", "opening hours", "studio hours", "currency", "country", "lek", "euro"],
     summary: "Edit your studio's public details — name, street address, phone, description, timezone — and your business tax ID (NIPT), which clients don't see but is used for invoicing and verification.",
     steps: [
       "Go to Studio Settings.",
-      "Click \"Edit\" and update your studio name, street address, phone number (pick the country from the dropdown, then type the number), description, or timezone. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
+      "Click \"Edit\" and update your studio name, street address, phone number (pick the country from the dropdown, then type the number), description, timezone, or country. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
       "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
+      "In the Currency card, choose the currency your studio prices and takes payments in. It defaults to your country's currency; you can pick another (for example EUR) until your first payment, gift card, package sale or booth-rent charge is recorded — after that it's locked and only support can change it.",
       "Below the main form, use the \"Studio hours\" card to set your weekly opening hours — a default Mon–Fri, 9am–6pm schedule is applied automatically at registration, correctable anytime. Clients can only book within these hours, regardless of any individual artist's own working hours.",
     ],
     tips: [
@@ -1233,7 +1237,30 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Your timezone controls how appointment times are shown in emails, texts, and reports — pick the zone your studio actually operates in.",
       "To manage your studio's Instagram, TikTok, Facebook, X, and YouTube links, use the \"Social Media\" card further down this page — see \"Verify your studio's or artist's social media accounts\".",
     ],
-    relatedArticleIds: ["owner-branding", "owner-embed", "owner-qr-code", "owner-referral", "owner-social-verification", "owner-connect-pok"],
+    warnings: [
+      "Changing currency doesn't convert your prices — the numbers stay the same and are read in the new currency. Review your services, deposit rules, packages and gift-card amounts after changing.",
+    ],
+    relatedArticleIds: ["owner-branding", "owner-embed", "owner-qr-code", "owner-referral", "owner-social-verification", "owner-connect-pok", "owner-studio-currency"],
+  },
+  {
+    id: "owner-studio-currency",
+    roles: [Owner],
+    title: "Your studio's currency",
+    route: "/studios/me",
+    keywords: ["currency", "lek", "ALL", "euro", "EUR", "change currency", "locked currency", "card not available"],
+    summary: "Your studio prices, deposits, and payments in one currency, set on the Currency card in Studio Settings. It defaults to your country's currency and locks the first time money is actually recorded.",
+    steps: [
+      "Go to Studio Settings and find the Currency card.",
+      "Pick the currency your studio prices and charges in. It's preselected from your country when you first register, but you can change it here any time before your first payment, gift card, package sale or booth-rent charge is recorded.",
+      "Once any of those has happened, the currency locks — the card shows the locked value and a note to contact support if it genuinely needs to change.",
+      "Every price, deposit, invoice, receipt, and report in your studio uses this currency from then on.",
+    ],
+    tips: [
+      "Card deposits are available only in currencies your card provider supports — POK supports ALL and EUR; cash always works, in any currency.",
+      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout.",
+      "Switching currency doesn't convert existing numbers — a price of \"50\" stays \"50\", just read in the new currency. Review your services, deposit rules, packages, and gift-card amounts afterward.",
+    ],
+    relatedArticleIds: ["owner-studio-profile", "owner-connect-pok", "owner-payments"],
   },
   {
     id: "owner-social-verification",
@@ -1437,7 +1464,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Scroll down to \"Revenue by artist\" for a breakdown of the last 30 days, sorted highest first.",
       "Click \"Export CSV\" to download a payment-by-payment revenue ledger, ready to hand to an accountant.",
     ],
-    tips: ["Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't."],
+    tips: [
+      "Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't.",
+      "Totals are in your studio's currency. Payments recorded in any other currency are never mixed into a total — the report tells you how many were left out.",
+    ],
   },
   {
     id: "owner-campaigns",
@@ -1473,6 +1503,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Only fully paid or partially-refunded-and-retained deposits count — the same rule the studio's own revenue report uses.",
       "An owner who has also enabled their own artist profile gets this same page for their own bookings.",
+      "Totals are in your studio's currency. Payments recorded in any other currency are never mixed into a total — the report tells you how many were left out.",
     ],
     relatedArticleIds: ["owner-reports", "owner-become-artist"],
   },
@@ -1957,7 +1988,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-cash-vs-card",
     roles: [Owner, Client],
     question: "What's the difference between paying by card and paying by cash?",
-    answer: "Card payments are authorised at booking and the studio captures the payment later. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method.",
+    answer: "Card payments are authorised at booking and the studio captures the payment later. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method. You pay the deposit in the studio's currency — exactly the amount shown. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
     relatedArticleIds: ["client-deposit-pay", "owner-payment-create"],
   },
   {
