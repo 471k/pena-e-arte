@@ -24,6 +24,9 @@ async function mockStudioRegistration(page: Page) {
           createdAt:            new Date().toISOString(),
           isActive:             true,
           slugLockedAt:         null,
+          countryCode:          "PT",
+          currency:             "EUR",
+          currencyLocked:       false,
         }),
       });
     } else {
@@ -43,6 +46,17 @@ async function mockStudioRegistration(page: Page) {
       body: JSON.stringify({
         address: { city: "Porto", country: "Portugal" },
       }),
+    });
+  });
+
+  // Country-default-currency lookup, fired once the reverse-geocode above resolves a country
+  // code ("PT") — required as of the 2026-09-27 studio-currency feature: `currency` is a
+  // required Step 1 field, so without this mock it stays empty and "Next" never advances.
+  await page.route("**/api/v1/public/countries/*/default-currency", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ countryCode: "PT", currency: "EUR" }),
     });
   });
 }

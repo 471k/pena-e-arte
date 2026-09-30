@@ -65,7 +65,7 @@ test.describe("Deposit payment — cash", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ id: "payment-1", appointmentId: APPT_ID, amount: 50, status: "CashPending" }),
+        body: JSON.stringify({ id: "payment-1", appointmentId: APPT_ID, amount: 50, currency: "EUR", status: "CashPending" }),
       });
     });
 
