@@ -496,15 +496,21 @@ public static class DataSeeder
             {
                 db.StudioHours.Add(new StudioHours
                 {
-                    StudioId = studioId, DayOfWeek = day,
-                    StartTime = new TimeSpan(9, 0, 0), EndTime = new TimeSpan(18, 0, 0), IsOpen = true,
+                    StudioId = studioId,
+                    DayOfWeek = day,
+                    StartTime = new TimeSpan(9, 0, 0),
+                    EndTime = new TimeSpan(18, 0, 0),
+                    IsOpen = true,
                 });
             }
 
             db.StudioHours.Add(new StudioHours
             {
-                StudioId = studioId, DayOfWeek = DayOfWeek.Saturday,
-                StartTime = new TimeSpan(10, 0, 0), EndTime = new TimeSpan(16, 0, 0), IsOpen = true,
+                StudioId = studioId,
+                DayOfWeek = DayOfWeek.Saturday,
+                StartTime = new TimeSpan(10, 0, 0),
+                EndTime = new TimeSpan(16, 0, 0),
+                IsOpen = true,
             });
         }
 
