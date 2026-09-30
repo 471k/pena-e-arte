@@ -10,6 +10,9 @@ export interface CreateManualReminderRequest {
 
 export type ManualReminderStatus = "Scheduled" | "Sent" | "Failed" | "Cancelled";
 
+/** Why a reminder is Failed — a category only, never provider text. Null/absent for other statuses. */
+export type ManualReminderFailureReason = "SmsOptOut" | "PlanLimit" | "UnknownOutcome" | "ProviderError";
+
 export interface ManualReminderResponse {
   id:            string;
   appointmentId: string | null;
@@ -21,7 +24,15 @@ export interface ManualReminderResponse {
   status:        ManualReminderStatus;
   sentAt:        string | null;
   createdAt:     string;
+  failureReason?: ManualReminderFailureReason | null;
 }
+
+export const FAILURE_REASON_LABELS: Record<ManualReminderFailureReason, string> = {
+  SmsOptOut:      "Client has opted out of SMS",
+  PlanLimit:      "Monthly notification limit reached",
+  UnknownOutcome: "Delivery couldn't be confirmed — not re-sent to avoid texting twice",
+  ProviderError:  "The SMS provider couldn't deliver it",
+};
 
 export interface GetManualRemindersParams {
   appointmentId?: string;

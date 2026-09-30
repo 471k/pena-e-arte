@@ -15,6 +15,9 @@ public class ManualReminder : TenantEntity
     public string? JobId { get; set; }                // Hangfire job id, for cancellation
     public DateTime? SentAt { get; set; }
 
+    /// <summary>Set only when <see cref="Status"/> is Failed — the category of why, so the artist can see it.</summary>
+    public ManualReminderFailureReason? FailureReason { get; set; }
+
     /// <summary>
     /// Set immediately before the SMS send is attempted — durably claims this reminder so a
     /// Hangfire retry (triggered by, e.g., a transient DB failure on the post-send save, not

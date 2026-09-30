@@ -27,6 +27,10 @@ const SENT: ManualReminderResponse = {
   ...SCHEDULED, id: "rem-002", status: "Sent", sentAt: "2026-08-01T10:00:00.000Z",
 };
 
+const FAILED_OPT_OUT: ManualReminderResponse = {
+  ...SCHEDULED, id: "rem-003", status: "Failed", failureReason: "SmsOptOut",
+};
+
 const ARTIST: ArtistResponse = {
   id: "artist-001", studioId: "t1",
   firstName: "Luna", lastName: "Artista",
@@ -288,6 +292,26 @@ describe("ReminderDialog", () => {
 
     expect(await screen.findByText("Scheduled")).toBeInTheDocument();
     expect(screen.getByText("Sent")).toBeInTheDocument();
+  });
+
+  it("shows why a Failed reminder failed, in plain language", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([FAILED_OPT_OUT])),
+    );
+    renderDialog({ appointmentId: "appt-001" });
+
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
+    expect(screen.getByText("Client has opted out of SMS")).toBeInTheDocument();
+  });
+
+  it("shows no reason text for Sent rows", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([SENT])),
+    );
+    renderDialog({ appointmentId: "appt-001" });
+
+    await screen.findByText("Sent");
+    expect(screen.queryByText(/opted out|limit reached|couldn't/i)).not.toBeInTheDocument();
   });
 
   it("shows a Cancel action only for Scheduled rows, not Sent ones", async () => {

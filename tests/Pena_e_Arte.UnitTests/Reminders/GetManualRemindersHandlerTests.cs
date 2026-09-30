@@ -79,6 +79,24 @@ public class GetManualRemindersHandlerTests
     }
 
     [Fact]
+    public async Task Handle_FailedReminder_ReturnsItsFailureReasonAndOthersReturnNull()
+    {
+        Guid clientId = Guid.NewGuid();
+        Guid failedId = SeedReminder(null, clientId);
+        Guid scheduledId = SeedReminder(null, clientId);
+        ManualReminder failed = _db.ManualReminders.Single(m => m.Id == failedId);
+        failed.Status = ManualReminderStatus.Failed;
+        failed.FailureReason = ManualReminderFailureReason.PlanLimit;
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+
+        var result = await CreateSut().Handle(new GetManualRemindersQuery(null, clientId), default);
+
+        result.Single(r => r.Id == failedId).FailureReason.Should().Be("PlanLimit");
+        result.Single(r => r.Id == scheduledId).FailureReason.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_FilterByClientId_ReturnsMatchingReminders()
     {
         Guid clientId = Guid.NewGuid();

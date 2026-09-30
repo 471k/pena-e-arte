@@ -511,7 +511,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Optionally write a custom message, or leave it blank to send the studio's default reminder text.",
       "Toggle \"Schedule for later\" and pick a date/time, or leave it off to send immediately.",
       "Click \"Send now\" or \"Schedule reminder\".",
-      "Reopen the dialog to see the send history and cancel any reminder that's still Scheduled.",
+      "Reopen the dialog to see the send history and cancel any reminder that's still Scheduled. A Failed reminder says why — for example the client has opted out of SMS, the studio reached its monthly notification limit, or the SMS provider couldn't deliver it. The history updates on its own when a scheduled reminder goes out.",
     ],
     tips: [
       "A Quick Reminder sent to a typed-in name and phone number does not create a client record — it stays a one-off text.",

@@ -10,6 +10,7 @@ import notificationsReducer from "@/features/notifications/notificationsSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
 import { useSignalR } from "../useSignalR";
 
 // ── SignalR mock ───────────────────────────────────────────────────────────────
@@ -241,6 +242,19 @@ describe("useSignalR", () => {
       (a as { type: string }).type,
     );
     expect(types).toContain(notificationsApi.util.invalidateTags.type);
+  });
+
+  it("NotificationReceived also refreshes the manual-reminder history", async () => {
+    renderSignalR(store, "studio-0001");
+    await act(async () => { /* flush */ });
+    dispatchSpy.mockClear();
+
+    act(() => { eventHandlers["NotificationReceived"](); });
+
+    const types = dispatchSpy.mock.calls.map(([a]: [unknown]) =>
+      (a as { type: string }).type,
+    );
+    expect(types).toContain(remindersApi.util.invalidateTags.type);
   });
 
   it("NotificationReceived does NOT dispatch designsApi tag invalidation", async () => {

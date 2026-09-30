@@ -5,6 +5,7 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { remindersApi } from "@/features/reminders/remindersApi";
 import { incrementUnread } from "@/features/notifications/notificationsSlice";
 
 export function useSignalR(studioId: string | null | undefined) {
@@ -50,6 +51,9 @@ export function useSignalR(studioId: string | null | undefined) {
 
     notifConn.on("NotificationReceived", () => {
       dispatch(notificationsApi.util.invalidateTags(["NotificationLog"]));
+      // A scheduled manual reminder fires this event when its job finishes (sent or failed) —
+      // refresh the reminder dialog's history so a row doesn't stay "Scheduled" after it ran.
+      dispatch(remindersApi.util.invalidateTags(["ManualReminder"]));
       dispatch(incrementUnread());
     });
 

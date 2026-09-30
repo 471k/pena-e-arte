@@ -17,6 +17,7 @@ public class ManualReminderConfiguration : TenantEntityConfiguration<ManualRemin
         builder.Property(m => m.Message).HasMaxLength(320);
         builder.Property(m => m.JobId).HasMaxLength(100);
         builder.Property(m => m.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(m => m.FailureReason).HasConversion<string>().HasMaxLength(32);
 
         builder.HasIndex(m => new { m.StudioId, m.ScheduledFor })
                .HasDatabaseName("ix_manual_reminders_studio_scheduled_for");
