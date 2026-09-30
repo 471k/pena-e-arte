@@ -80,8 +80,11 @@ export interface MrrMovementsDataPoint {
 }
 
 export interface CashBilledSnapshot {
-  studioId: string;
-  price:    number;
+  studioId:   string;
+  /** Empty when the studio row no longer exists — the UI falls back to a short id. */
+  studioName: string;
+  studioSlug: string;
+  price:      number;
 }
 
 export interface BackfillBilledAmountsResponse {

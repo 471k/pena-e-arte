@@ -150,9 +150,12 @@ export function DataMaintenanceCard() {
                     <ul className="text-xs space-y-0.5 max-h-32 overflow-y-auto">
                       {[...billedResult.cashBilledSnapshots].sort((a, b) => b.price - a.price).map((c) => (
                         <li key={c.studioId} className="flex items-center justify-between gap-2">
-                          <Link to={`/platform/studios/${c.studioId}`} className="underline underline-offset-2 truncate">
-                            Studio {c.studioId.slice(0, 8)}
-                          </Link>
+                          <span className="min-w-0 truncate">
+                            <Link to={`/platform/studios/${c.studioId}`} className="underline underline-offset-2">
+                              {c.studioName || `Studio ${c.studioId.slice(0, 8)}`}
+                            </Link>
+                            {c.studioSlug && <span className="ml-1.5 text-muted-foreground">{c.studioSlug}</span>}
+                          </span>
                           <span className="tabular-nums">{formatEuro(c.price)}/mo</span>
                         </li>
                       ))}

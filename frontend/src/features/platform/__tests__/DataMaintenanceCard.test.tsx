@@ -48,7 +48,7 @@ function trackRequests() {
       return HttpResponse.json({
         cardBilledUpdated: 3,
         cardBilledSkipped: 1,
-        cashBilledSnapshots: [{ studioId: CASH_STUDIO_ID, price: 59 }],
+        cashBilledSnapshots: [{ studioId: CASH_STUDIO_ID, studioName: "Ink & Iron Studio", studioSlug: "ink-and-iron-studio", price: 59 }],
       });
     }),
     http.post(LEDGER_URL, () => {
@@ -100,8 +100,9 @@ describe("DataMaintenanceCard", () => {
     expect(result).toHaveTextContent("3 card-billed updated, 1 skipped (not found in Stripe), 1 cash-billed snapshotted.");
     expect(calls).toEqual(["billed"]);
 
-    const link = screen.getByRole("link", { name: /studio 5b0f6a3e/i });
+    const link = screen.getByRole("link", { name: "Ink & Iron Studio" });
     expect(link).toHaveAttribute("href", `/platform/studios/${CASH_STUDIO_ID}`);
+    expect(screen.getByText("ink-and-iron-studio")).toBeInTheDocument();
     expect(screen.getByText(/€59\.00\/mo/)).toBeInTheDocument();
   });
 
