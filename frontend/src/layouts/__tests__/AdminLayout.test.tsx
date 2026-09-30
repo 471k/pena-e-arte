@@ -87,6 +87,14 @@ function renderLayout(initialPath = "/platform") {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("AdminLayout", () => {
+  it("has the sidebar toggle in the header (always on screen), not inside the sidebar", () => {
+    renderLayout();
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("button", { name: "Collapse sidebar" })).toBeInTheDocument();
+    const aside = screen.getByRole("complementary", { name: /sidebar/i });
+    expect(within(aside).queryByRole("button", { name: /collapse sidebar/i })).not.toBeInTheDocument();
+  });
+
   it("renders 'Platform Admin' as the header title (not the studio brand)", () => {
     renderLayout();
     // Now appears only once — the UserChip role label is "Admin" (a shorter,
