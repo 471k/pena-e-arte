@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Appointments.Queries;
 
@@ -19,10 +21,16 @@ public class ExportAppointmentsCsvHandler(IAppDbContext db, ICurrentTenant tenan
 {
     public async Task<string> Handle(ExportAppointmentsCsvQuery query, CancellationToken ct)
     {
+        string studioCurrency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+        string amountFormat = "F" + CurrencyCatalog.MinorUnits(studioCurrency).ToString(CultureInfo.InvariantCulture);
+
         StringBuilder sb = new();
         sb.Append(CsvUtils.Bom);
         CsvUtils.AppendRow(sb, "Date", "End Time", "Duration (min)", "Artist", "Client",
-            "Status", "Deposit Status", "Deposit Amount", "Cancellation Reason");
+            "Status", "Deposit Status", "Deposit Amount", "Currency", "Cancellation Reason");
 
         IQueryable<Appointment> appointmentsQuery = db.Appointments
             .AsNoTracking()
@@ -45,7 +53,8 @@ public class ExportAppointmentsCsvHandler(IAppDbContext db, ICurrentTenant tenan
                 $"{a.Client.FirstName} {a.Client.LastName}",
                 a.Status.ToString(),
                 a.DepositStatus.ToString(),
-                a.DepositAmount.ToString("F2"),
+                a.DepositAmount.ToString(amountFormat, CultureInfo.InvariantCulture),
+                studioCurrency,
                 a.CancellationReason?.ToString() ?? "");
         }
 

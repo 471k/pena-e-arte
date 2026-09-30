@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Application.Studios;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
@@ -22,6 +23,7 @@ public class GetMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
 
         bool allowBrandingRemoval = studio.Subscription?.Plan?.AllowBrandingRemoval ?? false;
         bool allowApiAccess = studio.Subscription?.Plan?.AllowApiAccess ?? false;
+        bool currencyLocked = await StudioCurrencyLock.IsLockedAsync(db, studio.Id, ct);
 
         return new StudioResponse(
             studio.Id, studio.Name, studio.Slug, studio.City,
@@ -33,6 +35,7 @@ public class GetMyStudioHandler(IAppDbContext db, ICurrentTenant tenant)
             studio.SlugLockedAt, studio.PhoneNumber, studio.InstagramHandle, studio.Nipt,
             studio.IsSolo, studio.IsPublished, studio.Timezone,
             studio.Subscription?.Status.ToString(), studio.Subscription?.PastDueSince,
-            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode,
+            CountryCode: studio.CountryCode, Currency: studio.Currency, CurrencyLocked: currencyLocked);
     }
 }

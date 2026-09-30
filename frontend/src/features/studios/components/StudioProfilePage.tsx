@@ -17,6 +17,8 @@ import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedBu
 import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
+import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
+import { CurrencySettingsCard } from "./CurrencySettingsCard";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { DeveloperSettingsCard } from "./DeveloperSettingsCard";
 import { WebhookSettingsCard } from "./WebhookSettingsCard";
@@ -57,6 +59,7 @@ const schema = z.object({
   addressLine1:    z.string().max(300).optional().or(z.literal("")),
   addressLine2:    z.string().max(150).optional().or(z.literal("")),
   postalCode:      z.string().max(20).optional().or(z.literal("")),
+  countryCode:     z.string().length(2, "Country is required").optional().or(z.literal("")),
   nipt: z
     .string()
     .trim()
@@ -217,6 +220,7 @@ export function StudioProfilePage() {
         addressLine1:    studio.addressLine1 ?? "",
         addressLine2:    studio.addressLine2 ?? "",
         postalCode:      studio.postalCode ?? "",
+        countryCode:     studio.countryCode ?? "",
       });
     }
   }, [studio, reset]);
@@ -479,6 +483,39 @@ export function StudioProfilePage() {
               </div>
 
               <div className="space-y-1.5">
+                <Label htmlFor="countryCode">Country</Label>
+                <Controller
+                  control={control}
+                  name="countryCode"
+                  render={({ field }) => (
+                    // Radix's hidden native-<select> autofill shim can fire a spurious
+                    // onValueChange("") the first time `value` goes from unset to a real
+                    // code (observed once PHONE_COUNTRIES' ~250 items are registered) —
+                    // there's no real "blank country" option in this list, so an empty
+                    // callback value is always that shim, never a genuine user choice.
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(v) => { if (v) field.onChange(v); }}
+                    >
+                      <SelectTrigger id="countryCode" aria-invalid={!!errors.countryCode}>
+                        <SelectValue placeholder="Select a country" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {PHONE_COUNTRIES.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>
+                            {flagEmoji(c.code)} {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.countryCode && (
+                  <p className="text-xs text-destructive-text">{errors.countryCode.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
                 <Label>Location</Label>
                 <p className="text-xs text-muted-foreground">
                   Click the map or drag the pin to update your studio location.
@@ -546,6 +583,7 @@ export function StudioProfilePage() {
           </CardContent>
         </Card>
 
+        <CurrencySettingsCard />
         <StudioSocialLinksCard />
         <PokSettingsCard />
         <BrandingSettingsCard />

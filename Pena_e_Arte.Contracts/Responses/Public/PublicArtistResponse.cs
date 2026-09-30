@@ -15,4 +15,5 @@ public record PublicArtistResponse(
     string StudioSlug,
     bool ShowBookingCta,
     bool IsOwnProfile,
-    IReadOnlyList<PublicSocialLinkResponse> SocialLinks);
+    IReadOnlyList<PublicSocialLinkResponse> SocialLinks,
+    string Currency);

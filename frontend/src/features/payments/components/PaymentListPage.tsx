@@ -9,15 +9,12 @@ import { Input } from "@/shared/components/ui/input";
 import { DataTable } from "@/shared/components/DataTable";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetPaymentsQuery } from "../paymentsApi";
 import type { PaymentResponse } from "../payment.types";
 import { PaymentStatus } from "../payment.types";
 
 const PAGE_SIZE = 20;
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -240,7 +237,7 @@ export function PaymentListPage() {
               {
                 header: "Amount",
                 cell: (p) => (
-                  <span className="font-semibold">{formatCurrency(p.amount)}</span>
+                  <span className="font-semibold">{formatCurrency(p.amount, p.currency)}</span>
                 ),
               },
               {
@@ -289,7 +286,7 @@ export function PaymentListPage() {
                   <span className="text-muted-foreground">
                     {p.appointmentDate ? formatDate(p.appointmentDate) : "—"}
                   </span>
-                  <span className="font-semibold">{formatCurrency(p.amount)}</span>
+                  <span className="font-semibold">{formatCurrency(p.amount, p.currency)}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {p.method}{p.paidAt ? ` · Paid ${formatDate(p.paidAt)}` : ""}

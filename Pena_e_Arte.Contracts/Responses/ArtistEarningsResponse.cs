@@ -11,4 +11,6 @@ public record EarningsPaymentLine(
 public record ArtistEarningsResponse(
     List<MonthlyRevenuePoint> MonthlyTrend,
     decimal PeriodTotal,
-    List<EarningsPaymentLine> Payments);
+    List<EarningsPaymentLine> Payments,
+    string Currency = "",
+    int ExcludedOtherCurrencyCount = 0);

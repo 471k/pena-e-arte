@@ -28,6 +28,9 @@ const BASE_STUDIO: StudioResponse = {
   addressLine1:         null,
   addressLine2:         null,
   postalCode:           null,
+  countryCode: "AL",
+  currency: "EUR",
+  currencyLocked: false,
 };
 
 function renderBanner(studio?: StudioResponse) {

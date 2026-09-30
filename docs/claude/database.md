@@ -83,6 +83,8 @@ public class Studio  // NOT a TenantEntity — admin-owned
     public string?  PostalCode       { get; set; }  // always optional
     public double   Latitude         { get; set; }
     public double   Longitude        { get; set; }
+    public string   CountryCode      { get; set; }  // ISO 3166-1 alpha-2, upper-case (2026-09-27)
+    public string   Currency         { get; set; }  // ISO 4217, upper-case — every price/payment in this studio (2026-09-27)
     public bool     IsActive         { get; set; }  // gates tenant access entirely
     public bool     IsSolo           { get; set; }  // auto-provisioned solo-artist studio (never set elsewhere)
     public bool     IsPublished      { get; set; }  // gates studio-directory listing only — see architecture.md
@@ -92,6 +94,36 @@ public class Studio  // NOT a TenantEntity — admin-owned
     public DateTime CreatedAt        { get; init; } = DateTime.UtcNow;
 }
 ```
+
+---
+
+## Money Columns (Studio Currency, 2026-09-27)
+
+Every studio prices and charges in exactly one currency (`Studio.Currency`), defaulted from
+`Studio.CountryCode` via .NET's `RegionInfo` at registration, owner-changeable until the studio's
+first `Payment`, `GiftCard`, `PackagePurchase`, or `BoothRentCharge` row exists (`StudioCurrencyLock`
+— IgnoreQueryFilters usage #54).
+
+- **Money records keep their own `Currency` column** — `Payment`, `GiftCard`, `PackagePurchase`,
+  `BoothRentCharge` — snapshotted from `Studio.Currency` at creation and never recomputed. This is
+  deliberate: if a studio's currency is ever changed later, a historical record must not silently
+  change what it meant.
+- **Price *settings* carry no currency column at all** — `Service.Price`/`DepositAmount`,
+  `DepositRule.AmountFixed`, `PromoCode.AmountFixed`, `Package.Price`, `BoothRentSchedule.AmountFixed`,
+  `Artist.HourlyRate`, `StudioJoinInvite.HourlyRate`, `Appointment.DepositAmount` — they're always
+  read in the studio's *current* `Currency`. Safe only because the currency locks once real money
+  moves.
+- **Flow A money columns are `decimal(18,4)`** (widened from `decimal(10,2)` in the same migration
+  that added `Studio.Currency`) — 4 decimal places accommodates every ISO 4217 currency's minor
+  unit (0 for JPY, 2 for most, 3 for KWD/BHD/OMR), rounded with `CurrencyCatalog.Round`
+  (`MidpointRounding.AwayFromZero`) at every write boundary, not a fixed 2.
+- **Flow B (platform subscription billing: `PlanPrice.Price`, Stripe amounts) stays
+  `decimal(10,2)`** — untouched by this migration. Flow B is fixed-currency (EUR,
+  `MrrRules.PlatformCurrency`), out of scope for per-studio currency and not part of this change.
+- All studios that existed before this migration were backfilled to `Currency = "EUR"` (not the
+  backend's old hardcoded `"ALL"`), because every studio's prices were always shown in `€` on the
+  frontend pre-migration — see `docs/payments/runbook-studio-currency-migration-2026-09-27.md` for
+  the exact backfill SQL and `docs/claude/architecture.md`'s Decisions Log for the full rationale.
 
 ---
 

@@ -103,6 +103,32 @@ public class ExportRevenueCsvHandlerTests
         lines[1].Should().Contain("70.00");
     }
 
+    [Fact]
+    public async Task Handle_JpyPayment_FormatsAmountsWithZeroDecimals()
+    {
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid clientId = await SeedClient("Jane", "Doe");
+        Guid apptId = await SeedAppointment(artistId, clientId);
+        _db.Payments.Add(new Payment
+        {
+            StudioId = _studioId,
+            AppointmentId = apptId,
+            ClientId = clientId,
+            Amount = 3000m,
+            Currency = "JPY",
+            Status = PaymentStatus.Paid,
+            Method = ClientPaymentMethod.Card,
+            PaidAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        string csv = await CreateSut().Handle(new ExportRevenueCsvQuery(null, null), default);
+
+        string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        lines[0].Should().Contain("Currency");
+        lines[1].Should().Contain(",3000,3000,JPY,");
+    }
+
     private async Task<Guid> SeedArtist(string firstName, string lastName)
     {
         Artist artist = new()
@@ -159,6 +185,7 @@ public class ExportRevenueCsvHandlerTests
             AppointmentId = appointmentId,
             ClientId = clientId,
             Amount = amount,
+            Currency = "EUR",
             Status = status,
             Method = ClientPaymentMethod.Card,
             PaidAt = paidAt,

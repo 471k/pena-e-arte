@@ -8,6 +8,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Studios.Commands;
 
@@ -61,6 +62,9 @@ public class RegisterStudioHandler(
         DateTime trialEnd = now.AddDays(14);
         DateTime graceEnd = trialEnd.AddDays(7);
 
+        string countryCode = req.CountryCode!.Trim().ToUpperInvariant();
+        string currency = (req.Currency ?? CountryCurrency.DefaultCurrencyFor(countryCode))!.ToUpperInvariant();
+
         Studio studio = new()
         {
             Name = req.Name,
@@ -73,6 +77,8 @@ public class RegisterStudioHandler(
             PostalCode = string.IsNullOrWhiteSpace(req.PostalCode) ? null : req.PostalCode.Trim(),
             Latitude = req.Latitude,
             Longitude = req.Longitude,
+            CountryCode = countryCode,
+            Currency = currency,
             IsActive = true,
             IsSolo = false,
             IsPublished = true,
@@ -133,6 +139,9 @@ public class RegisterStudioHandler(
             studio.TrialExpiresAt, studio.CreatedAt, studio.IsActive,
             studio.SlugLockedAt, PhoneNumber: null, InstagramHandle: null, Nipt: studio.Nipt,
             IsSolo: studio.IsSolo, IsPublished: studio.IsPublished, Timezone: studio.Timezone,
-            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode);
+            AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode,
+            // A brand-new studio can never be locked — no money has moved yet in the same
+            // transaction that just created it. Cheaper and just as correct as querying.
+            CountryCode: studio.CountryCode, Currency: studio.Currency, CurrencyLocked: false);
     }
 }

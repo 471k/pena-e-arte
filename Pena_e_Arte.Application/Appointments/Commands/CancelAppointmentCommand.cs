@@ -7,6 +7,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 using Pena_e_Arte.Domain.Services;
 using Pena_e_Arte.Application.Waitlists.Commands;
 using Pena_e_Arte.Application.Waitlists.Common;
@@ -107,17 +108,16 @@ public class CancelAppointmentHandler(
 
                 if (refundPercent >= 100)
                 {
-                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, null, ct);
+                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, null, payment.Currency, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;
                 }
                 else if (refundPercent > 0)
                 {
-                    decimal refundAmount = Math.Round(
-                        appointment.DepositAmount * refundPercent / 100m, 2, MidpointRounding.AwayFromZero);
-                    long refundCents = (long)Math.Round(refundAmount * 100m, MidpointRounding.AwayFromZero);
-                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, refundCents, ct);
+                    decimal refundAmount = CurrencyCatalog.Round(
+                        appointment.DepositAmount * refundPercent / 100m, payment.Currency);
+                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, refundAmount, payment.Currency, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = refundAmount;
                     appointment.DepositStatus = DepositStatus.Refunded;

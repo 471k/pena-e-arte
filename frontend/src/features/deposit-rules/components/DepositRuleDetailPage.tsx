@@ -16,9 +16,12 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -51,9 +54,9 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatAmount(amountFixed: number | null, amountPercent: number | null): string {
+function formatAmount(amountFixed: number | null, amountPercent: number | null, currency: string | undefined): string {
   if (amountFixed !== null) {
-    return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amountFixed);
+    return currency ? formatCurrency(amountFixed, currency) : String(amountFixed);
   }
   return `${amountPercent}%`;
 }
@@ -62,6 +65,7 @@ export function DepositRuleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const canManage = usePermission(Role.Owner);
+  const { currency } = useStudioCurrency();
 
   const { data: rule, isLoading, isError } = useGetDepositRuleByIdQuery(id!);
   const [updateRule, { isLoading: isSaving }] = useUpdateDepositRuleMutation();
@@ -73,6 +77,7 @@ export function DepositRuleDetailPage() {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { errors },
     reset,
   } = useForm<EditFormValues>({ resolver: zodResolver(editSchema) });
@@ -94,6 +99,13 @@ export function DepositRuleDetailPage() {
 
   async function onSave(values: EditFormValues) {
     if (!id) return;
+    if (
+      values.depositType === "fixed" && currency &&
+      !hasAtMostCurrencyMinorUnits(values.amount, currency)
+    ) {
+      setError("amount", { message: tooManyDecimalsMessage(currency) });
+      return;
+    }
     const body: UpdateDepositRuleRequest = {
       name:                      values.name,
       amountFixed:               values.depositType === "fixed"   ? values.amount : null,
@@ -220,7 +232,7 @@ export function DepositRuleDetailPage() {
                     : <Percent    className="h-4 w-4 shrink-0 text-muted-foreground" />
                   }
                   <span>
-                    {isFixed ? "Fixed" : "Percentage"} · {formatAmount(rule.amountFixed, rule.amountPercent)}
+                    {isFixed ? "Fixed" : "Percentage"} · {formatAmount(rule.amountFixed, rule.amountPercent, currency)}
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground pt-1 border-t space-y-1">
@@ -279,16 +291,27 @@ export function DepositRuleDetailPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="edit-amount">
-                {depositType === "fixed" ? "Amount (€)" : "Percentage (%)"}
+                {depositType === "fixed"
+                  ? `Amount${currency ? ` (${currencyLabel(currency)})` : ""}`
+                  : "Percentage (%)"}
               </Label>
-              <Input
-                id="edit-amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                {...register("amount", { valueAsNumber: true })}
-                className={cn(errors.amount && "border-destructive")}
-              />
+              {depositType === "fixed" && currency ? (
+                <MoneyInput
+                  id="edit-amount"
+                  currency={currency}
+                  {...register("amount", { valueAsNumber: true })}
+                  className={cn(errors.amount && "border-destructive")}
+                />
+              ) : (
+                <Input
+                  id="edit-amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  {...register("amount", { valueAsNumber: true })}
+                  className={cn(errors.amount && "border-destructive")}
+                />
+              )}
               {errors.amount && (
                 <p className="text-xs text-destructive-text">{errors.amount.message}</p>
               )}

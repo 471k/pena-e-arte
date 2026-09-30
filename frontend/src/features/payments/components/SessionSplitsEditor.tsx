@@ -4,23 +4,23 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useUpdateSessionSplitsMutation } from "../paymentsApi";
 import type { SessionSplitItem, SessionSplitResponse } from "../payment.types";
 
 interface SessionSplitsEditorProps {
   paymentId:     string;
   paymentAmount: number;
+  currency:      string;
   currentSplits: SessionSplitResponse[];
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
-export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }: SessionSplitsEditorProps) {
+export function SessionSplitsEditor({ paymentId, paymentAmount, currency, currentSplits }: SessionSplitsEditorProps) {
   const [editing, setEditing] = useState(false);
   const [splits, setSplits]   = useState<SessionSplitItem[]>([]);
+  const [splitsError, setSplitsError] = useState<string | null>(null);
   const [updateSplits, { isLoading }] = useUpdateSessionSplitsMutation();
 
   function startEdit() {
@@ -53,6 +53,12 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }:
   async function handleSave() {
     const valid = splits.filter((s) => s.label.trim() && s.amount > 0);
     if (valid.length === 0) return;
+    setSplitsError(null);
+    const tooManyDecimals = valid.find((s) => !hasAtMostCurrencyMinorUnits(s.amount, currency));
+    if (tooManyDecimals) {
+      setSplitsError(tooManyDecimalsMessage(currency));
+      return;
+    }
     try {
       await updateSplits({ id: paymentId, body: { splits: valid } }).unwrap();
       setEditing(false);
@@ -85,7 +91,7 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }:
                 <CardContent className="p-3 flex items-center justify-between gap-3">
                   <span className="text-sm">{split.label}</span>
                   <div className="text-right shrink-0">
-                    <span className="text-sm font-medium">{formatCurrency(split.amount)}</span>
+                    <span className="text-sm font-medium">{formatCurrency(split.amount, currency)}</span>
                     {split.paidAt && (
                       <p className="text-xs text-green-600">Paid</p>
                     )}
@@ -129,13 +135,11 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }:
             </div>
             <div className="w-28 space-y-1">
               <Label htmlFor={`split-amount-${index}`} className="text-xs">
-                Amount (€)
+                Amount ({currencyLabel(currency)})
               </Label>
-              <Input
+              <MoneyInput
                 id={`split-amount-${index}`}
-                type="number"
-                step="0.01"
-                min="0.01"
+                currency={currency}
                 value={split.amount || ""}
                 onChange={(e) => setAmount(index, e.target.value)}
               />
@@ -168,13 +172,16 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currentSplits }:
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Total</span>
         <span className={totalMatches ? "font-medium" : "font-medium text-destructive-text"}>
-          {formatCurrency(runningTotal)} / {formatCurrency(paymentAmount)}
+          {formatCurrency(runningTotal, currency)} / {formatCurrency(paymentAmount, currency)}
         </span>
       </div>
       {!totalMatches && (
         <p role="alert" className="text-xs text-destructive-text">
-          Splits must add up to {formatCurrency(paymentAmount)}.
+          Splits must add up to {formatCurrency(paymentAmount, currency)}.
         </p>
+      )}
+      {splitsError && (
+        <p role="alert" className="text-xs text-destructive-text">{splitsError}</p>
       )}
 
       <Button

@@ -4,12 +4,9 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
 import { useGetPackagesQuery, usePurchasePackageMutation } from "../packagesApi";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
 
 /** Client package purchase — parallels PurchaseGiftCardPage; same capabilities gate, no second
  * capability-detection mechanism. */
@@ -19,6 +16,7 @@ export function PurchasePackagePage() {
   const { data: packages, isLoading } = useGetPackagesQuery();
   const { data: capabilities } = useGetPaymentCapabilitiesQuery();
   const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
+  const currency = capabilities?.currency;
   const [purchase, { isLoading: isPurchasing }] = usePurchasePackageMutation();
 
   const activePackages = packages?.filter((p) => p.isActive) ?? [];
@@ -66,7 +64,7 @@ export function PurchasePackagePage() {
             <CardContent className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{pkg.sessionCount} sessions</p>
               <div className="flex items-center gap-3">
-                <span className="font-semibold">{formatCurrency(pkg.price)}</span>
+                <span className="font-semibold">{currency ? formatCurrency(pkg.price, currency) : pkg.price}</span>
                 <Button size="sm" disabled={isPurchasing} onClick={() => handlePurchase(pkg.id)} className="gap-1.5">
                   {isPurchasing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Buy

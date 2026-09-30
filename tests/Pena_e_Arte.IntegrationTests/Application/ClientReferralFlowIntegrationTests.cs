@@ -97,6 +97,8 @@ public class ClientReferralFlowIntegrationTests(DatabaseFixture fixture)
             Slug = ("cref-" + Guid.NewGuid().ToString("N"))[..20],
             City = "Porto",
             OwnerEmail = $"cref{Guid.NewGuid():N}@test.com",
+            CountryCode = "AL",
+            Currency = "EUR",
             IsActive = true,
             TrialExpiresAt = DateTime.UtcNow.AddDays(14),
         };

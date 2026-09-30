@@ -47,6 +47,7 @@ const server = setupServer(
       paidAt:        null,
       clientName:    "",
       appointmentDate: null,
+      currency:      "EUR",
     }),
   ),
 );
@@ -77,11 +78,12 @@ function renderEditor(
   currentSplits: SessionSplitResponse[] = [],
   paymentId = "pay-001",
   paymentAmount = 100,
+  currency = "EUR",
 ) {
   render(
     <Provider store={makeStore()}>
       <Toaster />
-      <SessionSplitsEditor paymentId={paymentId} paymentAmount={paymentAmount} currentSplits={currentSplits} />
+      <SessionSplitsEditor paymentId={paymentId} paymentAmount={paymentAmount} currency={currency} currentSplits={currentSplits} />
     </Provider>,
   );
 }

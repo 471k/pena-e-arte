@@ -64,6 +64,7 @@ public class SendPaymentRefundedNotificationHandlerTests
             Client = client,
             Appointment = appointment,
             Amount = 100m,
+            Currency = "EUR",
             Status = PaymentStatus.Refunded,
             Method = ClientPaymentMethod.Card,
         };

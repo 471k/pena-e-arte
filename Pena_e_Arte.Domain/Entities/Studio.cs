@@ -32,6 +32,17 @@ public class Studio
     /// comparisons, which stay UTC throughout. Defaults to the platform's primary market at
     /// registration; owner-correctable in studio settings.</summary>
     public string Timezone { get; set; } = "Europe/Tirane";
+
+    /// <summary>ISO 3166-1 alpha-2, upper-case (e.g. "AL"). Chosen at registration (prefilled from
+    /// the geocoded address); owner-editable anytime. Drives only the DEFAULT currency — changing
+    /// it never changes Currency.</summary>
+    public string CountryCode { get; set; } = string.Empty;
+
+    /// <summary>ISO 4217, upper-case (e.g. "ALL", "EUR"). The one currency every price and payment
+    /// in this studio uses. Locked once money has moved (see StudioCurrencyLock). Never a silent
+    /// toggle — architecture.md Decisions Log, "Studio currency (2026-09-27)".</summary>
+    public string Currency { get; set; } = string.Empty;
+
     /// <summary>
     /// Gates tenant access entirely — a deactivated studio's owner/artists cannot use the
     /// app. Distinct from <c>IsPublished</c> (below), which gates only studio-directory

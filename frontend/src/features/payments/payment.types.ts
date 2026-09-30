@@ -27,6 +27,7 @@ export interface PaymentResponse {
   clientName:            string;
   appointmentDate:       string | null;
   splits?:               SessionSplitResponse[];
+  currency:              string;
 }
 
 export interface PaymentIntentResponse {
@@ -39,7 +40,6 @@ export interface CreatePaymentIntentRequest {
   appointmentId: string;
   clientId:      string;
   amount:        number;
-  currency:      string;
 }
 
 export interface SessionSplitItem {
@@ -64,9 +64,21 @@ export interface GetPaymentsParams {
   pageSize?:   number;
 }
 
+/** Amount/currency let the checkout page render the server's own figures instead of trusting a
+ * forgeable `?amount=` query-string param (architecture.md Decisions Log, "Studio currency"). */
 export interface ClientTokenResponse {
   clientToken: string;
+  amount:      number;
+  currency:    string;
 }
+
+/** A closed set to switch on for `PaymentCapabilitiesResponse.cardUnavailableReason` — mirrors
+ * the backend's own `CardUnavailableReasons` constants exactly; copy stays a frontend concern. */
+export const CardUnavailableReasons = {
+  ProviderUnsupportedCurrency: "provider_unsupported_currency",
+  ProviderNotConnected:        "provider_not_connected",
+  ProviderDisabled:            "provider_disabled",
+} as const;
 
 export interface PaymentCapabilitiesResponse {
   cardPaymentsAvailable: boolean;
@@ -75,6 +87,11 @@ export interface PaymentCapabilitiesResponse {
    * this independently on the client (e.g. from the frontend's own build mode): that can drift
    * out of sync with the backend's real configured host and POK 401s on a mismatch. */
   pokEnvironment: string | null;
+  /** Always populated — the studio's currency — so the frontend never has to ask twice. */
+  currency: string | null;
+  /** One of `CardUnavailableReasons` whenever `cardPaymentsAvailable` is false, so the UI can
+   * show the right explanation instead of a generic "unavailable" message. */
+  cardUnavailableReason: string | null;
 }
 
 export interface ConnectPokAccountRequest {

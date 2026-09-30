@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import type { MonthlyRevenuePoint } from "../report.types";
 
 const W     = 640;
@@ -19,9 +20,10 @@ function yAt(val: number, max: number) {
   return PAD_T + PH - (val / max) * PH;
 }
 
-function fmtY(val: number) {
-  if (val >= 1000) return `€${(val / 1000).toFixed(1)}k`;
-  return `€${Math.round(val)}`;
+function fmtY(val: number, currency: string) {
+  const symbol = currencyLabel(currency);
+  if (val >= 1000) return `${symbol}${(val / 1000).toFixed(1)}k`;
+  return `${symbol}${Math.round(val)}`;
 }
 
 function fmtMonth(iso: string) {
@@ -39,7 +41,7 @@ interface TooltipData {
 
 // Hand-rolled inline SVG chart — same treatment as MrrChart.tsx's Chart component
 // (no charting library is used anywhere in this codebase; recharts is not installed).
-export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
+export function RevenueTrendChart({ data, currency }: { data: MonthlyRevenuePoint[]; currency: string }) {
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   const n     = data.length;
@@ -63,7 +65,7 @@ export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
         fill="currentColor" fillOpacity={0.4}
         transform={`rotate(-90, 10, ${PAD_T + PH / 2})`}
       >
-        EUR
+        {currency}
       </text>
 
       {gridY.map(({ val, y }) => (
@@ -71,7 +73,7 @@ export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
           <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="currentColor" strokeOpacity={0.12} strokeWidth={1} />
           <text x={PAD_L - 6} y={y} dominantBaseline="middle" textAnchor="end" fontSize={9}
                 fill="currentColor" fillOpacity={0.5}>
-            {fmtY(val)}
+            {fmtY(val, currency)}
           </text>
         </g>
       ))}
@@ -117,7 +119,7 @@ export function RevenueTrendChart({ data }: { data: MonthlyRevenuePoint[] }) {
             </text>
             <text x={tipX + tipW / 2} y={tipY + 21} textAnchor="middle" fontSize={10}
                   fontWeight="600" fill="currentColor">
-              {fmtY(tooltip.revenue)}
+              {fmtY(tooltip.revenue, currency)}
             </text>
           </g>
         );

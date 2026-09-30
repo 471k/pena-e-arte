@@ -13,7 +13,7 @@ public class PromoCodeConfiguration : TenantEntityConfiguration<PromoCode>
         base.Configure(builder);
 
         builder.Property(p => p.Code).IsRequired().HasMaxLength(40);
-        builder.Property(p => p.AmountFixed).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.AmountFixed).HasColumnType("decimal(18,4)");
         builder.Property(p => p.AmountPercent).HasColumnType("decimal(5,2)");
         builder.Property(p => p.RedemptionCount).HasDefaultValue(0);
 

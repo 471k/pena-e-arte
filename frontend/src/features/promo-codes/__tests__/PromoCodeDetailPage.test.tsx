@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { promoCodesApi } from "@/features/promo-codes/promoCodesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { PromoCodeDetailPage } from "@/features/promo-codes/components/PromoCodeDetailPage";
 import type { PromoCodeResponse } from "@/features/promo-codes/promoCode.types";
 
@@ -42,6 +43,9 @@ const UPDATED_CODE: PromoCodeResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/promo-codes/:id", () => HttpResponse.json(CODE)),
   http.put("http://localhost/api/v1/promo-codes/:id", () => HttpResponse.json(UPDATED_CODE)),
   http.delete("http://localhost/api/v1/promo-codes/:id", () => new HttpResponse(null, { status: 204 })),
@@ -59,8 +63,9 @@ function makeStore() {
       auth:                        authReducer,
       ui:                          uiReducer,
       [promoCodesApi.reducerPath]: promoCodesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(promoCodesApi.middleware),
+    middleware: (gd) => gd().concat(promoCodesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null } as any,
@@ -115,7 +120,7 @@ describe("PromoCodeDetailPage", () => {
   it("renders the fixed amount", async () => {
     renderPage();
     await screen.findByText("SUMMER20");
-    expect(screen.getByText(/fixed · 50,00\s?€/i)).toBeInTheDocument();
+    expect(await screen.findByText(/fixed · €50/i)).toBeInTheDocument();
   });
 
   it("renders a percent code correctly", async () => {

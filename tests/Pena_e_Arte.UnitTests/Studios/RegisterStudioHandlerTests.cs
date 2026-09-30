@@ -2,6 +2,7 @@ using FluentAssertions;
 using MediatR;
 using NSubstitute;
 using Pena_e_Arte.Application.Studios.Commands;
+using Pena_e_Arte.Application.Studios.Validators;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -239,5 +240,74 @@ public class RegisterStudioHandlerTests
     }
 
     private static RegisterStudioRequest ValidRequest() =>
-        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com", "L01234567A", "Rua Central 5");
+        new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com", "L01234567A", "Rua Central 5",
+            CountryCode: "AL");
+
+    // ── Studio currency (2026-09-27) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_NoCurrency_DefaultsToCountrysCurrency()
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "AL", Currency = null };
+
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        result.CountryCode.Should().Be("AL");
+        result.Currency.Should().Be("ALL");
+        _db.Studios.Single().Currency.Should().Be("ALL");
+    }
+
+    [Fact]
+    public async Task Handle_JapanCountry_DefaultsToJpy()
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "JP", Currency = null };
+
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        result.Currency.Should().Be("JPY");
+    }
+
+    [Fact]
+    public async Task Handle_ExplicitCurrency_OverridesCountryDefault()
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "AL", Currency = "EUR" };
+
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        result.Currency.Should().Be("EUR");
+        _db.Studios.Single().Currency.Should().Be("EUR");
+    }
+
+    [Fact]
+    public async Task Handle_NewStudio_CurrencyIsNeverLocked()
+    {
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);
+
+        result.CurrencyLocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Validator_MissingCountryCode_Fails()
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = null };
+        new RegisterStudioValidator()
+            .ShouldFailOn(new RegisterStudioCommand(req), "Request.CountryCode");
+    }
+
+    [Fact]
+    public void Validator_UnknownCountryCode_Fails()
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "ZZ" };
+        new RegisterStudioValidator()
+            .ShouldFailOn(new RegisterStudioCommand(req), "Request.CountryCode");
+    }
+
+    [Fact]
+    public void Validator_UnknownCurrency_Fails()
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "AL", Currency = "EURO" };
+        new RegisterStudioValidator()
+            .ShouldFailOn(new RegisterStudioCommand(req), "Request.Currency");
+    }
+
 }

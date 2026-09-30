@@ -8,6 +8,8 @@ import { useGetMyAppointmentsQuery, useCancelAppointmentMutation } from "../appo
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetPaymentByAppointmentQuery } from "@/features/payments/paymentsApi";
 import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
@@ -159,6 +161,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
   const { data: payment, isLoading } = useGetPaymentByAppointmentQuery(appt.id, {
     skip: appt.depositAmount <= 0,
   });
+  const { currency: studioCurrency } = useStudioCurrency();
 
   if (appt.depositAmount <= 0) return null;
 
@@ -231,7 +234,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Banknote className="h-3.5 w-3.5" />
-          Paying €{appt.depositAmount.toFixed(2)} in cash at the studio
+          Paying {formatCurrency(appt.depositAmount, payment.currency)} in cash at the studio
         </p>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
           onClick={() => setPaying(true)}>
@@ -248,7 +251,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
       <CreditCard className="h-3.5 w-3.5" />
       {payment?.status === "Pending"
         ? "Finish deposit payment"
-        : `Pay deposit — €${appt.depositAmount.toFixed(2)}`}
+        : `Pay deposit — ${studioCurrency ? formatCurrency(appt.depositAmount, studioCurrency) : appt.depositAmount}`}
     </Button>
   );
 }

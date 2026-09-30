@@ -20,5 +20,6 @@ internal static class PaymentExtensions
         $"{p.Client?.FirstName} {p.Client?.LastName}".Trim(),
         p.Appointment?.Date, // null when the navigation wasn't loaded
         (splits ?? p.SessionSplits).Select(s =>
-            new SessionSplitResponse(s.Id, s.PaymentId, s.Label, s.Amount, s.PaidAt)).ToList());
+            new SessionSplitResponse(s.Id, s.PaymentId, s.Label, s.Amount, s.PaidAt)).ToList(),
+        p.Currency);
 }

@@ -13,7 +13,7 @@ public class PackageConfiguration : TenantEntityConfiguration<Package>
         base.Configure(builder);
 
         builder.Property(p => p.Name).HasMaxLength(150).IsRequired();
-        builder.Property(p => p.Price).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(p => p.Price).HasColumnType("decimal(18,4)").IsRequired();
         builder.Property(p => p.SessionCount).IsRequired();
     }
 }

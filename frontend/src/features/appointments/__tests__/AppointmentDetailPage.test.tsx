@@ -113,7 +113,7 @@ const server = setupServer(
   ),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" }),
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([
     { id: "a-002", studioId: "s-001", firstName: "New", lastName: "Artist", slug: "new-artist", email: "new@a.com", specializations: [], hourlyRate: null, isActive: true },
@@ -194,7 +194,7 @@ describe("AppointmentDetailPage", () => {
   it("renders 'Date & time' in the studio's timezone, not the test environment's local timezone", async () => {
     server.use(
       http.get("http://localhost/api/v1/studios/me", () =>
-        HttpResponse.json({ id: "s-001", timezone: "America/New_York" }),
+        HttpResponse.json({ id: "s-001", timezone: "America/New_York", currency: "EUR" }),
       ),
       http.get("http://localhost/api/v1/appointments/:id", () =>
         HttpResponse.json({ ...APPT_PENDING, date: "2026-06-15T20:00:00Z" }),

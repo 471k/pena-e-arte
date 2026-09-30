@@ -56,6 +56,9 @@ const STUDIO: StudioResponse = {
   addressLine1: null,
   addressLine2: null,
   postalCode: null,
+  countryCode: "AL",
+  currency: "EUR",
+  currencyLocked: false,
 };
 
 const ARTIST: ArtistResponse = {
@@ -586,7 +589,7 @@ describe("BookAppointmentForm", () => {
 
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
     expect(await screen.findByText(/secure your slot with a deposit/i)).toBeInTheDocument();
-    expect(screen.getByText("€50.00")).toBeInTheDocument();
+    expect(screen.getByText("€50")).toBeInTheDocument();
   });
 
   it("skipping deposit shows final confirmation", async () => {
@@ -998,7 +1001,7 @@ describe("MyBookingsSection", () => {
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
           providerReferenceId: "pi_1", clientToken: null, cashNote: null,
-          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
         }),
       ),
     );
@@ -1018,7 +1021,7 @@ describe("MyBookingsSection", () => {
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
           providerReferenceId: "pi_1", clientToken: null, cashNote: null,
-          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
         }),
       ),
     );
@@ -1038,7 +1041,7 @@ describe("MyBookingsSection", () => {
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "CashPending", method: "Cash",
           providerReferenceId: null, clientToken: null, cashNote: null,
-          paidAt: null, clientName: "Marco Cliente", appointmentDate: null,
+          paidAt: null, clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
         }),
       ),
     );

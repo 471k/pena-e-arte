@@ -28,6 +28,7 @@ const CONFIRMED_PAYMENT: PaymentResponse = {
   paidAt:                "2026-06-11T14:00:00.000Z",
   clientName:            "",
   appointmentDate:       null,
+  currency:              "EUR",
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ function renderButton(
   paymentId = "pay-0001-0000-0000-0000-000000000001",
   clientName = "Ana Costa",
   amount = 60,
+  currency = "EUR",
 ) {
   const store = makeStore();
   render(
@@ -71,6 +73,7 @@ function renderButton(
         paymentId={paymentId}
         clientName={clientName}
         amount={amount}
+        currency={currency}
       />
     </Provider>,
   );
@@ -91,7 +94,7 @@ describe("CashDepositConfirmButton", () => {
     await user.click(screen.getByRole("button", { name: /mark cash received/i }));
 
     expect(screen.getByText(/Ana Costa/)).toBeInTheDocument();
-    expect(screen.getByText(/60\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/€60/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /yes/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });

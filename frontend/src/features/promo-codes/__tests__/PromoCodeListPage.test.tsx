@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { promoCodesApi } from "@/features/promo-codes/promoCodesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { PromoCodeListPage } from "@/features/promo-codes/components/PromoCodeListPage";
 import type { PromoCodeResponse } from "@/features/promo-codes/promoCode.types";
 
@@ -46,6 +47,9 @@ const CODE_PERCENT: PromoCodeResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/promo-codes", () =>
     HttpResponse.json([CODE_FIXED, CODE_PERCENT]),
   ),
@@ -63,8 +67,9 @@ function makeStore() {
       auth:                        authReducer,
       ui:                          uiReducer,
       [promoCodesApi.reducerPath]: promoCodesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(promoCodesApi.middleware),
+    middleware: (gd) => gd().concat(promoCodesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null } as any,
@@ -123,7 +128,7 @@ describe("PromoCodeListPage", () => {
   it("shows the fixed amount and Active badge for an active fixed code", async () => {
     renderPage();
     await screen.findByText("SUMMER20");
-    expect(screen.getByText(/fixed · 50,00\s?€/i)).toBeInTheDocument();
+    expect(await screen.findByText(/fixed · €50/i)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 

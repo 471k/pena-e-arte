@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Banknote, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -14,16 +15,14 @@ import {
 } from "@/shared/components/ui/select";
 import { DataTable } from "@/shared/components/DataTable";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import {
   useGetBoothRentSchedulesQuery, useCreateBoothRentScheduleMutation,
   useGetBoothRentChargesQuery, useMarkBoothRentChargeSettledMutation,
 } from "../boothRentApi";
 import { RentFrequency, type BoothRentChargeResponse } from "../boothRent.types";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -32,14 +31,21 @@ function formatDate(iso: string): string {
 function NewScheduleDialog() {
   const { data: artists } = useGetArtistsQuery(undefined);
   const [createSchedule, { isLoading }] = useCreateBoothRentScheduleMutation();
+  const { currency } = useStudioCurrency();
   const [open, setOpen] = useState(false);
   const [artistId, setArtistId] = useState("");
   const [amount, setAmount] = useState("");
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [frequency, setFrequency] = useState<RentFrequency>(RentFrequency.Weekly);
   const [nextChargeDate, setNextChargeDate] = useState("");
 
   async function handleSubmit() {
     if (!artistId || !amount || !nextChargeDate) return;
+    setAmountError(null);
+    if (currency && !hasAtMostCurrencyMinorUnits(Number(amount), currency)) {
+      setAmountError(tooManyDecimalsMessage(currency));
+      return;
+    }
     const result = await createSchedule({
       artistId,
       amountFixed: Number(amount),
@@ -76,8 +82,18 @@ function NewScheduleDialog() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="booth-rent-amount">Amount (€)</Label>
-            <Input id="booth-rent-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <Label htmlFor="booth-rent-amount">Amount{currency ? ` (${currencyLabel(currency)})` : ""}</Label>
+            {currency ? (
+              <MoneyInput
+                id="booth-rent-amount"
+                currency={currency}
+                value={amount}
+                onChange={(e) => { setAmount(e.target.value); setAmountError(null); }}
+              />
+            ) : (
+              <Input id="booth-rent-amount" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            )}
+            {amountError && <p className="text-xs text-destructive-text">{amountError}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="booth-rent-frequency">Frequency</Label>
@@ -128,6 +144,7 @@ export function BoothRentManagementPage() {
 
   const { data: schedules, isLoading: schedulesLoading } = useGetBoothRentSchedulesQuery();
   const { data: charges, isLoading: chargesLoading } = useGetBoothRentChargesQuery();
+  const { currency } = useStudioCurrency();
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,7 +170,7 @@ export function BoothRentManagementPage() {
                   <div>
                     <p className="text-sm font-medium">{s.artistName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(s.amountFixed)} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
+                      {currency ? formatCurrency(s.amountFixed, currency) : s.amountFixed} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
                     </p>
                   </div>
                   <Badge variant="outline" className={s.isActive ? "border-green-300 bg-green-100 text-green-800" : "border-slate-300 bg-slate-100 text-slate-800"}>
@@ -175,7 +192,7 @@ export function BoothRentManagementPage() {
             <DataTable<BoothRentChargeResponse>
               columns={[
                 { header: "Artist", cell: (c) => c.artistName ?? "—" },
-                { header: "Amount", cell: (c) => <span className="font-semibold">{formatCurrency(c.amount)}</span> },
+                { header: "Amount", cell: (c) => <span className="font-semibold">{formatCurrency(c.amount, c.currency)}</span> },
                 { header: "Charged", cell: (c) => formatDate(c.chargedDate) },
                 { header: "Status", cell: (c) => <SettleButton charge={c} /> },
               ]}
@@ -185,7 +202,7 @@ export function BoothRentManagementPage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{c.artistName ?? "—"}</span>
-                    <span className="font-semibold text-sm">{formatCurrency(c.amount)}</span>
+                    <span className="font-semibold text-sm">{formatCurrency(c.amount, c.currency)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">{formatDate(c.chargedDate)}</span>

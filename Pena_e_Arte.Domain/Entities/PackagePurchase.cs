@@ -17,6 +17,15 @@ public class PackagePurchase : TenantEntity
     public Guid PackageId { get; set; }
     public Guid ClientId { get; set; }
     public int SessionsRemaining { get; set; }
+
+    /// <summary>Snapshot of Package.Price at purchase time, in <see cref="Currency"/>. Without
+    /// this the row stored no amount at all, so a later Package.Price edit would silently rewrite
+    /// what a past purchase "cost" — the same rule as every other money record.</summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>ISO 4217 currency of this purchase — copied from Studio.Currency at purchase and
+    /// never changed after.</summary>
+    public string Currency { get; set; } = string.Empty;
     public string ProviderReferenceId { get; set; } = string.Empty;
     public string? ClientToken { get; set; }
     public string Provider { get; set; } = string.Empty;

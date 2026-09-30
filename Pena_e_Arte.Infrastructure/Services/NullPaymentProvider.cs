@@ -31,5 +31,5 @@ public sealed class NullPaymentProvider : IPaymentProvider
 
     public Task<PaymentProviderStatus?> GetStatusAsync(Guid studioId, string providerReferenceId, CancellationToken ct) => throw NotConfigured();
 
-    public Task<string> RefundAsync(Guid studioId, string providerReferenceId, long? amountInCents, CancellationToken ct) => throw NotConfigured();
+    public Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal? amount, string currency, CancellationToken ct) => throw NotConfigured();
 }

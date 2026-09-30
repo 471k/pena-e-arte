@@ -7,12 +7,9 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Button } from "@/shared/components/ui/button";
 import { useAppSelector } from "@/app/hooks";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetRevenueSummaryQuery } from "../reportsApi";
 import { RevenueTrendChart } from "./RevenueTrendChart";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(value);
-}
 
 export function ReportsPage() {
   useDocumentMeta({ title: "Reports — TattooOS", canonical: "/reports" });
@@ -68,6 +65,13 @@ export function ReportsPage() {
 
         {!isLoading && !isError && data && (
           <>
+            {data.excludedOtherCurrencyCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {data.excludedOtherCurrencyCount} payment{data.excludedOtherCurrencyCount !== 1 ? "s" : ""} in
+                another currency aren't included in this total.
+              </p>
+            )}
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Revenue trend (last 12 months)</CardTitle>
@@ -78,7 +82,7 @@ export function ReportsPage() {
                     No revenue recorded yet.
                   </p>
                 ) : (
-                  <RevenueTrendChart data={data.monthlyTrend} />
+                  <RevenueTrendChart data={data.monthlyTrend} currency={data.currency} />
                 )}
               </CardContent>
             </Card>
@@ -105,7 +109,7 @@ export function ReportsPage() {
                         {data.perArtist.map((row) => (
                           <tr key={row.artistId} className="border-b last:border-b-0">
                             <td className="px-3 py-2 font-medium truncate max-w-[220px]">{row.artistName}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(row.revenue)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(row.revenue, data.currency)}</td>
                           </tr>
                         ))}
                       </tbody>

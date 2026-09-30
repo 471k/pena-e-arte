@@ -13,6 +13,6 @@ public class SessionSplitConfiguration : TenantEntityConfiguration<SessionSplit>
         base.Configure(builder);
 
         builder.Property(ss => ss.Label).HasMaxLength(100).IsRequired();
-        builder.Property(ss => ss.Amount).HasColumnType("decimal(18,2)").IsRequired();
+        builder.Property(ss => ss.Amount).HasColumnType("decimal(18,4)").IsRequired();
     }
 }

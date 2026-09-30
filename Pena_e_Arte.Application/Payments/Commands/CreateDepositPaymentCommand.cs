@@ -24,10 +24,6 @@ public class CreateDepositPaymentHandler(
     IPaymentProvider paymentProvider)
     : IRequestHandler<CreateDepositPaymentCommand, PaymentIntentResponse>
 {
-    // ADR-0001: POK is native-ALL; every deposit is quoted and charged in lek. A studio wanting a
-    // different settlement currency configures that on the POK side, not here.
-    private const string DepositCurrency = "ALL";
-
     // Matches the Postman/REST example (expiresAfterMinutes: 1440) — a full day for the client to
     // complete the card step before the hold self-expires. PaymentReconciliationJob's 3-day stale
     // sweep is the backstop if this and POK's own expiry both somehow miss.
@@ -129,15 +125,20 @@ public class CreateDepositPaymentHandler(
         if (existing is not null && !convertible)
             throw new BusinessRuleViolationException("A payment for this appointment is already in progress.");
 
+        string currency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+        CardCurrencyGuard.EnsureSupported(paymentProvider, currency);
+
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
-        long amountInCents = (long)(appointment.DepositAmount * 100);
 
         (string providerReferenceId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
             new PaymentHoldRequest(
                 StudioId: tenant.StudioId,
                 PaymentId: paymentId,
-                AmountInCents: amountInCents,
-                Currency: DepositCurrency,
+                Amount: appointment.DepositAmount,
+                Currency: currency,
                 HoldDurationMinutes: HoldDurationMinutes),
             ct);
         DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(HoldDurationMinutes);
@@ -154,7 +155,7 @@ public class CreateDepositPaymentHandler(
                 Status = PaymentStatus.Pending,
                 Method = ClientPaymentMethod.Card,
                 Provider = "pok",
-                Currency = DepositCurrency,
+                Currency = currency,
                 ProviderReferenceId = providerReferenceId,
                 ClientToken = clientToken,
                 HoldExpiresAt = holdExpiresAt,
@@ -166,7 +167,7 @@ public class CreateDepositPaymentHandler(
             existing.Method = ClientPaymentMethod.Card;
             existing.Status = PaymentStatus.Pending;
             existing.Provider = "pok";
-            existing.Currency = DepositCurrency;
+            existing.Currency = currency;
             existing.ProviderReferenceId = providerReferenceId;
             existing.ClientToken = clientToken;
             existing.HoldExpiresAt = holdExpiresAt;

@@ -319,6 +319,44 @@ Calls `confirmCashDeposit` mutation on approval.
 
 ---
 
+## Currency (Studio Currency, 2026-09-27)
+
+Every studio has its own `currency` (ISO 4217), exposed on `StudioResponse`/`PublicStudioResponse`
+and on every money record's own response (`PaymentResponse`, `GiftCardResponse`,
+`PackagePurchaseResponse`, `BoothRentChargeResponse`, `DesignCatalogItemResponse`).
+
+- **All money goes through `formatCurrency`/`MoneyInput`/`currencyLabel`
+  (`shared/utils/formatCurrency.ts`, `shared/components/ui/money-input.tsx`) — never hard-code a
+  currency (`"EUR"`, `€`) or a locale (`"pt-PT"`) anywhere in a component.** `APP_LOCALE` in
+  `formatCurrency.ts` is the one fixed exception, and it's fixed on purpose (see Decisions Log).
+- Format a **record's own amount** (a payment, gift card, package purchase, booth-rent charge)
+  with **that record's own `currency` field**, not the studio's current one — they can differ if
+  the studio's currency changes after the record existed.
+- Format a **price setting** (a service, deposit rule, promo code, package, artist hourly rate)
+  with the studio's *current* currency, via the `useStudioCurrency()` hook
+  (`shared/hooks/useStudioCurrency.ts`) for an authenticated owner/artist/client, or the
+  `currency`/`countryCode` fields already present on a `PublicStudioResponse`/
+  `PublicArtistResponse` prop for a guest/public page — never fetch the owner-only `studios/me`
+  endpoint from a public component.
+- A money **input** field uses `MoneyInput`, not a raw `<Input type="number">` — it renders the
+  right currency adornment and `step` (1 for JPY, 0.01 for EUR/ALL, 0.001 for KWD) automatically.
+  Pair it with `hasAtMostCurrencyMinorUnits`/`tooManyDecimalsMessage` (same file) for client-side
+  decimal-precision validation matching the backend's own message.
+- A currency **picker** (registration, Studio Settings) uses `CurrencySelect`
+  (`shared/components/ui/currency-select.tsx`), which sources its option list from
+  `shared/utils/currencies.ts` — never build a second country→currency or currency-list table on
+  the frontend; the backend's `GET /public/countries/{code}/default-currency` endpoint is the only
+  source of a country's default.
+- Never render `<Select value={...} onValueChange={...}>` (Radix, incl. `CurrencySelect`'s own
+  internals) with a field whose value starts **empty/falsy and later becomes non-empty** without
+  guarding the `onValueChange` callback against an empty string first. Radix's hidden native-
+  `<select>` autofill shim can fire a spurious `onValueChange("")` on that first uncontrolled→
+  controlled transition, silently resetting the field — confirmed as a real bug in
+  `RegisterStudioPage.tsx`'s currency picker, not just a test artifact. A country/currency field
+  that's *never* empty at mount (has a real default from the first render) doesn't need the guard.
+
+---
+
 ## Component Rules
 
 - One component per file. File name matches component name.

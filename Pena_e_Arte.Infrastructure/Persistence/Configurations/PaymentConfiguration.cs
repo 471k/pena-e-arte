@@ -12,8 +12,8 @@ public class PaymentConfiguration : TenantEntityConfiguration<Payment>
     {
         base.Configure(builder);
 
-        builder.Property(p => p.Amount).HasColumnType("decimal(18,2)").IsRequired();
-        builder.Property(p => p.RefundedAmount).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.Amount).HasColumnType("decimal(18,4)").IsRequired();
+        builder.Property(p => p.RefundedAmount).HasColumnType("decimal(18,4)");
 
         builder.Property(p => p.Status)
                .HasConversion<string>().HasMaxLength(32).IsRequired();

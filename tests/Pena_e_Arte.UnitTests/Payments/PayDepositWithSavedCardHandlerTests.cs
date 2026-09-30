@@ -26,10 +26,16 @@ public class PayDepositWithSavedCardHandlerTests
         _tenant.StudioId.Returns(_studioId);
         _currentUser.UserId.Returns(_clientUserId);
         _currentUser.Role.Returns("client");
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
         _provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
                .Returns(("order-new", "order-new"));
         _cardTokens.SetupTokenizedThreeDsAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
                .Returns(new PokPayerAuthSetup("ref-1", new PokDeviceDataCollection("https://ddc.example.com", "ddc-token")));
+
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "ALL" });
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
     }
 
     private PayDepositWithSavedCardHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _cardTokens);

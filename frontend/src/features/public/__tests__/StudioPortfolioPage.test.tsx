@@ -90,6 +90,7 @@ const STUDIO: PublicStudioResponse = {
   addressLine1: null,
   addressLine2: null,
   postalCode:   null,
+  currency: "EUR",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

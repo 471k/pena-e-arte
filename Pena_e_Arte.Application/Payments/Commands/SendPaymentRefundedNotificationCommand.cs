@@ -1,4 +1,3 @@
-using System.Globalization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -7,6 +6,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
@@ -46,7 +46,7 @@ public class SendPaymentRefundedNotificationHandler(
             return Unit.Value;
         }
 
-        string amountFormatted = payment.Amount.ToString("C", new CultureInfo("pt-PT"));
+        string amountFormatted = MoneyText.Format(payment.Amount, payment.Currency);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.PaymentRefunded, NotificationChannel.Email, ct);

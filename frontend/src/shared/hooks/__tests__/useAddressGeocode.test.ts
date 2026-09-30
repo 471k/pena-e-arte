@@ -14,7 +14,7 @@ const RESULT = [
   {
     lat: "41.15",
     lon: "-8.61",
-    address: { city: "Porto", country: "Portugal" },
+    address: { city: "Porto", country: "Portugal", country_code: "pt" },
   },
 ];
 
@@ -42,8 +42,26 @@ describe("useAddressGeocode", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(onResolved).toHaveBeenCalledWith({
-      lat: 41.15, lng: -8.61, city: "Porto", country: "Portugal",
+      lat: 41.15, lng: -8.61, city: "Porto", country: "Portugal", countryCode: "PT",
     });
+  });
+
+  it("resolves an empty countryCode, never crashing, when Nominatim omits country_code", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([
+      { lat: "41.15", lon: "-8.61", address: { city: "Porto", country: "Portugal" } },
+    ]));
+    vi.stubGlobal("fetch", fetchMock);
+    const onResolved = vi.fn();
+
+    renderHook(
+      ({ address }) => useAddressGeocode(address, onResolved),
+      { initialProps: { address: "Rua Central 5" } },
+    );
+    await vi.advanceTimersByTimeAsync(700);
+
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ countryCode: "" }),
+    );
   });
 
   it("does not fire below minLength", async () => {
@@ -78,14 +96,14 @@ describe("useAddressGeocode", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     // Resolve out of order: the newer (second) request settles first, then the stale first one.
-    resolveSecond(jsonResponse([{ lat: "2", lon: "2", address: { city: "Second", country: "X" } }]));
+    resolveSecond(jsonResponse([{ lat: "2", lon: "2", address: { city: "Second", country: "X", country_code: "xx" } }]));
     await Promise.resolve();
-    resolveFirst(jsonResponse([{ lat: "1", lon: "1", address: { city: "First", country: "X" } }]));
+    resolveFirst(jsonResponse([{ lat: "1", lon: "1", address: { city: "First", country: "X", country_code: "xx" } }]));
     await Promise.resolve();
     await Promise.resolve();
 
     expect(onResolved).toHaveBeenCalledTimes(1);
-    expect(onResolved).toHaveBeenCalledWith({ lat: 2, lng: 2, city: "Second", country: "X" });
+    expect(onResolved).toHaveBeenCalledWith({ lat: 2, lng: 2, city: "Second", country: "X", countryCode: "XX" });
   });
 
   it("aborts the in-flight request on unmount", async () => {

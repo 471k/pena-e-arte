@@ -88,6 +88,9 @@ const ACTIVE_STUDIO: StudioResponse = {
   addressLine1:         null,
   addressLine2:         null,
   postalCode:           null,
+  countryCode: "AL",
+  currency: "EUR",
+  currencyLocked: false,
 };
 
 const SUSPENDED_STUDIO: StudioResponse = { ...ACTIVE_STUDIO, isActive: false };

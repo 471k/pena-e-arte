@@ -53,6 +53,19 @@ public class RedeemGiftCardHandler(IAppDbContext db, ICurrentTenant tenant, ICur
         if (giftCard.Status != GiftCardStatus.Active)
             throw new BusinessRuleViolationException($"This gift card is {giftCard.Status} and cannot be redeemed.");
 
+        // Can't happen today while the currency lock holds (every gift card and the studio share
+        // one currency for as long as money has moved) — this guards the future §4.1 admin
+        // currency-change tool, which the backlog spec leaves open.
+        string studioCurrency = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+        if (!string.Equals(giftCard.Currency, studioCurrency, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new BusinessRuleViolationException(
+                $"This gift card is in {giftCard.Currency} and can't be used for a {studioCurrency} deposit.");
+        }
+
         if (req.Amount <= 0 || req.Amount > giftCard.RemainingBalance)
             throw new BusinessRuleViolationException("Redemption amount exceeds the gift card's remaining balance.");
 
@@ -90,5 +103,5 @@ public class RedeemGiftCardHandler(IAppDbContext db, ICurrentTenant tenant, ICur
 
     internal static GiftCardResponse Map(GiftCard g) => new(
         g.Id, g.StudioId, g.Code, g.InitialBalance, g.RemainingBalance,
-        g.PurchaserEmail, g.RecipientEmail, g.Status.ToString(), g.CreatedAt);
+        g.PurchaserEmail, g.RecipientEmail, g.Status.ToString(), g.CreatedAt, g.Currency);
 }

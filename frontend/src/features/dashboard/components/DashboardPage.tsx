@@ -10,6 +10,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { DepositStatus } from "@/features/appointments/appointment.types";
@@ -267,13 +268,14 @@ function CashPendingSection() {
                 <div className="text-sm">
                   <span className="font-medium">{p.clientName}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
-                    €{p.amount.toFixed(2)}
+                    {formatCurrency(p.amount, p.currency)}
                   </span>
                 </div>
                 <CashDepositConfirmButton
                   paymentId={p.id}
                   clientName={p.clientName}
                   amount={p.amount}
+                  currency={p.currency}
                 />
               </div>
             </div>

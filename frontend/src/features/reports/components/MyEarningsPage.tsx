@@ -6,12 +6,9 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetMyEarningsQuery } from "../reportsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { RevenueTrendChart } from "./RevenueTrendChart";
 import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(value);
-}
 
 function formatDate(iso: string | null, studioTimezone: string | undefined): string {
   if (!iso) return "—";
@@ -75,6 +72,13 @@ export function MyEarningsPage() {
 
         {!isLoading && !isError && data && (
           <>
+            {data.excludedOtherCurrencyCount > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {data.excludedOtherCurrencyCount} payment{data.excludedOtherCurrencyCount !== 1 ? "s" : ""} in
+                another currency aren't included in this total.
+              </p>
+            )}
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Earnings trend (last 12 months)</CardTitle>
@@ -85,7 +89,7 @@ export function MyEarningsPage() {
                     No earnings recorded yet.
                   </p>
                 ) : (
-                  <RevenueTrendChart data={data.monthlyTrend} />
+                  <RevenueTrendChart data={data.monthlyTrend} currency={data.currency} />
                 )}
               </CardContent>
             </Card>
@@ -93,7 +97,7 @@ export function MyEarningsPage() {
             <Card>
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm">Payments (last 30 days)</CardTitle>
-                <span className="text-sm font-semibold tabular-nums">{formatCurrency(data.periodTotal)}</span>
+                <span className="text-sm font-semibold tabular-nums">{formatCurrency(data.periodTotal, data.currency)}</span>
               </CardHeader>
               <CardContent className="pt-0">
                 {data.payments.length === 0 ? (
@@ -106,7 +110,7 @@ export function MyEarningsPage() {
                       <li key={line.paymentId} className="px-3 py-2.5 space-y-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-medium truncate">{line.clientName}</span>
-                          <span className="text-xs tabular-nums font-semibold">{formatCurrency(line.amount)}</span>
+                          <span className="text-xs tabular-nums font-semibold">{formatCurrency(line.amount, data.currency)}</span>
                         </div>
                         <div className="text-[11px] text-muted-foreground">
                           {formatDate(line.appointmentDate, studio?.timezone)}
@@ -119,7 +123,7 @@ export function MyEarningsPage() {
                                 className="flex items-center justify-between text-[11px] text-muted-foreground pl-2"
                               >
                                 <span>{split.label}</span>
-                                <span className="tabular-nums">{formatCurrency(split.amount)}</span>
+                                <span className="tabular-nums">{formatCurrency(split.amount, data.currency)}</span>
                               </li>
                             ))}
                           </ul>

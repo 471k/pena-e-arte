@@ -142,7 +142,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify([
-          { id: PAYMENT_ID, clientName: "Ana Silva", amount: 50, status: "CashPending" },
+          { id: PAYMENT_ID, clientName: "Ana Silva", amount: 50, currency: "EUR", status: "CashPending" },
         ]),
       });
     });

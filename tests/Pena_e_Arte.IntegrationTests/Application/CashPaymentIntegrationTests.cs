@@ -38,6 +38,7 @@ public class CashPaymentIntegrationTests
         result.Status.Should().Be(PaymentStatus.CashPending.ToString());
         result.Method.Should().Be(ClientPaymentMethod.Cash.ToString());
         result.Amount.Should().Be(80m);
+        result.Currency.Should().Be("EUR");
         result.ProviderReferenceId.Should().BeNull();
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -271,6 +272,11 @@ public class CashPaymentIntegrationTests
     private async Task<(Guid ArtistId, Guid ClientId)> SeedArtistAndClient(Guid tenantId)
     {
         await using AppDbContext ctx = _fixture.CreateDbContext(tenantId);
+        // DeclareCashDepositHandler now loads the studio's currency up front.
+        if (!await ctx.Studios.AnyAsync(s => s.Id == tenantId))
+        {
+            ctx.Studios.Add(new Studio { Id = tenantId, Name = "Cash Test Studio", Slug = tenantId.ToString("N")[..8], CountryCode = "AL", Currency = "EUR" });
+        }
         Artist artist = new() { StudioId = tenantId, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@a.com" };
         Client client = new() { StudioId = tenantId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
         ctx.Artists.Add(artist);
@@ -351,6 +357,8 @@ public class CashPaymentIntegrationTests
             Id = tenantId,
             Name = "Cash Test Studio",
             Slug = tenantId.ToString("N")[..8],
+            CountryCode = "AL",
+            Currency = "EUR",
         });
         await ctx.SaveChangesAsync();
     }

@@ -35,7 +35,7 @@ public class SeoShellHtmlWriterTests
         string studioSlug = "ink-studio") =>
         new(
             Guid.NewGuid(), name, slug, bio, profileImageUrl, [], [], null, 4.8, 5,
-            studioName, studioSlug, true, false, []);
+            studioName, studioSlug, true, false, [], "EUR");
 
     // ── Studio shell ─────────────────────────────────────────────────────────────
 

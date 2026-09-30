@@ -8,6 +8,7 @@ using Pena_e_Arte.Application.Webhooks.Commands;
 using Pena_e_Arte.Application.Webhooks.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Pena_e_Arte.API.Endpoints;
@@ -25,6 +26,7 @@ public static class StudioEndpoints
         // All authenticated users can read their own studio (clients need it for booking context)
         group.MapGet("/me", GetMyStudio).RequireAuthorization("ClientAndAbove");
         group.MapPut("/me", UpdateMyStudio).RequireAuthorization("OwnerOnly");
+        group.MapPut("/me/currency", UpdateMyStudioCurrency).RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
         group.MapGet("/me/audit-log", GetMyStudioAuditLog).RequireAuthorization("OwnerOnly");
 
         // Owner: invite an independent solo artist to dissolve their solo studio and join here
@@ -95,6 +97,17 @@ public static class StudioEndpoints
         CancellationToken ct)
     {
         StudioResponse result = await mediator.Send(new UpdateMyStudioCommand(request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateMyStudioCurrency(
+        UpdateStudioCurrencyRequest request,
+        ICurrentTenant tenant,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        StudioResponse result = await mediator.Send(
+            new UpdateStudioCurrencyCommand(tenant.StudioId, request.Currency), ct);
         return Results.Ok(result);
     }
 

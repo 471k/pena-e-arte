@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -9,6 +10,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.GiftCards.Commands;
 
@@ -32,20 +34,25 @@ public class PurchaseGiftCardHandler(IAppDbContext db, IPaymentProvider paymentP
         Studio studio = await db.GetPublishedStudioBySlugAsync(req.StudioSlug, ct)
             ?? throw new NotFoundException(nameof(Studio), req.StudioSlug);
 
+        CardCurrencyGuard.EnsureSupported(paymentProvider, studio.Currency);
+        if (!CurrencyCatalog.HasAtMostMinorUnits(req.Amount, studio.Currency))
+            throw new BusinessRuleViolationException($"Amount has more decimal places than {studio.Currency} allows.");
+        decimal amount = CurrencyCatalog.Round(req.Amount, studio.Currency);
+
         string code = await GenerateUniqueCodeAsync(studio.Id, ct);
         Guid giftCardId = Guid.NewGuid();
-        long amountInCents = (long)(req.Amount * 100);
 
         (string providerReferenceId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
-            new PaymentHoldRequest(studio.Id, giftCardId, amountInCents, "ALL"), ct);
+            new PaymentHoldRequest(studio.Id, giftCardId, amount, studio.Currency), ct);
 
         GiftCard giftCard = new()
         {
             Id = giftCardId,
             StudioId = studio.Id,
             Code = code,
-            InitialBalance = req.Amount,
-            RemainingBalance = req.Amount,
+            InitialBalance = amount,
+            RemainingBalance = amount,
+            Currency = studio.Currency,
             PurchaserEmail = req.PurchaserEmail,
             RecipientEmail = req.RecipientEmail,
             Status = GiftCardStatus.Pending,

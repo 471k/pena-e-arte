@@ -15,10 +15,13 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -45,14 +48,11 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatEuro(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
 export function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const canManage = usePermission(Role.Owner);
+  const { currency } = useStudioCurrency();
 
   const { data: service, isLoading, isError } = useGetServiceByIdQuery(id!);
   const [updateService, { isLoading: isSaving }] = useUpdateServiceMutation();
@@ -63,6 +63,7 @@ export function ServiceDetailPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
     reset,
   } = useForm<EditFormValues>({ resolver: zodResolver(editSchema) });
@@ -82,6 +83,16 @@ export function ServiceDetailPage() {
 
   async function onSave(values: EditFormValues) {
     if (!id) return;
+    if (
+      currency &&
+      ((values.price != null && !hasAtMostCurrencyMinorUnits(values.price, currency)) ||
+       (values.depositAmount != null && !hasAtMostCurrencyMinorUnits(values.depositAmount, currency)))
+    ) {
+      const field = values.price != null && !hasAtMostCurrencyMinorUnits(values.price, currency)
+        ? "price" : "depositAmount";
+      setError(field, { message: tooManyDecimalsMessage(currency) });
+      return;
+    }
     const body: UpdateServiceRequest = {
       name:            values.name,
       description:     values.description || null,
@@ -206,11 +217,13 @@ export function ServiceDetailPage() {
                 </div>
                 <div className="text-xs text-muted-foreground pt-1 border-t space-y-1">
                   <p>
-                    Price: {service.price !== null ? `from ${formatEuro(service.price)}` : "not shown"}
+                    Price: {service.price !== null
+                      ? `from ${currency ? formatCurrency(service.price, currency) : service.price}`
+                      : "not shown"}
                   </p>
                   <p>
                     Deposit: {service.depositAmount !== null
-                      ? `${formatEuro(service.depositAmount)} (overrides the studio's deposit rule)`
+                      ? `${currency ? formatCurrency(service.depositAmount, currency) : service.depositAmount} (overrides the studio's deposit rule)`
                       : "uses the studio's deposit rule"}
                   </p>
                 </div>
@@ -272,34 +285,60 @@ export function ServiceDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-price">Starting price (€, optional)</Label>
-              <Input
-                id="edit-price"
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("price", {
-                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
-                })}
-                className={cn(errors.price && "border-destructive")}
-              />
+              <Label htmlFor="edit-price">
+                Starting price{currency ? ` (${currencyLabel(currency)}, optional)` : " (optional)"}
+              </Label>
+              {currency ? (
+                <MoneyInput
+                  id="edit-price"
+                  currency={currency}
+                  {...register("price", {
+                    setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                  })}
+                  className={cn(errors.price && "border-destructive")}
+                />
+              ) : (
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register("price", {
+                    setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                  })}
+                  className={cn(errors.price && "border-destructive")}
+                />
+              )}
               {errors.price && (
                 <p className="text-xs text-destructive-text">{errors.price.message}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-depositAmount">Deposit (€, optional)</Label>
-              <Input
-                id="edit-depositAmount"
-                type="number"
-                step="0.01"
-                min="0"
-                {...register("depositAmount", {
-                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
-                })}
-                className={cn(errors.depositAmount && "border-destructive")}
-              />
+              <Label htmlFor="edit-depositAmount">
+                Deposit{currency ? ` (${currencyLabel(currency)}, optional)` : " (optional)"}
+              </Label>
+              {currency ? (
+                <MoneyInput
+                  id="edit-depositAmount"
+                  currency={currency}
+                  {...register("depositAmount", {
+                    setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                  })}
+                  className={cn(errors.depositAmount && "border-destructive")}
+                />
+              ) : (
+                <Input
+                  id="edit-depositAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register("depositAmount", {
+                    setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                  })}
+                  className={cn(errors.depositAmount && "border-destructive")}
+                />
+              )}
               {errors.depositAmount && (
                 <p className="text-xs text-destructive-text">{errors.depositAmount.message}</p>
               )}

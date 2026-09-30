@@ -7,6 +7,7 @@ public record BoothRentChargeResponse(
     string? ArtistName,
     Guid BoothRentScheduleId,
     decimal Amount,
+    string Currency,
     DateTime ChargedDate,
     bool IsSettled,
     DateTime? SettledAt,

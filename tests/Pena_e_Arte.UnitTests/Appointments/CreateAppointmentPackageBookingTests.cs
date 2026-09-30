@@ -32,6 +32,7 @@ public class CreateAppointmentPackageBookingTests
         _locker.TryAcquireLockAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
                .Returns(true);
 
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
         _db.Clients.Add(new Client { Id = _clientId, StudioId = _studioId, FirstName = "C", LastName = "L", Email = "c@l.com" });
         _db.SaveChanges();
     }

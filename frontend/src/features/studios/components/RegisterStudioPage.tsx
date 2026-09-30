@@ -29,9 +29,13 @@ import { Label } from "@/shared/components/ui/label";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMeter";
+import { CurrencySelect } from "@/shared/components/ui/currency-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
 import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
+import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
+import { useGetCountryDefaultCurrencyQuery } from "@/features/public/publicApi";
 
 const schema = z
   .object({
@@ -57,6 +61,8 @@ const schema = z
     addressLine1: z.string().min(1, "Street address is required").max(300),
     addressLine2: z.string().max(150).optional(),
     postalCode: z.string().max(20).optional(),
+    countryCode: z.string().length(2, "Country is required"),
+    currency: z.string().min(1, "Please choose your studio's currency."),
     latitude: z
       .number({ error: "Latitude is required" })
       .min(-90, "Must be between -90 and 90")
@@ -96,7 +102,9 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-const STEP_1_FIELDS = ["name", "slug", "city", "nipt", "addressLine1", "latitude", "longitude"] as const;
+const STEP_1_FIELDS = [
+  "name", "slug", "city", "nipt", "addressLine1", "latitude", "longitude", "countryCode", "currency",
+] as const;
 
 const soloSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
@@ -104,6 +112,8 @@ const soloSchema = z.object({
   email:     z.string().min(1, "Email is required").max(256).email("Enter a valid email"),
   password:  z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
+  countryCode: z.string().length(2),
+  currency: z.string().min(1),
 }).superRefine((data, ctx) => {
   if (data.password !== data.confirmPassword) {
     ctx.addIssue({
@@ -138,15 +148,45 @@ export function RegisterStudioPage() {
   const [oauthRegister] = useOauthRegisterMutation();
   const [oauthLogin] = useOauthLoginMutation();
 
+  // Best-effort browser-locale guess, falling back to Albania — there is no server round-trip
+  // to geocode an address on this short-signup path, unlike the studio path's typed address.
+  // The owner can always correct it via "Change currency" below, or later in Studio Settings.
+  const browserRegionGuess = (() => {
+    try {
+      return new Intl.Locale(navigator.language).maximize().region ?? "AL";
+    } catch {
+      return "AL";
+    }
+  })();
+
+  const [soloCurrencyExpanded, setSoloCurrencyExpanded] = useState(false);
+  const soloCurrencyManuallyEdited = useRef(false);
+
   const {
     register: registerSolo,
     handleSubmit: handleSoloSubmit,
     watch: watchSolo,
+    setValue: setSoloValue,
     formState: { errors: soloErrors },
   } = useForm<SoloFormValues>({
     resolver: zodResolver(soloSchema),
-    defaultValues: { firstName: "", lastName: "", email: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      firstName: "", lastName: "", email: "", password: "", confirmPassword: "",
+      countryCode: browserRegionGuess, currency: "",
+    },
   });
+
+  const soloCountryCode = watchSolo("countryCode");
+  const { data: soloCountryDefault, isFetching: soloCurrencyLoading } = useGetCountryDefaultCurrencyQuery(
+    soloCountryCode,
+    { skip: soloCountryCode.length !== 2 },
+  );
+
+  useEffect(() => {
+    if (!soloCurrencyManuallyEdited.current && soloCountryDefault?.currency) {
+      setSoloValue("currency", soloCountryDefault.currency);
+    }
+  }, [soloCountryDefault, setSoloValue]);
 
   async function onSoloSubmit(values: SoloFormValues) {
     setSoloServerError(null);
@@ -156,6 +196,8 @@ export function RegisterStudioPage() {
         lastName:  values.lastName,
         email:     values.email,
         password:  values.password,
+        countryCode: values.countryCode,
+        currency:    values.currency || undefined,
       }).unwrap();
 
       const { accessToken, refreshToken } = await login({
@@ -193,6 +235,8 @@ export function RegisterStudioPage() {
       addressLine1: "",
       addressLine2: "",
       postalCode: "",
+      countryCode: "AL",
+      currency: "",
       latitude: NaN,
       longitude: NaN,
       email: "",
@@ -207,6 +251,24 @@ export function RegisterStudioPage() {
   const lngValue  = watch("longitude");
   const cityValue = watch("city");
   const addressLine1Value = watch("addressLine1");
+  const countryCodeValue = watch("countryCode");
+  const currencyValue = watch("currency");
+
+  const countryManuallyEdited = useRef(false);
+  const currencyManuallyEdited = useRef(false);
+
+  const { data: countryDefaultCurrency, isFetching: currencyLoading } = useGetCountryDefaultCurrencyQuery(
+    countryCodeValue,
+    { skip: countryCodeValue.length !== 2 },
+  );
+
+  useEffect(() => {
+    if (!currencyManuallyEdited.current && countryDefaultCurrency?.currency) {
+      setValue("currency", countryDefaultCurrency.currency, { shouldValidate: true });
+    }
+    // A country whose default currency couldn't be resolved (unknown to RegionInfo) leaves the
+    // field empty and required — never silently falls back to a guessed currency.
+  }, [countryDefaultCurrency, setValue]);
 
   // Set right before a pin-driven setValue("addressLine1", ...) below, so the very next
   // render's useAddressGeocode call sees it and skips the forward-geocode fetch that
@@ -217,10 +279,13 @@ export function RegisterStudioPage() {
 
   const { status: geocodeStatus } = useAddressGeocode(
     addressLine1Value,
-    ({ lat, lng, city }) => {
+    ({ lat, lng, city, countryCode }) => {
       setValue("latitude", lat, { shouldValidate: true });
       setValue("longitude", lng, { shouldValidate: true });
       setValue("city", city, { shouldValidate: true });
+      if (!countryManuallyEdited.current && countryCode) {
+        setValue("countryCode", countryCode, { shouldValidate: true });
+      }
     },
     { enabled: !pinDrivenAddressUpdate.current }
   );
@@ -301,6 +366,8 @@ export function RegisterStudioPage() {
         latitude:     values.latitude,
         longitude:    values.longitude,
         ownerEmail:   values.email,
+        countryCode:  values.countryCode,
+        currency:     values.currency,
         ...(pendingReferralCode ? { referralCode: pendingReferralCode } : {}),
       }).unwrap();
 
@@ -477,6 +544,64 @@ export function RegisterStudioPage() {
                     )}
                   </div>
 
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Prices and payments will be in{" "}
+                        <strong>{watchSolo("currency") || "…"}</strong>
+                        {soloCurrencyLoading && " (checking your country's currency…)"}
+                      </p>
+                      {!soloCurrencyExpanded && (
+                        <button
+                          type="button"
+                          onClick={() => setSoloCurrencyExpanded(true)}
+                          className="text-xs underline underline-offset-2 hover:text-foreground text-muted-foreground shrink-0"
+                        >
+                          Change currency
+                        </button>
+                      )}
+                    </div>
+                    {soloCurrencyExpanded && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="solo-country">Country</Label>
+                          <Select
+                            value={soloCountryCode}
+                            onValueChange={(v) => setSoloValue("countryCode", v)}
+                          >
+                            <SelectTrigger id="solo-country">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72">
+                              {PHONE_COUNTRIES.map((c) => (
+                                <SelectItem key={c.code} value={c.code}>
+                                  {flagEmoji(c.code)} {c.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="solo-currency">Currency</Label>
+                          <CurrencySelect
+                            id="solo-currency"
+                            value={watchSolo("currency") || null}
+                            countryDefault={soloCountryDefault?.currency ?? null}
+                            onChange={(code) => {
+                              // Radix's hidden native-<select> autofill shim can fire a spurious
+                              // onValueChange("") the first time `value` goes from unset to a real
+                              // code — there's no real "blank currency" option in this list, so an
+                              // empty callback value is always that shim, never a genuine pick.
+                              if (!code) return;
+                              soloCurrencyManuallyEdited.current = true;
+                              setSoloValue("currency", code);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-xs text-muted-foreground">
                     You'll be able to take bookings right away. Add your studio's business
                     details, or make it visible on the map, any time from Settings.
@@ -600,6 +725,59 @@ export function RegisterStudioPage() {
                       </div>
                     </div>
 
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="countryCode">Country</Label>
+                        <Select
+                          value={countryCodeValue}
+                          onValueChange={(v) => {
+                            countryManuallyEdited.current = true;
+                            setValue("countryCode", v, { shouldValidate: true });
+                          }}
+                        >
+                          <SelectTrigger id="countryCode" aria-invalid={!!errors.countryCode}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-72">
+                            {PHONE_COUNTRIES.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {flagEmoji(c.code)} {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.countryCode && (
+                          <p className="text-xs text-destructive-text">{errors.countryCode.message}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="currency">Currency</Label>
+                        <CurrencySelect
+                          id="currency"
+                          value={currencyValue || null}
+                          countryDefault={countryDefaultCurrency?.currency ?? null}
+                          onChange={(code) => {
+                            // Radix's hidden native-<select> autofill shim can fire a spurious
+                            // onValueChange("") the first time `value` goes from unset to a real
+                            // code — there's no real "blank currency" option in this list, so an
+                            // empty callback value is always that shim, never a genuine pick.
+                            if (!code) return;
+                            currencyManuallyEdited.current = true;
+                            setValue("currency", code, { shouldValidate: true });
+                          }}
+                          aria-invalid={!!errors.currency}
+                          placeholder={currencyLoading ? "Checking…" : "Select a currency"}
+                        />
+                        {errors.currency && (
+                          <p className="text-xs text-destructive-text">{errors.currency.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                      Prices, deposits and payments in your studio use this currency. You can
+                      change it until your first payment is recorded.
+                    </p>
+
                     <div className="space-y-1.5">
                       <Label>Studio location</Label>
                       <LocationPicker
@@ -608,10 +786,13 @@ export function RegisterStudioPage() {
                             ? { lat: latValue, lng: lngValue, city: cityValue }
                             : undefined
                         }
-                        onChange={({ lat, lng, city, streetAddress }) => {
+                        onChange={({ lat, lng, city, streetAddress, countryCode }) => {
                           setValue("latitude",  lat,  { shouldValidate: true });
                           setValue("longitude", lng,  { shouldValidate: true });
                           setValue("city",      city, { shouldValidate: true });
+                          if (!countryManuallyEdited.current && countryCode) {
+                            setValue("countryCode", countryCode, { shouldValidate: true });
+                          }
                           if (streetAddress) {
                             pinDrivenAddressUpdate.current = true;
                             setValue("addressLine1", streetAddress, { shouldValidate: true });

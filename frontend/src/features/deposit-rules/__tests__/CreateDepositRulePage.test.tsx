@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { CreateDepositRulePage } from "@/features/deposit-rules/components/CreateDepositRulePage";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 
@@ -32,6 +33,9 @@ const CREATED_RULE: DepositRuleResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
   http.post("http://localhost/api/v1/deposit-rules", () =>
     HttpResponse.json(CREATED_RULE, { status: 201 }),
   ),
@@ -49,8 +53,9 @@ function makeStore() {
       auth:                          authReducer,
       ui:                            uiReducer,
       [depositRulesApi.reducerPath]: depositRulesApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(depositRulesApi.middleware),
+    middleware: (gd) => gd().concat(depositRulesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null, impersonation: null } as any,
@@ -83,12 +88,12 @@ describe("CreateDepositRulePage", () => {
     expect(screen.getByText("New Deposit Rule")).toBeInTheDocument();
   });
 
-  it("renders Rule name, Deposit type, Amount and Active fields", () => {
+  it("renders Rule name, Deposit type, Amount and Active fields", async () => {
     renderPage();
     expect(screen.getByLabelText("Rule name")).toBeInTheDocument();
     expect(screen.getByText("Fixed amount")).toBeInTheDocument();
     expect(screen.getByText("Percentage")).toBeInTheDocument();
-    expect(screen.getByLabelText("Amount (€)")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Amount (€)")).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
@@ -100,9 +105,9 @@ describe("CreateDepositRulePage", () => {
     expect(refund).toHaveValue(0);
   });
 
-  it("defaults to fixed amount with the Amount (€) label", () => {
+  it("defaults to fixed amount with the Amount (€) label", async () => {
     renderPage();
-    expect(screen.getByLabelText("Amount (€)")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Amount (€)")).toBeInTheDocument();
   });
 
   it("switching to Percentage updates the amount label", async () => {

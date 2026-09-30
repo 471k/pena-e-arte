@@ -36,7 +36,7 @@ public class NullPaymentProviderTests
             .Should().ThrowAsync<InvalidOperationException>();
         await ((Func<Task>)(() => _sut.GetStatusAsync(studioId, "ref", default)))
             .Should().ThrowAsync<InvalidOperationException>();
-        await ((Func<Task>)(() => _sut.RefundAsync(studioId, "ref", null, default)))
+        await ((Func<Task>)(() => _sut.RefundAsync(studioId, "ref", null, "ALL", default)))
             .Should().ThrowAsync<InvalidOperationException>();
     }
 }

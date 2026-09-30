@@ -30,12 +30,15 @@ public class PaymentHandlerIntegrationTests
         _stripe = Substitute.For<IPaymentProvider>();
         _realtime = Substitute.For<IRealtimeNotifier>();
 
+        _stripe.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
+
         _stripe.CreatePaymentHoldAsync(
                 Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(($"pi_{Guid.NewGuid():N}", $"pi_{Guid.NewGuid():N}_secret"));
 
         _stripe.RefundAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long?>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns($"re_{Guid.NewGuid():N}");
 
         _stripe.CaptureAsync(
@@ -401,9 +404,9 @@ public class PaymentHandlerIntegrationTests
 
         await RunRefundHandler(tenantId, paymentId, refundAmount: null);
 
-        // SeedPendingPayment seeds Amount = 100m → 10000 cents
+        // SeedPendingPayment seeds Amount = 100m, Currency = EUR
         await _stripe.Received(1).RefundAsync(
-            tenantId, intentId, 10000L, Arg.Any<CancellationToken>());
+            tenantId, intentId, 100m, "EUR", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -417,7 +420,7 @@ public class PaymentHandlerIntegrationTests
         await RunRefundHandler(tenantId, paymentId, refundAmount: 40m);
 
         await _stripe.Received(1).RefundAsync(
-            tenantId, intentId, 4000L, Arg.Any<CancellationToken>());
+            tenantId, intentId, 40m, "EUR", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -490,6 +493,8 @@ public class PaymentHandlerIntegrationTests
             Id = tenantId,
             Name = "Test Studio",
             Slug = tenantId.ToString("N")[..8],
+            CountryCode = "AL",
+            Currency = "EUR",
         });
         await ctx.SaveChangesAsync();
     }
@@ -507,6 +512,7 @@ public class PaymentHandlerIntegrationTests
             AppointmentId = appointmentId,
             ClientId = clientId,
             Amount = 100m,
+            Currency = "EUR",
             Status = status,
             ProviderReferenceId = intentId
         };
@@ -523,7 +529,7 @@ public class PaymentHandlerIntegrationTests
         tenant.SetTenant(tenantId);
         CreatePaymentIntentHandler handler = new(db, tenant, _stripe, _realtime);
         return await handler.Handle(
-            new CreatePaymentIntentCommand(new CreatePaymentIntentRequest(appointmentId, clientId, amount, "eur")),
+            new CreatePaymentIntentCommand(new CreatePaymentIntentRequest(appointmentId, clientId, amount)),
             default);
     }
 

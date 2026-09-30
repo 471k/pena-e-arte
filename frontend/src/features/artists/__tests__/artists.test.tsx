@@ -159,7 +159,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json({ id: "stud-0001", name: "Ink Soul", slug: "ink-soul", city: "Porto",
       latitude: 41.1, longitude: -8.6, showPlatformBranding: true, allowBrandingRemoval: false,
-      trialExpiresAt: "2099-01-01T00:00:00Z", createdAt: "2024-01-01T00:00:00Z", isActive: true }),
+      trialExpiresAt: "2099-01-01T00:00:00Z", createdAt: "2024-01-01T00:00:00Z", isActive: true,
+      currency: "EUR" }),
   ),
 );
 

@@ -6,8 +6,11 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useCreateDepositRuleMutation } from "../depositRulesApi";
 import type { CreateDepositRuleRequest } from "../depositRule.types";
 
@@ -36,6 +39,7 @@ export function CreateDepositRulePage() {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -46,10 +50,18 @@ export function CreateDepositRulePage() {
       refundPercentOnLateCancel: 0,
     },
   });
+  const { currency } = useStudioCurrency();
 
   const depositType = watch("depositType");
 
   async function onSubmit(values: CreateFormValues) {
+    if (
+      values.depositType === "fixed" && currency &&
+      !hasAtMostCurrencyMinorUnits(values.amount, currency)
+    ) {
+      setError("amount", { message: tooManyDecimalsMessage(currency) });
+      return;
+    }
     const body: CreateDepositRuleRequest = {
       name:                      values.name,
       amountFixed:               values.depositType === "fixed"   ? values.amount : null,
@@ -115,17 +127,29 @@ export function CreateDepositRulePage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="amount">
-              {depositType === "fixed" ? "Amount (€)" : "Percentage (%)"}
+              {depositType === "fixed"
+                ? `Amount${currency ? ` (${currencyLabel(currency)})` : ""}`
+                : "Percentage (%)"}
             </Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder={depositType === "fixed" ? "e.g. 50" : "e.g. 20"}
-              {...register("amount", { valueAsNumber: true })}
-              className={cn(errors.amount && "border-destructive")}
-            />
+            {depositType === "fixed" && currency ? (
+              <MoneyInput
+                id="amount"
+                currency={currency}
+                placeholder="e.g. 50"
+                {...register("amount", { valueAsNumber: true })}
+                className={cn(errors.amount && "border-destructive")}
+              />
+            ) : (
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder={depositType === "fixed" ? "e.g. 50" : "e.g. 20"}
+                {...register("amount", { valueAsNumber: true })}
+                className={cn(errors.amount && "border-destructive")}
+              />
+            )}
             {errors.amount && (
               <p className="text-xs text-destructive-text">{errors.amount.message}</p>
             )}

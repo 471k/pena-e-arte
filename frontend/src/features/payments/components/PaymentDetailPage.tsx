@@ -12,9 +12,10 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
@@ -34,10 +35,6 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
-}
-
 function StatusBadge({ status }: { status: string }) {
   const classes: Record<string, string> = {
     Pending:     "bg-yellow-500/10 text-yellow-700",
@@ -54,13 +51,19 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function RefundSection({ paymentId }: { paymentId: string }) {
+function RefundSection({ paymentId, currency }: { paymentId: string; currency: string }) {
   const [open, setOpen]           = useState(false);
   const [amountStr, setAmountStr] = useState("");
+  const [amountError, setAmountError] = useState<string | null>(null);
   const [refund, { isLoading }]   = useRefundPaymentMutation();
 
   async function handleRefund() {
     const amount = amountStr ? parseFloat(amountStr) : undefined;
+    setAmountError(null);
+    if (amount !== undefined && !hasAtMostCurrencyMinorUnits(amount, currency)) {
+      setAmountError(tooManyDecimalsMessage(currency));
+      return;
+    }
     try {
       await refund({ id: paymentId, amount }).unwrap();
       setOpen(false);
@@ -91,17 +94,16 @@ function RefundSection({ paymentId }: { paymentId: string }) {
         <p className="text-sm font-medium">Issue refund</p>
         <div className="space-y-1">
           <Label htmlFor="refund-amount" className="text-xs">
-            Amount (€) — leave blank for full refund
+            Amount ({currencyLabel(currency)}) — leave blank for full refund
           </Label>
-          <Input
+          <MoneyInput
             id="refund-amount"
-            type="number"
-            step="0.01"
-            min="0.01"
+            currency={currency}
             placeholder="Full amount"
             value={amountStr}
-            onChange={(e) => setAmountStr(e.target.value)}
+            onChange={(e) => { setAmountStr(e.target.value); setAmountError(null); }}
           />
+          {amountError && <p className="text-xs text-destructive-text">{amountError}</p>}
         </div>
         <div className="flex gap-2">
           <Button
@@ -287,7 +289,7 @@ export function PaymentDetailPage() {
             </Button>
           )}
 
-          {isPaid && canOwner && isCard && <RefundSection paymentId={payment.id} />}
+          {isPaid && canOwner && isCard && <RefundSection paymentId={payment.id} currency={payment.currency} />}
 
           {hasReceipt && (
             <Button
@@ -322,7 +324,7 @@ export function PaymentDetailPage() {
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold">{formatCurrency(payment.amount)}</h1>
+              <h1 className="text-lg font-semibold">{formatCurrency(payment.amount, payment.currency)}</h1>
               <StatusBadge status={payment.status} />
             </div>
             <p className="text-xs text-muted-foreground font-mono">
@@ -357,6 +359,7 @@ export function PaymentDetailPage() {
           <SessionSplitsEditor
             paymentId={payment.id}
             paymentAmount={payment.amount}
+            currency={payment.currency}
             currentSplits={payment.splits ?? []}
           />
         )}

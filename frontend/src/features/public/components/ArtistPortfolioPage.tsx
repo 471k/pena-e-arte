@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { StarRating }  from "@/shared/components/ui/StarRating";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useAppSelector } from "@/app/hooks";
 import {
   useGetPublicArtistQuery,
@@ -258,7 +259,7 @@ function FlashCatalogCard({ item, ctaUrl }: { item: DesignCatalogItemResponse; c
         <p className="text-xs font-medium truncate">{item.title}</p>
         {item.price != null && (
           <p className="text-xs text-muted-foreground">
-            {new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(item.price)}
+            {formatCurrency(item.price, item.currency)}
           </p>
         )}
         <Button asChild size="sm" variant="outline" className="w-full h-7 text-xs">
@@ -609,7 +610,7 @@ export function ArtistPortfolioPage() {
               <p className="text-sm text-muted-foreground">
                 From{" "}
                 <span className="font-semibold text-foreground">
-                  €{artist.hourlyRate}/hr
+                  {formatCurrency(artist.hourlyRate, artist.currency)}/hr
                 </span>
               </p>
             )}

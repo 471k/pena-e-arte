@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 using Pena_e_Arte.Infrastructure.Services.Pok;
 
 namespace Pena_e_Arte.Infrastructure.Services;
@@ -17,13 +18,15 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// <b>Two things verified only against docs, not a real sandbox call yet</b> (no staging
 /// credentials existed when this was written — see the calling code's TODOs and the PR
 /// description this shipped in for the concrete verification checklist):
-/// 1. Whether POK's `amount` field is the currency's minor unit (matching this app's existing
-///    "AmountInCents" convention, used for Stripe/EUR) or the whole-unit decimal amount. This
-///    provider assumes minor-unit-in, whole-unit-out (divides by 100) — see AmountInCentsToPok.
+/// 1. Whether POK's `amount` field expects whole-unit decimals in the currency's ISO minor unit
+///    (e.g. "50.00" for EUR, "5000" for ALL) or minor-unit integers. This provider assumes
+///    whole-unit decimals — see ToPokAmount. If a real staging transaction shows minor-unit
+///    integers instead, change only that one method.
 /// 2. The exact sdkOrder flag combination for "authorized but not yet captured" — POK's docs
 ///    don't show that state explicitly. See MapStatus.
 /// Both must be confirmed with a real staging transaction before this goes anywhere near
-/// production traffic.
+/// production traffic. See docs/payments/runbook-studio-currency-migration-2026-09-27.md §3 for
+/// the staging checklist — no studio should be enabled for live card deposits until it's done.
 /// </summary>
 public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvider
 {
@@ -43,11 +46,20 @@ public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvi
     public async Task<(string ProviderReferenceId, string ClientToken)> CreatePaymentHoldAsync(
         PaymentHoldRequest request, CancellationToken ct)
     {
+        // Defence in depth behind CardCurrencyGuard (which every caller already runs before
+        // reaching a provider at all) — this provider must never accept a currency it can't
+        // actually charge in, even if a future caller forgets the guard.
+        if (!Capabilities.SupportedCurrencies.Contains(request.Currency, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new BusinessRuleViolationException(
+                $"Card payments aren't available in {request.Currency} for this studio. Please pay in cash.");
+        }
+
         (string merchantId, string token, HttpClient http) = await authClient.PrepareRequestAsync(request.StudioId, ct);
 
         var body = new CreateOrderRequestBody
         {
-            Amount = AmountInCentsToPok(request.AmountInCents),
+            Amount = ToPokAmount(request.Amount, request.Currency),
             CurrencyCode = request.Currency,
             AutoCapture = false,
             ExpiresAfterMinutes = Capabilities.SupportsHoldExpiry ? request.HoldDurationMinutes : null,
@@ -111,7 +123,7 @@ public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvi
         return order is null ? null : MapStatus(order);
     }
 
-    public async Task<string> RefundAsync(Guid studioId, string providerReferenceId, long? amountInCents, CancellationToken ct)
+    public async Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal? amount, string currency, CancellationToken ct)
     {
         (string merchantId, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
 
@@ -121,7 +133,7 @@ public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvi
         req.Content = JsonContent.Create(new
         {
             refundReason = "Refunded by studio",
-            refundAmount = amountInCents.HasValue ? AmountInCentsToPok(amountInCents.Value) : (decimal?)null
+            refundAmount = amount.HasValue ? ToPokAmount(amount.Value, currency) : (decimal?)null
         });
 
         await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct);
@@ -159,13 +171,13 @@ public sealed class PokPaymentProvider(PokAuthClient authClient) : IPaymentProvi
     };
 
     /// <summary>
-    /// This app's AmountInCents convention (Stripe-era) is minor-unit integers (100 = "1.00" of
-    /// the currency). POK's own examples never show a fractional amount, which reads as
-    /// whole-unit decimals, not minor units — so this divides by 100. THIS IS THE SINGLE
-    /// HIGHEST-RISK UNVERIFIED ASSUMPTION IN THIS PROVIDER. A wrong guess here is a 100x
-    /// over/undercharge. Confirm with one real staging transaction before production use.
+    /// Assumes POK takes whole-unit decimals in the currency's ISO minor unit (e.g. "50.00" for
+    /// EUR, "5000" for ALL) — POK's own examples never show a fractional amount, which reads as
+    /// whole-unit, not minor-unit. THIS IS THE SINGLE HIGHEST-RISK UNVERIFIED ASSUMPTION IN THIS
+    /// PROVIDER; if the staging transaction (see the class doc comment) shows minor-unit integers
+    /// instead, change only this method.
     /// </summary>
-    private static decimal AmountInCentsToPok(long amountInCents) => Math.Round(amountInCents / 100m, 2);
+    private static decimal ToPokAmount(decimal amount, string currency) => CurrencyCatalog.Round(amount, currency);
 
     // --- Wire DTOs -----------------------------------------------------------------------
 

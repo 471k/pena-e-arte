@@ -8,17 +8,17 @@ public class DepositCalculatorTests
 {
     [Fact]
     public void Calculate_NoRule_ReturnsZero() =>
-        DepositCalculator.Calculate(null, 100m, 60).Should().Be(0m);
+        DepositCalculator.Calculate(null, 100m, 60, "EUR").Should().Be(0m);
 
     [Fact]
     public void Calculate_FixedRule_ReturnsFixedAmount() =>
         DepositCalculator.Calculate(
-            new DepositRule { AmountFixed = 50m }, 100m, 60).Should().Be(50m);
+            new DepositRule { AmountFixed = 50m }, 100m, 60, "EUR").Should().Be(50m);
 
     [Fact]
     public void Calculate_FixedRule_IgnoresArtistRate() =>
         DepositCalculator.Calculate(
-            new DepositRule { AmountFixed = 50m }, null, 60).Should().Be(50m);
+            new DepositRule { AmountFixed = 50m }, null, 60, "EUR").Should().Be(50m);
 
     [Theory]
     [InlineData(20, 100, 60, 20.00)]   // 20% of 1h × €100
@@ -28,20 +28,33 @@ public class DepositCalculatorTests
     public void Calculate_PercentRule_AppliesToHourlyRateTimesDuration(
         decimal percent, decimal rate, int minutes, decimal expected) =>
         DepositCalculator.Calculate(
-            new DepositRule { AmountPercent = percent }, rate, minutes).Should().Be(expected);
+            new DepositRule { AmountPercent = percent }, rate, minutes, "EUR").Should().Be(expected);
 
     [Fact]
     public void Calculate_PercentRuleWithoutArtistRate_ReturnsZero() =>
         DepositCalculator.Calculate(
-            new DepositRule { AmountPercent = 20m }, null, 60).Should().Be(0m);
+            new DepositRule { AmountPercent = 20m }, null, 60, "EUR").Should().Be(0m);
 
     [Fact]
     public void Calculate_PercentRuleWithZeroRate_ReturnsZero() =>
         DepositCalculator.Calculate(
-            new DepositRule { AmountPercent = 20m }, 0m, 60).Should().Be(0m);
+            new DepositRule { AmountPercent = 20m }, 0m, 60, "EUR").Should().Be(0m);
 
     [Fact]
     public void Calculate_RuleWithBothAmounts_PrefersFixed() =>
         DepositCalculator.Calculate(
-            new DepositRule { AmountFixed = 40m, AmountPercent = 20m }, 100m, 60).Should().Be(40m);
+            new DepositRule { AmountFixed = 40m, AmountPercent = 20m }, 100m, 60, "EUR").Should().Be(40m);
+
+    [Fact]
+    public void Calculate_PercentRule_JpyStudio_RoundsToWholeYen() =>
+        // 20% of 1h × ¥10,000 = ¥2,000 exactly — JPY has 0 minor units, so any fractional
+        // intermediate result must still come out whole.
+        DepositCalculator.Calculate(
+            new DepositRule { AmountPercent = 20m }, 10_000m, 60, "JPY").Should().Be(2000m);
+
+    [Fact]
+    public void Calculate_PercentRule_JpyStudio_RoundsFractionalResultAwayFromZero() =>
+        // 25% of 0.75h × ¥9,000 = ¥1,687.5 → rounds away from zero to ¥1,688 (0 decimals).
+        DepositCalculator.Calculate(
+            new DepositRule { AmountPercent = 25m }, 9_000m, 45, "JPY").Should().Be(1688m);
 }

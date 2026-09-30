@@ -22,6 +22,8 @@ import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { useCategorizedImageUpload, ACCEPTED_IMAGE_TYPES } from "@/shared/hooks/useCategorizedImageUpload";
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import { cn }              from "@/shared/utils/cn";
+import { formatCurrency }  from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { generateUuid }    from "@/shared/utils/uuid";
 import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
 import { Role }            from "@/shared/types/roles";
@@ -173,11 +175,13 @@ function DepositPreview({
   durationMinutes,
   activeRules,
   hourlyRate,
+  currency,
 }: {
   ruleId:          string;
   durationMinutes: number;
   activeRules:     DepositRuleResponse[];
   hourlyRate:      number | null;
+  currency:        string | undefined;
 }) {
   const rule = activeRules.find((r) => r.id === ruleId);
   if (!rule) return null;
@@ -197,7 +201,7 @@ function DepositPreview({
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Estimated deposit</span>
       <span className="text-sm font-semibold tabular-nums">
-        €{estimated.toFixed(2)}
+        {currency ? formatCurrency(estimated, currency) : estimated}
       </span>
     </div>
   );
@@ -206,7 +210,7 @@ function DepositPreview({
 // Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
 // for a booking that picks this service (see CreateAppointmentCommand.cs) — this preview
 // mirrors that, not DepositPreview's rule-based estimate.
-function ServiceDepositPreview({ service }: { service: ServiceResponse }) {
+function ServiceDepositPreview({ service, currency }: { service: ServiceResponse; currency: string | undefined }) {
   if (service.depositAmount === null) return null;
 
   return (
@@ -214,7 +218,7 @@ function ServiceDepositPreview({ service }: { service: ServiceResponse }) {
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Deposit for this service</span>
       <span className="text-sm font-semibold tabular-nums">
-        €{service.depositAmount.toFixed(2)}
+        {currency ? formatCurrency(service.depositAmount, currency) : service.depositAmount}
       </span>
     </div>
   );
@@ -225,6 +229,7 @@ function ServiceDepositPreview({ service }: { service: ServiceResponse }) {
 export function BookAppointmentForm() {
   const user = useCurrentUser();
   const role = useAppSelector((s) => s.auth.role);
+  const { currency: studioCurrency } = useStudioCurrency();
 
   const isClientRole = role === Role.Client;
   const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Admin;
@@ -554,7 +559,9 @@ export function BookAppointmentForm() {
           <p className="text-sm font-medium">Appointment requested!</p>
           <p className="text-xs text-muted-foreground">
             Secure your slot with a deposit of{" "}
-            <span className="font-medium text-foreground">€{booked.depositAmount.toFixed(2)}</span>.
+            <span className="font-medium text-foreground">
+              {studioCurrency ? formatCurrency(booked.depositAmount, studioCurrency) : booked.depositAmount}
+            </span>.
           </p>
           {promoCodeNotRecognized && (
             <p className="text-[11px] text-muted-foreground">
@@ -910,7 +917,7 @@ export function BookAppointmentForm() {
         <div className="space-y-1.5">
           <FieldLabel htmlFor="serviceDeposit">Deposit</FieldLabel>
           <div id="serviceDeposit">
-            <ServiceDepositPreview service={selectedService} />
+            <ServiceDepositPreview service={selectedService} currency={studioCurrency} />
           </div>
         </div>
       )}
@@ -950,6 +957,7 @@ export function BookAppointmentForm() {
               durationMinutes={watchedDuration}
               activeRules={activeRules}
               hourlyRate={selectedArtist?.hourlyRate ?? null}
+              currency={studioCurrency}
             />
           )}
         </div>

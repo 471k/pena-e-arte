@@ -56,12 +56,18 @@ export const ownerTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="owner-studio-profile-nav"]',
     title: "Your studio profile",
-    body: "Edit your studio's public details, branding, booking widget, QR code, referral code, API/webhook access, and your POK account for card deposits here.",
+    body: "Edit your studio's public details, branding, booking widget, QR code, referral code, API/webhook access, your studio's currency, and your POK account for card deposits here.",
   },
   {
     targetSelector: '[data-tour="owner-studio-hours-card"]',
     title: "Set your hours",
     body: "Set your weekly opening hours — clients can only book within these hours, regardless of any individual artist's own working hours. A default Mon–Fri, 9am–6pm schedule is applied automatically; adjust it here anytime.",
+    route: "/studios/me",
+  },
+  {
+    targetSelector: '[data-tour="owner-studio-currency-card"]',
+    title: "Your currency",
+    body: "Prices and payments use this currency. Set it before your first payment — it locks after that.",
     route: "/studios/me",
   },
   {

@@ -6,9 +6,12 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/utils/cn";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useCreateServiceMutation } from "../servicesApi";
 import type { CreateServiceRequest } from "../service.types";
 
@@ -30,6 +33,7 @@ export function CreateServicePage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -41,8 +45,19 @@ export function CreateServicePage() {
       isActive: true,
     },
   });
+  const { currency } = useStudioCurrency();
 
   async function onSubmit(values: CreateFormValues) {
+    if (currency) {
+      if (values.price != null && !hasAtMostCurrencyMinorUnits(values.price, currency)) {
+        setError("price", { message: tooManyDecimalsMessage(currency) });
+        return;
+      }
+      if (values.depositAmount != null && !hasAtMostCurrencyMinorUnits(values.depositAmount, currency)) {
+        setError("depositAmount", { message: tooManyDecimalsMessage(currency) });
+        return;
+      }
+    }
     const body: CreateServiceRequest = {
       name:            values.name,
       description:     values.description || null,
@@ -124,36 +139,64 @@ export function CreateServicePage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="price">Starting price (€, optional)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Shown to clients — not charged automatically"
-              {...register("price", {
-                setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
-              })}
-              className={cn(errors.price && "border-destructive")}
-            />
+            <Label htmlFor="price">
+              Starting price{currency ? ` (${currencyLabel(currency)}, optional)` : " (optional)"}
+            </Label>
+            {currency ? (
+              <MoneyInput
+                id="price"
+                currency={currency}
+                placeholder="Shown to clients — not charged automatically"
+                {...register("price", {
+                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                })}
+                className={cn(errors.price && "border-destructive")}
+              />
+            ) : (
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Shown to clients — not charged automatically"
+                {...register("price", {
+                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                })}
+                className={cn(errors.price && "border-destructive")}
+              />
+            )}
             {errors.price && (
               <p className="text-xs text-destructive-text">{errors.price.message}</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="depositAmount">Deposit (€, optional)</Label>
-            <Input
-              id="depositAmount"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Leave blank to use the studio's default deposit rule"
-              {...register("depositAmount", {
-                setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
-              })}
-              className={cn(errors.depositAmount && "border-destructive")}
-            />
+            <Label htmlFor="depositAmount">
+              Deposit{currency ? ` (${currencyLabel(currency)}, optional)` : " (optional)"}
+            </Label>
+            {currency ? (
+              <MoneyInput
+                id="depositAmount"
+                currency={currency}
+                placeholder="Leave blank to use the studio's default deposit rule"
+                {...register("depositAmount", {
+                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                })}
+                className={cn(errors.depositAmount && "border-destructive")}
+              />
+            ) : (
+              <Input
+                id="depositAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Leave blank to use the studio's default deposit rule"
+                {...register("depositAmount", {
+                  setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+                })}
+                className={cn(errors.depositAmount && "border-destructive")}
+              />
+            )}
             {errors.depositAmount && (
               <p className="text-xs text-destructive-text">{errors.depositAmount.message}</p>
             )}

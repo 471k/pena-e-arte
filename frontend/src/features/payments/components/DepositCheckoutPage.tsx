@@ -6,6 +6,7 @@ import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import {
   useGetPaymentClientTokenQuery,
   useGetPaymentCapabilitiesQuery,
@@ -18,7 +19,11 @@ function CheckoutForm({
   orderId,
   pokEnvironment,
   amount,
-}: { paymentId: string; orderId: string; pokEnvironment: "staging" | "production"; amount?: string | null }) {
+  currency,
+}: {
+  paymentId: string; orderId: string; pokEnvironment: "staging" | "production";
+  amount: number; currency: string;
+}) {
   const navigate = useNavigate();
   const [confirmCardPayment] = useConfirmCardPaymentMutation();
   const [succeeded, setSucceeded] = useState(false);
@@ -72,13 +77,11 @@ function CheckoutForm({
 
   return (
     <div className="space-y-6">
-      {amount && (
-        <p className="text-sm text-muted-foreground">
-          You are authorising a deposit of{" "}
-          <span className="font-semibold text-foreground">{amount}</span>.
-          Your card will not be charged until the studio confirms your appointment.
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        You are authorising a deposit of{" "}
+        <span className="font-semibold text-foreground">{formatCurrency(amount, currency)}</span>.
+        Your card will not be charged until the studio confirms your appointment.
+      </p>
       <GuestCheckoutForm
         orderId={orderId}
         onSuccess={() => void handleSuccess()}
@@ -105,7 +108,6 @@ export function DepositCheckoutPage() {
   const navigate        = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectStatus = searchParams.get("status");
-  const amount         = searchParams.get("amount");
 
   const { data, isLoading, isError } = useGetPaymentClientTokenQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
@@ -182,7 +184,8 @@ export function DepositCheckoutPage() {
                 paymentId={paymentId!}
                 orderId={data.clientToken}
                 pokEnvironment={pokEnvironment as "staging" | "production"}
-                amount={amount}
+                amount={data.amount}
+                currency={data.currency}
               />
             )}
           </CardContent>

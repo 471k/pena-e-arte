@@ -25,6 +25,8 @@ public class CreatePaymentIntentHandlerTests
     public CreatePaymentIntentHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
+        _stripe.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
         _stripe.CreatePaymentHoldAsync(
                 Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
             .Returns(("pi_test_123", "pi_test_123_secret"));
@@ -56,6 +58,16 @@ public class CreatePaymentIntentHandlerTests
             p.AppointmentId == _appointmentId &&
             p.StudioId == _studioId &&
             p.Status == PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_StoresTheStudiosCurrencyNotTheOldAllDefault()
+    {
+        await SeedStudioAndAppointment();
+
+        await CreateSut().Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
+
+        _db.Payments.Single().Currency.Should().Be("EUR");
     }
 
     [Fact]
@@ -136,7 +148,9 @@ public class CreatePaymentIntentHandlerTests
         {
             Id = _studioId,
             Name = "Test Studio",
-            Slug = "test"
+            Slug = "test",
+            CountryCode = "AL",
+            Currency = "EUR"
         });
         await _db.SaveChangesAsync();
     }
@@ -163,5 +177,5 @@ public class CreatePaymentIntentHandlerTests
     }
 
     private CreatePaymentIntentRequest ValidRequest() =>
-        new(_appointmentId, _clientId, 200m, "eur");
+        new(_appointmentId, _clientId, 200m);
 }

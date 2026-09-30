@@ -15,7 +15,12 @@ public class ExportAppointmentsCsvHandlerTests
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    public ExportAppointmentsCsvHandlerTests() => _tenant.StudioId.Returns(_studioId);
+    public ExportAppointmentsCsvHandlerTests()
+    {
+        _tenant.StudioId.Returns(_studioId);
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
+        _db.SaveChanges();
+    }
 
     private ExportAppointmentsCsvHandler CreateSut() => new(_db, _tenant);
 
@@ -41,6 +46,8 @@ public class ExportAppointmentsCsvHandlerTests
         string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         lines.Should().HaveCount(2);
         lines[1].Should().Contain("Luna Artista").And.Contain("Jane Doe").And.Contain("Pending");
+        lines[0].Should().Contain("Currency");
+        lines[1].Should().Contain(",EUR,");
     }
 
     [Fact]

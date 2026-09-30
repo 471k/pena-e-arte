@@ -18,7 +18,7 @@ public class AppointmentConfiguration : TenantEntityConfiguration<Appointment>
         builder.Property(a => a.DepositStatus)
                .HasConversion<string>().HasMaxLength(32).IsRequired();
 
-        builder.Property(a => a.DepositAmount).HasColumnType("decimal(18,2)");
+        builder.Property(a => a.DepositAmount).HasColumnType("decimal(18,4)");
         builder.Property(a => a.Notes).HasMaxLength(2000);
 
         builder.Property(a => a.CancellationReason)

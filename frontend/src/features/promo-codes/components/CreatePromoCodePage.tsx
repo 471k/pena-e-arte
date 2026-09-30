@@ -6,8 +6,11 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
+import { currencyLabel, formatCurrency } from "@/shared/utils/formatCurrency";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useCreatePromoCodeMutation } from "../promoCodesApi";
 import type { CreatePromoCodeRequest } from "../promoCode.types";
 
@@ -36,6 +39,7 @@ export function CreatePromoCodePage() {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -46,10 +50,18 @@ export function CreatePromoCodePage() {
       maxRedemptions: null,
     },
   });
+  const { currency } = useStudioCurrency();
 
   const discountType = watch("discountType");
 
   async function onSubmit(values: CreateFormValues) {
+    if (
+      values.discountType === "fixed" && currency &&
+      !hasAtMostCurrencyMinorUnits(values.amount, currency)
+    ) {
+      setError("amount", { message: tooManyDecimalsMessage(currency) });
+      return;
+    }
     const body: CreatePromoCodeRequest = {
       code:           values.code.toUpperCase(),
       amountFixed:    values.discountType === "fixed"   ? values.amount : null,
@@ -118,22 +130,35 @@ export function CreatePromoCodePage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="amount">
-              {discountType === "fixed" ? "Discount (€)" : "Discount (%)"}
+              {discountType === "fixed"
+                ? `Discount${currency ? ` (${currencyLabel(currency)})` : ""}`
+                : "Discount (%)"}
             </Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder={discountType === "fixed" ? "e.g. 20" : "e.g. 10"}
-              {...register("amount", { valueAsNumber: true })}
-              className={cn(errors.amount && "border-destructive")}
-            />
+            {discountType === "fixed" && currency ? (
+              <MoneyInput
+                id="amount"
+                currency={currency}
+                placeholder="e.g. 20"
+                {...register("amount", { valueAsNumber: true })}
+                className={cn(errors.amount && "border-destructive")}
+              />
+            ) : (
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder={discountType === "fixed" ? "e.g. 20" : "e.g. 10"}
+                {...register("amount", { valueAsNumber: true })}
+                className={cn(errors.amount && "border-destructive")}
+              />
+            )}
             {errors.amount && (
               <p className="text-xs text-destructive-text">{errors.amount.message}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Applied against the client's deposit amount, floored at €0.
+              Applied against the client's deposit amount, floored at{" "}
+              {currency ? formatCurrency(0, currency) : "0"}.
             </p>
           </div>
 

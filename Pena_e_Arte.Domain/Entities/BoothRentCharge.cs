@@ -11,6 +11,11 @@ public class BoothRentCharge : TenantEntity
     public Guid BoothRentScheduleId { get; set; }
     public Guid ArtistId { get; set; }
     public decimal Amount { get; set; }
+
+    /// <summary>ISO 4217 currency of this charge — copied from Studio.Currency when the job
+    /// writes the row and never changed after (a record of money owed keeps its own copy).</summary>
+    public string Currency { get; set; } = string.Empty;
+
     public DateTime ChargedDate { get; set; }
     public bool IsSettled { get; set; }
     public DateTime? SettledAt { get; set; }

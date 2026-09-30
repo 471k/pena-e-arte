@@ -105,6 +105,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 OwnerEmail: $"{newSlug}@test.com",
                 Nipt: UniqueTestNipt(),
                 AddressLine1: "123 Test Street",
+                CountryCode: "AL",
                 ReferralCode: code)),
             default);
 
@@ -184,6 +185,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 OwnerEmail: $"{newSlug}@test.com",
                 Nipt: UniqueTestNipt(),
                 AddressLine1: "123 Test Street",
+                CountryCode: "AL",
                 ReferralCode: "BADCODE1")),
             default);
 
@@ -378,7 +380,7 @@ public class ReferralFlowIntegrationTests(DatabaseFixture fixture)
                 Name: "Reward Test Studio", Slug: slug, City: "Lisbon",
                 Latitude: 38.7, Longitude: -9.1,
                 OwnerEmail: $"{slug}@test.com", Nipt: UniqueTestNipt(),
-                AddressLine1: "123 Test Street", ReferralCode: referralCode)),
+                AddressLine1: "123 Test Street", CountryCode: "AL", ReferralCode: referralCode)),
             default);
 
         return studio.Id;

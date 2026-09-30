@@ -122,8 +122,13 @@ public class AssignAppointmentArtistHandler(
                     .OrderByDescending(r => r.UpdatedAt)
                     .FirstOrDefaultAsync(ct);
 
+                string studioCurrency = await db.Studios
+                    .Where(s => s.Id == tenant.StudioId)
+                    .Select(s => s.Currency)
+                    .SingleAsync(ct);
+
                 appointment.DepositAmount =
-                    DepositCalculator.Calculate(rule, artist.HourlyRate, appointment.DurationMinutes);
+                    DepositCalculator.Calculate(rule, artist.HourlyRate, appointment.DurationMinutes, studioCurrency);
             }
 
             appointment.UpdatedAt = DateTime.UtcNow;

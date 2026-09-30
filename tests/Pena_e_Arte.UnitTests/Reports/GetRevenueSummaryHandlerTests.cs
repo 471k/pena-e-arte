@@ -1,8 +1,11 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Pena_e_Arte.Application.Reports.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Reports;
@@ -10,9 +13,18 @@ namespace Pena_e_Arte.UnitTests.Reports;
 public class GetRevenueSummaryHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private GetRevenueSummaryHandler CreateSut() => new(_db);
+    public GetRevenueSummaryHandlerTests()
+    {
+        _tenant.StudioId.Returns(_studioId);
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Test", Slug = "test", CountryCode = "AL", Currency = "EUR" });
+        _db.SaveChanges();
+    }
+
+    private GetRevenueSummaryHandler CreateSut() =>
+        new(_db, _tenant, NullLogger<GetRevenueSummaryHandler>.Instance);
 
     [Fact]
     public async Task Handle_NoPayments_ReturnsEmptyTrendAndEmptyPerArtist()
@@ -160,6 +172,37 @@ public class GetRevenueSummaryHandlerTests
         result.MonthlyTrend.Last().Revenue.Should().Be(100m);
     }
 
+    [Fact]
+    public async Task Handle_MixOfStudioAndOtherCurrencyPayments_ExcludesOtherCurrencyFromTotals()
+    {
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid appt1 = await SeedAppointment(artistId);
+        Guid appt2 = await SeedAppointment(artistId);
+        Guid appt3 = await SeedAppointment(artistId);
+        await SeedPayment(appt1, 100m, PaymentStatus.Paid, DateTime.UtcNow);
+        await SeedPayment(appt2, 200m, PaymentStatus.Paid, DateTime.UtcNow);
+        // A planted ALL payment — must never be added into a EUR studio's totals.
+        _db.Payments.Add(new Payment
+        {
+            StudioId = _studioId,
+            AppointmentId = appt3,
+            ClientId = Guid.NewGuid(),
+            Amount = 5000m,
+            Currency = "ALL",
+            Status = PaymentStatus.Paid,
+            Method = ClientPaymentMethod.Card,
+            PaidAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync();
+
+        RevenueSummaryResponse result = await CreateSut().Handle(new GetRevenueSummaryQuery(), default);
+
+        result.MonthlyTrend.Sum(p => p.Revenue).Should().Be(300m);
+        result.PerArtist.Should().ContainSingle(a => a.ArtistId == artistId && a.Revenue == 300m);
+        result.Currency.Should().Be("EUR");
+        result.ExcludedOtherCurrencyCount.Should().Be(1);
+    }
+
     private async Task<Guid> SeedArtist(string firstName, string lastName)
     {
         Artist artist = new()
@@ -202,6 +245,7 @@ public class GetRevenueSummaryHandlerTests
             AppointmentId = appointmentId,
             ClientId = Guid.NewGuid(),
             Amount = amount,
+            Currency = "EUR",
             Status = status,
             Method = ClientPaymentMethod.Card,
             PaidAt = paidAt,

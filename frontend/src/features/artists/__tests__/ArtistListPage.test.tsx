@@ -11,6 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { artistsApi } from "@/features/artists/artistsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { billingApi } from "@/features/billing/billingApi";
 import type { PlanUsageResponse } from "@/features/billing/billing.types";
 import { ArtistListPage } from "@/features/artists/components/ArtistListPage";
@@ -66,6 +67,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/billing/usage", () =>
     HttpResponse.json(null),
   ),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Tirane", currency: "EUR" }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -81,8 +85,9 @@ function makeStore() {
       ui:   uiReducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
       [billingApi.reducerPath]: billingApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware),
+    middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware, studiosApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },
@@ -104,8 +109,9 @@ function makeStoreAsArtist() {
       ui:   uiReducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
       [billingApi.reducerPath]: billingApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware),
+    middleware: (gd) => gd().concat(artistsApi.middleware, billingApi.middleware, studiosApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u2", email: "artist@ink.test" },

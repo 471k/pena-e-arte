@@ -126,6 +126,7 @@ public class AppointmentArtistEndpointAuthorizationTests(DatabaseFixture fixture
     private async Task<(Guid appointmentId, Guid artistId, Guid clientId)> SeedUnassignedAppointmentAndArtistAsync(Guid tenantId)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        db.Studios.Add(new Studio { Id = tenantId, Name = "Test Studio", Slug = tenantId.ToString("N")[..8], CountryCode = "AL", Currency = "EUR" });
         Client client = new()
         {
             StudioId = tenantId,

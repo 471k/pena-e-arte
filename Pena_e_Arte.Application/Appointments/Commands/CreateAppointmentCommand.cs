@@ -8,6 +8,7 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Money;
 using Pena_e_Arte.Domain.Services;
 using Pena_e_Arte.Domain.ValueObjects;
 
@@ -74,6 +75,14 @@ public class CreateAppointmentHandler(
         IPlanLimitService planLimits,
         CancellationToken ct)
     {
+        // Loaded once up front — every deposit/discount rounding below rounds to this studio's
+        // currency (Studio has no tenant filter, so no IgnoreQueryFilters() needed here even for
+        // the anonymous guest-booking path).
+        string studioCurrency = await db.Studios
+            .Where(s => s.Id == studioId)
+            .Select(s => s.Currency)
+            .SingleAsync(ct);
+
         // Service is resolved up front, before anything derived from duration, because a
         // selected service's own DurationMinutes overrides whatever the request carries —
         // never trusted from the client, same convention as Appointment.DepositAmount never
@@ -180,7 +189,7 @@ public class CreateAppointmentHandler(
                     .OrderByDescending(r => r.UpdatedAt)
                     .FirstOrDefaultAsync(ct);
 
-                depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, durationMinutes);
+                depositAmount = DepositCalculator.Calculate(rule, artist?.HourlyRate, durationMinutes, studioCurrency);
                 depositStatus = DepositStatus.Pending;
             }
 
@@ -223,7 +232,7 @@ public class CreateAppointmentHandler(
                     if (promoCode is not null)
                     {
                         decimal discount = promoCode.AmountFixed
-                            ?? Math.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, 2, MidpointRounding.AwayFromZero);
+                            ?? CurrencyCatalog.Round(depositAmount * (promoCode.AmountPercent ?? 0m) / 100m, studioCurrency);
 
                         depositAmount = Math.Max(0m, depositAmount - discount);
                         promoCode.RedemptionCount++;
@@ -246,7 +255,8 @@ public class CreateAppointmentHandler(
                     if (alreadyRedeemed)
                         throw new BusinessRuleViolationException("You've already redeemed this referral code.");
 
-                    depositAmount = Math.Max(0, depositAmount - depositAmount * redeemedReferralCode.RewardPercent / 100m);
+                    depositAmount = Math.Max(0, CurrencyCatalog.Round(
+                        depositAmount - depositAmount * redeemedReferralCode.RewardPercent / 100m, studioCurrency));
                 }
 
                 if (req.ReferralRewardId is Guid rewardId)
@@ -260,7 +270,8 @@ public class CreateAppointmentHandler(
                     if (spentReward.IsRedeemed)
                         throw new BusinessRuleViolationException("This referral reward has already been redeemed.");
 
-                    depositAmount = Math.Max(0, depositAmount - depositAmount * spentReward.RewardPercent / 100m);
+                    depositAmount = Math.Max(0, CurrencyCatalog.Round(
+                        depositAmount - depositAmount * spentReward.RewardPercent / 100m, studioCurrency));
                 }
             }
 

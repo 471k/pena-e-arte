@@ -25,6 +25,8 @@ export interface RegisterSoloArtistRequest {
   password:  string;
   firstName: string;
   lastName:  string;
+  countryCode?: string;
+  currency?:    string;
 }
 
 interface OAuthLoginRequest {

@@ -5,6 +5,9 @@ export interface GeocodedLocation {
   lng: number;
   city: string;
   country: string;
+  /** ISO 3166-1 alpha-2, upper-cased (Nominatim returns it lowercase) — prefills the studio
+   * currency picker's country default. Empty string when Nominatim omits it. */
+  countryCode: string;
 }
 
 export type GeocodeStatus = "idle" | "loading" | "success" | "error";
@@ -58,6 +61,7 @@ export function useAddressGeocode(
             village?: string;
             municipality?: string;
             country?: string;
+            country_code?: string;
           };
         }>;
 
@@ -77,6 +81,7 @@ export function useAddressGeocode(
           lng: parseFloat(first.lon),
           city: a.city ?? a.town ?? a.village ?? a.municipality ?? "",
           country: a.country ?? "",
+          countryCode: (a.country_code ?? "").toUpperCase(),
         });
         setAsyncStatus("success");
       } catch (err) {

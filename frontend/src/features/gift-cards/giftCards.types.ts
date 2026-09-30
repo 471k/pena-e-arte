@@ -16,6 +16,7 @@ export interface GiftCardResponse {
   recipientEmail:  string | null;
   status:          GiftCardStatus;
   createdAt:       string;
+  currency:        string;
 }
 
 /** Public lookup shape — no purchaser/recipient email. */

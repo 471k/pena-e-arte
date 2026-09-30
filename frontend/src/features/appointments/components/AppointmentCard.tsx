@@ -8,6 +8,7 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
@@ -42,10 +43,6 @@ const STATUS_BORDER: Record<AppointmentStatus, string> = {
 function formatTime(dateStr: string, studioTimezone: string | undefined): string {
   return new Date(dateStr).toLocaleTimeString(
     [], withStudioTimeZone({ hour: "2-digit", minute: "2-digit" }, studioTimezone));
-}
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(amount);
 }
 
 export function AppointmentCard({ appointment }: AppointmentCardProps) {
@@ -127,7 +124,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span>Deposit: {formatCurrency(appointment.depositAmount)}</span>
+            <span>
+              Deposit: {studio ? formatCurrency(appointment.depositAmount, studio.currency) : appointment.depositAmount}
+            </span>
             <DepositStatusBadge status={appointment.depositStatus} />
           </div>
           {(appointment.tattooDescription || appointment.notes) && (
