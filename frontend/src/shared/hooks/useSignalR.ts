@@ -6,7 +6,8 @@ import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
-import { incrementUnread } from "@/features/notifications/notificationsSlice";
+import { incrementUnreadIfVisible } from "@/features/notifications/incrementUnreadIfVisible";
+import type { NotificationLogResponse } from "@/features/notifications/notification.types";
 
 export function useSignalR(studioId: string | null | undefined) {
   const token    = useAppSelector((s) => s.auth.token);
@@ -49,12 +50,12 @@ export function useSignalR(studioId: string | null | undefined) {
     designConn.on("DesignReviewed",        () => { dispatch(designsApi.util.invalidateTags(["Design"])); });
     designConn.on("DesignRevisionExpired", () => { dispatch(designsApi.util.invalidateTags(["Design"])); });
 
-    notifConn.on("NotificationReceived", () => {
+    notifConn.on("NotificationReceived", (pushed?: NotificationLogResponse) => {
       dispatch(notificationsApi.util.invalidateTags(["NotificationLog"]));
       // A scheduled manual reminder fires this event when its job finishes (sent or failed) —
       // refresh the reminder dialog's history so a row doesn't stay "Scheduled" after it ran.
       dispatch(remindersApi.util.invalidateTags(["ManualReminder"]));
-      dispatch(incrementUnread());
+      void incrementUnreadIfVisible(dispatch, pushed);
     });
 
     const scheduleStart = scheduleConn
