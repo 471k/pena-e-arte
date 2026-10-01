@@ -40,6 +40,13 @@ per this entry's own prior note that they're the same open question.
 to `ops@tattooos.co`. The external UptimeRobot monitor's alert contact is configured in its own
 dashboard, not in this repo; see `uptime-and-status-page.md`.
 
+**Reload on config change:** Grafana only reads its provisioned files (alert rules and contact points,
+datasources, dashboards) at startup. The `deploy` job's "Restart Grafana only if its provisioned config
+changed" step hashes the four `tattooos-grafana-*` ConfigMaps into a `checksum/grafana-config` pod-template
+annotation, so Grafana restarts on its own exactly when one of them changes and is left alone otherwise.
+The Deployment is `Recreate`, so expect about a minute of Grafana downtime on such a deploy. Before this
+step existed (2026-10-01), a changed recipient needed a manual `kubectl rollout restart`.
+
 ## Why a new log line was needed
 
 The Hangfire rule above depends on a structured log line that did not exist before this runbook

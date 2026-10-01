@@ -312,6 +312,34 @@ jobs:
           kubectl rollout status deployment/tattooos-api -n tattooos --timeout=180s
           kubectl rollout status deployment/tattooos-frontend -n tattooos --timeout=180s
 
+      # Grafana reads its provisioned files (alerting rules and contact points, datasources,
+      # dashboards) only at startup, and mounting a ConfigMap does not restart the pod. Found
+      # 2026-10-01: the alert recipient was changed in the repo and the ConfigMap, but the
+      # 24-day-old Grafana pod kept the old Gmail in memory until restarted by hand. Hashing
+      # the live ConfigMaps into a pod-template annotation restarts Grafana exactly when
+      # (and only when) its provisioned config changed, so ordinary deploys never bounce it.
+      # Hashed from the cluster after `apply`, with kubectl alone, so it is what Grafana
+      # actually sees. `apply` leaves annotations it never set alone, so it won't strip this.
+      # The Deployment is `Recreate` (single replica on an RWO volume): expect ~1 minute of
+      # Grafana downtime on a config change. The first run after this lands restarts it once.
+      - name: Restart Grafana only if its provisioned config changed
+        run: |
+          SUM=$(kubectl get configmap -n monitoring \
+            tattooos-grafana-dashboards-provider tattooos-grafana-datasources \
+            tattooos-grafana-dashboard-json tattooos-grafana-alerting \
+            -o jsonpath='{range .items[*]}{.metadata.name}{"="}{.data}{"\n"}{end}' \
+            | sha256sum | cut -d' ' -f1)
+          CURRENT=$(kubectl get deployment tattooos-grafana -n monitoring \
+            -o jsonpath='{.spec.template.metadata.annotations.checksum/grafana-config}')
+          if [ "$SUM" = "$CURRENT" ]; then
+            echo "Grafana provisioned config unchanged ($SUM); not restarting."
+          else
+            echo "Grafana provisioned config changed ($CURRENT -> $SUM); restarting."
+            kubectl patch deployment tattooos-grafana -n monitoring --type merge \
+              -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"checksum/grafana-config\":\"$SUM\"}}}}}"
+            kubectl rollout status deployment/tattooos-grafana -n monitoring --timeout=240s
+          fi
+
   deploy-staging:
     name: Deploy to K3s (staging)
     needs: [deploy, build-and-push-frontend-staging]
