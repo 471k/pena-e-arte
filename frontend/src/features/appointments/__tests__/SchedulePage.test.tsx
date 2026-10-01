@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -406,8 +406,46 @@ describe("SchedulePage", () => {
     expect(within(dialog).getByLabelText(/^phone$/i)).toBeInTheDocument();
   });
 
-  it("owner does NOT see the 'Quick reminder' button (no artist-picker exists for the raw-contact path)", async () => {
+  it("owner in the plain owner view does NOT see 'Quick reminder' (no artist context, no picker)", async () => {
     renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+
+    expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
+  });
+
+  it("owner in their own Artist view (?artistId=) DOES see 'Quick reminder'", async () => {
+    renderPage(Role.Owner, "/?artistId=my-own-artist-id");
+    await screen.findByText("No appointments this week");
+
+    expect(screen.getByRole("button", { name: /quick reminder/i })).toBeInTheDocument();
+  });
+
+  it("owner's Quick reminder names their own artist in the request", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/reminders", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          id: "r-1", status: "Sent", scheduledFor: new Date().toISOString(),
+          recipientName: "Test", recipientPhone: "+355690000000", failureReason: null,
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Owner, "/?artistId=my-own-artist-id");
+    await screen.findByText("No appointments this week");
+
+    await user.click(screen.getByRole("button", { name: /quick reminder/i }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/^name$/i), "Test");
+    await user.type(within(dialog).getByLabelText(/^phone$/i), "912345678");
+    await user.click(within(dialog).getByRole("button", { name: /send now/i }));
+
+    await waitFor(() => expect(capturedBody).toMatchObject({ artistId: "my-own-artist-id" }));
+  });
+
+  it("admin never sees 'Quick reminder', even with an artistId in the URL", async () => {
+    renderPage(Role.Admin, "/?artistId=some-artist");
     await screen.findByText("No appointments this week");
 
     expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
