@@ -130,19 +130,41 @@ public class SendAppointmentArtistAssignedNotificationHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ArtistIsTheOwner_DoesNotEmailTheSameAddressTwice()
+    public async Task Handle_ArtistIsTheOwner_EmailsTheOwnerArtistExactlyOnce()
     {
         (Guid appointmentId, _, _, Artist artist) = await SeedAssignedBooking(artistEmail: "owner@test.com");
 
         await CreateSut().Handle(new SendAppointmentArtistAssignedNotificationCommand(appointmentId), default);
 
-        // The client is emailed; the owner-artist address is not (the owner already gets studio mail),
-        // but the artist-addressed bell row is still written.
-        await _notifications.DidNotReceive()
-            .SendEmailAsync("owner@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        (await _db.NotificationLogs.AnyAsync(
-            n => n.RecipientType == NotificationRecipientType.Artist && n.RecipientId == artist.Id))
-            .Should().BeTrue();
+        // The assign flow never emails the studio owner separately (only the client and the artist), so
+        // an owner who is also the artist must still get the assignment email, exactly once, plus the
+        // artist-addressed bell row. Before this fix the email was skipped on the false premise that
+        // the owner had already been emailed, and the log row claimed it had been sent.
+        await _notifications.Received(1)
+            .SendEmailAsync("owner@test.com", Arg.Is<string>(s => s.Contains("assigned")),
+                Arg.Any<string>(), Arg.Any<CancellationToken>());
+        NotificationLog? log = await _db.NotificationLogs.FirstOrDefaultAsync(
+            n => n.RecipientType == NotificationRecipientType.Artist && n.RecipientId == artist.Id);
+        log.Should().NotBeNull();
+        log!.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ArtistIsTheOwner_EmailFails_LogsFailureInsteadOfClaimingSuccess()
+    {
+        (Guid appointmentId, _, _, _) = await SeedAssignedBooking(artistEmail: "owner@test.com");
+        _notifications
+            .SendEmailAsync("owner@test.com", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+        Func<Task> act = () => CreateSut().Handle(
+            new SendAppointmentArtistAssignedNotificationCommand(appointmentId), default);
+
+        await act.Should().NotThrowAsync();
+        NotificationLog? log = await _db.NotificationLogs
+            .FirstOrDefaultAsync(n => n.RecipientType == NotificationRecipientType.Artist);
+        log.Should().NotBeNull();
+        log!.IsSuccess.Should().BeFalse();
     }
 
     [Fact]
