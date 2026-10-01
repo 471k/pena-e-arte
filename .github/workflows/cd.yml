@@ -383,11 +383,12 @@ jobs:
             --from-literal=GeoIpUpdate__AccountId="${{ secrets.MAXMIND_ACCOUNT_ID }}" \
             --from-literal=GeoIpUpdate__LicenseKey="${{ secrets.MAXMIND_LICENSE_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
-          # Twilio on staging uses Twilio TEST credentials (STAGING_TWILIO_*; the FromNumber is
-          # the magic +15005550006): nothing is ever delivered and nothing is billed, so staging
-          # test data can't text a real phone. It exercises the app's reminder flow, not real
-          # delivery or the alphanumeric "TattooOS" sender used in production. Before this, the
-          # keys were absent and every staging SMS failed with an empty Account SID in the URL.
+          # Twilio on staging uses a dedicated Twilio SUBACCOUNT (STAGING_TWILIO_*), never the
+          # production account's credentials. It sends real SMS from the alphanumeric "TattooOS"
+          # sender, so keep the subaccount's Messaging geo permissions limited to Albania: staging
+          # seed data contains placeholder numbers in other countries that must not be texted.
+          # Before this, the keys were absent and every staging SMS failed with an empty Account
+          # SID in the URL.
           # Resend now HAS a real staging key (own restricted API key + own from-address on
           # the same verified tattooos.co domain — see the artist-invite-not-delivered
           # investigation this was fixed from). Its own comment used to claim "the app's
