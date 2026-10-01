@@ -50,7 +50,13 @@ interface ChartProps {
 function Chart({ data, activeTooltip, onHover }: ChartProps) {
   const n      = data.length;
   const max    = Math.max(...data.map((d) => d.mrr), 1);
-  const gridY  = [0, 0.5, 1].map((t) => ({ val: max * t, y: yAt(max * t, max) }));
+  const hasRevenue = data.some((d) => d.mrr > 0);
+  // With no revenue the scale is floored at 1, so the mid/top ticks would both read "€1". Show
+  // just the €0 baseline then, and never repeat a label.
+  const ticks  = hasRevenue ? [0, 0.5, 1] : [0];
+  const gridY  = ticks
+    .map((t) => ({ val: max * t, y: yAt(max * t, max) }))
+    .filter((g, i, all) => all.findIndex((o) => fmtY(o.val) === fmtY(g.val)) === i);
 
   const points = data.map((d, i) => ({ x: xAt(i, n), y: yAt(d.mrr, max), d }));
 
