@@ -92,14 +92,16 @@ function StudioRowSkeleton() {
   return (
     <Card>
       <CardContent className="p-4 space-y-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1.5 flex-1">
-            <div className="flex items-center gap-2">
+        {/* Same stacked-on-phones / side-by-side-from-sm layout as the real row, so the skeleton
+            doesn't push the page wider than the viewport while loading. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="space-y-1.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-3 w-28" />
               <Skeleton className="h-5 w-16 rounded-full" />
             </div>
-            <Skeleton className="h-3 w-64" />
+            <Skeleton className="h-3 w-64 max-w-full" />
           </div>
           <div className="flex items-center gap-1.5">
             <Skeleton className="h-7 w-20" />
