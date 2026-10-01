@@ -352,11 +352,12 @@ describe("StudioProfilePage — phone number", () => {
     renderPage();
     await waitForForm();
 
-    await user.type(screen.getByLabelText(/phone number/i), "912345678");
+    // The mock studio is Albanian, so the phone field starts on +355 (it follows the studio's country).
+    await user.type(screen.getByLabelText(/phone number/i), "691234567");
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     await screen.findByText(/changes saved/i);
-    expect(capturedPhone).toBe("+351912345678");
+    expect(capturedPhone).toBe("+355691234567");
   }, 20000);
 });
 

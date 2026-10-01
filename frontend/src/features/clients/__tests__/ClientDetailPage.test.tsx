@@ -15,6 +15,7 @@ import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import type {
   ClientResponse,
@@ -142,6 +143,10 @@ const PORTABLE_PROFILE: PortableClientProfile = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // The reminder dialog preselects the studio's country in its phone field.
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR", countryCode: "AL" }),
+  ),
   http.get("http://localhost/api/v1/clients/:id", () => HttpResponse.json(CLIENT)),
   http.get("http://localhost/api/v1/clients/:id/profile", () => HttpResponse.json(PROFILE)),
   http.put("http://localhost/api/v1/clients/:id/profile", async ({ request }) => {
@@ -193,6 +198,7 @@ function makeStore(role: Role) {
       [intakeFormsApi.reducerPath]: intakeFormsApi.reducer,
       [consentFormsApi.reducerPath]: consentFormsApi.reducer,
       [remindersApi.reducerPath]: remindersApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
     middleware: (gd) =>
       gd().concat(
@@ -202,6 +208,7 @@ function makeStore(role: Role) {
         intakeFormsApi.middleware,
         consentFormsApi.middleware,
         remindersApi.middleware,
+        studiosApi.middleware,
       ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

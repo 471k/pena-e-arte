@@ -197,9 +197,13 @@ describe("SchedulePage", () => {
     );
     renderPage();
     await screen.findByText("1 appointment");
+    // The card formats in the studio's timezone (the mocked studios/me says Europe/Tirane), and
+    // falls back to the browser's until that response arrives. Expect the studio-timezone time and
+    // wait for it, instead of comparing against the test machine's local time right after first
+    // render, which only passed when the studio had not loaded yet.
     const time = APPT_TODAY.date;
-    const formatted = new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    expect(screen.getByText(new RegExp(formatted))).toBeInTheDocument();
+    const formatted = new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Tirane" });
+    expect(await screen.findByText(new RegExp(formatted))).toBeInTheDocument();
   });
 
   it("shows appointment notes on the card", async () => {
