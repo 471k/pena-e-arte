@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import { clientsApi } from "@/features/clients/clientsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { CreateClientPage } from "@/features/clients/components/CreateClientPage";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 
@@ -38,6 +39,9 @@ const ARTIST: ArtistResponse = {
 const server = setupServer(
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([ARTIST])),
   http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(ARTIST)),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Lisbon", currency: "EUR", countryCode: "PT" }),
+  ),
   http.post("http://localhost/api/v1/clients", async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -67,8 +71,9 @@ function makeStore(role: "owner" | "artist" = "owner") {
       auth: authReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(clientsApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(clientsApi.middleware, artistsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake", tenantId: "t1", role } as any,

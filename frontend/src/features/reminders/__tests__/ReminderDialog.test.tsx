@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import { remindersApi } from "@/features/reminders/remindersApi";
 import { artistsApi } from "@/features/artists/artistsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import type { ManualReminderResponse } from "@/features/reminders/reminder.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
@@ -44,6 +45,9 @@ const ARTIST: ArtistResponse = {
 const server = setupServer(
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([ARTIST])),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Lisbon", currency: "EUR", countryCode: "PT" }),
+  ),
   http.post("http://localhost/api/v1/reminders", async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     return HttpResponse.json({
@@ -66,8 +70,9 @@ function makeStore(role: string = "artist") {
       auth: authReducer,
       [remindersApi.reducerPath]: remindersApi.reducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(remindersApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(remindersApi.middleware, artistsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake", tenantId: "t1", role } as any,

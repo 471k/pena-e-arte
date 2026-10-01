@@ -507,7 +507,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Send a one-off SMS reminder — right now or scheduled for later — separate from the automatic 48h/24h appointment reminders the studio already sends.",
     steps: [
       "Click \"Send Reminder\" on an appointment's detail page or a client's profile page — the recipient's name and phone number are filled in automatically.",
-      "For someone with no appointment or client record yet, use the \"Quick Reminder\" button (message icon) in the Schedule page's toolbar and type in a name and phone number instead. Owners see this button once they switch to the Artist view (the Owner | Artist switch in the header), because the text is sent on behalf of their own artist profile.",
+      "For someone with no appointment or client record yet, use the \"Quick Reminder\" button (message icon) in the Schedule page's toolbar and type in a name and phone number instead (the country starts on your studio's country). Owners see this button once they switch to the Artist view (the Owner | Artist switch in the header), because the text is sent on behalf of their own artist profile.",
       "Optionally write a custom message, or leave it blank to send the studio's default reminder text.",
       "Toggle \"Schedule for later\" and pick a date/time, or leave it off to send immediately.",
       "Click \"Send now\" or \"Schedule reminder\".",
@@ -907,7 +907,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Clients and click \"New Client\".",
       "Enter the client's first and last name and email address.",
       "Select the Artist this client belongs to. (If you're an artist adding your own client, this step doesn't apply — it's assigned to you automatically.)",
-      "Optionally enter a phone number — pick the country from the dropdown next to the field, then type the number without the country code.",
+      "Optionally enter a phone number — the country dropdown next to the field starts on your studio's country (change it if the client is from elsewhere), then type the number without the country code.",
       "Click \"Create Client\".",
     ],
   },

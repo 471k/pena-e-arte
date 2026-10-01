@@ -32,6 +32,7 @@ import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import { EmbedCodeCard } from "./EmbedCodeCard";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { asPhoneCountry } from "@/shared/utils/phoneCountries";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 const NIPT_HELP = "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)";
@@ -398,6 +399,7 @@ export function StudioProfilePage() {
                   render={({ field }) => (
                     <PhoneInput
                       id="phoneNumber"
+                      defaultCountry={asPhoneCountry(studio?.countryCode)}
                       value={field.value ?? ""}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
