@@ -29,12 +29,16 @@ account either way). Wired via `GF_SMTP_*` env vars on the Grafana Deployment, s
 the `monitoring` namespace since K8s Secrets are namespace-scoped and Grafana doesn't live in
 `tattooos`).
 
-**Recipient:** `phisoftwaresolutions@gmail.com` — the same address already used (and already
-public) in `k8s/base/cluster-issuer.yaml`'s ACME contact. No dedicated ops/on-call inbox was
-confirmed to exist as of 2026-09-05 (see that file's comment); this reuses the one already known
-real and monitored rather than inventing a new destination. **Revisit this once a dedicated ops
-inbox exists** — swap both this recipient and the ACME contact together, they're the same
-open question.
+**Recipient:** `ops@tattooos.co` — a dedicated Google Group under the project's Workspace
+domain, created 2026-10-01 and confirmed to receive external mail (tested from a non-Workspace
+address). Replaces `phisoftwaresolutions@gmail.com`, which both this contact point and
+`k8s/base/cluster-issuer.yaml`'s ACME contact used as a temporary stand-in since 2026-09-03/05
+while no dedicated ops inbox existed. Both recipients were swapped together in the same change,
+per this entry's own prior note that they're the same open question.
+
+**Change log:** 2026-10-01 — recipient and ACME contact moved from `phisoftwaresolutions@gmail.com`
+to `ops@tattooos.co`. The external UptimeRobot monitor's alert contact is configured in its own
+dashboard, not in this repo; see `uptime-and-status-page.md`.
 
 ## Why a new log line was needed
 

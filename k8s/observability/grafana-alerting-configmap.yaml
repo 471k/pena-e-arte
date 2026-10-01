@@ -181,10 +181,11 @@ data:
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from
     # tattooos-grafana-smtp, populated by cd.yml via the same RESEND_API_KEY used for the
-    # app's own transactional email). Recipient is phisoftwaresolutions@gmail.com — the same
-    # confirmed-real, monitored address cluster-issuer.yaml uses today; no dedicated ops/on-
-    # call inbox was confirmed to exist yet (see docs/infra/alerting-runbook.md), so this
-    # reuses the one already known-good rather than inventing a new destination.
+    # app's own transactional email). Recipient is ops@tattooos.co — a dedicated ops Google
+    # Group (Workspace), confirmed live 2026-10-01. Previously reused the personal Gmail
+    # cluster-issuer.yaml's ACME contact also used, per this file's own prior note that no
+    # dedicated ops/on-call inbox existed yet; that's no longer true, see
+    # docs/infra/alerting-runbook.md.
     contactPoints:
       - orgId: 1
         name: ops-email
@@ -192,7 +193,7 @@ data:
           - uid: ops-email-receiver
             type: email
             settings:
-              addresses: phisoftwaresolutions@gmail.com
+              addresses: ops@tattooos.co
               singleEmail: true
 
     policies:

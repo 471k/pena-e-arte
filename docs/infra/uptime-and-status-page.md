@@ -26,7 +26,7 @@ itself is alive.
 | Friendly name | `Pena e Arte — production` |
 | URL | `https://app.tattooos.co/health/live` |
 | Monitoring interval | 5 minutes (UptimeRobot's free-tier floor; upgrade only if 1-minute granularity is worth the cost — not needed to close this gap) |
-| Alert contacts | same address as `alerting-runbook.md`'s receiver (`phisoftwaresolutions@gmail.com` today) — keep these two in sync if that address ever changes |
+| Alert contacts | same address as `alerting-runbook.md`'s receiver (`ops@tattooos.co` since 2026-10-01) — keep these two in sync if that address ever changes. The live monitor was created on 2026-09-05 with `phisoftwaresolutions@gmail.com`; changing it is a manual step in the UptimeRobot dashboard (My Settings → Alert Contacts) and is not tracked by this repo. |
 
 ## §4 — Public status page
 

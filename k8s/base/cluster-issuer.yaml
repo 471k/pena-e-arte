@@ -5,10 +5,11 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    # Temporary personal address, confirmed by Phi 2026-09-03 — swap for a dedicated ops
-    # inbox (e.g. ops@tattooos.co) once one exists. See docs/infra/secrets-rotation-runbook.md
-    # for context; changing this later does not require reissuing existing certs.
-    email: phisoftwaresolutions@gmail.com
+    # Dedicated ops inbox (Google Group, Workspace), confirmed live 2026-10-01 — replaces the
+    # temporary personal address this field held since 2026-09-03. See
+    # docs/infra/secrets-rotation-runbook.md for context; changing this does not require
+    # reissuing existing certs.
+    email: ops@tattooos.co
     privateKeySecretRef:
       name: letsencrypt-prod-dns01-key
     solvers:
