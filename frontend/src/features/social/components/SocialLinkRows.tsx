@@ -10,11 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
-import {
-  SOCIAL_PLATFORM_FALLBACK_ICON,
-  SOCIAL_PLATFORM_ICON,
-  SOCIAL_PLATFORM_LABEL,
-} from "@/shared/utils/socialPlatforms";
+import { SOCIAL_LINK_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import {
   useLazyGetSocialConnectUrlQuery,
   useUpdateSocialHandleMutation,
@@ -207,7 +203,7 @@ export function SocialLinkRows({
         return (
           <ConnectionRow
             key={row.platform}
-            icon={SOCIAL_PLATFORM_ICON[row.platform] ?? SOCIAL_PLATFORM_FALLBACK_ICON}
+            icon={SOCIAL_LINK_ICON}
             label={SOCIAL_PLATFORM_LABEL[row.platform]}
             handle={row.handle}
             isVerified={row.isVerified}

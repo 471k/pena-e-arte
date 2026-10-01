@@ -24,7 +24,7 @@ import { useGetPublicStudioQuery } from "../publicApi";
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import type { PublicArtistSummary, PublicStudioHoursResponse } from "../publicApi";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
-import { SOCIAL_PLATFORM_FALLBACK_ICON, SOCIAL_PLATFORM_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
+import { SOCIAL_LINK_ICON, SOCIAL_PLATFORM_LABEL } from "@/shared/utils/socialPlatforms";
 import { useDocumentMeta }          from "@/shared/utils/useDocumentMeta";
 import { useStructuredData }        from "@/shared/utils/useStructuredData";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
@@ -519,7 +519,7 @@ export function StudioPortfolioPage() {
               )}
 
               {studio.socialLinks.map((link) => {
-                const Icon = SOCIAL_PLATFORM_ICON[link.platform] ?? SOCIAL_PLATFORM_FALLBACK_ICON;
+                const Icon = SOCIAL_LINK_ICON;
                 const label = SOCIAL_PLATFORM_LABEL[link.platform] ?? link.platform;
                 return (
                   <a
@@ -532,6 +532,7 @@ export function StudioPortfolioPage() {
                     aria-label={`${studio.name} on ${label}`}
                   >
                     <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="font-medium">{label}</span>
                     @{link.handle}
                     {link.isVerified && <VerifiedSocialBadge platform={label} />}
                   </a>
