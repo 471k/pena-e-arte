@@ -57,20 +57,21 @@ export function SchedulePage() {
 
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [quickReminderOpen, setQuickReminderOpen] = useState(false);
-  // Exact-role (not usePermission's rank-based "Artist and above") check: raw-contact
-  // reminders require an ArtistId the backend can only infer for the artist themselves —
-  // owner/admin have no artist context on this page and no artist-picker exists yet, so
-  // showing this button to them would open a dialog that always 422s on submit.
   const { role, token, tenantId } = useAppSelector((s) => s.auth);
-  const canQuickRemind = role === Role.Artist;
-  const canExport = role === Role.Owner || role === Role.Admin;
-  const [exporting, setExporting] = useState(false);
   // Present when an owner reaches this page via their own artist-mode nav (OwnerLayout's
   // ArtistModeSwitcher/artistNavItems) — filters to just their own appointments, the same
   // scoping a real artist caller already gets automatically. Ignored for an actual artist
   // caller (GetAppointmentsHandler already forces their own id regardless of this param).
   const [searchParams] = useSearchParams();
   const artistId = searchParams.get("artistId") ?? undefined;
+  // Raw-contact reminders need an ArtistId. The backend infers it for an artist caller; an owner
+  // has to name one. An owner in their own Artist view carries it in the URL (`?artistId=`), so
+  // they get the button and the dialog sends that id. A plain owner/admin view has no artist
+  // context and no artist picker, so the button stays hidden there (it would always 422).
+  const isOwnerInArtistMode = role === Role.Owner && !!artistId;
+  const canQuickRemind = role === Role.Artist || isOwnerInArtistMode;
+  const canExport = role === Role.Owner || role === Role.Admin;
+  const [exporting, setExporting] = useState(false);
 
   async function handleExportCsv() {
     setExporting(true);
@@ -237,7 +238,11 @@ export function SchedulePage() {
         </main>
       )}
 
-      <ReminderDialog open={quickReminderOpen} onOpenChange={setQuickReminderOpen} />
+      <ReminderDialog
+        open={quickReminderOpen}
+        onOpenChange={setQuickReminderOpen}
+        artistId={isOwnerInArtistMode ? artistId : undefined}
+      />
     </div>
   );
 }

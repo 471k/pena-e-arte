@@ -507,7 +507,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Send a one-off SMS reminder — right now or scheduled for later — separate from the automatic 48h/24h appointment reminders the studio already sends.",
     steps: [
       "Click \"Send Reminder\" on an appointment's detail page or a client's profile page — the recipient's name and phone number are filled in automatically.",
-      "For someone with no appointment or client record yet, use the \"Quick Reminder\" button (message icon) in the Schedule page's toolbar and type in a name and phone number instead.",
+      "For someone with no appointment or client record yet, use the \"Quick Reminder\" button (message icon) in the Schedule page's toolbar and type in a name and phone number instead. Owners see this button once they switch to the Artist view (the Owner | Artist switch in the header), because the text is sent on behalf of their own artist profile.",
       "Optionally write a custom message, or leave it blank to send the studio's default reminder text.",
       "Toggle \"Schedule for later\" and pick a date/time, or leave it off to send immediately.",
       "Click \"Send now\" or \"Schedule reminder\".",
@@ -515,7 +515,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "A Quick Reminder sent to a typed-in name and phone number does not create a client record — it stays a one-off text.",
-      "Owners can send a reminder on behalf of any artist from that appointment's or client's page.",
+      "Owners can send a reminder on behalf of any artist from that appointment's or client's page. In the plain Owner view the Schedule page has no Quick Reminder button; switch to the Artist view to use it.",
     ],
     warnings: ["There's a daily limit on manual reminders per artist — if you hit it, wait until the next day or contact support."],
     relatedArticleIds: ["artist-appointment-detail", "artist-client-detail", "artist-schedule"],
