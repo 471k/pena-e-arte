@@ -21,6 +21,8 @@ import { Role } from "@/shared/types/roles";
 import { useCreateClientMutation } from "../clientsApi";
 import { useGetArtistsQuery, useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { asPhoneCountry } from "@/shared/utils/phoneCountries";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 const createSchema = z.object({
@@ -34,6 +36,8 @@ const createSchema = z.object({
 type CreateFormValues = z.infer<typeof createSchema>;
 
 export function CreateClientPage() {
+  // Preselects the studio's own country in the phone field (the API call is cached app-wide).
+  const { data: myStudio } = useGetMyStudioQuery();
   const navigate = useNavigate();
   const [createClient, { isLoading }] = useCreateClientMutation();
 
@@ -170,6 +174,7 @@ export function CreateClientPage() {
               render={({ field }) => (
                 <PhoneInput
                   id="phone"
+                  defaultCountry={asPhoneCountry(myStudio?.countryCode)}
                   value={field.value ?? ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}

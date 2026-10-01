@@ -25,6 +25,8 @@ import {
 import { ReminderStatusBadge } from "./ReminderStatusBadge";
 import { FAILURE_REASON_LABELS } from "../reminder.types";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { asPhoneCountry } from "@/shared/utils/phoneCountries";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 interface ReminderDialogProps {
@@ -58,6 +60,8 @@ function isValidDateTimeLocal(value: string): boolean {
 }
 
 export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, artistId }: ReminderDialogProps) {
+  // Preselects the studio's own country in the phone field (the API call is cached app-wide).
+  const { data: myStudio } = useGetMyStudioQuery();
   const isRawContact = !appointmentId && !clientId;
 
   // A client with no assigned artist has no authoritative artist source, and an
@@ -165,6 +169,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
                 <Label htmlFor="reminder-recipient-phone">Phone</Label>
                 <PhoneInput
                   id="reminder-recipient-phone"
+                  defaultCountry={asPhoneCountry(myStudio?.countryCode)}
                   value={recipientPhone}
                   onChange={setRecipientPhone}
                   aria-invalid={recipientPhone.length > 0 && !isValidE164Phone(recipientPhone)}

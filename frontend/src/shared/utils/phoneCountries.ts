@@ -28,15 +28,23 @@ export const PHONE_COUNTRIES: PhoneCountryOption[] = getCountries()
   .sort((a, b) => a.name.localeCompare(b.name));
 
 /**
- * Default selected country for a fresh, empty PhoneInput. Portugal — every existing phone
- * placeholder and test fixture in this codebase already uses a +351 number
- * (CreateClientPage's and StudioProfilePage's placeholders, ReminderDialog's placeholder,
- * GetPublicStudioHandlerTests' fixture), so this matches the app's established implicit
- * default rather than introducing a new one. Not derived from browser locale or the studio's
- * own city/country — that's a real, separate enhancement, flagged in "Out of Scope" below,
- * not assumed here.
+ * Fallback country for a fresh, empty PhoneInput when the caller does not know the studio's
+ * country (for example a client editing their own profile). Albania: the product's home market
+ * (Albanian SMS sender, ALL default currency). It used to be Portugal only because the first
+ * demo data and placeholders were Portuguese, which put +351 first for every Albanian user.
+ * Screens that know the studio pass its own country through PhoneInput's `defaultCountry`.
  */
-export const DEFAULT_PHONE_COUNTRY: PhoneCountryCode = "PT";
+export const DEFAULT_PHONE_COUNTRY: PhoneCountryCode = "AL";
+
+/**
+ * Narrows an API country string (e.g. Studio.CountryCode, "AL") to a country the phone input
+ * supports; undefined for a missing or unknown value so callers fall back to the default.
+ */
+export function asPhoneCountry(code: string | null | undefined): PhoneCountryCode | undefined {
+  if (!code) return undefined;
+  const upper: string = code.toUpperCase();
+  return PHONE_COUNTRIES.find((c) => c.code === upper)?.code;
+}
 
 // Plain `string`, not `PhoneCountryCode` — this is a general case-insensitive string
 // transform (confirmed by its own required lowercase-input test case), not a

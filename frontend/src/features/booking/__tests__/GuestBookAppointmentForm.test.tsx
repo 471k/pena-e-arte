@@ -58,7 +58,8 @@ async function fillIdentityFields(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/first name/i), "Jamie");
   await user.type(screen.getByLabelText(/last name/i), "Guest");
   await user.type(screen.getByLabelText(/^email/i), "jamie@example.com");
-  await user.type(screen.getByLabelText(/^phone/i), "912345678");
+  // Albanian mobile: the phone field defaults to Albania when the studio country is unknown.
+  await user.type(screen.getByLabelText(/^phone/i), "691234567");
 }
 
 async function fillBookingFields(user: ReturnType<typeof userEvent.setup>) {

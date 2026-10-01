@@ -24,10 +24,49 @@ function ControlledPhoneInput({ onChange }: { onChange: (v: string) => void }) {
 }
 
 describe("PhoneInput", () => {
-  it("renders with an empty value showing the default country and an empty national input", () => {
+  it("renders with an empty value showing the default country (Albania) and an empty national input", () => {
     render(<PhoneInput value="" onChange={vi.fn()} />);
-    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+351");
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+355");
     expect(screen.getByRole("textbox")).toHaveValue("");
+  });
+
+  it("preselects the country the caller passes (the studio's own) instead of the default", () => {
+    render(<PhoneInput value="" onChange={vi.fn()} defaultCountry="PT" />);
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+351");
+  });
+
+  it("shows a placeholder example for the selected country, not a Portuguese one", () => {
+    const { rerender } = render(<PhoneInput value="" onChange={vi.fn()} />);
+    const albanian: string = screen.getByRole("textbox").getAttribute("placeholder") ?? "";
+    rerender(<PhoneInput value="" onChange={vi.fn()} defaultCountry="PT" />);
+    const portuguese: string = screen.getByRole("textbox").getAttribute("placeholder") ?? "";
+
+    expect(albanian).not.toBe("");
+    expect(portuguese).toBe("912 345 678");
+    expect(albanian).not.toBe(portuguese);
+  });
+
+  it("follows a studio country that arrives after first render while the field is untouched", () => {
+    const { rerender } = render(<PhoneInput value="" onChange={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+355");
+
+    rerender(<PhoneInput value="" onChange={vi.fn()} defaultCountry="PT" />);
+
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+351");
+  });
+
+  it("never overrides what the user already typed when the studio country arrives late", async () => {
+    const user = userEvent.setup();
+    function Harness({ country }: { country?: "PT" }) {
+      const [value, setValue] = useState("");
+      return <PhoneInput value={value} onChange={setValue} defaultCountry={country} />;
+    }
+    const { rerender } = render(<Harness />);
+    await user.type(screen.getByRole("textbox"), "69");
+
+    rerender(<Harness country="PT" />);
+
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+355");
   });
 
   it("derives the nationally-formatted text and country from a full E.164 value", () => {
@@ -43,18 +82,18 @@ describe("PhoneInput", () => {
 
   it("falls back to the default country and shows raw legacy text verbatim when unparseable", () => {
     render(<PhoneInput value="not-a-real-phone" onChange={vi.fn()} />);
-    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+351");
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+355");
     expect(screen.getByRole("textbox")).toHaveValue("not-a-real-phone");
   });
 
-  it("emits the full E.164 string once a valid PT national number is typed", async () => {
+  it("emits the full E.164 string once a valid Albanian national number is typed", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<ControlledPhoneInput onChange={onChange} />);
 
-    await user.type(screen.getByRole("textbox"), "912345678");
+    await user.type(screen.getByRole("textbox"), "691234567");
 
-    expect(onChange).toHaveBeenLastCalledWith("+351912345678");
+    expect(onChange).toHaveBeenLastCalledWith("+355691234567");
   });
 
   it("emits a distinct, invalid value while the number is still incomplete", async () => {

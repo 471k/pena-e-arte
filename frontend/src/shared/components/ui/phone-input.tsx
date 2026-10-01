@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { AsYouType, getCountryCallingCode, parsePhoneNumberFromString } from "libphonenumber-js/min";
+import { AsYouType, getCountryCallingCode, getExampleNumber, parsePhoneNumberFromString } from "libphonenumber-js/min";
+import examples from "libphonenumber-js/mobile/examples";
 import { Input } from "./input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -14,18 +15,20 @@ interface PhoneInputProps {
   onChange: (e164: string) => void;
   onBlur?: () => void;
   placeholder?: string;
+  /** Country preselected for an empty field; callers that know the studio pass its country. */
+  defaultCountry?: PhoneCountryCode;
   disabled?: boolean;
   className?: string;
   "aria-invalid"?: boolean;
   "aria-describedby"?: string;
 }
 
-function deriveState(value: string): { country: PhoneCountryCode; nationalText: string } {
-  if (!value) return { country: DEFAULT_PHONE_COUNTRY, nationalText: "" };
-  const parsed = parsePhoneNumberFromString(value, DEFAULT_PHONE_COUNTRY);
+function deriveState(value: string, fallback: PhoneCountryCode): { country: PhoneCountryCode; nationalText: string } {
+  if (!value) return { country: fallback, nationalText: "" };
+  const parsed = parsePhoneNumberFromString(value, fallback);
   if (parsed) {
     return {
-      country: (parsed.country as PhoneCountryCode) ?? DEFAULT_PHONE_COUNTRY,
+      country: (parsed.country as PhoneCountryCode) ?? fallback,
       nationalText: parsed.formatNational(),
     };
   }
@@ -33,14 +36,15 @@ function deriveState(value: string): { country: PhoneCountryCode; nationalText: 
   // number with no leading '+') — libphonenumber-js couldn't parse it even with a default
   // country hint. Surface it verbatim in the national-number field instead of discarding it,
   // so whoever owns this record can see and correct it, rather than it silently vanishing.
-  return { country: DEFAULT_PHONE_COUNTRY, nationalText: value };
+  return { country: fallback, nationalText: value };
 }
 
 export function PhoneInput({
-  id, value, onChange, onBlur, placeholder, disabled, className,
+  id, value, onChange, onBlur, placeholder, defaultCountry, disabled, className,
   "aria-invalid": ariaInvalid, "aria-describedby": ariaDescribedBy,
 }: PhoneInputProps) {
-  const [country, setCountry] = useState<PhoneCountryCode>(DEFAULT_PHONE_COUNTRY);
+  const fallbackCountry: PhoneCountryCode = defaultCountry ?? DEFAULT_PHONE_COUNTRY;
+  const [country, setCountry] = useState<PhoneCountryCode>(fallbackCountry);
   const [nationalText, setNationalText] = useState("");
   // Tracks the last value this component itself emitted, so an external change to `value`
   // (e.g. RHF's `reset()` after the parent form's data loads asynchronously) can be told
@@ -57,9 +61,18 @@ export function PhoneInput({
 
   if (value !== lastEmitted) {
     setLastEmitted(value);
-    const derived = deriveState(value);
+    const derived = deriveState(value, fallbackCountry);
     setCountry(derived.country);
     setNationalText(derived.nationalText);
+  }
+
+  // The studio's country often arrives after first render (an API call). While the field is still
+  // untouched and empty, follow it; once the user has typed or picked a country, never override.
+  // Same "remember the previous prop in state, adjust during render" shape as lastEmitted above.
+  const [lastFallback, setLastFallback] = useState<PhoneCountryCode>(fallbackCountry);
+  if (fallbackCountry !== lastFallback) {
+    setLastFallback(fallbackCountry);
+    if (!value && !nationalText) setCountry(fallbackCountry);
   }
 
   function emit(next: string) {
@@ -113,7 +126,7 @@ export function PhoneInput({
         value={nationalText}
         onChange={(e) => handleNationalChange(e.target.value)}
         onBlur={onBlur}
-        placeholder={placeholder ?? "912 345 678"}
+        placeholder={placeholder ?? getExampleNumber(country, examples)?.formatNational() ?? ""}
         disabled={disabled}
         aria-invalid={ariaInvalid}
         aria-describedby={ariaDescribedBy}
