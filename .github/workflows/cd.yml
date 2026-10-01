@@ -372,6 +372,9 @@ jobs:
             --from-literal=CloudflareR2__PublicUrl="${{ secrets.STAGING_R2_PUBLIC_URL }}" \
             --from-literal=Resend__ApiKey="${{ secrets.STAGING_RESEND_API_KEY }}" \
             --from-literal=Resend__FromAddress="${{ secrets.STAGING_RESEND_FROM_ADDRESS }}" \
+            --from-literal=Twilio__AccountSid="${{ secrets.STAGING_TWILIO_ACCOUNT_SID }}" \
+            --from-literal=Twilio__AuthToken="${{ secrets.STAGING_TWILIO_AUTH_TOKEN }}" \
+            --from-literal=Twilio__FromNumber="${{ secrets.STAGING_TWILIO_FROM_NUMBER }}" \
             --from-literal=Google__ClientId="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
             --from-literal=Apple__ClientId="${{ secrets.VITE_APPLE_CLIENT_ID }}" \
             --from-literal=Hangfire__DashboardUsername="${{ secrets.HANGFIRE_DASHBOARD_USERNAME }}" \
@@ -380,6 +383,11 @@ jobs:
             --from-literal=GeoIpUpdate__AccountId="${{ secrets.MAXMIND_ACCOUNT_ID }}" \
             --from-literal=GeoIpUpdate__LicenseKey="${{ secrets.MAXMIND_LICENSE_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
+          # Twilio on staging uses Twilio TEST credentials (STAGING_TWILIO_*; the FromNumber is
+          # the magic +15005550006): nothing is ever delivered and nothing is billed, so staging
+          # test data can't text a real phone. It exercises the app's reminder flow, not real
+          # delivery or the alphanumeric "TattooOS" sender used in production. Before this, the
+          # keys were absent and every staging SMS failed with an empty Account SID in the URL.
           # Resend now HAS a real staging key (own restricted API key + own from-address on
           # the same verified tattooos.co domain — see the artist-invite-not-delivered
           # investigation this was fixed from). Its own comment used to claim "the app's
@@ -394,7 +402,7 @@ jobs:
           # key instead of relying on gating that didn't exist.
           #
           # Still deliberately NOT set on staging (§2.7/§6 of the staging spec — left unset,
-          # app's existing config-gating pattern handles it): Twilio, Instagram, the
+          # app's existing config-gating pattern handles it): Instagram, the
           # TikTok/Facebook/X/YouTube social-verification block, Stripe Connect webhook
           # secret (no /connect endpoint registered for staging), Vault__Address/Vault__Token
           # (no staging Vault instance — see k8s/overlays/staging/vault-exclude-patch.yaml;
