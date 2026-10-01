@@ -21,10 +21,14 @@
   --color-muted-foreground: hsl(240 3.8% 42%);
   --color-accent: hsl(240 4.8% 95.9%);
   --color-accent-foreground: hsl(240 5.9% 10%);
-  --color-destructive: hsl(0 84.2% 60.2%);
+  /* 45% lightness, not shadcn's stock 60.2%: near-white text on the stock fill measured
+     3.60:1 (WCAG AA needs 4.5:1, found in docs/claude/contrast-audit-2026-09-20.md) on every
+     destructive button. 45% gives 5.19:1, and 4.70:1 in the hover state (bg-destructive/90
+     over white) — same hue and saturation, just a deeper red. Dark mode untouched (9.6:1). */
+  --color-destructive: hsl(0 84.2% 45%);
   --color-destructive-foreground: hsl(0 0% 98%);
-  /* Text-on-background use only (error copy, alerts) — --color-destructive is tuned
-     for button/border fills and fails WCAG 1.4.3 (4.5:1) as body text. */
+  /* Text-on-background use only (error copy, alerts) — the fill above is tuned for
+     buttons/borders, and as body text on white it is lighter than this darker red. */
   --color-destructive-text: hsl(0 74% 42%);
   --color-border: hsl(240 5.9% 58%);
   --color-input: hsl(240 5.9% 58%);

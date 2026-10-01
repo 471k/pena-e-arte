@@ -75,7 +75,7 @@ problem the audit suspected.
 
 **Real findings — three rows below threshold:**
 
-1. **Destructive button, light theme — 3.61:1** (white `text-destructive-foreground` on the
+1. **FIXED 2026-10-01 (token-level, see Next steps 1): Destructive button, light theme — 3.61:1** (white `text-destructive-foreground` on the
    `bg-destructive` fill, `#ef4444`). Real, and it matches what `@axe-core/playwright` reports (3.6:1,
    `color-contrast`, serious) on the Social tab's disconnect dialog. It affects **every**
    `variant="destructive"` button in the app in the light theme, not just this feature. Dark theme is
@@ -113,6 +113,13 @@ overlay, toasts, the public pages, charts, and any page other than the artist pr
    as the fill. Ship with the before/after screenshots (1440 / 1024 / 768 / 375 px, light + dark) of
    every screen that renders a destructive button, then remove the `color-contrast` opt-out from the
    disconnect-dialog case in `frontend/e2e/artist-social-tab.spec.ts`.
+   **Done 2026-10-01:** `--color-destructive` (light) is now `hsl(0 84.2% 45%)` — 5.19:1 against
+   `destructive-foreground` (4.70:1 in the `bg-destructive/90` hover state), same hue/saturation, just a
+   deeper red; dark theme untouched (9.6:1). Measured on the real client profile page's filled
+   "Delete my account" button at 1440/1024/768/375px: 3.61:1 -> 5.21:1 in every width, axe
+   `color-contrast` 0 violations in both themes. The e2e opt-out is removed (18/18 pass with the rule on),
+   and step 3 is done too: `frontend/scripts/check-contrast.ts` now asserts the
+   `destructive-foreground / destructive` pair in both themes.
 2. Decide whether to add a non-colour active-item indicator to the sidebar (finding 3).
 3. Turn this script's `Fail` rows into assertions (or fold the token pairs into `check-contrast.ts`)
    once step 1 has landed, so a regression fails CI instead of waiting for another audit.
