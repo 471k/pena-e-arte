@@ -1,14 +1,7 @@
 import type { ComponentType } from "react";
-import { AtSign } from "lucide-react";
-import {
-  InstagramIcon,
-  TikTokIcon,
-  FacebookIcon,
-  XIcon,
-  YouTubeIcon,
-} from "@/shared/components/icons/brand";
+import { Link2 } from "lucide-react";
 
-/** Anything that renders as an icon: a brand glyph or a Lucide fallback (both take className/size). */
+/** Anything that renders as an icon (a Lucide icon; takes className/size). */
 export type SocialIcon = ComponentType<{
   className?: string;
   size?: number;
@@ -16,19 +9,12 @@ export type SocialIcon = ComponentType<{
 }>;
 
 /**
- * Brand glyphs live in shared/components/icons/brand (lucide-react ships no brand icons). Logo-usage
- * terms for each platform still need a human sign-off before production — see the notes in that folder.
+ * One neutral link icon for every platform. We deliberately do not show Instagram / TikTok / Facebook /
+ * X / YouTube logos: TikTok requires prior written permission, and Meta and YouTube forbid recolouring
+ * or altering their marks (see the 2026-10-01 Decisions Log entry in docs/claude/architecture.md).
+ * The platform is always named in visible text next to this icon, never by the icon alone.
  */
-export const SOCIAL_PLATFORM_ICON: Record<string, SocialIcon> = {
-  Instagram: InstagramIcon,
-  TikTok:    TikTokIcon,
-  Facebook:  FacebookIcon,
-  X:         XIcon,
-  YouTube:   YouTubeIcon,
-};
-
-/** For an unrecognised platform string (defensive only — the backend enum is closed). */
-export const SOCIAL_PLATFORM_FALLBACK_ICON: SocialIcon = AtSign;
+export const SOCIAL_LINK_ICON: SocialIcon = Link2;
 
 export const SOCIAL_PLATFORM_LABEL: Record<string, string> = {
   Instagram: "Instagram",

@@ -245,6 +245,17 @@ describe("StudioPortfolioPage", () => {
     expect(igLink).toHaveAttribute("href", "https://instagram.com/inksoultattoo");
   });
 
+  it("names the platform in visible text and draws no brand logo (the icon alone no longer identifies it)", () => {
+    renderPage();
+    const igLink = screen.getByRole("link", { name: /instagram/i });
+    expect(igLink).toHaveTextContent("Instagram");
+    expect(igLink).toHaveTextContent("@inksoultattoo");
+    // Decorative neutral icon only; platform logos are not used (logo-usage terms).
+    const svg = igLink.querySelector("svg");
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+    expect(svg?.getAttribute("class") ?? "").toContain("lucide-link");
+  });
+
   it("renders 'Get Directions' link to Google Maps when coordinates are set", () => {
     renderPage();
     const link = screen.getByRole("link", { name: /get directions/i });

@@ -131,6 +131,16 @@ describe("ArtistPortfolioPage", () => {
     });
   });
 
+  it("names the social platform in visible text and draws no brand logo", () => {
+    renderPage();
+    const link = screen.getByRole("link", { name: /maria silva on instagram/i });
+    expect(link).toHaveTextContent("Instagram");
+    expect(link).toHaveTextContent("@mariasilva.ink");
+    const svg = link.querySelector("svg");
+    expect(svg).toHaveAttribute("aria-hidden", "true");
+    expect(svg?.getAttribute("class") ?? "").toContain("lucide-link");
+  });
+
   it("sets og:title meta tag with artist name", () => {
     renderPage();
     const ogTitle = document.head.querySelector('meta[property="og:title"]');

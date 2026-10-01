@@ -13,7 +13,7 @@ import {
 import { useGetSocialLinksQuery } from "@/features/social/socialApi";
 import { ConnectionRow, type ConnectionRowAction } from "@/features/social/components/ConnectionRow";
 import { ConfirmDisconnectDialog } from "@/features/social/components/ConfirmDisconnectDialog";
-import { InstagramIcon } from "@/shared/components/icons/brand";
+import { SOCIAL_LINK_ICON } from "@/shared/utils/socialPlatforms";
 
 function formatSyncedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -125,7 +125,7 @@ export function InstagramTab({
 
   return (
     <ConnectionRow
-      icon={InstagramIcon}
+      icon={SOCIAL_LINK_ICON}
       label="Instagram"
       handle={isConnected ? (status?.username ?? null) : null}
       isVerified={isConnected && isInstagramVerified}
