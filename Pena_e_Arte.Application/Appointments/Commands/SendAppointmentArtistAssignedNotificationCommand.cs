@@ -92,7 +92,7 @@ public class SendAppointmentArtistAssignedNotificationHandler(
         NotificationLog artistLog = await ArtistBookingNotifier.NotifyAsync(
             db, notifications, logger, studio, appointment.Artist, appointment.Id,
             $"You've been assigned a booking — {clientFullName}", artistBody,
-            ownerAlreadyEmailedSuccessfully: true, ct);
+            ownerEmailResult: null, ct);
 
         await realtime.NotifyStudioAsync(
             studio.Id, "NotificationReceived",

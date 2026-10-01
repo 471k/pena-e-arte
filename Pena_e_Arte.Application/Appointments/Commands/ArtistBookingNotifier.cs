@@ -23,15 +23,21 @@ internal static class ArtistBookingNotifier
         Guid appointmentId,
         string subject,
         string body,
-        bool ownerAlreadyEmailedSuccessfully,
+        bool? ownerEmailResult,
         CancellationToken ct)
     {
-        // An owner who is also the artist already got this exact email at studio.OwnerEmail — don't
-        // send it twice, but still write the artist-addressed row so it shows in their artist bell.
+        // ownerEmailResult says what happened to the studio-owner copy of this same email in the
+        // calling flow: true/false = it was sent to studio.OwnerEmail and succeeded/failed; null =
+        // the owner was NOT emailed in this flow (the assign flow only emails the client and the
+        // artist). An owner who is also the artist already got this exact email when it was sent
+        // to studio.OwnerEmail, so don't send it twice, but still write the artist-addressed row
+        // so it shows in their artist bell. When the owner was not emailed, the artist address
+        // (even if it is the owner's) must still receive it, or the owner-artist gets nothing.
         bool sameAsOwner = string.Equals(artist.Email, studio.OwnerEmail, StringComparison.OrdinalIgnoreCase);
-        bool success = sameAsOwner ? ownerAlreadyEmailedSuccessfully : true;
+        bool ownerCopyAlreadySent = sameAsOwner && ownerEmailResult.HasValue;
+        bool success = ownerCopyAlreadySent ? ownerEmailResult!.Value : true;
 
-        if (!sameAsOwner && !string.IsNullOrWhiteSpace(artist.Email))
+        if (!ownerCopyAlreadySent && !string.IsNullOrWhiteSpace(artist.Email))
         {
             try
             {
