@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
-import { incrementUnread } from "@/features/notifications/notificationsSlice";
+import { incrementUnreadIfVisible } from "@/features/notifications/incrementUnreadIfVisible";
+import type { NotificationLogResponse } from "@/features/notifications/notification.types";
 
 // Deliberately separate from useSignalR.ts (parameterized by studioId — an admin
 // connection has no single tenant studio to key off for this purpose). Connects only
@@ -24,9 +25,9 @@ export function useAdminNotificationHub() {
     // See useSignalR.ts: a single-expression arrow handler implicitly returns
     // dispatch's return value, which SignalR tries to send back as an invocation
     // result the server never asked for — block bodies only.
-    connection.on("NotificationReceived", () => {
+    connection.on("NotificationReceived", (pushed?: NotificationLogResponse) => {
       dispatch(notificationsApi.util.invalidateTags(["NotificationLog"]));
-      dispatch(incrementUnread());
+      void incrementUnreadIfVisible(dispatch, pushed);
     });
 
     const start = connection.start().catch(() => {});
