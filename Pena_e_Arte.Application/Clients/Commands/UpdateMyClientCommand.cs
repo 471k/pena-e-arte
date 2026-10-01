@@ -34,7 +34,7 @@ public record UpdateMyClientCommand(UpdateMyClientRequest Request) : IRequest<Cl
     public Guid AuditTargetId => ResolvedClientId;
 }
 
-public class UpdateMyClientHandler(IAppDbContext db, ICurrentUser currentUser)
+public class UpdateMyClientHandler(IAppDbContext db, ICurrentUser currentUser, IIdentityService identity)
     : IRequestHandler<UpdateMyClientCommand, ClientResponse>
 {
     public async Task<ClientResponse> Handle(UpdateMyClientCommand command, CancellationToken ct)
@@ -68,6 +68,15 @@ public class UpdateMyClientHandler(IAppDbContext db, ICurrentUser currentUser)
         command.AffectedClientCount = allClients.Count;
 
         await db.SaveChangesAsync(ct);
+
+        // The header shows the login identity's given-name claim, not Client.FirstName, so without
+        // this a renamed client keeps seeing their old name until the claim changes. Only for a
+        // plain client account: an owner/artist/admin who ALSO has a Client row (dual role) would
+        // otherwise have their studio-facing identity renamed as a side effect of editing a
+        // client profile — the same shared-identity trap as the owner-as-artist incident.
+        if (currentUser.Role == "client")
+            await identity.SetUserGivenNameAsync(currentUser.UserId, firstName, ct);
+
         return CreateClientHandler.Map(client, client.Artist);
     }
 }

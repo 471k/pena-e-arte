@@ -292,7 +292,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["body map", "tattoo history", "sharing", "contact info", "phone number", "edit name", "change phone"],
     summary: "Your personal profile — your name and phone number, where on your body you have or want tattoos, your past tattoo history, and whether other studios can see your profile.",
     steps: [
-      "On the \"Profile\" tab, click \"Edit\" on the Contact card to change your first name, last name, or phone number (clear the phone field to remove it), then \"Save\". This updates your details at every studio you're a client at. Your email is your sign-in address — use \"Change email\" from your user menu to change it.",
+      "On the \"Profile\" tab, click \"Edit\" on the Contact card to change your first name, last name, or phone number (clear the phone field to remove it), then \"Save\". This updates your details at every studio you're a client at, and the name in the top-right corner changes straight away. Your email is your sign-in address — use \"Change email\" from your user menu to change it.",
       "Still on the \"Profile\" tab, click \"Edit\" on the Body Map to mark locations, then \"Save\".",
       "Switch to the \"Tattoo History\" tab to see your completed tattoos with photos and descriptions.",
       "Switch to the \"Sharing\" tab to turn on or off letting other studios reuse your profile information.",

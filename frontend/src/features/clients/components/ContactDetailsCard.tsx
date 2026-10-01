@@ -12,6 +12,10 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
+import { useAppDispatch, useAppSelector } from "@/app/hooks";
+import { useRefreshTokenMutation } from "@/features/auth/authApi";
+import { setCredentials, TOKEN_KEY } from "@/features/auth/authSlice";
+import { decodeToken } from "@/shared/utils/jwt";
 import { useUpdateMyClientMutation, type ClientResponse } from "../clientsApi";
 
 const schema = z.object({
@@ -50,6 +54,10 @@ function ProfileField({ label, value }: { label: string; value: string | null | 
 export function ContactDetailsCard({ client }: { client: ClientResponse }) {
   const [editing, setEditing] = useState(false);
   const [updateMyClient, { isLoading }] = useUpdateMyClientMutation();
+  const dispatch = useAppDispatch();
+  const role = useAppSelector((s) => s.auth.role);
+  const currentRefreshToken = useAppSelector((s) => s.auth.refreshToken);
+  const [refreshToken] = useRefreshTokenMutation();
 
   const {
     register,
@@ -80,6 +88,25 @@ export function ContactDetailsCard({ client }: { client: ClientResponse }) {
     }
     toast.success("Your details were saved.");
     setEditing(false);
+
+    // The header's name comes from the login token's given-name claim, which the server just
+    // updated for a client account. Fetch a fresh token so the header follows the edit now (and
+    // after a reload) instead of showing the old name until the next sign-in. Best-effort: on
+    // failure the new name simply appears at the next token refresh or sign-in.
+    if (role === "client" && currentRefreshToken) {
+      try {
+        const { accessToken, refreshToken: newRefreshToken } =
+          await refreshToken({ refreshToken: currentRefreshToken }).unwrap();
+        dispatch(setCredentials({
+          ...decodeToken(accessToken),
+          refreshToken: newRefreshToken,
+          // Keep "remember me" as it was: a session-only login must not become a persistent one.
+          remember: localStorage.getItem(TOKEN_KEY) !== null,
+        }));
+      } catch {
+        // see comment above
+      }
+    }
   }
 
   return (

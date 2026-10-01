@@ -43,6 +43,8 @@ public class ClientSelfEditEndpointTests(DatabaseFixture fixture)
 {
     private const string SigningKeyValue = "client-self-edit-endpoint-test-key-32-bytes!!";
 
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+
     [Fact]
     public async Task Patch_UserWithClientRowsInTwoStudios_UpdatesBothRowsAndNoOthers()
     {
@@ -66,6 +68,7 @@ public class ClientSelfEditEndpointTests(DatabaseFixture fixture)
         (await GetClientAsync(rowB)).Should().BeEquivalentTo(new { FirstName = "Anita", LastName = "Costa-Silva", Phone = "+351912999999" },
             o => o.ExcludingMissingMembers(),
             because: "the edit must reach the caller's client row in every other studio, not only the one in their JWT");
+        await _identity.Received(1).SetUserGivenNameAsync(userId, "Anita", Arg.Any<CancellationToken>());
         (await GetClientAsync(bystanderSameStudio)).FirstName.Should().Be("Bea");
         (await GetClientAsync(bystanderOtherStudio)).FirstName.Should().Be("Rui");
     }
@@ -219,7 +222,6 @@ public class ClientSelfEditEndpointTests(DatabaseFixture fixture)
         subscriptions.GetSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new SubscriptionSnapshot(SubscriptionStatus.Active, null, DateTime.MinValue));
         IPlanLimitService planLimits = Substitute.For<IPlanLimitService>();
-        IIdentityService identity = Substitute.For<IIdentityService>();
         IR2Service r2 = Substitute.For<IR2Service>();
 
         IHostBuilder builder = new HostBuilder()
@@ -239,7 +241,7 @@ public class ClientSelfEditEndpointTests(DatabaseFixture fixture)
                     services.AddScoped<ICurrentUser, CurrentUserService>();
                     services.AddSingleton(subscriptions);
                     services.AddSingleton(planLimits);
-                    services.AddSingleton(identity);
+                    services.AddSingleton(_identity);
                     services.AddSingleton(r2);
 
                     services.AddDbContext<AppDbContext>(options =>
