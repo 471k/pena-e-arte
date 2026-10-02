@@ -62,7 +62,7 @@ public class R2ExportServiceTests
             Arg.Is<GetObjectRequest>(r => r.BucketName == SourceBucket && r.Key == obj.Key),
             Arg.Any<CancellationToken>());
         await _backupS3.Received(1).PutObjectAsync(
-            Arg.Is<PutObjectRequest>(r => r.BucketName == BackupBucket && r.Key == obj.Key),
+            Arg.Is<PutObjectRequest>(r => r.BucketName == BackupBucket && r.Key == obj.Key && r.DisablePayloadSigning == true),
             Arg.Any<CancellationToken>());
     }
 

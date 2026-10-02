@@ -121,6 +121,9 @@ public class R2ExportService(
             Key = sourceObject.Key,
             InputStream = buffer,
             ContentType = getResponse.Headers.ContentType,
+            // R2 rejects aws-chunked streaming signatures ("STREAMING-AWS4-HMAC-SHA256-PAYLOAD not implemented");
+            // UNSIGNED-PAYLOAD is allowed because the endpoint is HTTPS.
+            DisablePayloadSigning = true,
         }, ct);
     }
 }
