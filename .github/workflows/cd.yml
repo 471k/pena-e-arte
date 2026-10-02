@@ -404,6 +404,11 @@ jobs:
             --from-literal=Twilio__AccountSid="${{ secrets.STAGING_TWILIO_ACCOUNT_SID }}" \
             --from-literal=Twilio__AuthToken="${{ secrets.STAGING_TWILIO_AUTH_TOKEN }}" \
             --from-literal=Twilio__FromNumber="${{ secrets.STAGING_TWILIO_FROM_NUMBER }}" \
+            --from-literal=Instagram__AppId="${{ secrets.STAGING_INSTAGRAM_APP_ID }}" \
+            --from-literal=Instagram__AppSecret="${{ secrets.STAGING_INSTAGRAM_APP_SECRET }}" \
+            --from-literal=Instagram__RedirectUri="${{ secrets.STAGING_INSTAGRAM_REDIRECT_URI }}" \
+            --from-literal=Instagram__TokenEncryptionKey="${{ secrets.STAGING_INSTAGRAM_TOKEN_ENCRYPTION_KEY }}" \
+            --from-literal=Social__StateSigningKey="${{ secrets.STAGING_SOCIAL_STATE_SIGNING_KEY }}" \
             --from-literal=Google__ClientId="${{ secrets.VITE_GOOGLE_CLIENT_ID }}" \
             --from-literal=Apple__ClientId="${{ secrets.VITE_APPLE_CLIENT_ID }}" \
             --from-literal=Hangfire__DashboardUsername="${{ secrets.HANGFIRE_DASHBOARD_USERNAME }}" \
@@ -412,6 +417,12 @@ jobs:
             --from-literal=GeoIpUpdate__AccountId="${{ secrets.MAXMIND_ACCOUNT_ID }}" \
             --from-literal=GeoIpUpdate__LicenseKey="${{ secrets.MAXMIND_LICENSE_KEY }}" \
             --dry-run=client -o yaml | kubectl apply -f -
+          # Instagram on staging (added 2026-10-02): the four Instagram values plus Social__StateSigningKey
+          # come from STAGING_INSTAGRAM_* / STAGING_SOCIAL_STATE_SIGNING_KEY, so Instagram Connect can be tested
+          # on staging before production. Unset (empty) keeps today's behaviour: Instagram reports itself
+          # unconfigured (Connect shows "Unavailable") because IsConfigured requires a non-empty AppId, and
+          # nothing breaks. The Meta app must list https://staging.tattooos.co/api/v1/instagram/callback as a
+          # valid OAuth redirect URI, and STAGING_INSTAGRAM_REDIRECT_URI must match it exactly.
           # Twilio on staging uses a dedicated Twilio SUBACCOUNT (STAGING_TWILIO_*), never the
           # production account's credentials. It sends real SMS from the alphanumeric "TattooOS"
           # sender, so keep the subaccount's Messaging geo permissions limited to Albania: staging
@@ -432,7 +443,7 @@ jobs:
           # key instead of relying on gating that didn't exist.
           #
           # Still deliberately NOT set on staging (§2.7/§6 of the staging spec — left unset,
-          # app's existing config-gating pattern handles it): Instagram, the
+          # app's existing config-gating pattern handles it): the
           # TikTok/Facebook/X/YouTube social-verification block, Stripe Connect webhook
           # secret (no /connect endpoint registered for staging), Vault__Address/Vault__Token
           # (no staging Vault instance — see k8s/overlays/staging/vault-exclude-patch.yaml;
