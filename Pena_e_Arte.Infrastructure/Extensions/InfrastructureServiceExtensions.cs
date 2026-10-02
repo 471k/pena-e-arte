@@ -212,6 +212,7 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient("Instagram");
         services.AddSingleton<ITokenEncryptor, AesTokenEncryptor>();
         services.AddSingleton<IInstagramStateSigner, InstagramStateSigner>();
+        services.AddSingleton<IMetaSignedRequestParser, MetaSignedRequestParser>();
         services.AddScoped<IInstagramService, InstagramService>();
         services.AddTransient<InstagramSyncJob>();
 

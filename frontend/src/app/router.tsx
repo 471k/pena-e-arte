@@ -39,7 +39,7 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, InstagramDataDeletionPage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
 import { WaitlistQueuePage, MyWaitlistPage } from "@/features/waitlist";
@@ -176,6 +176,8 @@ export const routes = [
   { path: "/use/consent-forms", element: <UseCaseConsentFormsPage /> },
   { path: "/faq",             element: <FaqPage /> },
   { path: "/unsubscribe",     element: <UnsubscribePage /> },
+  // Status page Meta links to after its Instagram Data Deletion callback (App Review requirement).
+  { path: "/data-deletion/instagram", element: <InstagramDataDeletionPage /> },
 
   {
     path: "/",

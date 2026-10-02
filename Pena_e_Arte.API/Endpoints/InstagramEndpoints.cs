@@ -34,6 +34,78 @@ public static class InstagramEndpoints
         app.MapGet("/api/v1/instagram/callback", HandleCallback)
             .AllowAnonymous()
             .RequireRateLimiting("public-write");
+
+        // Meta's required Deauthorize + Data Deletion callbacks (App Review). Called by Meta's
+        // servers, no JWT possible — the signed_request HMAC is what's trusted. See
+        // architecture.md's AllowAnonymous Exceptions rows.
+        app.MapPost("/api/v1/instagram/deauthorize", Deauthorize)
+            .AllowAnonymous()
+            .RequireRateLimiting("public-write");
+        app.MapPost("/api/v1/instagram/data-deletion", DataDeletion)
+            .AllowAnonymous()
+            .RequireRateLimiting("public-write");
+    }
+
+    private static async Task<IResult> Deauthorize(
+        HttpRequest request,
+        ISender mediator,
+        IMetaSignedRequestParser signedRequestParser,
+        CancellationToken ct) =>
+        await HandleDeauthorize(await ReadSignedRequestAsync(request, ct), signedRequestParser, mediator, ct);
+
+    private static async Task<IResult> DataDeletion(
+        HttpRequest request,
+        ISender mediator,
+        IMetaSignedRequestParser signedRequestParser,
+        IAppSettings appSettings,
+        CancellationToken ct) =>
+        await HandleDataDeletion(
+            await ReadSignedRequestAsync(request, ct), signedRequestParser, mediator, appSettings, ct);
+
+    // Read from the form by hand rather than binding [FromForm]: form-bound minimal-API endpoints
+    // demand an antiforgery token, which a server-to-server Meta call can never send.
+    private static async Task<string?> ReadSignedRequestAsync(HttpRequest request, CancellationToken ct)
+    {
+        if (!request.HasFormContentType) return null;
+
+        IFormCollection form = await request.ReadFormAsync(ct);
+        return form["signed_request"].FirstOrDefault();
+    }
+
+    // internal (not private) so the verification branches are unit-testable.
+    internal static async Task<IResult> HandleDeauthorize(
+        string? signedRequest,
+        IMetaSignedRequestParser signedRequestParser,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(signedRequest)
+            || !signedRequestParser.TryGetUserId(signedRequest, out string instagramUserId))
+            return Results.BadRequest("Invalid signed_request.");
+
+        await mediator.Send(new EraseInstagramDataCommand(instagramUserId), ct);
+        return Results.Ok();
+    }
+
+    internal static async Task<IResult> HandleDataDeletion(
+        string? signedRequest,
+        IMetaSignedRequestParser signedRequestParser,
+        ISender mediator,
+        IAppSettings appSettings,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(signedRequest)
+            || !signedRequestParser.TryGetUserId(signedRequest, out string instagramUserId))
+            return Results.BadRequest("Invalid signed_request.");
+
+        await mediator.Send(new EraseInstagramDataCommand(instagramUserId), ct);
+
+        // Erasure above is synchronous, so the status page can truthfully say "completed". A random
+        // code (not derived from the Instagram user id) keeps the id out of the URL Meta shows.
+        string confirmationCode = Guid.NewGuid().ToString("N");
+        return Results.Ok(new InstagramDataDeletionResponse(
+            $"{appSettings.BaseUrl}/data-deletion/instagram?code={confirmationCode}",
+            confirmationCode));
     }
 
     private static async Task<IResult> GetConnectUrl(
