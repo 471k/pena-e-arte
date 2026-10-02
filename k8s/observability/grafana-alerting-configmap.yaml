@@ -24,10 +24,14 @@ data:
   #    (see docs/claude/architecture.md's Alloy fix entry, 2026-09-04), this queries the
   #    structured "HangfireJobFailed" line HangfireJobFailureLogFilter emits (added alongside
   #    this alert — no such generic failure log line existed before, only two jobs' own
-  #    internal LogWarning calls, which don't cover every job). Threshold 3+ in 15 minutes:
-  #    Hangfire already auto-retries a job before giving up, so a single Failed transition can
-  #    be a transient blip; 3 distinct failures in 15 minutes means retries themselves are
-  #    exhausting, which is the actual signal worth waking someone for.
+  #    internal LogWarning calls, which don't cover every job). Threshold 1+ in 15 minutes:
+  #    HangfireJobFailureLogFilter is an IApplyStateFilter, so it only ever sees the state a
+  #    job FINALLY lands in — AutomaticRetry reschedules a failing job (Scheduled) up to 10
+  #    times first, and the line is emitted only once those retries are exhausted. One line
+  #    therefore already means "this job is dead", not "transient blip". The threshold was 3
+  #    until 2026-10-03, which could never fire for a single broken daily/monthly job:
+  #    industry-report's monthly run failed on 2026-10-01 (R2 rejected the SDK's upload
+  #    format) and nothing alerted, because only one line was ever logged for it.
   alerting.yaml: |
     apiVersion: 1
 
@@ -162,7 +166,7 @@ data:
                   conditions:
                     - evaluator:
                         type: gte
-                        params: [3]
+                        params: [1]
                       operator:
                         type: and
                       query:
@@ -176,7 +180,7 @@ data:
             labels:
               severity: warning
             annotations:
-              summary: "3+ Hangfire jobs failed in the last 15 minutes"
+              summary: "A Hangfire job exhausted its retries and failed in the last 15 minutes (query Loki for HangfireJobFailed to see which)"
 
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from
