@@ -400,6 +400,7 @@ jobs:
             --from-literal=CloudflareR2__PublicUrl="${{ secrets.STAGING_R2_PUBLIC_URL }}" \
             --from-literal=Resend__ApiKey="${{ secrets.STAGING_RESEND_API_KEY }}" \
             --from-literal=Resend__FromAddress="${{ secrets.STAGING_RESEND_FROM_ADDRESS }}" \
+            --from-literal=Sms__AllowedRecipients="${{ secrets.STAGING_SMS_ALLOWED_RECIPIENTS }}" \
             --from-literal=Twilio__AccountSid="${{ secrets.STAGING_TWILIO_ACCOUNT_SID }}" \
             --from-literal=Twilio__AuthToken="${{ secrets.STAGING_TWILIO_AUTH_TOKEN }}" \
             --from-literal=Twilio__FromNumber="${{ secrets.STAGING_TWILIO_FROM_NUMBER }}" \

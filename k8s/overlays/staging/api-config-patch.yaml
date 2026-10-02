@@ -22,3 +22,8 @@ data:
   # overlay's own geoip-pvc.yaml + geoip-cronjob.yaml.
   GeoIp__DatabasePath: "/data/geoip/GeoLite2-City.mmdb"
   GeoIp__AsnDatabasePath: "/data/geoip/GeoLite2-ASN.mmdb"
+  # Staging may only text numbers listed in the Sms__AllowedRecipients secret (cd.yml populates it from
+  # STAGING_SMS_ALLOWED_RECIPIENTS). Fails closed: with the secret empty or missing, staging sends no SMS
+  # at all. Added 2026-10-02 after the staging reminder job texted a load-test number that was never
+  # agreed with its owner. Production does not set this, so it is unrestricted.
+  Sms__RestrictToAllowList: "true"
