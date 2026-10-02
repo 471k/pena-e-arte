@@ -30,11 +30,11 @@ public class DisconnectInstagramHandler(IAppDbContext db, ICurrentUser currentUs
         InstagramConnection? connection = await db.InstagramConnections
             .FirstOrDefaultAsync(c => c.ArtistId == request.ArtistId, ct);
 
+        // Disconnect erases the stored (encrypted) access token, which lives on the connection
+        // row, instead of keeping a dead-but-usable credential around. Reconnecting creates a
+        // fresh row. Photos already synced deliberately stay on the portfolio (documented in Help).
         if (connection is not null)
-        {
-            connection.IsActive = false;
-            connection.UpdatedAt = DateTime.UtcNow;
-        }
+            db.InstagramConnections.Remove(connection);
 
         SocialAccountLink? socialLink = await db.SocialAccountLinks.FirstOrDefaultAsync(
             s => s.SubjectType == SocialLinkSubjectType.Artist
@@ -48,6 +48,8 @@ public class DisconnectInstagramHandler(IAppDbContext db, ICurrentUser currentUs
             socialLink.VerifiedAt = null;
             socialLink.VerificationMethod = null;
             socialLink.ExternalUserId = null;
+            socialLink.EncryptedToken = null;
+            socialLink.TokenExpiresAt = null;
             socialLink.UpdatedAt = DateTime.UtcNow;
         }
 
