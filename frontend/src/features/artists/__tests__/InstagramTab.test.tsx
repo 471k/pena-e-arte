@@ -291,7 +291,7 @@ describe("InstagramTab", () => {
     await user.click(screen.getByRole("button", { name: "Disconnect Instagram" }));
 
     const dialog = await screen.findByRole("dialog", { name: /disconnect instagram\?/i });
-    expect(within(dialog).getByText(/synced posts stay on the artist's portfolio/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/synced instagram posts will be removed from their portfolio/i)).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
     expect(disconnectCalled).toBe(false);
 

@@ -56,6 +56,21 @@ export function PrivacyPolicyPage() {
           sharing never includes your medical notes, allergies, contact details, or payment
           history.
         </p>
+        <p>
+          <strong>Instagram (optional).</strong> If an artist connects an Instagram Business or
+          Creator account, we receive the account&apos;s username and recent photo posts through
+          Instagram&apos;s official API, and store an encrypted access token. We use them only to
+          show those photos on the artist&apos;s public portfolio and to display a Verified badge;
+          we never post on the artist&apos;s behalf. Disconnecting in TattooOS, or removing
+          TattooOS under Instagram Settings &rarr; Apps and websites, stops all access. Disconnecting
+          in TattooOS also deletes the stored token and the synced photos. If you removed
+          TattooOS on Instagram&apos;s side only, or want your data deleted another way,
+          contact us via the{" "}
+          <Link to="/contact" className="underline underline-offset-2 hover:text-foreground">
+            Contact
+          </Link>{" "}
+          page.
+        </p>
       </Section>
 
       <Section heading="2. Purposes and legal basis">
@@ -81,9 +96,10 @@ export function PrivacyPolicyPage() {
           <li>Cloudflare R2 — file/image storage and CDN</li>
           <li>Resend — transactional email (including relaying contact-form messages)</li>
           <li>Twilio — SMS notifications</li>
+          <li>Meta (Instagram) — optional account connection and Verified badge for artists</li>
           <li>Our hosting provider — application and database hosting</li>
           <li>
-            Payment providers (POK, easyPos, Polar) — <em>planned, not yet live;</em>{" "}
+            Payment provider (POK) — <em>planned, not yet live;</em>{" "}
             listed here for transparency ahead of launch
           </li>
         </ul>

@@ -30,11 +30,17 @@ public class DisconnectInstagramHandler(IAppDbContext db, ICurrentUser currentUs
         InstagramConnection? connection = await db.InstagramConnections
             .FirstOrDefaultAsync(c => c.ArtistId == request.ArtistId, ct);
 
+        // Disconnect erases everything we hold from Instagram: the stored (encrypted) access
+        // token on the connection row, and the synced posts (the public portfolio reads those
+        // without checking IsActive, so merely deactivating would leave them public). Reconnecting
+        // creates a fresh row and the next sync repopulates the posts.
+        List<InstagramPost> posts = await db.InstagramPosts
+            .Where(p => p.ArtistId == request.ArtistId)
+            .ToListAsync(ct);
+        db.InstagramPosts.RemoveRange(posts);
+
         if (connection is not null)
-        {
-            connection.IsActive = false;
-            connection.UpdatedAt = DateTime.UtcNow;
-        }
+            db.InstagramConnections.Remove(connection);
 
         SocialAccountLink? socialLink = await db.SocialAccountLinks.FirstOrDefaultAsync(
             s => s.SubjectType == SocialLinkSubjectType.Artist
@@ -48,10 +54,12 @@ public class DisconnectInstagramHandler(IAppDbContext db, ICurrentUser currentUs
             socialLink.VerifiedAt = null;
             socialLink.VerificationMethod = null;
             socialLink.ExternalUserId = null;
+            socialLink.EncryptedToken = null;
+            socialLink.TokenExpiresAt = null;
             socialLink.UpdatedAt = DateTime.UtcNow;
         }
 
-        if (connection is not null || socialLink is not null)
+        if (connection is not null || socialLink is not null || posts.Count > 0)
             await db.SaveChangesAsync(ct);
 
         return Unit.Value;

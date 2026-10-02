@@ -71,7 +71,7 @@ describe("public content pages", () => {
     renderPublic(<PrivacyPolicyPage />);
     expect(screen.getAllByText(/special-category/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/medical notes and allergies/i)).toBeInTheDocument();
-    expect(screen.getByText(/POK, easyPos, Polar/i)).toBeInTheDocument();
+    expect(screen.getByText(/Payment provider \(POK\)/i)).toBeInTheDocument();
     expect(screen.getByText(/\[LAWYER REVIEW REQUIRED\]/i)).toBeInTheDocument();
   });
 
