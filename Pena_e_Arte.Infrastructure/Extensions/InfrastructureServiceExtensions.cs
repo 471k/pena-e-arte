@@ -140,11 +140,7 @@ public static class InfrastructureServiceExtensions
         R2Options r2Opts = configuration.GetSection(R2Options.Section).Get<R2Options>()!;
         if (!string.IsNullOrEmpty(r2Opts.AccountId))
         {
-            AmazonS3Config s3Config = new()
-            {
-                ServiceURL = $"https://{r2Opts.AccountId}.r2.cloudflarestorage.com",
-                ForcePathStyle = true
-            };
+            AmazonS3Config s3Config = CreateR2S3Config(r2Opts.AccountId);
             services.AddSingleton<IAmazonS3>(
                 new AmazonS3Client(new BasicAWSCredentials(r2Opts.AccessKeyId, r2Opts.SecretAccessKey), s3Config));
             services.AddSingleton<IR2Service, R2Service>();
@@ -273,4 +269,16 @@ public static class InfrastructureServiceExtensions
 
         return services;
     }
+
+    // AWSSDK.S3 4.x defaults both checksum settings to WHEN_SUPPORTED, which sends uploads as
+    // STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER. Cloudflare R2 does not implement that and
+    // answers "not implemented" (found 2026-10-02: the monthly industry-report upload failed).
+    // WHEN_REQUIRED restores the pre-4.x behaviour R2 supports.
+    internal static AmazonS3Config CreateR2S3Config(string accountId) => new()
+    {
+        ServiceURL = $"https://{accountId}.r2.cloudflarestorage.com",
+        ForcePathStyle = true,
+        RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
+        ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
+    };
 }
