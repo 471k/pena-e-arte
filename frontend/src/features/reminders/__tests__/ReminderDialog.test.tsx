@@ -347,8 +347,80 @@ describe("ReminderDialog", () => {
     expect(await screen.findByText(/no reminders sent yet/i)).toBeInTheDocument();
   });
 
-  it("raw-contact mode does not render a history section", () => {
+  // -- Quick reminders: raw-contact mode now has its own history -------------------------------
+
+  it("raw-contact mode lists the caller's recent quick reminders with the recipient's name", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/reminders", () =>
+        HttpResponse.json([{ ...SENT, id: "q-1", recipientName: "Wendy", appointmentId: null, clientId: null }]),
+      ),
+    );
     renderDialog();
-    expect(screen.queryByText(/history/i)).not.toBeInTheDocument();
+
+    expect(await screen.findByText(/recent quick reminders/i)).toBeInTheDocument();
+    expect(await screen.findByText("Wendy")).toBeInTheDocument();
+    expect(screen.getByText("Sent")).toBeInTheDocument();
   });
+
+  it("raw-contact mode asks the server for quick reminders, not for an appointment or client", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/reminders", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderDialog();
+
+    await waitFor(() => expect(capturedUrl).not.toBe(""));
+    const params = new URL(capturedUrl).searchParams;
+    expect(params.get("quick")).toBe("true");
+    expect(params.get("appointmentId")).toBeNull();
+    expect(params.get("clientId")).toBeNull();
+  });
+
+  it("raw-contact mode passes the artist id so an owner sees that artist's quick reminders", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get("http://localhost/api/v1/reminders", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderDialog({ artistId: "artist-007" }, "owner");
+
+    await waitFor(() => expect(capturedUrl).not.toBe(""));
+    expect(new URL(capturedUrl).searchParams.get("artistId")).toBe("artist-007");
+  });
+
+  it("raw-contact mode shows an empty message when no quick reminders were sent yet", async () => {
+    renderDialog();
+    expect(await screen.findByText(/no quick reminders sent yet/i)).toBeInTheDocument();
+  });
+
+  it("does not fetch quick reminders while the dialog is closed", async () => {
+    let requested = false;
+    server.use(
+      http.get("http://localhost/api/v1/reminders", () => {
+        requested = true;
+        return HttpResponse.json([]);
+      }),
+    );
+    renderDialog({ open: false });
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(requested).toBe(false);
+  });
+
+  it("a successful quick reminder keeps the dialog open so the new row shows in the history", async () => {
+    const user = userEvent.setup();
+    const { onOpenChange } = renderDialog();
+
+    await user.type(screen.getByLabelText(/^name$/i), "Wendy");
+    await user.type(screen.getByLabelText(/^phone$/i), "912345678");
+    await user.click(screen.getByRole("button", { name: /send now/i }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Reminder sent."));
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  }, 20000);
 });

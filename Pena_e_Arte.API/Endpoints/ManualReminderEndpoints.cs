@@ -24,9 +24,10 @@ public static class ManualReminderEndpoints
     }
 
     private static async Task<IResult> GetManualReminders(
-        Guid? appointmentId, Guid? clientId, ISender mediator, CancellationToken ct)
+        Guid? appointmentId, Guid? clientId, bool? quick, Guid? artistId, ISender mediator, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetManualRemindersQuery(appointmentId, clientId), ct);
+        var result = await mediator.Send(
+            new GetManualRemindersQuery(appointmentId, clientId, quick ?? false, artistId), ct);
         return Results.Ok(result);
     }
 

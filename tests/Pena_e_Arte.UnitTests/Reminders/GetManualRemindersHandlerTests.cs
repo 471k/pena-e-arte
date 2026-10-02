@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NSubstitute;
 using Pena_e_Arte.Application.Reminders.Queries;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -56,6 +57,101 @@ public class GetManualRemindersHandlerTests
         _currentUser.Role.Returns("artist");
         _currentUser.UserId.Returns(userId);
         return artist.Id;
+    }
+
+    // -- Quick reminders (raw contact: no appointment, no client) ------------------------------
+
+    [Fact]
+    public async Task Handle_QuickOnly_ReturnsOnlyUnlinkedReminders()
+    {
+        Guid quick = SeedReminder(null, null);
+        SeedReminder(Guid.NewGuid(), null);
+        SeedReminder(null, Guid.NewGuid());
+
+        List<ManualReminderResponse> result =
+            await CreateSut().Handle(new GetManualRemindersQuery(null, null, QuickOnly: true), default);
+
+        result.Select(r => r.Id).Should().Equal(quick);
+    }
+
+    [Fact]
+    public async Task Handle_QuickOnly_ArtistCaller_SeesOnlyTheirOwn()
+    {
+        Guid myArtistId = SeedArtistAsCurrentUser();
+        Guid mine = SeedReminder(null, null, artistId: myArtistId);
+        SeedReminder(null, null);
+
+        List<ManualReminderResponse> result =
+            await CreateSut().Handle(new GetManualRemindersQuery(null, null, QuickOnly: true), default);
+
+        result.Select(r => r.Id).Should().Equal(mine);
+    }
+
+    [Fact]
+    public async Task Handle_QuickOnly_ArtistCaller_IgnoresAnArtistIdFilterForAnotherArtist()
+    {
+        Guid myArtistId = SeedArtistAsCurrentUser();
+        Guid mine = SeedReminder(null, null, artistId: myArtistId);
+        Guid colleague = SeedReminder(null, null);
+        Guid colleagueArtistId = _db.ManualReminders.Single(m => m.Id == colleague).ArtistId;
+
+        List<ManualReminderResponse> result = await CreateSut().Handle(
+            new GetManualRemindersQuery(null, null, QuickOnly: true, ArtistId: colleagueArtistId), default);
+
+        // A colleague's id must not widen an artist's scope.
+        result.Select(r => r.Id).Should().Equal(mine);
+    }
+
+    [Fact]
+    public async Task Handle_QuickOnly_OwnerCaller_SeesAllAndCanFilterByArtist()
+    {
+        Guid first = SeedReminder(null, null);
+        SeedReminder(null, null);
+        Guid firstArtistId = _db.ManualReminders.Single(m => m.Id == first).ArtistId;
+
+        List<ManualReminderResponse> all =
+            await CreateSut().Handle(new GetManualRemindersQuery(null, null, QuickOnly: true), default);
+        List<ManualReminderResponse> filtered = await CreateSut().Handle(
+            new GetManualRemindersQuery(null, null, QuickOnly: true, ArtistId: firstArtistId), default);
+
+        all.Should().HaveCount(2);
+        filtered.Select(r => r.Id).Should().Equal(first);
+    }
+
+    [Fact]
+    public async Task Handle_QuickOnly_ReturnsNewestFirstAndCapsTheList()
+    {
+        Guid artistId = Guid.NewGuid();
+        _db.Artists.Add(new Artist { StudioId = _studioId, Id = artistId, FirstName = "Jo", LastName = "Artist", Email = "jo@a.com" });
+        for (int i = 0; i < GetManualRemindersQuery.QuickReminderLimit + 5; i++)
+        {
+            _db.ManualReminders.Add(new ManualReminder
+            {
+                StudioId = _studioId,
+                ArtistId = artistId,
+                RecipientName = $"R{i}",
+                RecipientPhone = "+355690000000",
+                ScheduledFor = DateTime.UtcNow.AddMinutes(i),
+                Status = ManualReminderStatus.Sent,
+            });
+        }
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+
+        List<ManualReminderResponse> result =
+            await CreateSut().Handle(new GetManualRemindersQuery(null, null, QuickOnly: true), default);
+
+        result.Should().HaveCount(GetManualRemindersQuery.QuickReminderLimit);
+        result.Select(r => r.ScheduledFor).Should().BeInDescendingOrder();
+    }
+
+    [Fact]
+    public async Task Handle_QuickOnlyCombinedWithAnAppointmentFilter_ThrowsBusinessRuleViolationException()
+    {
+        Func<Task> act = () => CreateSut().Handle(
+            new GetManualRemindersQuery(Guid.NewGuid(), null, QuickOnly: true), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
 
     [Fact]

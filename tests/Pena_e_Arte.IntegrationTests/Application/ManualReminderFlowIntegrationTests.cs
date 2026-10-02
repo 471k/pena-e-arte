@@ -207,4 +207,42 @@ public class ManualReminderFlowIntegrationTests(DatabaseFixture fixture)
 
         results.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task CreateThenGet_QuickReminder_AppearsInTheArtistsQuickHistory()
+    {
+        Guid studioId = Guid.NewGuid();
+        await SeedArtistAsCurrentUser(studioId);
+
+        await using AppDbContext db = fixture.CreateDbContext(studioId);
+        CreateManualReminderRequest req = new(null, null, null, "Walk-in Wendy", "+355690000001", null, null);
+        ManualReminderResponse created = await CreateCreateHandler(db, TenantFor(studioId))
+            .Handle(new CreateManualReminderCommand(req), default);
+
+        await using AppDbContext readDb = fixture.CreateDbContext(studioId);
+        List<ManualReminderResponse> history = await new GetManualRemindersHandler(readDb, _currentUser)
+            .Handle(new GetManualRemindersQuery(null, null, QuickOnly: true), default);
+
+        history.Select(r => r.Id).Should().Contain(created.Id);
+        history.Single(r => r.Id == created.Id).RecipientName.Should().Be("Walk-in Wendy");
+    }
+
+    [Fact]
+    public async Task QuickReminderHistory_IsNotVisibleFromAnotherStudio()
+    {
+        Guid studioA = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
+        await SeedArtistAsCurrentUser(studioA);
+
+        await using AppDbContext dbA = fixture.CreateDbContext(studioA);
+        CreateManualReminderRequest req = new(null, null, null, "Walk-in", "+355690000002", null, null);
+        await CreateCreateHandler(dbA, TenantFor(studioA)).Handle(new CreateManualReminderCommand(req), default);
+
+        _currentUser.Role.Returns("owner");
+        await using AppDbContext dbB = fixture.CreateDbContext(studioB);
+        List<ManualReminderResponse> fromB = await new GetManualRemindersHandler(dbB, _currentUser)
+            .Handle(new GetManualRemindersQuery(null, null, QuickOnly: true), default);
+
+        fromB.Should().BeEmpty();
+    }
 }

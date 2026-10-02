@@ -37,4 +37,8 @@ export const FAILURE_REASON_LABELS: Record<ManualReminderFailureReason, string> 
 export interface GetManualRemindersParams {
   appointmentId?: string;
   clientId?:      string;
+  /** Quick reminders: raw-contact SMS linked to no appointment and no client (newest 50). */
+  quick?:         boolean;
+  /** Owner/admin only: narrow quick reminders to one artist. An artist is always scoped to their own. */
+  artistId?:      string;
 }

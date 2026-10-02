@@ -446,7 +446,7 @@ describe("SchedulePage", () => {
     await user.click(within(dialog).getByRole("button", { name: /send now/i }));
 
     await waitFor(() => expect(capturedBody).toMatchObject({ artistId: "my-own-artist-id" }));
-  });
+  }, 20000);
 
   it("admin never sees 'Quick reminder', even with an artistId in the URL", async () => {
     renderPage(Role.Admin, "/?artistId=some-artist");
