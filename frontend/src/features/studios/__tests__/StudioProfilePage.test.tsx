@@ -9,6 +9,7 @@ import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
 import { studiosApi } from "@/features/studios/studiosApi";
+import { publicApi } from "@/features/public/publicApi";
 import { StudioProfilePage } from "@/features/studios/components/StudioProfilePage";
 import type { LocationPickerValue } from "@/shared/components/ui/location-picker";
 
@@ -105,18 +106,29 @@ const STUDIO = {
   countryCode:          "AL",
   currency:             "EUR",
   currencyLocked:       false,
+  timezone:             undefined as string | undefined,
 };
+
+// What the visitor's IP resolves to (GET /public/geo/visitor); each test can change it.
+let visitorGeo: { countryCode: string | null; timeZone: string | null } = { countryCode: null, timeZone: null };
 
 // ── MSW server ────────────────────────────────────────────────────────────────
 
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO)),
+  http.get("http://localhost/api/v1/public/geo/visitor", () => HttpResponse.json(visitorGeo)),
   http.put("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO)),
   http.patch("http://localhost/api/v1/studios/studio-001/slug", () => new HttpResponse(null, { status: 204 })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); });
+afterEach(() => {
+  server.resetHandlers();
+  cleanup();
+  visitorGeo = { countryCode: null, timeZone: null };
+  STUDIO.timezone = undefined;
+  STUDIO.countryCode = "AL";
+});
 afterAll(() => server.close());
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -126,8 +138,9 @@ function makeStore() {
     reducer: {
       auth:                      authReducer,
       [studiosApi.reducerPath]:  studiosApi.reducer,
+      [publicApi.reducerPath]:   publicApi.reducer,
     },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    middleware: (gd) => gd().concat(studiosApi.middleware, publicApi.middleware),
   });
 }
 
@@ -152,6 +165,61 @@ describe("StudioProfilePage — loading state", () => {
   it("shows a skeleton loading state while studio data is being fetched", () => {
     renderPage();
     expect(screen.getByLabelText("Loading studio settings")).toBeInTheDocument();
+  });
+});
+
+describe("StudioProfilePage — location-aware defaults", () => {
+  it("preselects the visitor's IP timezone, in a readable form, when the studio has none", async () => {
+    visitorGeo = { countryCode: "AL", timeZone: "Europe/Tirane" };
+    renderPage();
+    await waitForForm();
+
+    const trigger = await screen.findByRole("combobox", { name: /timezone/i });
+    await waitFor(() => expect(trigger).toHaveTextContent(/UTC\+0[12]:00\) Tirane/));
+    expect(trigger).not.toHaveTextContent("Select a timezone");
+  });
+
+  it("does not overwrite a timezone the studio already has", async () => {
+    STUDIO.timezone = "Europe/Lisbon";
+    visitorGeo = { countryCode: "AL", timeZone: "Europe/Tirane" };
+    renderPage();
+    await waitForForm();
+
+    const trigger = await screen.findByRole("combobox", { name: /timezone/i });
+    await waitFor(() => expect(trigger).toHaveTextContent("Lisbon"));
+    expect(trigger).not.toHaveTextContent("Tirane");
+  });
+
+  it("does not count the preselected timezone as an unsaved change", async () => {
+    visitorGeo = { countryCode: "AL", timeZone: "Europe/Tirane" };
+    renderPage();
+    await waitForForm();
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /timezone/i })).toHaveTextContent("Tirane"),
+    );
+
+    expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+  });
+
+  it("falls back to the browser's timezone when the IP lookup has nothing", async () => {
+    renderPage();
+    await waitForForm();
+
+    const trigger = await screen.findByRole("combobox", { name: /timezone/i });
+    const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Only asserted when the browser's zone is one the list offers (it always is in Node's ICU).
+    if (browser && browser !== "UTC") {
+      await waitFor(() => expect(trigger).not.toHaveTextContent("Select a timezone"));
+    }
+  });
+
+  it("shows the phone prefix of the studio's country", async () => {
+    STUDIO.countryCode = "PT";
+    renderPage();
+    await waitForForm();
+
+    const prefix = await screen.findByRole("combobox", { name: /country code/i });
+    await waitFor(() => expect(prefix).toHaveTextContent("+351"));
   });
 });
 

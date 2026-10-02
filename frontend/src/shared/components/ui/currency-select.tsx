@@ -42,7 +42,7 @@ export function CurrencySelect({
           {value ? `${currencyLabel(value)} — ${value}` : undefined}
         </SelectValue>
       </SelectTrigger>
-      <SelectContent className="max-h-72">
+      <SelectContent className="max-h-72" showScrollbar>
         {options.map((o) => (
           <SelectItem key={o.code} value={o.code}>
             {o.name} ({o.code})

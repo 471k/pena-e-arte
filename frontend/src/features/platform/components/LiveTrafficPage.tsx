@@ -57,7 +57,7 @@ function LiveVisitorMap({ visitors }: { visitors: LiveVisitorResponse[] }) {
   );
 
   return (
-    <div className="relative h-[280px] rounded-md overflow-hidden border">
+    <div className="relative isolate h-[280px] rounded-md overflow-hidden border">
       <MapContainer
         center={WORLD_MAP_CENTER}
         zoom={WORLD_MAP_ZOOM}

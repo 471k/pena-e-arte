@@ -58,6 +58,13 @@ export interface CountryDefaultCurrencyResponse {
   currency:    string | null;
 }
 
+/** Where the visitor's IP resolves to; each field is null when it can't be resolved. Used only to
+ * default form fields (country, timezone), never shown. */
+export interface VisitorGeoResponse {
+  countryCode: string | null;
+  timeZone:    string | null;
+}
+
 export interface ArtistPortfolioImage {
   imageId:  string;
   imageUrl: string;
@@ -313,6 +320,9 @@ export const publicApi = createApi({
     getCountryDefaultCurrency: builder.query<CountryDefaultCurrencyResponse, string>({
       query: (countryCode) => `countries/${countryCode}/default-currency`,
     }),
+    getVisitorGeo: builder.query<VisitorGeoResponse, void>({
+      query: () => "geo/visitor",
+    }),
     getPublicArtist: builder.query<PublicArtistResponse, string>({
       query: (slug) => `artists/${slug}`,
       providesTags: ["PublicArtist"],
@@ -459,6 +469,7 @@ export const {
   useGetPublicPlansQuery,
   useGetPublicStudioQuery,
   useGetCountryDefaultCurrencyQuery,
+  useGetVisitorGeoQuery,
   useGetPublicArtistQuery,
   useGetSharedDesignQuery,
   useGetNearbyStudiosQuery,
