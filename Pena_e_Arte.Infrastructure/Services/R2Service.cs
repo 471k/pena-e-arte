@@ -88,6 +88,9 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
             Key = objectKey,
             InputStream = stream,
             ContentType = contentType,
+            // R2 rejects aws-chunked streaming signatures ("STREAMING-AWS4-HMAC-SHA256-PAYLOAD not implemented");
+            // UNSIGNED-PAYLOAD is allowed because the endpoint is HTTPS.
+            DisablePayloadSigning = true,
         };
         await s3.PutObjectAsync(request, ct);
     }

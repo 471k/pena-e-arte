@@ -16,6 +16,20 @@ public class R2ServiceTests
         new(_s3, Options.Create(new R2Options { BucketName = "test-bucket" }));
 
     [Fact]
+    public async Task UploadAsync_SendsUnsignedPayload_BecauseR2RejectsStreamingSignatures()
+    {
+        await CreateSut().UploadAsync("reports/industry/2026-10.json", [1, 2, 3], "application/json", default);
+
+        await _s3.Received(1).PutObjectAsync(
+            Arg.Is<PutObjectRequest>(r =>
+                r.BucketName == "test-bucket" &&
+                r.Key == "reports/industry/2026-10.json" &&
+                r.ContentType == "application/json" &&
+                r.DisablePayloadSigning == true),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ListByPrefixAsync_WhenNoObjectsMatchPrefix_ReturnsEmptyList()
     {
         // S3-compatible providers return S3Objects == null (not an empty list)
