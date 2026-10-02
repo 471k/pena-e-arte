@@ -1271,7 +1271,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts so clients see a green \"Verified\" checkmark next to your handle — proof it's really your account, not something anyone could type into a form.",
     steps: [
       "For a studio: go to Studio Settings and find the \"Social Media\" card. For your own artist profile: open \"My Portfolio\" and go to the \"Social\" tab. For an owner managing one of their artists: open that artist's profile from Artists and go to the \"Social\" tab — the same steps apply.",
-      "For Instagram and TikTok, click \"Connect\" and sign in on the platform's own page — this proves whoever signs in owns the account directly, no typing required.",
+      "For Instagram and TikTok, click \"Connect\" and sign in on the platform's own page — this proves whoever signs in owns the account directly, no typing required. Instagram only connects Business or Creator accounts; a personal account can't be connected until it is switched (free, in Instagram's settings under Account type and tools).",
       "For Facebook, X, or YouTube (or an Instagram/TikTok account that can't or won't connect), type the handle in the field, then click \"Get verification code\". Add the code shown to that platform's bio, then click \"I've added it — Verify\".",
       "Once verified, a green \"Verified\" badge appears next to the handle everywhere it's shown, including your public page.",
     ],

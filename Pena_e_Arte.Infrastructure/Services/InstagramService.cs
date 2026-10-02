@@ -10,6 +10,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// <summary>
 /// Instagram API with Instagram Login (current API — Basic Display API was
 /// shut down December 4, 2024). No SDK — raw IHttpClientFactory calls.
+/// Only Instagram Business or Creator accounts can connect; Meta's consent screen refuses personal ones.
 /// </summary>
 public sealed class InstagramService(
     IHttpClientFactory httpFactory,
@@ -18,11 +19,17 @@ public sealed class InstagramService(
 {
     private readonly InstagramOptions _opts = options.Value;
 
+    // The retired Basic Display flow used api.instagram.com/oauth/authorize with the scopes
+    // instagram_basic,user_media. Both are gone: the current authorize endpoint is on www.instagram.com and
+    // the one scope this app needs (username + media of the connected account) is instagram_business_basic.
+    internal const string AuthorizeEndpoint = "https://www.instagram.com/oauth/authorize";
+    internal const string Scope = "instagram_business_basic";
+
     public string BuildAuthorizationUrl(string state) =>
-        "https://api.instagram.com/oauth/authorize" +
+        AuthorizeEndpoint +
         $"?client_id={Uri.EscapeDataString(_opts.AppId)}" +
         $"&redirect_uri={Uri.EscapeDataString(_opts.RedirectUri)}" +
-        "&scope=instagram_basic,user_media" +
+        $"&scope={Scope}" +
         "&response_type=code" +
         $"&state={Uri.EscapeDataString(state)}";
 
@@ -35,16 +42,15 @@ public sealed class InstagramService(
             new("client_secret", _opts.AppSecret),
             new("grant_type",    "authorization_code"),
             new("redirect_uri",  _opts.RedirectUri),
-            new("code",          code),
+            new("code",          StripCodeSuffix(code)),
         ]);
 
         HttpResponseMessage shortResponse =
             await client.PostAsync("https://api.instagram.com/oauth/access_token", form, ct);
         shortResponse.EnsureSuccessStatusCode();
 
-        ShortTokenDto shortToken =
-            await shortResponse.Content.ReadFromJsonAsync<ShortTokenDto>(ct)
-            ?? throw new InvalidOperationException("Empty Instagram token response.");
+        ShortToken shortToken = ParseShortToken(
+            await shortResponse.Content.ReadAsStringAsync(ct));
 
         string longUrl =
             "https://graph.instagram.com/access_token" +
@@ -63,8 +69,45 @@ public sealed class InstagramService(
             longToken.AccessToken,
             longToken.TokenType,
             longToken.ExpiresIn,
-            shortToken.UserId.ToString());
+            shortToken.UserId);
     }
+
+    /// <summary>Instagram appends "#_" to the redirect's code; it is not part of the code.</summary>
+    internal static string StripCodeSuffix(string code) =>
+        code.EndsWith("#_", StringComparison.Ordinal) ? code[..^2] : code;
+
+    /// <summary>
+    /// The short-lived token response is wrapped in a "data" array with a string user_id
+    /// ({"data":[{"access_token":..,"user_id":"..","permissions":".."}]}); the retired Basic Display API
+    /// returned a flat object with a numeric user_id. Accept both so a response-shape change on Meta's side
+    /// does not silently break Connect.
+    /// </summary>
+    internal static ShortToken ParseShortToken(string json)
+    {
+        using JsonDocument doc = JsonDocument.Parse(json);
+        JsonElement root = doc.RootElement;
+
+        JsonElement item = root;
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("data", out JsonElement data))
+        {
+            if (data.ValueKind != JsonValueKind.Array || data.GetArrayLength() == 0)
+                throw new InvalidOperationException("Empty Instagram token response.");
+            item = data[0];
+        }
+
+        if (item.ValueKind != JsonValueKind.Object
+            || !item.TryGetProperty("access_token", out JsonElement tokenElement)
+            || tokenElement.GetString() is not { Length: > 0 } accessToken)
+            throw new InvalidOperationException("Empty Instagram token response.");
+
+        string userId = item.TryGetProperty("user_id", out JsonElement idElement)
+            ? idElement.ValueKind == JsonValueKind.Number ? idElement.GetRawText() : idElement.GetString() ?? ""
+            : "";
+
+        return new ShortToken(accessToken, userId);
+    }
+
+    internal sealed record ShortToken(string AccessToken, string UserId);
 
     public async Task<(string NewToken, DateTime NewExpiry)> RefreshTokenAsync(
         string accessToken, CancellationToken ct)
@@ -140,11 +183,6 @@ public sealed class InstagramService(
         "?fields=id,media_type,media_url,thumbnail_url,caption,timestamp" +
         "&limit=50" +
         $"&access_token={Uri.EscapeDataString(accessToken)}";
-
-    private sealed record ShortTokenDto(
-        [property: JsonPropertyName("access_token")] string AccessToken,
-        [property: JsonPropertyName("token_type")] string TokenType,
-        [property: JsonPropertyName("user_id")] long UserId);
 
     private sealed record LongTokenDto(
         [property: JsonPropertyName("access_token")] string AccessToken,

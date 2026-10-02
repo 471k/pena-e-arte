@@ -145,20 +145,20 @@ describe("InstagramTab", () => {
     expect(await screen.findByRole("button", { name: /connect instagram/i })).toBeInTheDocument();
     expect(screen.getByText("Not linked")).toBeInTheDocument();
     expect(screen.getByText(
-      "Connect the artist's Instagram to automatically show their latest posts on their public portfolio.",
+      "Connect the artist's Instagram to automatically show their latest posts on their public portfolio. Needs an Instagram Business or Creator account.",
     )).toBeInTheDocument();
   });
 
   it("uses second person on the artist's own profile and the first name when an owner views another artist", async () => {
     renderTab(true, true, true);
     expect(await screen.findByText(
-      "Connect Instagram to automatically show your latest posts on your public portfolio.",
+      "Connect Instagram to automatically show your latest posts on your public portfolio. Needs an Instagram Business or Creator account.",
     )).toBeInTheDocument();
     cleanup();
 
     renderTab(true, true, false, "Rui");
     expect(await screen.findByText(
-      "Connect Rui's Instagram to automatically show their latest posts on their public portfolio.",
+      "Connect Rui's Instagram to automatically show their latest posts on their public portfolio. Needs an Instagram Business or Creator account.",
     )).toBeInTheDocument();
   });
 

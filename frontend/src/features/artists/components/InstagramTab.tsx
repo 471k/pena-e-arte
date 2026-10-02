@@ -113,8 +113,8 @@ export function InstagramTab({
   }
 
   const helper = isSelf
-    ? "Connect Instagram to automatically show your latest posts on your public portfolio."
-    : `Connect ${firstName}'s Instagram to automatically show their latest posts on their public portfolio.`;
+    ? "Connect Instagram to automatically show your latest posts on your public portfolio. Needs an Instagram Business or Creator account."
+    : `Connect ${firstName}'s Instagram to automatically show their latest posts on their public portfolio. Needs an Instagram Business or Creator account.`;
 
   const detail = isConnected && status
     ? [
