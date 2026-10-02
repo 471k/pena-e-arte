@@ -151,7 +151,7 @@ describe("ArtistSocialTab", () => {
       expect(screen.getByRole("button", { name: "Get Facebook verification code" })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Facebook handle" })).toBeInTheDocument();
       expect(screen.getByText(
-        "Connect Instagram to automatically show your latest posts on your public portfolio.",
+        "Connect Instagram to automatically show your latest posts on your public portfolio. Needs an Instagram Business or Creator account.",
       )).toBeInTheDocument();
     });
 

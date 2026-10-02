@@ -258,7 +258,7 @@ export function ArtistDetailPage() {
     if (ig === null && social === null) return;
 
     if (ig === "connected") toast.success("Instagram connected successfully!");
-    if (ig === "error")     toast.error("Instagram connection failed. Please try again.");
+    if (ig === "error")     toast.error("Instagram connection failed. Make sure it is an Instagram Business or Creator account, then try again.");
     if (ig === "denied")    toast.info("Instagram connection cancelled.");
     if (social === "connected") toast.success(`${platform ?? "Account"} connected successfully!`);
     if (social === "error")     toast.error(`${platform ?? "Account"} connection failed. Please try again.`);
