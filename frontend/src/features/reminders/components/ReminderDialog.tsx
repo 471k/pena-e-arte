@@ -83,9 +83,12 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
   const [createReminder, { isLoading: isSending }] = useCreateManualReminderMutation();
   const [cancelReminder] = useCancelManualReminderMutation();
 
+  // Linked mode lists this appointment's or client's reminders. Raw-contact ("Quick Reminder") mode has
+  // no parent record, so it lists the caller's own quick reminders instead (newest 50), fetched only while
+  // the dialog is open because the Schedule page mounts this component all the time.
   const { data: history, isLoading: historyLoading } = useGetManualRemindersQuery(
-    { appointmentId, clientId },
-    { skip: isRawContact },
+    { appointmentId, clientId, quick: isRawContact || undefined, artistId: isRawContact ? artistId : undefined },
+    { skip: isRawContact && !open },
   );
 
   function resetForm() {
@@ -115,8 +118,9 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
 
     if ("data" in result) {
       toast.success(scheduleLater ? "Reminder scheduled." : "Reminder sent.");
+      // Stays open for a raw contact too, so the artist sees the new row (and later its delivery status)
+      // in the history below, exactly like the appointment- and client-linked dialogs.
       resetForm();
-      if (isRawContact) onOpenChange(false);
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -242,41 +246,48 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
             </div>
           )}
 
-          {!isRawContact && (
-            <div className="pt-2 border-t space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">History</p>
-              {historyLoading && <Skeleton className="h-10 w-full" />}
-              {!historyLoading && (history ?? []).length === 0 && (
-                <p className="text-xs text-muted-foreground">No reminders sent yet.</p>
-              )}
-              {!historyLoading && (history ?? []).map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-2 text-xs py-1">
+          <div className="pt-2 border-t space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {isRawContact ? "Recent quick reminders" : "History"}
+            </p>
+            {historyLoading && <Skeleton className="h-10 w-full" />}
+            {!historyLoading && (history ?? []).length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                {isRawContact ? "No quick reminders sent yet." : "No reminders sent yet."}
+              </p>
+            )}
+            {!historyLoading && (history ?? []).map((r) => (
+              <div key={r.id} className="text-xs py-1 space-y-0.5">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <ReminderStatusBadge status={r.status} />
-                    <span className="text-muted-foreground truncate">
-                      {formatDateTime(r.scheduledFor)}
-                    </span>
+                    {isRawContact && (
+                      <span className="font-medium truncate">{r.recipientName}</span>
+                    )}
                   </div>
-                  {r.status === "Failed" && r.failureReason && (
-                    <span className="text-muted-foreground text-right">
-                      {FAILURE_REASON_LABELS[r.failureReason] ?? "Couldn't be sent"}
-                    </span>
-                  )}
-                  {r.status === "Scheduled" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 shrink-0"
-                      aria-label="Cancel reminder"
-                      onClick={() => handleCancel(r.id)}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-muted-foreground">{formatDateTime(r.scheduledFor)}</span>
+                    {r.status === "Scheduled" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        aria-label="Cancel reminder"
+                        onClick={() => handleCancel(r.id)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
+                {r.status === "Failed" && r.failureReason && (
+                  <p className="text-muted-foreground">
+                    {FAILURE_REASON_LABELS[r.failureReason] ?? "Couldn't be sent"}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         <DialogFooter>

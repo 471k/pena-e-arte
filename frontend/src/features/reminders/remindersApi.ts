@@ -12,10 +12,12 @@ export const remindersApi = createApi({
   tagTypes: ["ManualReminder"],
   endpoints: (builder) => ({
     getManualReminders: builder.query<ManualReminderResponse[], GetManualRemindersParams>({
-      query: ({ appointmentId, clientId } = {}) => {
+      query: ({ appointmentId, clientId, quick, artistId } = {}) => {
         const params = new URLSearchParams();
         if (appointmentId) params.set("appointmentId", appointmentId);
         if (clientId)      params.set("clientId",      clientId);
+        if (quick)         params.set("quick",         "true");
+        if (quick && artistId) params.set("artistId",  artistId);
         return `reminders?${params.toString()}`;
       },
       providesTags: ["ManualReminder"],
