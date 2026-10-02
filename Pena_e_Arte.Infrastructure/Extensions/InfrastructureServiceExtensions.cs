@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MySqlConnector;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
@@ -71,11 +72,19 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 
+        // Hangfire.MySqlStorage's dashboard (the Recurring Jobs page) uses a MySQL user variable
+        // (@rownum); MySqlConnector rejects that unless the connection string allows it, so the page
+        // returned a 500. Only Hangfire's own connection gets the flag, never EF Core's.
+        string hangfireConnectionString = new MySqlConnectionStringBuilder(connectionString)
+        {
+            AllowUserVariables = true
+        }.ConnectionString;
+
         services.AddHangfire((serviceProvider, config) => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
+            .UseStorage(new MySqlStorage(hangfireConnectionString, new MySqlStorageOptions
             {
                 TablesPrefix = "hangfire_",
                 // Hangfire.MySqlStorage 2.0.3's own installer defines hangfire_DistributedLock
