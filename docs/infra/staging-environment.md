@@ -147,6 +147,19 @@ a multi-node join of the existing cluster (`local-path-provisioner`'s PVCs bind 
 they were created on, making a multi-node join real added complexity for Redis/Vault/
 observability PVCs).
 
+## SMS goes only to an allow-list
+
+Staging can send real SMS (its own Twilio subaccount, Albania-only geo permissions), so it must never text a number
+nobody agreed to. `Sms__RestrictToAllowList: "true"` is set in `k8s/overlays/staging/api-config-patch.yaml`, and the
+numbers allowed come from the **`STAGING_SMS_ALLOWED_RECIPIENTS`** GitHub secret (comma-separated E.164, for example
+your own phone), which `cd.yml` writes into the staging `tattooos-api-secrets` as `Sms__AllowedRecipients`.
+
+- It **fails closed**: with the secret empty or missing, staging sends no SMS at all. To test an SMS flow on staging, add
+  your own number to the secret and redeploy (or run the staging-only workflow dispatch).
+- A blocked send fails like any provider failure (a Failed manual reminder, a failed notification log row). The log line
+  says "SMS blocked: recipient is not on this environment's allow-list" and never includes the number.
+- Production never sets the restriction. See the Decisions Log row "SMS recipient allow-list for non-production".
+
 ## Prerequisites still outstanding (BLOCKING-MANUAL, Phi only)
 
 None of this is created by any Claude Code session — see

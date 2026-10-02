@@ -35,6 +35,14 @@ public class NotificationService(
 
     public async Task SendSmsAsync(string to, string body, CancellationToken ct = default)
     {
+        // The single choke point every SMS in the app goes through (reminders, confirmations, payment
+        // notices), so one check covers them all. See SmsRecipientPolicy.
+        if (!SmsRecipientPolicy.IsAllowed(configuration, to))
+        {
+            logger.LogWarning("SMS blocked: recipient is not on this environment's allow-list");
+            throw new SmsRecipientNotAllowedException();
+        }
+
         MessageResource message = await MessageResource.CreateAsync(
             body: body,
             from: new PhoneNumber(configuration["Twilio:FromNumber"]!),
