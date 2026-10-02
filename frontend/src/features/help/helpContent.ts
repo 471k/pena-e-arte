@@ -1225,7 +1225,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Edit your studio's public details — name, street address, phone, description, timezone — and your business tax ID (NIPT), which clients don't see but is used for invoicing and verification.",
     steps: [
       "Go to Studio Settings.",
-      "Click \"Edit\" and update your studio name, street address, phone number (pick the country from the dropdown, then type the number), description, timezone, or country. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
+      "Click \"Edit\" and update your studio name, street address, phone number (its country prefix follows your studio's country; change it from the dropdown if needed, then type the number), description, timezone, or country. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
       "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
       "In the Currency card, choose the currency your studio prices and takes payments in. It defaults to your country's currency; you can pick another (for example EUR) until your first payment, gift card, package sale or booth-rent charge is recorded — after that it's locked and only support can change it.",
@@ -1234,7 +1234,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Your NIPT is never shown to clients or on your public booking page — it's for invoicing and business verification only.",
       "Your street address is shown on your public studio page with a \"Get directions\" link, so make sure it's accurate.",
-      "Your timezone controls how appointment times are shown in emails, texts, and reports — pick the zone your studio actually operates in.",
+      "Your timezone controls how appointment times are shown in emails, texts, and reports — pick the zone your studio actually operates in. The list shows each zone with its UTC offset and a readable name, for example \"(UTC+01:00) Tirane — Central European Time\", sorted by offset, with your country's zones listed first under \"Suggested\". Type a city's first letters to jump to it, or drag the scrollbar. If your studio has no timezone yet, one is preselected from where you are (your internet connection's location, or your browser's timezone); check it and press Save changes.",
+      "The country on a new registration is also filled in from where you are, and the phone prefix and the currency follow the country. You can change any of them: pick another country, or use \"Change currency\".",
       "To manage your studio's Instagram, TikTok, Facebook, X, and YouTube links, use the \"Social Media\" card further down this page — see \"Verify your studio's or artist's social media accounts\".",
     ],
     warnings: [

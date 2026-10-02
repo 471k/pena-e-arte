@@ -121,3 +121,24 @@ body {
 .animate-in.fade-in {
   animation: fade-in 0.15s ease-out both;
 }
+
+/* ── Visible scrollbar for long Radix Select lists (opt-in: <SelectContent showScrollbar />) ──
+   Radix hides the viewport scrollbar with a global [data-radix-select-viewport] rule; the extra
+   class here has higher specificity, so it wins without !important. */
+[data-radix-select-viewport].select-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted-foreground) transparent;
+}
+[data-radix-select-viewport].select-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: 10px;
+}
+[data-radix-select-viewport].select-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-muted-foreground);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-radix-select-viewport].select-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}

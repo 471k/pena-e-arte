@@ -17,6 +17,9 @@ import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedBu
 import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMutation } from "../studiosApi";
+import { useGetVisitorGeoQuery } from "@/features/public/publicApi";
+import { TimezoneSelect } from "@/shared/components/ui/timezone-select";
+import { defaultTimezoneId, suggestedTimezoneIds } from "@/shared/utils/timezones";
 import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
 import { CurrencySettingsCard } from "./CurrencySettingsCard";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
@@ -37,26 +40,13 @@ import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValid
 
 const NIPT_HELP = "NIPT format looks wrong — expected a letter, 8 digits, then a letter (e.g. L01234567A)";
 
-// Intl.supportedValuesOf is a native, no-dependency source of every IANA timezone the
-// browser's own Intl.DateTimeFormat can use — the same identifiers TimeZoneInfo accepts
-// backend-side. Fall back to a short curated list for the rare browser without it, so the
-// field degrades to "still usable" rather than empty.
-const FALLBACK_TIMEZONES = [
-  "Europe/Tirane", "Europe/London", "Europe/Lisbon", "Europe/Berlin", "Europe/Athens",
-  "America/New_York", "America/Chicago", "America/Los_Angeles", "UTC",
-];
-const TIMEZONE_OPTIONS: string[] =
-  typeof Intl.supportedValuesOf === "function"
-    ? Intl.supportedValuesOf("timeZone")
-    : FALLBACK_TIMEZONES;
-
 const schema = z.object({
   name:            z.string().min(1, "Name is required").max(200),
   city:            z.string().min(1, "City is required").max(200),
   latitude:        z.number({ message: "Must be a number" }).min(-90).max(90),
   longitude:       z.number({ message: "Must be a number" }).min(-180).max(180),
   phoneNumber:     z.string().refine(isValidE164Phone, PHONE_ERROR_MESSAGE).optional(),
-  timezone:        z.string().min(1).optional(),
+  timezone:        z.string().min(1, "Choose your studio's timezone").optional(),
   addressLine1:    z.string().max(300).optional().or(z.literal("")),
   addressLine2:    z.string().max(150).optional().or(z.literal("")),
   postalCode:      z.string().max(20).optional().or(z.literal("")),
@@ -168,7 +158,7 @@ export function StudioProfilePage() {
     }
   }
 
-  const { register, handleSubmit, control, reset, watch, setValue, formState: { errors, isDirty } } =
+  const { register, handleSubmit, control, reset, watch, setValue, getValues, formState: { errors, isDirty } } =
     useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const { ref: niptFieldRef, ...niptRegister } = register("nipt");
@@ -188,6 +178,8 @@ export function StudioProfilePage() {
   const lngValue  = watch("longitude");
   const cityValue = watch("city");
   const addressLine1Value = watch("addressLine1");
+  const countryCodeValue = watch("countryCode");
+  const { data: visitorGeo, isLoading: visitorGeoLoading } = useGetVisitorGeoQuery();
 
   // See RegisterStudioPage.tsx's identical guard: suppresses the forward-geocode fetch
   // useAddressGeocode would otherwise redundantly fire right after a pin-driven
@@ -225,6 +217,26 @@ export function StudioProfilePage() {
       });
     }
   }, [studio, reset]);
+
+  // A studio that has no timezone yet (every studio registered before this default existed, and
+  // new ones) gets the best available guess preselected: the country's zone, led by the visitor's
+  // own IP zone when their IP is in that country, else the browser's zone. It is only a form
+  // default and is deliberately not marked dirty (the owner has changed nothing); it is saved with
+  // the next Save. getValues, not the watched value, so this never overwrites a timezone the
+  // reset above has just loaded in the same commit.
+  useEffect(() => {
+    // Wait for the IP lookup to settle (answered or failed) so a worse guess is never locked in first.
+    if (!studio || visitorGeoLoading || getValues("timezone")) return;
+    const suggestion = defaultTimezoneId(
+      suggestedTimezoneIds(
+        getValues("countryCode") || studio.countryCode,
+        visitorGeo?.countryCode,
+        visitorGeo?.timeZone,
+      ),
+    );
+    if (suggestion) setValue("timezone", suggestion, { shouldValidate: true });
+    // countryCodeValue re-runs this when the owner picks a country while the timezone is still empty.
+  }, [studio, visitorGeo, visitorGeoLoading, countryCodeValue, getValues, setValue]);
 
   async function onSubmit(values: FormValues) {
     setServerError(null);
@@ -399,7 +411,7 @@ export function StudioProfilePage() {
                   render={({ field }) => (
                     <PhoneInput
                       id="phoneNumber"
-                      defaultCountry={asPhoneCountry(studio?.countryCode)}
+                      defaultCountry={asPhoneCountry(countryCodeValue || studio?.countryCode)}
                       value={field.value ?? ""}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
@@ -502,7 +514,7 @@ export function StudioProfilePage() {
                       <SelectTrigger id="countryCode" aria-invalid={!!errors.countryCode}>
                         <SelectValue placeholder="Select a country" />
                       </SelectTrigger>
-                      <SelectContent className="max-h-72">
+                      <SelectContent className="max-h-72" showScrollbar>
                         {PHONE_COUNTRIES.map((c) => (
                           <SelectItem key={c.code} value={c.code}>
                             {flagEmoji(c.code)} {c.name}
@@ -553,16 +565,15 @@ export function StudioProfilePage() {
                   control={control}
                   name="timezone"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="timezone" aria-invalid={!!errors.timezone}>
-                        <SelectValue placeholder="Select a timezone" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIMEZONE_OPTIONS.map((tz) => (
-                          <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <TimezoneSelect
+                      id="timezone"
+                      value={field.value}
+                      onChange={(tz) => field.onChange(tz)}
+                      countryCode={countryCodeValue}
+                      ipCountry={visitorGeo?.countryCode}
+                      ipTimezone={visitorGeo?.timeZone}
+                      aria-invalid={!!errors.timezone}
+                    />
                   )}
                 />
                 <p className="text-xs text-muted-foreground">

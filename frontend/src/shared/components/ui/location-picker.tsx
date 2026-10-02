@@ -172,7 +172,9 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
   return (
     <div className={cn("space-y-1.5", className)}>
       {/* Map */}
-      <div className="relative rounded-md overflow-hidden border border-input h-[260px]">
+      {/* isolate: Leaflet's panes and controls use z-indexes up to 1000; without their own stacking
+          context they paint over any dropdown or dialog that opens above the map. */}
+      <div className="relative isolate rounded-md overflow-hidden border border-input h-[260px]">
         <MapContainer
           center={DEFAULT_CENTER}
           zoom={DEFAULT_ZOOM}

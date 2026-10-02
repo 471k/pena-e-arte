@@ -35,7 +35,7 @@ import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
 import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
-import { useGetCountryDefaultCurrencyQuery } from "@/features/public/publicApi";
+import { useGetCountryDefaultCurrencyQuery, useGetVisitorGeoQuery } from "@/features/public/publicApi";
 
 const schema = z
   .object({
@@ -148,9 +148,11 @@ export function RegisterStudioPage() {
   const [oauthRegister] = useOauthRegisterMutation();
   const [oauthLogin] = useOauthLoginMutation();
 
-  // Best-effort browser-locale guess, falling back to Albania — there is no server round-trip
-  // to geocode an address on this short-signup path, unlike the studio path's typed address.
-  // The owner can always correct it via "Change currency" below, or later in Studio Settings.
+  // The country defaults, in order, to: where the visitor's IP is (server GeoIP lookup, applied
+  // below when it arrives), a best-effort browser-language guess, then Albania. There is no address
+  // to geocode on this short-signup path, unlike the studio path's typed address. The owner can
+  // always correct it via "Change currency" below, or later in Studio Settings.
+  const { data: visitorGeo } = useGetVisitorGeoQuery();
   const browserRegionGuess = (() => {
     try {
       return new Intl.Locale(navigator.language).maximize().region ?? "AL";
@@ -161,6 +163,7 @@ export function RegisterStudioPage() {
 
   const [soloCurrencyExpanded, setSoloCurrencyExpanded] = useState(false);
   const soloCurrencyManuallyEdited = useRef(false);
+  const soloCountryManuallyEdited = useRef(false);
 
   const {
     register: registerSolo,
@@ -181,6 +184,13 @@ export function RegisterStudioPage() {
     soloCountryCode,
     { skip: soloCountryCode.length !== 2 },
   );
+
+  // The IP lookup is async: apply it once it arrives, never over a country the person picked.
+  useEffect(() => {
+    if (!soloCountryManuallyEdited.current && visitorGeo?.countryCode) {
+      setSoloValue("countryCode", visitorGeo.countryCode);
+    }
+  }, [visitorGeo, setSoloValue]);
 
   useEffect(() => {
     if (!soloCurrencyManuallyEdited.current && soloCountryDefault?.currency) {
@@ -269,6 +279,18 @@ export function RegisterStudioPage() {
     // A country whose default currency couldn't be resolved (unknown to RegionInfo) leaves the
     // field empty and required — never silently falls back to a guessed currency.
   }, [countryDefaultCurrency, setValue]);
+
+  // Studio path: the country starts as Albania, moves to where the visitor's IP is when that
+  // arrives, and then follows the typed or pinned address (below). It never overrides a country
+  // the person picked or one an address already set.
+  useEffect(() => {
+    if (!countryManuallyEdited.current && !addressLine1Value && visitorGeo?.countryCode) {
+      setValue("countryCode", visitorGeo.countryCode, { shouldValidate: true });
+    }
+    // addressLine1Value is read only to skip the default once an address exists; the effect must
+    // re-run when the lookup arrives, not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visitorGeo, setValue]);
 
   // Set right before a pin-driven setValue("addressLine1", ...) below, so the very next
   // render's useAddressGeocode call sees it and skips the forward-geocode fetch that
@@ -567,12 +589,15 @@ export function RegisterStudioPage() {
                           <Label htmlFor="solo-country">Country</Label>
                           <Select
                             value={soloCountryCode}
-                            onValueChange={(v) => setSoloValue("countryCode", v)}
+                            onValueChange={(v) => {
+                              soloCountryManuallyEdited.current = true;
+                              setSoloValue("countryCode", v);
+                            }}
                           >
                             <SelectTrigger id="solo-country">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="max-h-72">
+                            <SelectContent className="max-h-72" showScrollbar>
                               {PHONE_COUNTRIES.map((c) => (
                                 <SelectItem key={c.code} value={c.code}>
                                   {flagEmoji(c.code)} {c.name}
@@ -738,7 +763,7 @@ export function RegisterStudioPage() {
                           <SelectTrigger id="countryCode" aria-invalid={!!errors.countryCode}>
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="max-h-72">
+                          <SelectContent className="max-h-72" showScrollbar>
                             {PHONE_COUNTRIES.map((c) => (
                               <SelectItem key={c.code} value={c.code}>
                                 {flagEmoji(c.code)} {c.name}

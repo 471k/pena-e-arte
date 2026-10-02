@@ -32,6 +32,7 @@ public static class PublicEndpoints
 
         group.MapGet("/countries/{countryCode}/default-currency", GetCountryDefaultCurrency)
              .AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/geo/visitor", GetVisitorGeo).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}", GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}", GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
         // Crawler-facing HTML shell for link-preview bots and crawlers that read only the raw HTML
@@ -102,6 +103,18 @@ public static class PublicEndpoints
     {
         CountryDefaultCurrencyResponse result = await mediator.Send(
             new GetCountryDefaultCurrencyQuery(countryCode), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetVisitorGeo(
+        HttpContext http,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        // The answer depends on who is asking, so no shared cache (CDN/proxy) may store it.
+        http.Response.Headers.CacheControl = "private, no-store";
+        VisitorGeoResponse result = await mediator.Send(
+            new GetVisitorGeoQuery(http.Connection.RemoteIpAddress), ct);
         return Results.Ok(result);
     }
 

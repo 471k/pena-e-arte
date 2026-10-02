@@ -111,7 +111,7 @@ export function PhoneInput({
         <SelectTrigger className="w-[120px] shrink-0 min-h-[44px]" aria-label="Country code">
           <SelectValue>{flagEmoji(country)} +{getCountryCallingCode(country)}</SelectValue>
         </SelectTrigger>
-        <SelectContent className="max-h-72">
+        <SelectContent className="max-h-72" showScrollbar>
           {PHONE_COUNTRIES.map((c) => (
             <SelectItem key={c.code} value={c.code}>
               {flagEmoji(c.code)} {c.name} (+{c.callingCode})

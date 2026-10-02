@@ -52,7 +52,7 @@ export function StudioMapPage() {
         </nav>
       </header>
 
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative isolate flex-1 overflow-hidden">
         <MapContainer
           center={DEFAULT_CENTER}
           zoom={DEFAULT_ZOOM}

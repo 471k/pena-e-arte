@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, act } from "@testing-library/react";
+import { render, screen, cleanup, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -98,11 +98,27 @@ function stableGetCountryDefaultCurrencyResult(code: string) {
   return fresh;
 }
 
+// What the visitor's IP resolves to. Like the real query it answers after the first render (never
+// synchronously on mount), because Radix Select does not display a value that changes during its
+// own first render, and in the app the lookup always arrives over the network.
+type MockVisitorGeo = { countryCode: string | null; timeZone: string | null };
+const NO_VISITOR_GEO: MockVisitorGeo | undefined = undefined;
+let mockVisitorGeo: MockVisitorGeo | undefined = NO_VISITOR_GEO;
+
 vi.mock("@/features/public/publicApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
+  const React = await import("react");
   return {
     ...actual,
     useGetCountryDefaultCurrencyQuery: (code: string) => stableGetCountryDefaultCurrencyResult(code),
+    useGetVisitorGeoQuery: () => {
+      const [data, setData] = React.useState<MockVisitorGeo | undefined>(undefined);
+      React.useEffect(() => {
+        const timer = setTimeout(() => setData(mockVisitorGeo), 0);
+        return () => clearTimeout(timer);
+      }, []);
+      return React.useMemo(() => ({ data, isLoading: false }), [data]);
+    },
   };
 });
 
@@ -165,6 +181,7 @@ afterEach(() => {
   cleanup();
   countryDefaultCurrencyResultCache.clear();
   mockGetCountryDefaultCurrency.mockClear();
+  mockVisitorGeo = NO_VISITOR_GEO;
   capturedOnResolved = null;
 });
 afterAll(() => server.close());
@@ -541,6 +558,49 @@ describe("RegisterStudioPage — step 2", () => {
 
     expect(await screen.findByText(/unable to reach the server/i)).toBeInTheDocument();
   }, 15_000);
+});
+
+describe("RegisterStudioPage — country default from the visitor's location", () => {
+  async function switchToSoloMode(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: /i'm an independent artist/i }));
+  }
+
+  it("solo form: defaults the country to where the visitor's IP is", async () => {
+    mockVisitorGeo = { countryCode: "PT", timeZone: "Europe/Lisbon" };
+    const user = userEvent.setup();
+    renderPage();
+    await switchToSoloMode(user);
+    await user.click(screen.getByRole("button", { name: /change currency/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /country/i })).toHaveTextContent("Portugal"),
+    );
+  });
+
+  it("solo form: falls back to the browser-language guess when the IP lookup has nothing", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await switchToSoloMode(user);
+    await user.click(screen.getByRole("button", { name: /change currency/i }));
+
+    // jsdom's navigator.language is en-US, so the guess is the United States.
+    expect(screen.getByRole("combobox", { name: /country/i })).toHaveTextContent("United States");
+  });
+
+  it("studio form: starts as Albania and moves to the visitor's country when no address is typed", async () => {
+    mockVisitorGeo = { countryCode: "PT", timeZone: "Europe/Lisbon" };
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /^country$/i })).toHaveTextContent("Portugal"),
+    );
+  });
+
+  it("studio form: stays Albania when the IP gives no country", () => {
+    renderPage();
+
+    expect(screen.getByRole("combobox", { name: /^country$/i })).toHaveTextContent("Albania");
+  });
 });
 
 describe("RegisterStudioPage — solo artist mode", () => {
