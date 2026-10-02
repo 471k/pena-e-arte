@@ -15,7 +15,7 @@
 map $request_uri $robots_tag {
     default "${IS_STAGING}";
     ~*^/(account|appointments|artists|billing|book|booth-rent|campaigns|clients|conduct-reports|consent|dashboard|deposit-rules|designs|earnings|feedback|forms|gift-cards|help-insights|intake|intake-form-builder|me|messages|my-studios|new|notifications|packages|pay|payments|plans|platform|promo-codes|referrals|reports|schedule|services|studios|subscribe|subscriptions|traffic|waitlist)(/|\?|$) "noindex, nofollow";
-    ~*^/(login|register|client-register|forgot-password|reset-password|verify-email|confirm-change-email|change-email|change-password|unsubscribe|share|embed)(/|\?|$) "noindex, nofollow";
+    ~*^/(login|register|client-register|forgot-password|reset-password|verify-email|confirm-change-email|change-email|change-password|unsubscribe|data-deletion|share|embed)(/|\?|$) "noindex, nofollow";
 }
 
 # Crawler/link-preview bots that read only the raw HTML (search-visibility Phase 5). Matched
