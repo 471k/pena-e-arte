@@ -63,7 +63,8 @@ export function PrivacyPolicyPage() {
           show those photos on the artist&apos;s public portfolio and to display a Verified badge;
           we never post on the artist&apos;s behalf. Disconnecting in TattooOS, or removing
           TattooOS under Instagram Settings &rarr; Apps and websites, stops all access. Disconnecting
-          in TattooOS also deletes the stored token. To have the photos already synced removed too,
+          in TattooOS also deletes the stored token and the synced photos. If you removed
+          TattooOS on Instagram&apos;s side only, or want your data deleted another way,
           contact us via the{" "}
           <Link to="/contact" className="underline underline-offset-2 hover:text-foreground">
             Contact

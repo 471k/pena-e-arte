@@ -65,14 +65,13 @@ public class DisconnectInstagramHandlerTests
     };
 
     [Fact]
-    public async Task Handle_Owner_DeletesStoredTokensKeepsSyncedPostsAndClearsVerification()
+    public async Task Handle_Owner_DeletesTokenAndSyncedPostsAndClearsVerification()
     {
         await new DisconnectInstagramHandler(_db, new FakeCurrentUser(Guid.NewGuid(), "owner"))
             .Handle(new DisconnectInstagramCommand(_artist.Id), default);
 
         _db.InstagramConnections.Any(c => c.ArtistId == _artist.Id).Should().BeFalse();
-        // Photos already synced stay on the portfolio (documented in Help).
-        _db.InstagramPosts.Count(p => p.ArtistId == _artist.Id).Should().Be(1);
+        _db.InstagramPosts.Any(p => p.ArtistId == _artist.Id).Should().BeFalse();
 
         SocialAccountLink link = _db.SocialAccountLinks.Single(l => l.SubjectId == _artist.Id);
         link.IsVerified.Should().BeFalse();

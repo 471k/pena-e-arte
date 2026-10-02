@@ -190,8 +190,8 @@ export function InstagramTab({
         platform="Instagram"
         body={
           isSelf
-            ? "Your synced posts stay on your portfolio, but no new posts will be fetched."
-            : `Synced posts stay on ${firstName}'s portfolio, but no new posts will be fetched.`
+            ? "Your synced Instagram posts will be removed from your portfolio. They come back if you reconnect."
+            : `${firstName}'s synced Instagram posts will be removed from their portfolio. They come back if Instagram is reconnected.`
         }
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
