@@ -43,6 +43,36 @@ public class InstagramServiceTests
 
     private const string LongTokenJson = """{"access_token":"LONG","token_type":"bearer","expires_in":5183944}""";
 
+    // -- Media ------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetMediaAsync_ParsesInstagramsOffsetWithoutColonTimestamp()
+    {
+        // Real shape: the offset is "+0000", not "+00:00". Found on staging 2026-10-02 when the
+        // nightly sync failed on $.data[0].timestamp.
+        ScriptedHandler handler = new((HttpStatusCode.OK, """
+            {"data":[
+              {"id":"1","media_type":"IMAGE","media_url":"https://cdn.test/a.jpg","timestamp":"2026-10-02T13:05:00+0000"},
+              {"id":"2","media_type":"VIDEO","media_url":"https://cdn.test/b.mp4","timestamp":"2026-10-01T09:00:00+0000"}
+            ]}
+            """));
+
+        List<InstagramMediaItem> items = await CreateSut(handler).GetMediaAsync("tok", default);
+
+        items.Should().ContainSingle();
+        items[0].Id.Should().Be("1");
+        items[0].Timestamp.Should().Be(new DateTime(2026, 10, 2, 13, 5, 0, DateTimeKind.Utc));
+    }
+
+    [Theory]
+    [InlineData("2026-10-02T13:05:00+0000")]
+    [InlineData("2026-10-02T13:05:00+00:00")]
+    [InlineData("2026-10-02T15:05:00+0200")]
+    public void ParseTimestamp_NormalisesEveryOffsetShapeToUtc(string input)
+    {
+        InstagramService.ParseTimestamp(input).Should().Be(new DateTime(2026, 10, 2, 13, 5, 0, DateTimeKind.Utc));
+    }
+
     // -- Authorization URL ------------------------------------------------------------------
 
     [Fact]

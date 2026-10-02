@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -168,7 +169,7 @@ public sealed class InstagramService(
                 if (item.MediaUrl is null && item.ThumbnailUrl is null) continue;
 
                 all.Add(new InstagramMediaItem(
-                    item.Id, item.MediaType, item.MediaUrl, item.ThumbnailUrl, item.Caption, item.Timestamp));
+                    item.Id, item.MediaType, item.MediaUrl, item.ThumbnailUrl, item.Caption, ParseTimestamp(item.Timestamp)));
             }
 
             nextUrl = page.Paging?.Next;
@@ -177,6 +178,11 @@ public sealed class InstagramService(
         logger.LogInformation("Fetched {Count} media items from Instagram", all.Count);
         return all;
     }
+
+    // Instagram sends the offset without a colon ("2026-10-02T13:05:00+0000"), which
+    // System.Text.Json's DateTime converter rejects, so the field is read as a string and parsed here.
+    internal static DateTime ParseTimestamp(string timestamp) =>
+        DateTimeOffset.Parse(timestamp, CultureInfo.InvariantCulture).UtcDateTime;
 
     private string BuildMediaUrl(string accessToken) =>
         "https://graph.instagram.com/me/media" +
@@ -195,7 +201,7 @@ public sealed class InstagramService(
         [property: JsonPropertyName("media_url")] string? MediaUrl,
         [property: JsonPropertyName("thumbnail_url")] string? ThumbnailUrl,
         [property: JsonPropertyName("caption")] string? Caption,
-        [property: JsonPropertyName("timestamp")] DateTime Timestamp);
+        [property: JsonPropertyName("timestamp")] string Timestamp);
 
     private sealed record MediaPageDto(
         [property: JsonPropertyName("data")] List<MediaItemDto> Data,
