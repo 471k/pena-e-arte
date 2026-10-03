@@ -1,6 +1,6 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { LawyerReviewBanner } from "./LawyerReviewBanner";
-import { LEGAL_ENTITY_NAME, LEGAL_ENTITY_ADDRESS } from "@/shared/constants/legalEntity";
+import { LEGAL_ENTITY_NIPT, LEGAL_ENTITY_ADDRESS } from "@/shared/constants/legalEntity";
 import { ROUTE_META } from "@/shared/seo/siteRoutes";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
@@ -22,7 +22,7 @@ export function TermsOfServicePage() {
     >
       <h1 className="text-2xl font-semibold tracking-tight">Terms of Service</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        These terms govern use of the TattooOS platform, operated by {LEGAL_ENTITY_NAME},
+        These terms govern use of the TattooOS platform, operated by the business registered in Albania under NIPT {LEGAL_ENTITY_NIPT},
         {" "}{LEGAL_ENTITY_ADDRESS}.
       </p>
 
