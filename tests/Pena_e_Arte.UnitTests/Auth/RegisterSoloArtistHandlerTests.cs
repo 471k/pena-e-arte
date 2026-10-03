@@ -36,6 +36,38 @@ public class RegisterSoloArtistHandlerTests
         _identity.CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>())
                  .Returns((true, _userId, Array.Empty<string>()));
 
+    [Fact]
+    public async Task Handle_WithTimezone_StoresItOnTheSoloStudio()
+    {
+        IdentitySucceeds();
+
+        await CreateSut().Handle(
+            new RegisterSoloArtistCommand(ValidRequest() with { Timezone = "Europe/Lisbon" }), default);
+
+        _db.Studios.Single().Timezone.Should().Be("Europe/Lisbon");
+    }
+
+    [Fact]
+    public async Task Handle_WithoutTimezone_KeepsTheDefaultForOldClients()
+    {
+        IdentitySucceeds();
+
+        await CreateSut().Handle(new RegisterSoloArtistCommand(ValidRequest()), default);
+
+        _db.Studios.Single().Timezone.Should().Be("Europe/Tirane");
+    }
+
+    [Fact]
+    public void Validator_UnknownTimezone_Fails_AndARealOneIsAccepted()
+    {
+        RegisterSoloArtistValidator validator = new();
+
+        validator.Validate(new RegisterSoloArtistCommand(ValidRequest() with { Timezone = "Mars/Olympus_Mons" }))
+            .Errors.Should().Contain(e => e.PropertyName == "Request.Timezone");
+        validator.Validate(new RegisterSoloArtistCommand(ValidRequest() with { Timezone = "Europe/Lisbon" }))
+            .IsValid.Should().BeTrue();
+    }
+
     private static RegisterSoloArtistRequest ValidRequest() =>
         new("solo@example.com", "Password1!", "Jane", "Doe");
 

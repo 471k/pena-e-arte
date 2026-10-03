@@ -5,6 +5,7 @@ import {
   formatOffset,
   isTimezoneSupported,
   listTimezoneIds,
+  registrationTimezoneId,
   suggestedTimezoneIds,
 } from "../timezones";
 
@@ -122,5 +123,20 @@ describe("defaultTimezoneId", () => {
   it("returns undefined rather than guessing when nothing is known", () => {
     expect(defaultTimezoneId([], "Mars/Olympus")).toBeUndefined();
     expect(defaultTimezoneId([], "")).toBeUndefined();
+  });
+});
+
+describe("registrationTimezoneId", () => {
+  it("uses the visitor's own zone when their IP is in the selected country", () => {
+    expect(registrationTimezoneId("PT", "PT", "Europe/Lisbon")).toBe("Europe/Lisbon");
+  });
+
+  it("does not use the IP zone for a different selected country", () => {
+    expect(registrationTimezoneId("PT", "US", "America/Chicago")).not.toBe("America/Chicago");
+  });
+
+  it("returns undefined for an unknown country so the server keeps its default, with no browser-zone guess", () => {
+    expect(registrationTimezoneId("ZZ", null, null)).toBeUndefined();
+    expect(registrationTimezoneId(undefined, "PT", "Europe/Lisbon")).toBeUndefined();
   });
 });

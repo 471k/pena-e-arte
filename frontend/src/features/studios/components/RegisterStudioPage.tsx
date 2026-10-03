@@ -36,6 +36,7 @@ import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 import { useGetCountryDefaultCurrencyQuery, useGetVisitorGeoQuery } from "@/features/public/publicApi";
+import { registrationTimezoneId } from "@/shared/utils/timezones";
 
 const schema = z
   .object({
@@ -208,6 +209,7 @@ export function RegisterStudioPage() {
         password:  values.password,
         countryCode: values.countryCode,
         currency:    values.currency || undefined,
+        timezone:    registrationTimezoneId(values.countryCode, visitorGeo?.countryCode, visitorGeo?.timeZone),
       }).unwrap();
 
       const { accessToken, refreshToken } = await login({
@@ -390,6 +392,7 @@ export function RegisterStudioPage() {
         ownerEmail:   values.email,
         countryCode:  values.countryCode,
         currency:     values.currency,
+        timezone:     registrationTimezoneId(values.countryCode, visitorGeo?.countryCode, visitorGeo?.timeZone),
         ...(pendingReferralCode ? { referralCode: pendingReferralCode } : {}),
       }).unwrap();
 

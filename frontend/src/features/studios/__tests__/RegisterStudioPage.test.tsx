@@ -12,6 +12,7 @@ import { authApi } from "@/features/auth/authApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { RegisterStudioPage } from "@/features/studios/components/RegisterStudioPage";
 import type { LocationPickerValue } from "@/shared/components/ui/location-picker";
+import { registrationTimezoneId } from "@/shared/utils/timezones";
 
 // ── Mock LocationPicker ────────────────────────────────────────────────────────
 // LocationPicker uses Leaflet and real map tiles — not viable in jsdom.
@@ -500,6 +501,31 @@ describe("RegisterStudioPage — step 2", () => {
     expect(capturedBody).toMatchObject({ nipt: "L01234567A" });
   }, STEP2_TIMEOUT);
 
+  it("includes a timezone for the submitted country in the registerStudio payload", async () => {
+    mockVisitorGeo = { countryCode: "PT", timeZone: "Europe/Lisbon" };
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/studios", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(STUDIO_RESPONSE, { status: 201 });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderPage();
+
+    await advanceToStep2(user);
+    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /register/i }));
+
+    await screen.findByTestId("dashboard");
+
+    const body = capturedBody as unknown as { countryCode: string; timezone?: string };
+    expect(body.timezone).toBe(registrationTimezoneId(body.countryCode, "PT", "Europe/Lisbon"));
+  }, STEP2_TIMEOUT);
+
   it("includes the street address in the registerStudio mutation payload", async () => {
     let capturedBody: Record<string, unknown> | null = null;
     server.use(
@@ -674,6 +700,32 @@ describe("RegisterStudioPage — solo artist mode", () => {
     expect(store.getState().auth.token).toBeTruthy();
     expect(store.getState().auth.refreshToken).toBe("fake-refresh-token");
   });
+
+  it("sends the visitor's timezone with a solo registration, matching the country on the form", async () => {
+    mockVisitorGeo = { countryCode: "PT", timeZone: "Europe/Lisbon" };
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post("http://localhost/api/v1/auth/register/solo-artist", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const user = userEvent.setup({ delay: null });
+    renderPage();
+
+    await switchToSoloMode(user);
+    await user.type(screen.getByLabelText(/first name/i), "Jane");
+    await user.type(screen.getByLabelText(/last name/i), "Doe");
+    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
+    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await user.click(screen.getByRole("button", { name: /create my account/i }));
+
+    await screen.findByTestId("dashboard");
+
+    expect(capturedBody).toMatchObject({ countryCode: "PT", timezone: "Europe/Lisbon" });
+  }, 15_000);
 
   it("shows server error when solo registration fails", async () => {
     server.use(

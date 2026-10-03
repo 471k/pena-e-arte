@@ -18,4 +18,8 @@ public record RegisterStudioRequest(
     string? CountryCode = null,
     /// <summary>ISO 4217. Null defaults to CountryCode's currency (RegisterStudioValidator
     /// requires that default to exist when this is omitted).</summary>
-    string? Currency = null);
+    string? Currency = null,
+    /// <summary>IANA time zone id, e.g. "Europe/Lisbon". Null keeps the studio default
+    /// (Europe/Tirane) — old clients send none; the registration form prefills it from the
+    /// visitor's location.</summary>
+    string? Timezone = null);

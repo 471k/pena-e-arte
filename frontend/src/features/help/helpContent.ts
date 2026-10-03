@@ -34,7 +34,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["booking", "request", "artist", "schedule a tattoo", "new appointment", "reference images", "area photo", "upload photo", "let studio choose", "any artist", "studio picks artist", "tattoo description", "style", "tattoo style", "referral source", "how did you hear", "desired placement", "body map", "guest", "no account", "sign up", "promo code", "discount code", "service", "service catalog"],
     summary: "Request a tattoo appointment by picking an artist, a date, and how long the session should be — no account required to start.",
     steps: [
-      "You don't need an account first — open a studio's page and click \"Book\", or go straight to a booking link. If you're not signed in, fill in your name, email, and phone; an account is created for you automatically and you'll get an email to set a password afterward.",
+      "You don't need an account first — open a studio's page and click \"Book\", or go straight to a booking link. If you're not signed in, fill in your name, email, and phone (the country code next to the phone field starts on the studio's own country — change it if your number is from elsewhere); an account is created for you automatically and you'll get an email to set a password afterward.",
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
       "In the \"Book an appointment\" card, choose an artist and a date.",
       "If the studio offers a Service (e.g. \"New Tattoo Session\", \"Touch-Up\"), pick one — its duration is set automatically and can't be changed, and if it has its own deposit, that replaces the studio's regular deposit. Pick \"Custom\" instead to choose your own duration, same as before.",
@@ -1235,7 +1235,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Your NIPT is never shown to clients or on your public booking page — it's for invoicing and business verification only.",
       "Your street address is shown on your public studio page with a \"Get directions\" link, so make sure it's accurate.",
       "Your timezone controls how appointment times are shown in emails, texts, and reports — pick the zone your studio actually operates in. The list shows each zone with its UTC offset and a readable name, for example \"(UTC+01:00) Tirane — Central European Time\", sorted by offset, with your country's zones listed first under \"Suggested\". Type a city's first letters to jump to it, or drag the scrollbar. If your studio has no timezone yet, one is preselected from where you are (your internet connection's location, or your browser's timezone); check it and press Save changes.",
-      "The country on a new registration is also filled in from where you are, and the phone prefix and the currency follow the country. You can change any of them: pick another country, or use \"Change currency\".",
+      "The country on a new registration is also filled in from where you are, and the phone prefix and the currency follow the country. The studio's timezone is set to match the country you register with, so appointment times are right from day one; you can change it later in Studio Settings. You can change any of them: pick another country, or use \"Change currency\".",
       "To manage your studio's Instagram, TikTok, Facebook, X, and YouTube links, use the \"Social Media\" card further down this page — see \"Verify your studio's or artist's social media accounts\".",
     ],
     warnings: [

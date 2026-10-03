@@ -51,6 +51,8 @@ export interface PublicStudioResponse {
   addressLine2:   string | null;
   postalCode:     string | null;
   currency:       string;
+  /** The studio's ISO country code — the guest booking phone field defaults to its dial prefix. */
+  countryCode:    string;
 }
 
 export interface CountryDefaultCurrencyResponse {

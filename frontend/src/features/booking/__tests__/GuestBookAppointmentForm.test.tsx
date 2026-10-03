@@ -11,6 +11,8 @@ const ARTIST = {
   specializations: ["neo-traditional"], hourlyRate: 80,
 };
 
+let mockStudio: { currency: string; countryCode?: string } = { currency: "EUR" };
+
 const mockCreateGuestAppointment = vi.fn();
 const mockPresignGuestUpload = vi.fn();
 
@@ -22,13 +24,14 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useCheckPublicSlotAvailabilityQuery: () => ({ data: { available: true, reason: null }, isFetching: false }),
     useGetPublicDepositRuleQuery: () => ({ data: null }),
     useGetPublicServicesQuery: () => ({ data: [] }),
-    useGetPublicStudioQuery: () => ({ data: { currency: "EUR" } }),
+    useGetPublicStudioQuery: () => ({ data: mockStudio }),
     useCreateGuestAppointmentMutation: () => [mockCreateGuestAppointment, { isLoading: false }],
     usePresignGuestUploadMutation: () => [mockPresignGuestUpload, { isLoading: false }],
   };
 });
 
 beforeEach(() => {
+  mockStudio = { currency: "EUR" };
   mockCreateGuestAppointment.mockReset();
   mockPresignGuestUpload.mockReset();
   mockPresignGuestUpload.mockReturnValue({
@@ -87,6 +90,18 @@ describe("GuestBookAppointmentForm", () => {
     expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^phone/i)).toBeInTheDocument();
+  });
+
+  it("defaults the phone prefix to the studio's own country, not always Albania", () => {
+    mockStudio = { currency: "EUR", countryCode: "PT" };
+    renderForm();
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+351");
+  });
+
+  it("falls back to Albania when the studio country is missing or unsupported", () => {
+    mockStudio = { currency: "EUR", countryCode: "" };
+    renderForm();
+    expect(screen.getByRole("combobox", { name: "Country code" })).toHaveTextContent("+355");
   });
 
   it("renders the marketing opt-in toggle", () => {

@@ -23,4 +23,5 @@ public record PublicStudioResponse(
     string? AddressLine1 = null,
     string? AddressLine2 = null,
     string? PostalCode = null,
-    string Currency = "");
+    string Currency = "",
+    string CountryCode = "");

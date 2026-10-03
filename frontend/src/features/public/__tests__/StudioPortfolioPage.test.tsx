@@ -91,6 +91,7 @@ const STUDIO: PublicStudioResponse = {
   addressLine2: null,
   postalCode:   null,
   currency: "EUR",
+  countryCode: "AL",
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
