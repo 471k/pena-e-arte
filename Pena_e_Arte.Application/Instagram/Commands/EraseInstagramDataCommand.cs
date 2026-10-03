@@ -97,7 +97,20 @@ public class EraseInstagramDataHandler(IAppDbContext db, ILogger<EraseInstagramD
 
         if (erased > 0 || posts.Count > 0)
         {
-            await db.SaveChangesAsync(ct);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Meta sends Deauthorize and Data Deletion at the same moment when an app is removed, and
+                // they can land on two replicas. Both load the rows, one deletes them first, and the other's
+                // delete then affects 0 rows. The data is already erased (and audited) by the winner, so
+                // answer like any already-disconnected user instead of a 500 Meta would treat as a failure.
+                logger.LogInformation("Instagram data was already erased by a concurrent Meta callback");
+                return 0;
+            }
+
             logger.LogInformation(
                 "Instagram data erased via Meta callback: {Accounts} account(s), {Posts} post(s)",
                 erased, posts.Count);
