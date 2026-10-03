@@ -69,7 +69,7 @@ function OwnerReportCard({ report }: { report: ConductReportResponse }) {
 
             {report.isHighSeverity ? (
               <p className="text-xs text-muted-foreground italic">
-                Escalated to platform review — only Pena e Artë staff can close this report.
+                Escalated to platform review — only TattooOS staff can close this report.
               </p>
             ) : (
               <div className="flex gap-1.5 flex-wrap">

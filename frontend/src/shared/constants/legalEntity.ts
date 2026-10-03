@@ -7,7 +7,7 @@
 // file cannot import a TS constant without a Vite templating plugin this repo
 // does not have. If the two ever diverge, THIS FILE wins — update index.html to
 // match, not the reverse.
-export const LEGAL_ENTITY_NAME = "Pena e Artë";
+export const LEGAL_ENTITY_NAME = "TattooOS";
 export const LEGAL_ENTITY_NIPT = "M12219042B";
 export const LEGAL_ENTITY_ADDRESS = "Rruga Pirro Goda, Tiranë, Albania";
 
