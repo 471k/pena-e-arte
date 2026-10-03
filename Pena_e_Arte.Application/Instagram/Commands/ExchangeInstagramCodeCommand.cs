@@ -51,6 +51,7 @@ public class ExchangeInstagramCodeHandler(
                 StudioId = studioId,
                 ArtistId = request.ArtistId,
                 InstagramUserId = tokenResponse.UserId,
+                InstagramAccountId = tokenResponse.AccountId,
                 Username = username,
                 EncryptedToken = encryptedToken,
                 TokenExpiresAt = expiresAt,
@@ -60,6 +61,7 @@ public class ExchangeInstagramCodeHandler(
         else
         {
             existing.InstagramUserId = tokenResponse.UserId;
+            existing.InstagramAccountId = tokenResponse.AccountId;
             existing.Username = username;
             existing.EncryptedToken = encryptedToken;
             existing.TokenExpiresAt = expiresAt;
@@ -93,6 +95,7 @@ public class ExchangeInstagramCodeHandler(
         socialLink.VerifiedAt = DateTime.UtcNow;
         socialLink.VerificationMethod = SocialVerificationMethod.OAuthConnect;
         socialLink.ExternalUserId = tokenResponse.UserId;
+        socialLink.AlternateExternalUserId = tokenResponse.AccountId;
         // Kept (not discarded like the Studio-subject case) so a future periodic
         // re-verification job has a token to check — matches ExchangeSocialOAuthCodeCommand's
         // Artist-subject branch.

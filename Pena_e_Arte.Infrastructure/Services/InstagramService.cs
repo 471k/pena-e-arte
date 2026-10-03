@@ -66,11 +66,49 @@ public sealed class InstagramService(
             await longResponse.Content.ReadFromJsonAsync<LongTokenDto>(ct)
             ?? throw new InvalidOperationException("Empty Instagram long token response.");
 
+        string? accountId = await TryGetAccountIdAsync(client, longToken.AccessToken, ct);
+
         return new InstagramTokenResponse(
             longToken.AccessToken,
             longToken.TokenType,
             longToken.ExpiresIn,
-            shortToken.UserId);
+            shortToken.UserId,
+            accountId);
+    }
+
+    /// <summary>
+    /// The token exchange returns an app-scoped user id; /me?fields=user_id returns the account's
+    /// professional ID, which Meta's Deauthorize / Data Deletion callbacks may use instead. Best effort:
+    /// a failure here must never break Connect, it only means erasure can match on the app-scoped id alone.
+    /// </summary>
+    private async Task<string?> TryGetAccountIdAsync(HttpClient client, string accessToken, CancellationToken ct)
+    {
+        try
+        {
+            HttpResponseMessage response = await client.GetAsync(
+                "https://graph.instagram.com/me?fields=user_id" +
+                $"&access_token={Uri.EscapeDataString(accessToken)}", ct);
+            response.EnsureSuccessStatusCode();
+
+            return ParseAccountId(await response.Content.ReadAsStringAsync(ct));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException && !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Could not read the Instagram professional account id; erasure will match the app-scoped id only");
+            return null;
+        }
+    }
+
+    /// <summary>Reads user_id from a /me response; Meta returns it as a string or a number.</summary>
+    internal static string? ParseAccountId(string json)
+    {
+        using JsonDocument doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object
+            || !doc.RootElement.TryGetProperty("user_id", out JsonElement idElement))
+            return null;
+
+        string? id = idElement.ValueKind == JsonValueKind.Number ? idElement.GetRawText() : idElement.GetString();
+        return string.IsNullOrWhiteSpace(id) ? null : id;
     }
 
     /// <summary>Instagram appends "#_" to the redirect's code; it is not part of the code.</summary>

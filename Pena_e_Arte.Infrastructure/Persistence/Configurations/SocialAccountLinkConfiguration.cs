@@ -15,6 +15,7 @@ public class SocialAccountLinkConfiguration : TenantEntityConfiguration<SocialAc
         builder.Property(s => s.SubjectType).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(s => s.Platform).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(s => s.VerificationMethod).HasConversion<string>().HasMaxLength(16);
+        builder.Property(s => s.AlternateExternalUserId).HasMaxLength(64);
         builder.Property(s => s.Handle).HasMaxLength(60).IsRequired();
         builder.Property(s => s.EncryptedToken).HasColumnType("TEXT");
         builder.Property(s => s.PendingVerificationCode).HasMaxLength(32);
