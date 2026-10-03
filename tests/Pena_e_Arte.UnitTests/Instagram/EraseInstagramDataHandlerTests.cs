@@ -1,6 +1,9 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Pena_e_Arte.Application.Instagram.Commands;
+using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -117,6 +120,25 @@ public class EraseInstagramDataHandlerTests
 
         erased.Should().Be(1);
         _db.InstagramConnections.Any(c => c.ArtistId == legacyArtistId).Should().BeFalse();
+    }
+
+    // Production regression 2026-10-03: Meta fired Deauthorize and Data Deletion at the same instant on two
+    // replicas; the loser's delete affected 0 rows and the endpoint returned a 500.
+    [Fact]
+    public async Task Handle_ConcurrentCallbackAlreadyErasedTheRows_ReturnsZeroInsteadOfThrowing()
+    {
+        IAppDbContext racing = Substitute.For<IAppDbContext>();
+        racing.InstagramConnections.Returns(_db.InstagramConnections);
+        racing.SocialAccountLinks.Returns(_db.SocialAccountLinks);
+        racing.InstagramPosts.Returns(_db.InstagramPosts);
+        racing.AuditLogEntries.Returns(_db.AuditLogEntries);
+        racing.SaveChangesAsync(Arg.Any<CancellationToken>())
+            .Returns<int>(_ => throw new DbUpdateConcurrencyException());
+        EraseInstagramDataHandler sut = new(racing, NullLogger<EraseInstagramDataHandler>.Instance);
+
+        int erased = await sut.Handle(new EraseInstagramDataCommand("ig-ana"), default);
+
+        erased.Should().Be(0);
     }
 
     [Fact]
