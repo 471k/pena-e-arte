@@ -191,6 +191,47 @@ public class RegisterStudioValidatorTests
             e.PropertyName == "Request.AddressLine2" || e.PropertyName == "Request.PostalCode");
     }
 
+    [Theory]
+    [InlineData("Europe/Lisbon")]
+    [InlineData("Europe/Tirane")]
+    [InlineData("America/New_York")]
+    public void Validate_RealIanaTimezone_IsValid(string timezone)
+    {
+        RegisterStudioCommand cmd = ValidCommand() with
+        {
+            Request = ValidCommand().Request with { Timezone = timezone },
+        };
+
+        _sut.ShouldBeValid(cmd);
+    }
+
+    [Theory]
+    [InlineData("Mars/Olympus_Mons")]
+    [InlineData("not a zone")]
+    public void Validate_UnknownTimezone_FailsOnTimezone(string timezone)
+    {
+        RegisterStudioCommand cmd = ValidCommand() with
+        {
+            Request = ValidCommand().Request with { Timezone = timezone },
+        };
+
+        _sut.ShouldFailOn(cmd, "Request.Timezone");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Validate_OmittedOrBlankTimezone_IsValid(string? timezone)
+    {
+        RegisterStudioCommand cmd = ValidCommand() with
+        {
+            Request = ValidCommand().Request with { Timezone = timezone },
+        };
+
+        _sut.ShouldBeValid(cmd);
+    }
+
     private static RegisterStudioCommand ValidCommand() =>
         Command("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com");
 

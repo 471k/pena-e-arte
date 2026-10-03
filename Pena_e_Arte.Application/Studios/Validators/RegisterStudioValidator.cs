@@ -42,5 +42,9 @@ public class RegisterStudioValidator : AbstractValidator<RegisterStudioCommand>
             .WithMessage("Please choose your studio's currency.")
             .WithName("Currency")
             .When(x => x.Request.Currency is null && x.Request.CountryCode is not null);
+        RuleFor(x => x.Request.Timezone)
+            .Must(tz => TimeZoneInfo.TryFindSystemTimeZoneById(tz!.Trim(), out _))
+            .WithMessage("Timezone must be a valid IANA time zone id.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.Timezone));
     }
 }

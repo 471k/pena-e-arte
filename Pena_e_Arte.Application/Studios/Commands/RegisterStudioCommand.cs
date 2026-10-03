@@ -86,6 +86,10 @@ public class RegisterStudioHandler(
             PendingReferralCodeId = pendingReferralCodeId,
         };
 
+        // Omitted by old clients: keep the entity default rather than guess a zone.
+        if (!string.IsNullOrWhiteSpace(req.Timezone))
+            studio.Timezone = req.Timezone.Trim();
+
         Subscription subscription = new()
         {
             StudioId = studio.Id,

@@ -9,4 +9,7 @@ public record RegisterSoloArtistRequest(
     /// defaults to "AL"/"ALL" and logs when omitted.</summary>
     string? CountryCode = null,
     /// <summary>ISO 4217. Null defaults to CountryCode's currency.</summary>
-    string? Currency = null);
+    string? Currency = null,
+    /// <summary>IANA time zone id, e.g. "Europe/Lisbon". Null keeps the studio default
+    /// (Europe/Tirane) for old clients.</summary>
+    string? Timezone = null);

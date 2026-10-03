@@ -64,6 +64,20 @@ public class GetPublicStudioHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ActiveStudio_ReturnsItsCountryCodeSoGuestFormsCanDefaultThePhonePrefix()
+    {
+        Studio studio = MakeStudio();
+        studio.CountryCode = "PT";
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result = await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result.Should().NotBeNull();
+        result!.CountryCode.Should().Be("PT");
+    }
+
+    [Fact]
     public async Task Handle_UnknownSlug_ReturnsNull()
     {
         PublicStudioResponse? result =

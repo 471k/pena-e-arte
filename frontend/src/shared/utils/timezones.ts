@@ -131,3 +131,16 @@ export function defaultTimezoneId(
   if (suggested.length > 0) return suggested[0];
   return browserTimezone && isTimezoneSupported(browserTimezone) ? browserTimezone : undefined;
 }
+
+/** The zone to send with a new registration: the selected country's best-suggested zone (the
+ * visitor's own IP zone first when the IP is in that country), or undefined so the server keeps its
+ * default. There is deliberately no browser-zone fallback here, unlike defaultTimezoneId: a browser's
+ * zone says nothing about which country the studio is in, and a wrong zone silently shifts every
+ * appointment time, where the server default is at least the product's home market. */
+export function registrationTimezoneId(
+  countryCode: string | null | undefined,
+  ipCountry?: string | null,
+  ipTimezone?: string | null,
+): string | undefined {
+  return suggestedTimezoneIds(countryCode, ipCountry, ipTimezone)[0];
+}

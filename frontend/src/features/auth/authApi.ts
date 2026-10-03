@@ -27,6 +27,8 @@ export interface RegisterSoloArtistRequest {
   lastName:  string;
   countryCode?: string;
   currency?:    string;
+  /** IANA zone id; omitted lets the server keep its default. */
+  timezone?:    string;
 }
 
 interface OAuthLoginRequest {

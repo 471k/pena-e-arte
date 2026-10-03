@@ -7,6 +7,7 @@ import { Button }   from "@/shared/components/ui/button";
 import { Input }    from "@/shared/components/ui/input";
 import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
+import { asPhoneCountry } from "@/shared/utils/phoneCountries";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -393,6 +394,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
+              defaultCountry={asPhoneCountry(publicStudio?.countryCode)}
               aria-invalid={!!errors.phone}
             />
           )}

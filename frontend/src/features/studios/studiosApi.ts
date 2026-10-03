@@ -16,6 +16,8 @@ export interface RegisterStudioRequest {
   referralCode?: string;
   countryCode?:  string;
   currency?:     string;
+  /** IANA zone id; omitted lets the server keep its default. */
+  timezone?:     string;
 }
 
 export interface StudioResponse {

@@ -239,6 +239,25 @@ public class RegisterStudioHandlerTests
         studio.PostalCode.Should().BeNull();
     }
 
+    [Fact]
+    public async Task Handle_WithTimezone_StoresItOnTheStudio()
+    {
+        RegisterStudioRequest req = ValidRequest() with { Timezone = " Europe/Lisbon " };
+
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        _db.Studios.Single().Timezone.Should().Be("Europe/Lisbon");
+        result.Timezone.Should().Be("Europe/Lisbon");
+    }
+
+    [Fact]
+    public async Task Handle_WithoutTimezone_KeepsTheDefaultForOldClients()
+    {
+        await CreateSut().Handle(new RegisterStudioCommand(ValidRequest()), default);
+
+        _db.Studios.Single().Timezone.Should().Be("Europe/Tirane");
+    }
+
     private static RegisterStudioRequest ValidRequest() =>
         new("Tinta & Alma", "tinta-alma", "Porto", 41.15, -8.61, "owner@tinta-alma.com", "L01234567A", "Rua Central 5",
             CountryCode: "AL");

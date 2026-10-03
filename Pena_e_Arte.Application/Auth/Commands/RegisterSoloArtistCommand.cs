@@ -35,6 +35,10 @@ public class RegisterSoloArtistValidator : AbstractValidator<RegisterSoloArtistC
             .Must(c => CurrencyCatalog.IsSupported(c!))
             .WithMessage("Currency must be a known ISO 4217 code.")
             .When(x => x.Request.Currency is not null);
+        RuleFor(x => x.Request.Timezone)
+            .Must(tz => TimeZoneInfo.TryFindSystemTimeZoneById(tz!.Trim(), out _))
+            .WithMessage("Timezone must be a valid IANA time zone id.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Request.Timezone));
     }
 }
 
@@ -84,6 +88,10 @@ public class RegisterSoloArtistHandler(
             // Kept non-null only because the column is non-nullable.
             TrialExpiresAt = DateTime.UtcNow,
         };
+
+        // Omitted by old clients: keep the entity default rather than guess a zone.
+        if (!string.IsNullOrWhiteSpace(req.Timezone))
+            studio.Timezone = req.Timezone.Trim();
 
         if (req.CountryCode is null)
         {
