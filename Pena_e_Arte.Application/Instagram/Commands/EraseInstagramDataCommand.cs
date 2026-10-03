@@ -28,11 +28,14 @@ public class EraseInstagramDataHandler(IAppDbContext db, ILogger<EraseInstagramD
     public async Task<int> Handle(EraseInstagramDataCommand request, CancellationToken ct)
     {
         List<InstagramConnection> connections = await db.InstagramConnections
-            .Where(c => c.InstagramUserId == request.InstagramUserId)
+            .Where(c => c.InstagramUserId == request.InstagramUserId
+                     || c.InstagramAccountId == request.InstagramUserId)
             .ToListAsync(ct);
 
         List<SocialAccountLink> links = await db.SocialAccountLinks
-            .Where(s => s.Platform == SocialPlatform.Instagram && s.ExternalUserId == request.InstagramUserId)
+            .Where(s => s.Platform == SocialPlatform.Instagram
+                     && (s.ExternalUserId == request.InstagramUserId
+                         || s.AlternateExternalUserId == request.InstagramUserId))
             .ToListAsync(ct);
 
         List<Guid> artistIds = connections.Select(c => c.ArtistId)
@@ -56,6 +59,7 @@ public class EraseInstagramDataHandler(IAppDbContext db, ILogger<EraseInstagramD
             link.VerifiedAt = null;
             link.VerificationMethod = null;
             link.ExternalUserId = null;
+            link.AlternateExternalUserId = null;
             link.EncryptedToken = null;
             link.TokenExpiresAt = null;
             link.UpdatedAt = DateTime.UtcNow;
@@ -97,6 +101,16 @@ public class EraseInstagramDataHandler(IAppDbContext db, ILogger<EraseInstagramD
             logger.LogInformation(
                 "Instagram data erased via Meta callback: {Accounts} account(s), {Posts} post(s)",
                 erased, posts.Count);
+        }
+
+        else
+        {
+            // Zero is a normal answer (already disconnected), but it is also what an id-format mismatch
+            // with Meta looks like, so record the shape — length and first 4 characters only, never the id.
+            logger.LogInformation(
+                "Instagram erase callback matched no account (id length {Length}, prefix {Prefix})",
+                request.InstagramUserId.Length,
+                request.InstagramUserId[..Math.Min(4, request.InstagramUserId.Length)]);
         }
 
         return erased;

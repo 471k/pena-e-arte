@@ -10,6 +10,14 @@ public class InstagramConnection : TenantEntity
 {
     public Guid ArtistId { get; set; }
     public string InstagramUserId { get; set; } = "";
+
+    /// <summary>
+    /// The account's professional (Instagram) ID from /me?fields=user_id — a different value from the
+    /// app-scoped InstagramUserId the token exchange returns. Meta's Deauthorize / Data Deletion callbacks
+    /// may identify the user by either, so erasure matches both. Null on rows connected before it existed
+    /// or when the lookup failed.
+    /// </summary>
+    public string? InstagramAccountId { get; set; }
     public string Username { get; set; } = "";
 
     /// <summary>AES-256-GCM encrypted long-lived access token.</summary>

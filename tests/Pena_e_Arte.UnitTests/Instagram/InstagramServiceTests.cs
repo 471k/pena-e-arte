@@ -124,12 +124,56 @@ public class InstagramServiceTests
 
         await CreateSut(handler).ExchangeCodeAsync("the-code", default);
 
-        handler.Requests.Should().HaveCount(2);
+        handler.Requests.Should().HaveCount(3);
         handler.Requests[0].Method.Should().Be(HttpMethod.Post);
         handler.Requests[0].Url.Should().Be("https://api.instagram.com/oauth/access_token");
         handler.Requests[0].Body.Should().Contain("grant_type=authorization_code").And.Contain("code=the-code");
         handler.Requests[1].Url.Should().StartWith("https://graph.instagram.com/access_token?grant_type=ig_exchange_token");
         handler.Requests[1].Url.Should().Contain("access_token=SHORT");
+    }
+
+    // Meta's Deauthorize / Data Deletion callbacks can identify the user by the professional account id,
+    // which differs from the app-scoped user_id the token exchange returns (seen on production 2026-10-03).
+    [Fact]
+    public async Task ExchangeCodeAsync_AlsoReadsTheProfessionalAccountIdFromMe()
+    {
+        ScriptedHandler handler = new(
+            (HttpStatusCode.OK, """{"data":[{"access_token":"SHORT","user_id":"28570000000000000"}]}"""),
+            (HttpStatusCode.OK, LongTokenJson),
+            (HttpStatusCode.OK, """{"user_id":"17841400000000099","id":"28570000000000000"}"""));
+
+        InstagramTokenResponse result = await CreateSut(handler).ExchangeCodeAsync("c", default);
+
+        result.UserId.Should().Be("28570000000000000");
+        result.AccountId.Should().Be("17841400000000099");
+        handler.Requests[2].Url.Should().StartWith("https://graph.instagram.com/me?fields=user_id");
+        handler.Requests[2].Url.Should().Contain("access_token=LONG");
+    }
+
+    [Fact]
+    public async Task ExchangeCodeAsync_WhenTheAccountIdLookupFails_StillConnectsWithoutIt()
+    {
+        ScriptedHandler handler = new(
+            (HttpStatusCode.OK, """{"data":[{"access_token":"SHORT","user_id":"1"}]}"""),
+            (HttpStatusCode.OK, LongTokenJson),
+            (HttpStatusCode.InternalServerError, """{"error":{"message":"boom"}}"""));
+
+        InstagramTokenResponse result = await CreateSut(handler).ExchangeCodeAsync("c", default);
+
+        result.AccessToken.Should().Be("LONG");
+        result.UserId.Should().Be("1");
+        result.AccountId.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("""{"user_id":"17841400000000099"}""", "17841400000000099")]
+    [InlineData("""{"user_id":17841400000000099}""", "17841400000000099")]
+    [InlineData("""{"id":"2857"}""", null)]
+    [InlineData("""{"user_id":""}""", null)]
+    [InlineData("[]", null)]
+    public void ParseAccountId_ReadsStringOrNumberAndIgnoresAnythingElse(string json, string? expected)
+    {
+        InstagramService.ParseAccountId(json).Should().Be(expected);
     }
 
     [Fact]

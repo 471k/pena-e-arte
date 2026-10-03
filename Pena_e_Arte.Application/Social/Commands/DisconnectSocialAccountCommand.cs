@@ -48,6 +48,7 @@ public class DisconnectSocialAccountHandler(IAppDbContext db, ICurrentTenant ten
             link.VerifiedAt = null;
             link.VerificationMethod = null;
             link.ExternalUserId = null;
+            link.AlternateExternalUserId = null;
             link.EncryptedToken = null;
             link.TokenExpiresAt = null;
             link.PendingVerificationCode = null;

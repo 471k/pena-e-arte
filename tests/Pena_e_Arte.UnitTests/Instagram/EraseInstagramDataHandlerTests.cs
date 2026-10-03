@@ -29,6 +29,7 @@ public class EraseInstagramDataHandlerTests
             StudioId = _studioId,
             ArtistId = artistId,
             InstagramUserId = instagramUserId,
+            InstagramAccountId = "acct-" + instagramUserId,
             Username = instagramUserId,
             EncryptedToken = "encrypted-token",
             TokenExpiresAt = DateTime.UtcNow.AddDays(60),
@@ -51,6 +52,7 @@ public class EraseInstagramDataHandlerTests
             Handle = instagramUserId,
             IsVerified = true,
             ExternalUserId = instagramUserId,
+            AlternateExternalUserId = "acct-" + instagramUserId,
             EncryptedToken = "encrypted-token",
             TokenExpiresAt = DateTime.UtcNow.AddDays(60),
         });
@@ -74,6 +76,47 @@ public class EraseInstagramDataHandlerTests
         link.EncryptedToken.Should().BeNull();
         link.TokenExpiresAt.Should().BeNull();
         link.Handle.Should().Be("ig-ana");
+    }
+
+    // Production regression: Meta's callback can carry the professional account id instead of the
+    // app-scoped one the token exchange stored, which used to match nothing.
+    [Fact]
+    public async Task Handle_ProfessionalAccountId_ErasesTheSameDataAsTheAppScopedId()
+    {
+        int erased = await CreateSut().Handle(new EraseInstagramDataCommand("acct-ig-ana"), default);
+
+        erased.Should().Be(1);
+        _db.InstagramConnections.Any(c => c.ArtistId == _artistId).Should().BeFalse();
+        _db.InstagramPosts.Any(p => p.ArtistId == _artistId).Should().BeFalse();
+
+        SocialAccountLink link = _db.SocialAccountLinks.Single(l => l.SubjectId == _artistId);
+        link.IsVerified.Should().BeFalse();
+        link.ExternalUserId.Should().BeNull();
+        link.AlternateExternalUserId.Should().BeNull();
+        link.EncryptedToken.Should().BeNull();
+
+        _db.InstagramConnections.Count(c => c.ArtistId == _otherArtistId).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_RowConnectedBeforeTheProfessionalIdExisted_StillMatchesTheAppScopedId()
+    {
+        Guid legacyArtistId = Guid.NewGuid();
+        _db.InstagramConnections.Add(new InstagramConnection
+        {
+            StudioId = _studioId,
+            ArtistId = legacyArtistId,
+            InstagramUserId = "ig-legacy",
+            Username = "legacy",
+            EncryptedToken = "encrypted-token",
+            TokenExpiresAt = DateTime.UtcNow.AddDays(60),
+        });
+        await _db.SaveChangesAsync();
+
+        int erased = await CreateSut().Handle(new EraseInstagramDataCommand("ig-legacy"), default);
+
+        erased.Should().Be(1);
+        _db.InstagramConnections.Any(c => c.ArtistId == legacyArtistId).Should().BeFalse();
     }
 
     [Fact]

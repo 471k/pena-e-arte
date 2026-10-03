@@ -24,7 +24,7 @@ public sealed class InstagramSocialOAuthProvider(
     {
         InstagramTokenResponse token = await instagram.ExchangeCodeAsync(code, ct);
         return new SocialOAuthTokenResponse(
-            token.AccessToken, token.UserId, DateTime.UtcNow.AddSeconds(token.ExpiresIn));
+            token.AccessToken, token.UserId, DateTime.UtcNow.AddSeconds(token.ExpiresIn), token.AccountId);
     }
 
     public Task<string> GetUsernameAsync(string accessToken, CancellationToken ct) =>

@@ -59,6 +59,25 @@ public class ExchangeInstagramCodeCommandTests
     }
 
     [Fact]
+    public async Task Handle_Connect_StoresTheProfessionalAccountIdOnTheConnectionAndTheLink()
+    {
+        Guid artistId = await SeedArtist();
+        _instagram.ExchangeCodeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new InstagramTokenResponse("access-token", "bearer", 5_184_000, "ig-user-1", "ig-account-1"));
+        _instagram.GetUsernameAsync("access-token", Arg.Any<CancellationToken>()).Returns("artist_ig");
+        _encryptor.Encrypt("access-token").Returns("encrypted-access-token");
+
+        await CreateSut().Handle(new ExchangeInstagramCodeCommand(artistId, "auth-code"), default);
+
+        InstagramConnection connection = _db.InstagramConnections.Single(c => c.ArtistId == artistId);
+        connection.InstagramUserId.Should().Be("ig-user-1");
+        connection.InstagramAccountId.Should().Be("ig-account-1");
+        SocialAccountLink link = _db.SocialAccountLinks.Single(l => l.SubjectId == artistId);
+        link.ExternalUserId.Should().Be("ig-user-1");
+        link.AlternateExternalUserId.Should().Be("ig-account-1");
+    }
+
+    [Fact]
     public async Task Handle_Connect_WritesAStudioScopedAuditEntryWithThePlatformOnly()
     {
         Guid artistId = await SeedArtist();

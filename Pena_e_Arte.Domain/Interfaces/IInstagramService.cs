@@ -4,7 +4,8 @@ public record InstagramTokenResponse(
     string AccessToken,
     string TokenType,
     long ExpiresIn,
-    string UserId);
+    string UserId,
+    string? AccountId = null);
 
 public record InstagramMediaItem(
     string Id,

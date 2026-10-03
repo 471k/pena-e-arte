@@ -54,6 +54,7 @@ public class DisconnectInstagramHandler(IAppDbContext db, ICurrentUser currentUs
             socialLink.VerifiedAt = null;
             socialLink.VerificationMethod = null;
             socialLink.ExternalUserId = null;
+            socialLink.AlternateExternalUserId = null;
             socialLink.EncryptedToken = null;
             socialLink.TokenExpiresAt = null;
             socialLink.UpdatedAt = DateTime.UtcNow;

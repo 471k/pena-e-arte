@@ -87,6 +87,7 @@ public class ExchangeSocialOAuthCodeHandler(
         link.VerifiedAt = DateTime.UtcNow;
         link.VerificationMethod = SocialVerificationMethod.OAuthConnect;
         link.ExternalUserId = token.ExternalUserId;
+        link.AlternateExternalUserId = token.AlternateExternalUserId;
         link.PendingVerificationCode = null;
         link.PendingCodeExpiresAt = null;
         link.UpdatedAt = DateTime.UtcNow;

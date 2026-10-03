@@ -2,7 +2,11 @@ using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Domain.Interfaces;
 
-public record SocialOAuthTokenResponse(string AccessToken, string? ExternalUserId, DateTime? ExpiresAt);
+public record SocialOAuthTokenResponse(
+    string AccessToken,
+    string? ExternalUserId,
+    DateTime? ExpiresAt,
+    string? AlternateExternalUserId = null);
 
 /// <summary>
 /// One platform's OAuth "Connect" implementation for social verification. Every one of

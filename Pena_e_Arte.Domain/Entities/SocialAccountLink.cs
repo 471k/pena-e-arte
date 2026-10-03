@@ -31,6 +31,11 @@ public class SocialAccountLink : TenantEntity
     // (no ongoing sync need — the OAuth handshake there is a one-time identity check);
     // kept + refreshed for Artist-subject rows via the periodic re-verification job.
     public string? ExternalUserId { get; set; }
+
+    // Instagram only: the professional account ID, the second identifier Meta's deauthorize /
+    // data-deletion callbacks may use (see InstagramConnection.InstagramAccountId). Cleared with
+    // ExternalUserId.
+    public string? AlternateExternalUserId { get; set; }
     public string? EncryptedToken { get; set; }
     public DateTime? TokenExpiresAt { get; set; }
 

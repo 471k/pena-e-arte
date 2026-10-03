@@ -11,6 +11,7 @@ public class InstagramConnectionConfiguration : IEntityTypeConfiguration<Instagr
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.InstagramUserId).HasMaxLength(64).IsRequired();
+        builder.Property(c => c.InstagramAccountId).HasMaxLength(64);
         builder.Property(c => c.Username).HasMaxLength(64).IsRequired();
         builder.Property(c => c.EncryptedToken).HasColumnType("TEXT").IsRequired();
 

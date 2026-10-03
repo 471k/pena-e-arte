@@ -68,6 +68,7 @@ public class InstagramMetaCallbackEndpointTests(DatabaseFixture fixture)
                 StudioId = studioId,
                 ArtistId = id,
                 InstagramUserId = ig,
+                InstagramAccountId = $"acct-{ig}",
                 Username = ig,
                 EncryptedToken = "encrypted-token",
                 TokenExpiresAt = DateTime.UtcNow.AddDays(60),
@@ -90,6 +91,7 @@ public class InstagramMetaCallbackEndpointTests(DatabaseFixture fixture)
                 Handle = ig,
                 IsVerified = true,
                 ExternalUserId = ig,
+                AlternateExternalUserId = $"acct-{ig}",
                 EncryptedToken = "encrypted-token",
                 TokenExpiresAt = DateTime.UtcNow.AddDays(60),
             });
@@ -135,6 +137,7 @@ public class InstagramMetaCallbackEndpointTests(DatabaseFixture fixture)
         link.IsVerified.Should().BeFalse();
         link.EncryptedToken.Should().BeNull();
         link.ExternalUserId.Should().BeNull();
+        link.AlternateExternalUserId.Should().BeNull();
 
         // Another artist's Instagram data is untouched.
         (await db.InstagramConnections.AnyAsync(c => c.ArtistId == w.OtherArtistId)).Should().BeTrue();
@@ -160,6 +163,30 @@ public class InstagramMetaCallbackEndpointTests(DatabaseFixture fixture)
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
         (await db.InstagramConnections.AnyAsync(c => c.ArtistId == w.ArtistId)).Should().BeFalse();
+        (await db.InstagramConnections.AnyAsync(c => c.ArtistId == w.OtherArtistId)).Should().BeTrue();
+    }
+
+    // Production regression: Meta's callback may identify the user by the professional account id rather
+    // than the app-scoped id the token exchange returns. Matching only the latter erased nothing.
+    [Theory]
+    [InlineData("/api/v1/instagram/deauthorize")]
+    [InlineData("/api/v1/instagram/data-deletion")]
+    public async Task Callback_IdentifyingTheUserByTheProfessionalAccountId_ErasesThatUsersData(string path)
+    {
+        World w = await SeedWorld();
+        using IHost host = await BuildHost();
+        using HttpClient client = host.GetTestServer().CreateClient();
+
+        HttpResponseMessage response = await PostForm(client, path, SignedRequest($"acct-{w.InstagramUserId}"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        (await db.InstagramConnections.AnyAsync(c => c.ArtistId == w.ArtistId)).Should().BeFalse();
+        (await db.InstagramPosts.AnyAsync(p => p.ArtistId == w.ArtistId)).Should().BeFalse();
+        SocialAccountLink link = await db.SocialAccountLinks.SingleAsync(l => l.SubjectId == w.ArtistId);
+        link.IsVerified.Should().BeFalse();
+        link.EncryptedToken.Should().BeNull();
+        link.AlternateExternalUserId.Should().BeNull();
         (await db.InstagramConnections.AnyAsync(c => c.ArtistId == w.OtherArtistId)).Should().BeTrue();
     }
 
