@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 // Site-wide legal footer. Distinct from AuthShellFooter.tsx (which is a generic
 // auth-card wrapper — "Already have an account? Sign in"). This one carries
 // links to the four policy pages and is rendered on every public route.
-// Entity-level trader disclosure (name + NIPT) lives on the Privacy/Terms
+// Entity-level trader disclosure (NIPT) lives on the Privacy/Terms
 // pages instead of here — deliberately removed from the site-wide footer.
 
 const POLICY_LINKS: ReadonlyArray<{ to: string; label: string }> = [

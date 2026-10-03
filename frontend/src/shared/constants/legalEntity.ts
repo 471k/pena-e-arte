@@ -1,13 +1,15 @@
 // Single source of truth for the platform's own legal-entity disclosure.
-// Read by SiteFooter, the Terms/Privacy page templates, and any future
-// invoice/receipt template — never re-type the NIPT or entity name elsewhere.
+// Read by the Terms/Privacy page templates, and any future invoice/receipt template —
+// never re-type the NIPT or address elsewhere.
+//
+// The operator is a sole trader (Person Fizik), so its legal name is a person's name. The public
+// pages deliberately identify the business by NIPT only; there is no LEGAL_ENTITY_NAME constant.
 //
 // NOTE: frontend/index.html carries a literal copy of SITE_TAGLINE and
 // SITE_META_DESCRIPTION in its static <title>/<meta> tags because a static HTML
 // file cannot import a TS constant without a Vite templating plugin this repo
 // does not have. If the two ever diverge, THIS FILE wins — update index.html to
 // match, not the reverse.
-export const LEGAL_ENTITY_NAME = "Pena e Artë";
 export const LEGAL_ENTITY_NIPT = "M12219042B";
 export const LEGAL_ENTITY_ADDRESS = "Rruga Pirro Goda, Tiranë, Albania";
 

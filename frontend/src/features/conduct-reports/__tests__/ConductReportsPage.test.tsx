@@ -78,7 +78,7 @@ describe("ConductReportsPage — owner view", () => {
     const card = within(toggle.parentElement!);
 
     expect(card.getByRole("button", { name: /^resolved$/i })).toBeInTheDocument();
-    expect(card.queryByText(/only pena e art. staff can close/i)).not.toBeInTheDocument();
+    expect(card.queryByText(/only tattooos staff can close/i)).not.toBeInTheDocument();
   });
 
   it("shows locked/escalated copy instead of status buttons for a High-severity report", async () => {
@@ -89,7 +89,7 @@ describe("ConductReportsPage — owner view", () => {
     await user.click(toggle);
     const card = within(toggle.parentElement!);
 
-    expect(card.getByText(/only pena e art. staff can close this report/i)).toBeInTheDocument();
+    expect(card.getByText(/only tattooos staff can close this report/i)).toBeInTheDocument();
     expect(card.queryByRole("button", { name: /^resolved$/i })).not.toBeInTheDocument();
   });
 

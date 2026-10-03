@@ -1924,7 +1924,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Open Conduct Reports from the nav.",
       "Click a report card to expand it and read the full description and category.",
       "For a Standard-severity report (poor service, other), set its status to Open, Reviewing, Resolved, or Dismissed.",
-      "A High-severity report (scam, sexual misconduct, unsafe hygiene, harassment, discrimination) shows as escalated instead — only Pena e Artë platform staff can close it, though you can still read it in full, including who filed it.",
+      "A High-severity report (scam, sexual misconduct, unsafe hygiene, harassment, discrimination) shows as escalated instead — only TattooOS platform staff can close it, though you can still read it in full, including who filed it.",
     ],
     tips: ["High-severity reports are locked to platform-only resolution deliberately — an owner resolving a serious report about their own artist would be a conflict of interest."],
   },
@@ -1939,7 +1939,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Open Conduct Reports from the nav. The page itself is headed \"Reports About Me\" — it lists only the reports filed about you.",
       "Click a report card to expand it and read the full description.",
     ],
-    tips: ["The reporting client's name, email, and account are never shown to you — only the studio owner and Pena e Artë platform staff can see who filed a report."],
+    tips: ["The reporting client's name, email, and account are never shown to you — only the studio owner and TattooOS platform staff can see who filed a report."],
   },
   {
     id: "admin-conduct-reports",

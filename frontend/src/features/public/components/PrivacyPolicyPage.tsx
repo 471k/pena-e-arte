@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { PublicContentLayout } from "./PublicContentLayout";
 import { LawyerReviewBanner } from "./LawyerReviewBanner";
 import {
-  LEGAL_ENTITY_NAME,
   LEGAL_ENTITY_NIPT,
   LEGAL_ENTITY_ADDRESS,
 } from "@/shared/constants/legalEntity";
@@ -29,7 +28,7 @@ export function PrivacyPolicyPage() {
     >
       <h1 className="text-2xl font-semibold tracking-tight">Privacy Policy</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        TattooOS is operated by {LEGAL_ENTITY_NAME} (NIPT {LEGAL_ENTITY_NIPT}),
+        TattooOS is operated by a business registered in Albania (NIPT {LEGAL_ENTITY_NIPT}),
         {" "}{LEGAL_ENTITY_ADDRESS} — the data controller for the personal data described
         below.
       </p>
@@ -125,7 +124,7 @@ export function PrivacyPolicyPage() {
 
       <Section heading="6. Controller and contact">
         <p>
-          Data controller: {LEGAL_ENTITY_NAME} (NIPT {LEGAL_ENTITY_NIPT}),
+          Data controller: the business registered under NIPT {LEGAL_ENTITY_NIPT},
           {" "}{LEGAL_ENTITY_ADDRESS}. For any privacy request or to reach our
           data-protection contact, see the{" "}
           <Link to="/contact" className="underline underline-offset-2 hover:text-foreground">
