@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -140,7 +141,8 @@ public class AppointmentHandlerIntegrationTests
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
         await handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -154,7 +156,8 @@ public class AppointmentHandlerIntegrationTests
     {
         Guid tenantId = Guid.NewGuid();
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(Guid.NewGuid()), default);
 
@@ -172,7 +175,8 @@ public class AppointmentHandlerIntegrationTests
                                             AppointmentStatus.Completed);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(apptId), default);
 
@@ -194,7 +198,8 @@ public class AppointmentHandlerIntegrationTests
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
         await handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -220,11 +225,59 @@ public class AppointmentHandlerIntegrationTests
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task CancelAppointment_StudioCancelsHeldCardDeposit_ReleasesHoldAndPersistsRefundedState()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+
+        DateTime start = DateTime.UtcNow.AddDays(12);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90),
+                                            AppointmentStatus.Confirmed);
+        Guid paymentId;
+        await using (AppDbContext seed = _fixture.CreateDbContext(tenantId))
+        {
+            Payment held = new()
+            {
+                StudioId = tenantId,
+                AppointmentId = apptId,
+                ClientId = clientId,
+                Amount = 1234m,
+                Currency = "ALL",
+                Status = PaymentStatus.Captured, // authorised, not yet captured
+                Method = ClientPaymentMethod.Card,
+                Provider = "pok",
+                ProviderReferenceId = $"pok_{Guid.NewGuid():N}",
+            };
+            seed.Payments.Add(held);
+            await seed.SaveChangesAsync();
+            paymentId = held.Id;
+        }
+
+        await using AppDbContext db = _fixture.CreateDbContext(tenantId);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), _user, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
+        await handler.Handle(new CancelAppointmentCommand(apptId), default);
+
+        await _stripe.Received(1).CancelAsync(tenantId, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Payment payment = await verify.Payments.IgnoreQueryFilters().SingleAsync(p => p.Id == paymentId);
+        payment.Status.Should().Be(PaymentStatus.Refunded);
+        payment.RefundedAmount.Should().Be(1234m);
+        Appointment appt = await verify.Appointments.IgnoreQueryFilters().SingleAsync(x => x.Id == apptId);
+        appt.Status.Should().Be(AppointmentStatus.Cancelled);
+        appt.DepositStatus.Should().Be(DepositStatus.Refunded);
     }
 
     // ── RescheduleAppointment (client self-service) ─────────────────────────────

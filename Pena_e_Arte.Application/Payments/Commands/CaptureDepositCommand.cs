@@ -47,7 +47,10 @@ public class CaptureDepositHandler(
             .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
         if (appointment is not null)
         {
-            appointment.DepositStatus = DepositStatus.Paid;
+            // A late-cancel forfeit whose capture POK refused at cancellation time stays Forfeited
+            // when the owner captures it here — the same rule as PaymentReconciliationJob.MarkPaid.
+            if (appointment.DepositStatus != DepositStatus.Forfeited)
+                appointment.DepositStatus = DepositStatus.Paid;
             appointment.UpdatedAt = DateTime.UtcNow;
         }
 

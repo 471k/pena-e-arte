@@ -89,9 +89,8 @@ public sealed class PokPaymentProvider(PokAuthClient authClient, ILogger<PokPaym
     {
         (string merchantId, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
 
-        // Capture requires the amount in its body — fetch the order first rather than widen the
-        // interface with an amount CaptureAsync doesn't otherwise need (we always capture in full;
-        // partial capture isn't a feature CaptureDepositCommand exposes).
+        // Full capture: fetch the order for its authorised total. A partial capture (the late-cancel
+        // policy, B3) uses the overload that takes an amount.
         SdkOrderDto order = await GetOrderAsync(http, token, merchantId, providerReferenceId, studioId, ct)
             ?? throw new NotFoundException("PokOrder", providerReferenceId);
 
@@ -104,6 +103,40 @@ public sealed class PokPaymentProvider(PokAuthClient authClient, ILogger<PokPaym
         req.Content = JsonContent.Create(new { amount = order.FinalAmount });
 
         await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow409: true);
+    }
+
+    public async Task CaptureAsync(Guid studioId, string providerReferenceId, decimal amount, string currency, CancellationToken ct)
+    {
+        if (amount <= 0m)
+            throw new BusinessRuleViolationException("Capture amount must be greater than zero.");
+
+        (string merchantId, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
+
+        using HttpRequestMessage req = new(
+            HttpMethod.Post, $"{authClient.BaseUrl}/merchants/{merchantId}/sdk-orders/{providerReferenceId}/capture");
+        req.Headers.Authorization = new("Bearer", token);
+        // Same unit conversion as the hold itself — this is the second amount-unit-sensitive write
+        // path the gate verifies (Phase 4, T5b).
+        decimal pokAmount = ToPokAmount(amount, currency);
+        req.Content = JsonContent.Create(new { amount = pokAmount });
+
+        CreateOrderResponse? result = await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow409: true);
+        if (result is not null)
+            return;
+
+        // 409 = POK says the order was already captured, possibly IN FULL ("Capture deposit",
+        // Complete, No-show or the POK dashboard; POK allows one capture per order). Accept it
+        // only as an idempotent retry of this same partial capture. Otherwise the caller would
+        // record a released remainder that was in fact charged.
+        SdkOrderDto? order = await GetOrderAsync(http, token, merchantId, providerReferenceId, studioId, ct);
+        if (order?.CapturedAmount == pokAmount)
+            return;
+
+        string orderRef = providerReferenceId.Length > 8 ? providerReferenceId[..8] : providerReferenceId;
+        logger.LogWarning(
+            "POK order {OrderRef} for studio {StudioId} was already captured (capturedAmount={CapturedAmount}); refused a partial capture of {Amount}.",
+            orderRef, studioId, order?.CapturedAmount, pokAmount);
+        throw new ServiceUnavailableException("POK request failed (409): the order was already captured.");
     }
 
     public async Task CancelAsync(Guid studioId, string providerReferenceId, CancellationToken ct)

@@ -1,6 +1,9 @@
 using FluentAssertions;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -28,7 +31,8 @@ public class CancelAppointmentHandlerTests
     }
 
     private CancelAppointmentHandler CreateSut() =>
-        new(_db, _tenant, _currentUser, _realtime, _sender, _jobs, _stripe);
+        new(_db, _tenant, _currentUser, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
 
     [Fact]
     public async Task Handle_PendingAppointment_SetsStatusToCancelled()
@@ -130,15 +134,62 @@ public class CancelAppointmentHandlerTests
     }
 
     [Fact]
-    public async Task Handle_CapturedCardPayment_RefundsViaStripe()
+    public async Task Handle_HeldCardPayment_StudioCancel_ReleasesHoldInsteadOfRefund()
     {
+        // A held deposit (Captured = authorised, never captured) has nothing to refund: the hold
+        // is released instead (Finding 4 of the POK release gate).
         Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
         await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_456");
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundAsync(_studioId, "pi_456", null, "EUR", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).CancelAsync(_studioId, "pi_456", Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Payment payment = _db.Payments.Single(p => p.AppointmentId == id);
+        payment.Status.Should().Be(PaymentStatus.Refunded);
+        payment.RefundedAmount.Should().Be(payment.Amount);
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Theory]
+    [InlineData(PaymentProviderStatus.Canceled)]
+    [InlineData(null)]
+    public async Task Handle_HeldCardPayment_StudioCancel_ReleaseRefusedButHoldGone_StillCancels(
+        PaymentProviderStatus? providerStatus)
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_gone");
+        _stripe.CancelAsync(_studioId, "pi_gone", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ServiceUnavailableException("POK request failed (400)."));
+        _stripe.GetStatusAsync(_studioId, "pi_gone", Arg.Any<CancellationToken>()).Returns(providerStatus);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        _db.Appointments.Single(a => a.Id == id).Status.Should().Be(AppointmentStatus.Cancelled);
+        Payment payment = _db.Payments.Single(p => p.AppointmentId == id);
+        payment.Status.Should().Be(PaymentStatus.Refunded);
+        payment.RefundedAmount.Should().Be(payment.Amount);
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Theory]
+    [InlineData(PaymentProviderStatus.Captured)]
+    [InlineData(PaymentProviderStatus.Authorized)]
+    public async Task Handle_HeldCardPayment_StudioCancel_ReleaseRefusedHoldStillThere_Throws(
+        PaymentProviderStatus providerStatus)
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_still_there");
+        _stripe.CancelAsync(_studioId, "pi_still_there", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ServiceUnavailableException("POK request failed (400)."));
+        _stripe.GetStatusAsync(_studioId, "pi_still_there", Arg.Any<CancellationToken>())
+            .Returns(providerStatus);
+
+        Func<Task> act = () => CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+        _db.Appointments.AsNoTracking().Single(a => a.Id == id).Status.Should().NotBe(AppointmentStatus.Cancelled);
     }
 
     [Fact]
@@ -166,6 +217,19 @@ public class CancelAppointmentHandlerTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Handle_ValidCancel_CancelsReminderJobsAfterSave()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(1), "job-48", "job-24");
+        _jobs.When(j => j.CancelAppointmentJobs("job-48", "job-24")).Do(_ =>
+            _db.Appointments.AsNoTracking().Single(a => a.Id == id).Status
+                .Should().Be(AppointmentStatus.Cancelled));   // already saved when the jobs are cancelled
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        _jobs.Received(1).CancelAppointmentJobs("job-48", "job-24");
     }
 
     // ── Client self-cancel ───────────────────────────────────────────────────
@@ -362,10 +426,126 @@ public class CancelAppointmentHandlerTests
         _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(50m);
     }
 
+    // ── Client self-cancel of a HELD deposit (B3) ────────────────────────────
+
+    public static TheoryData<Exception> CaptureFailures => new()
+    {
+        new ServiceUnavailableException("POK request failed (409)."),
+        new NotFoundException("PokOrder", "order-x"),
+        new PaymentProviderNotConnectedException("Reconnect POK."),
+        new HttpRequestException(),
+        new TaskCanceledException(), // a client timeout; the test's own token is never cancelled
+    };
+
+    [Fact]
+    public async Task Handle_HeldCardPayment_ClientLateCancelZeroPercent_CapturesFullDeposit()
+    {
+        Guid clientId = SeedClientAsCurrentUser();
+        // 2 hours' notice, no DepositRule: the platform default is 0% refund inside 24 h.
+        Guid id = await SeedAppointmentForClient(AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2));
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_held_forfeit");
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.Received(1).CaptureAsync(_studioId, "pi_held_forfeit", Arg.Any<CancellationToken>());
+        Payment payment = _db.Payments.Single(p => p.AppointmentId == id);
+        payment.Status.Should().Be(PaymentStatus.Paid);
+        payment.PaidAt.Should().NotBeNull();
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Forfeited);
+    }
+
+    [Theory]
+    [MemberData(nameof(CaptureFailures))]
+    public async Task Handle_HeldCardPayment_ClientLateCancelZeroPercent_CaptureFails_StillCancels(Exception failure)
+    {
+        Guid clientId = SeedClientAsCurrentUser();
+        Guid id = await SeedAppointmentForClient(AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2));
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_forfeit_fails");
+        _stripe.CaptureAsync(_studioId, "pi_forfeit_fails", Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+
+        Func<Task> act = () => CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await act.Should().NotThrowAsync();
+        _db.Appointments.Single(a => a.Id == id).Status.Should().Be(AppointmentStatus.Cancelled);
+        _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Captured);
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Forfeited);
+    }
+
+    [Fact]
+    public async Task Handle_HeldCardPayment_ClientLateCancelFiftyPercent_CapturesHalf()
+    {
+        Guid clientId = SeedClientAsCurrentUser();
+        await SeedLateCancelRule(50);
+        Guid id = await SeedAppointmentForClient(AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2));
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_held_half");
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.Received(1).CaptureAsync(_studioId, "pi_held_half", 25m, "EUR", Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Payment payment = _db.Payments.Single(p => p.AppointmentId == id);
+        payment.Status.Should().Be(PaymentStatus.Refunded);
+        payment.RefundedAmount.Should().Be(25m);
+        payment.PaidAt.Should().NotBeNull();
+        _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Handle_HeldCardPayment_ClientLateCancelFiftyPercent_CaptureFails_Throws()
+    {
+        Guid clientId = SeedClientAsCurrentUser();
+        await SeedLateCancelRule(50);
+        Guid id = await SeedAppointmentForClient(AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2));
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_half_fails");
+        _stripe.CaptureAsync(_studioId, "pi_half_fails", 25m, "EUR", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ServiceUnavailableException("POK request failed (409)."));
+
+        Func<Task> act = () => CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+        // The tracked entity was mutated in memory, but nothing reached the store.
+        _db.Appointments.AsNoTracking().Single(a => a.Id == id).Status.Should().NotBe(AppointmentStatus.Cancelled);
+        _jobs.DidNotReceiveWithAnyArgs().CancelAppointmentJobs(default, default);
+    }
+
+    [Fact]
+    public async Task Handle_HeldCardPayment_PartialSplitRoundsLikeThePaidBranch()
+    {
+        // 50% of 10.25 EUR = 5.125: the refund share is rounded first (AwayFromZero -> 5.13), so
+        // the studio keeps 5.12. Catches a missing or misplaced rounding step.
+        Guid clientId = SeedClientAsCurrentUser();
+        await SeedLateCancelRule(50);
+        Guid id = await SeedAppointmentForClient(
+            AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2), depositAmount: 10.25m);
+        await SeedPayment(id, PaymentStatus.Captured, ClientPaymentMethod.Card, "pi_held_round", amount: 10.25m);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.Received(1).CaptureAsync(_studioId, "pi_held_round", 5.12m, "EUR", Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(5.13m);
+    }
+
+    private async Task SeedLateCancelRule(int refundPercent)
+    {
+        _db.DepositRules.Add(new DepositRule
+        {
+            StudioId = _studioId,
+            Name = "Late cancel",
+            AmountFixed = 50m,
+            IsActive = true,
+            CancellationWindowHours = 24,
+            RefundPercentOnLateCancel = refundPercent,
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+    }
+
     private async Task<Guid> SeedAppointment(AppointmentStatus status) =>
         await SeedAppointment(status, DateTime.UtcNow.AddDays(1));
 
-    private async Task<Guid> SeedAppointment(AppointmentStatus status, DateTime date)
+    private async Task<Guid> SeedAppointment(
+        AppointmentStatus status, DateTime date, string? reminderJobId48h = null, string? reminderJobId24h = null)
     {
         Appointment appointment = new()
         {
@@ -376,7 +556,9 @@ public class CancelAppointmentHandlerTests
             EndDate = date.AddHours(2),
             DurationMinutes = 120,
             Status = status,
-            DepositStatus = DepositStatus.Pending
+            DepositStatus = DepositStatus.Pending,
+            ReminderJobId48h = reminderJobId48h,
+            ReminderJobId24h = reminderJobId24h,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();

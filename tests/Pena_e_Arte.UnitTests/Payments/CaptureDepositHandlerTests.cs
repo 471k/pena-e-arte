@@ -146,6 +146,24 @@ public class CaptureDepositHandlerTests
             .WithMessage("*provider reference*");
     }
 
+    [Fact]
+    public async Task Handle_ForfeitedDeposit_StaysForfeitedAfterCapture()
+    {
+        // A late-cancel forfeit whose capture POK refused at cancellation time: the owner captures
+        // it here, and the deposit keeps its more informative Forfeited state.
+        await SeedStudio();
+        await SeedAppointment(DepositStatus.Forfeited);
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_forfeit");
+
+        await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
+
+        Payment payment = _db.Payments.Single(p => p.Id == paymentId);
+        payment.Status.Should().Be(PaymentStatus.Paid);
+        payment.PaidAt.Should().NotBeNull();
+        _db.Appointments.Single(a => a.Id == _appointmentId).DepositStatus
+            .Should().Be(DepositStatus.Forfeited);
+    }
+
     private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio
@@ -157,7 +175,7 @@ public class CaptureDepositHandlerTests
         await _db.SaveChangesAsync();
     }
 
-    private async Task SeedAppointment()
+    private async Task SeedAppointment(DepositStatus depositStatus = DepositStatus.Pending)
     {
         _db.Appointments.Add(new Appointment
         {
@@ -169,7 +187,7 @@ public class CaptureDepositHandlerTests
             EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(90),
             DurationMinutes = 90,
             Status = AppointmentStatus.Pending,
-            DepositStatus = DepositStatus.Pending
+            DepositStatus = depositStatus
         });
         await _db.SaveChangesAsync();
     }

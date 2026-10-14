@@ -999,7 +999,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Guest checkout — what happens after you submit:</strong> you'll receive one email with a link to set your password and a link to confirm your email. Set your password, then sign in to see the booking under My Bookings and manage it. Lost the email or never got it? Use "Forgot password" on the login page with the same email address any time — no separate resend needed.</div>
 <div class="callout callout-warn"><strong>Guest checkout — one account per email:</strong> if the email you enter already has an account on the platform, the booking is rejected with a message to sign in first instead — it's never silently attached to someone else's existing account.</div>
 <div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
-<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled.</div>
+<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled. If your deposit was only authorised (not yet charged): cancelling with enough notice releases the hold, so you're never charged; cancelling late means the studio charges only the share its cancellation policy keeps, and the rest of the hold is released. Your bank may take a few days to show a release.</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
 </section>
 
@@ -2572,6 +2572,7 @@ ol.steps li { margin: 6px 0; }
 <li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
 <li>Click <span class="step-title">Create Rule</span>.</li>
 </ol>
+<div class="callout callout-tip"><strong>Tip:</strong> if a client cancels late while their card deposit is only on hold, TattooOS charges the part you keep (all of it at 0%) and releases the rest.</div>
 <div class="crosslinks">See also: <a href="#owner-deposit-rules">Deposit rule list</a></div>
 </section>
 
@@ -3950,7 +3951,7 @@ ol.steps li { margin: 6px 0; }
 <tr><td>CashPending</td><td>Client chose to pay cash in person; awaiting studio confirmation.</td></tr>
 <tr><td>Captured</td><td>Card authorised — funds reserved but not yet finalized.</td></tr>
 <tr><td>Paid</td><td>Funds fully collected (card captured or cash confirmed).</td></tr>
-<tr><td>Refunded</td><td>Fully or partially refunded.</td></tr>
+<tr><td>Refunded</td><td>Fully or partially refunded. For a deposit that was only on hold, a full refund releases the hold (the client is never charged); a partial refund charges only the share the studio keeps and releases the rest.</td></tr>
 <tr><td>Failed</td><td>Card payment failed.</td></tr>
 </table>
 <div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#client-deposit">Client: pay a deposit</a></div>

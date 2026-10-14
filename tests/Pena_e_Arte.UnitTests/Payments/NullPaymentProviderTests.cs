@@ -32,6 +32,8 @@ public class NullPaymentProviderTests
         Guid studioId = Guid.NewGuid();
         await ((Func<Task>)(() => _sut.CaptureAsync(studioId, "ref", default)))
             .Should().ThrowAsync<InvalidOperationException>();
+        await ((Func<Task>)(() => _sut.CaptureAsync(studioId, "ref", 617m, "ALL", default)))
+            .Should().ThrowAsync<InvalidOperationException>();
         await ((Func<Task>)(() => _sut.CancelAsync(studioId, "ref", default)))
             .Should().ThrowAsync<InvalidOperationException>();
         await ((Func<Task>)(() => _sut.GetStatusAsync(studioId, "ref", default)))

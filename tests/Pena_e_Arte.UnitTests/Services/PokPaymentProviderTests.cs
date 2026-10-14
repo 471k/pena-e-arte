@@ -152,6 +152,73 @@ public class PokPaymentProviderTests
     }
 
     [Fact]
+    public async Task CaptureAsync_PartialAmount_SendsWholeUnitAmount()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/capture") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler);
+
+        await sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        CapturedRequest captureReq = handler.Requests.Single(r => r.Path.EndsWith("/capture"));
+        captureReq.Path.Should().Be($"/merchants/{MerchantId}/sdk-orders/order-abc/capture");
+        captureReq.Body.Should().Contain("\"amount\":617");
+        // A partial capture never needs to read the order first.
+        handler.Requests.Should().NotContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [Fact]
+    public async Task CaptureAsync_Partial409WithSameCapturedAmount_Succeeds()
+    {
+        PokPaymentProvider sut = await CreatePartialCapture409SutAsync("""{"data":{"sdkOrder":{"id":"order-abc","capturedAmount":617}}}""");
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task CaptureAsync_Partial409WithDifferentCapturedAmount_Throws()
+    {
+        // POK already captured the order IN FULL: accepting the 409 would record a released
+        // remainder that was in fact charged.
+        PokPaymentProvider sut = await CreatePartialCapture409SutAsync("""{"data":{"sdkOrder":{"id":"order-abc","capturedAmount":1234}}}""");
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+    }
+
+    [Fact]
+    public async Task CaptureAsync_Partial409WithoutCapturedAmount_Throws()
+    {
+        PokPaymentProvider sut = await CreatePartialCapture409SutAsync("""{"data":{"sdkOrder":{"id":"order-abc"}}}""");
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+    }
+
+    private async Task<PokPaymentProvider> CreatePartialCapture409SutAsync(string orderJson)
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/capture") => new HttpResponseMessage(HttpStatusCode.Conflict),
+            _ => JsonResponse(orderJson),
+        });
+        return CreateSut(handler);
+    }
+
+    [Fact]
     public async Task CreatePaymentHoldAsync_TokenAlreadyCached_SkipsLogin()
     {
         await SeedConnectedStudioAsync();

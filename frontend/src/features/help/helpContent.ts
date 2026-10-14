@@ -90,6 +90,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Cancellation can only be self-served for a Pending or Confirmed appointment — once it's Completed or marked as a no-show, contact the studio directly.",
       "The refund outcome shown is a preview; the studio's cancellation policy (notice window and late-cancel refund %) is what's actually applied.",
+      "If your deposit was only authorised (not yet charged): cancelling with enough notice releases the hold, so you're never charged; cancelling late means the studio charges only the share its cancellation policy keeps, and the rest of the hold is released. Your bank may take a few days to show a release.",
     ],
     relatedArticleIds: ["client-reschedule-booking"],
   },
@@ -1088,6 +1089,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Percentage rules must be between 0.01% and 100%.",
       "The cancellation notice window also gates client self-reschedule, not just self-cancel.",
+      "If a client cancels late while their card deposit is only on hold, TattooOS charges the part you keep (all of it at 0%) and releases the rest.",
     ],
   },
   {
@@ -1180,6 +1182,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"View\" on any row to open its details, or \"Load more\" to see older payments.",
     ],
     tips: [
+      "If a client cancels late while their deposit is on hold, TattooOS charges only the part your cancellation policy keeps and releases the rest. If you cancel the appointment, the hold is released in full.",
       "If a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.",
       "If POK reports that a held deposit's authorisation expired or was cancelled, the payment shows Failed and the client can pay again.",
     ],
@@ -2015,7 +2018,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-client-cancel-refund",
     roles: [Client],
     question: "Do I get my deposit back if I cancel my appointment?",
-    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 48 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings.",
+    answer: "It depends on the studio's cancellation policy. Cancel with enough notice (the studio's configured notice window, 48 hours by default) and you get a full refund. Cancel later than that and you may only get a partial refund, or none at all, depending on the studio's settings. If your deposit was only authorised (not yet charged): cancelling with enough notice releases the hold, so you're never charged; cancelling late means the studio charges only the share its cancellation policy keeps, and the rest of the hold is released. Your bank may take a few days to show a release.",
     relatedArticleIds: ["client-cancel-booking"],
   },
   {
