@@ -1179,6 +1179,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"New payment\" to record a new one.",
       "Click \"View\" on any row to open its details, or \"Load more\" to see older payments.",
     ],
+    tips: [
+      "If a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.",
+      "If POK reports that a held deposit's authorisation expired or was cancelled, the payment shows Failed and the client can pay again.",
+    ],
     relatedArticleIds: ["owner-connect-pok", "owner-payment-create"],
   },
   {
