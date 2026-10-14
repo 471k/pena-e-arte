@@ -57,7 +57,7 @@ public class PokPaymentProviderTests
             Options.Create(options ?? new PokOptions { BaseUrl = "https://api-staging.pokpay.io" }),
             factory, redis, NullLogger<PokAuthClient>.Instance);
 
-        return new PokPaymentProvider(authClient);
+        return new PokPaymentProvider(authClient, NullLogger<PokPaymentProvider>.Instance);
     }
 
     private async Task SeedConnectedStudioAsync()
@@ -171,13 +171,51 @@ public class PokPaymentProviderTests
         handler.Requests.Should().ContainSingle().Which.BearerToken.Should().Be("cached-token");
     }
 
+    // The first four rows are real POK staging shapes read from the merchant-scoped GET on
+    // 2026-10-07 (sanitised to flags only). The two held shapes and the last five rows are
+    // synthetic until the release gate's T1 / aging probe record the real ones (runbook §3.1).
     [Theory]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":false,"canBeCaptured":false,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"created"}}}""", PaymentProviderStatus.Pending)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":true,"isConfirmed":false,"canBeCaptured":false,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"expired"}}}""", PaymentProviderStatus.Pending)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":true,"isConfirmed":true,"canBeCaptured":false,"isCaptured":true,"isCompleted":true,"isCanceled":false,"isRefunded":false,"capturedAmount":100,"status":"paid"}}}""", PaymentProviderStatus.Captured)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":false,"isCaptured":true,"isCompleted":true,"isCanceled":false,"isRefunded":false,"capturedAmount":60,"status":"paid"}}}""", PaymentProviderStatus.Captured)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":true,"capturedAmount":0}}}""", PaymentProviderStatus.Authorized)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":false,"capturedAmount":0}}}""", PaymentProviderStatus.Authorized)]
     [InlineData("""{"data":{"sdkOrder":{"isRefunded":true}}}""", PaymentProviderStatus.Refunded)]
     [InlineData("""{"data":{"sdkOrder":{"isCanceled":true}}}""", PaymentProviderStatus.Canceled)]
-    [InlineData("""{"data":{"sdkOrder":{"isCompleted":true}}}""", PaymentProviderStatus.Captured)]
     [InlineData("""{"data":{"sdkOrder":{"canBeCaptured":true}}}""", PaymentProviderStatus.Authorized)]
+    [InlineData("""{"data":{"sdkOrder":{"isCompleted":true}}}""", PaymentProviderStatus.Failed)]
     [InlineData("""{"data":{"sdkOrder":{}}}""", PaymentProviderStatus.Pending)]
-    public async Task GetStatusAsync_MapsDocumentedFlagsToNormalizedStatus(string orderJson, PaymentProviderStatus expected)
+    public async Task GetStatusAsync_MapsRealPokFlagShapesToNormalizedStatus(string orderJson, PaymentProviderStatus expected)
+    {
+        PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(orderJson);
+
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_HeldOrderWithIsCompleted_IsNotReportedAsCaptured()
+    {
+        // Regression for the pre-gate MapStatus, which checked isCompleted before canBeCaptured:
+        // a held order with isCompleted:true would have mapped to Captured and been marked Paid
+        // without ever being captured, so the hold lapsed and the studio was never paid.
+        PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(
+            """{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":true,"capturedAmount":0}}}""");
+
+        result.Should().NotBe(PaymentProviderStatus.Captured);
+        result.Should().Be(PaymentProviderStatus.Authorized);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_NullUndocumentedFields_DoNotThrow()
+    {
+        PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(
+            """{"data":{"sdkOrder":{"isConfirmed":null,"isCaptured":null,"capturedAmount":null,"status":null}}}""");
+
+        result.Should().Be(PaymentProviderStatus.Pending);
+    }
+
+    private async Task<PaymentProviderStatus?> GetStatusForOrderJsonAsync(string orderJson)
     {
         await SeedConnectedStudioAsync();
         FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
@@ -188,9 +226,7 @@ public class PokPaymentProviderTests
         });
         PokPaymentProvider sut = CreateSut(handler);
 
-        PaymentProviderStatus? result = await sut.GetStatusAsync(_studioId, "order-1", default);
-
-        result.Should().Be(expected);
+        return await sut.GetStatusAsync(_studioId, "order-1", default);
     }
 
     [Fact]
