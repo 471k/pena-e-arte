@@ -27,6 +27,7 @@ import {
   useDownloadInvoiceMutation,
 } from "../paymentsApi";
 import { PaymentMethod, PaymentStatus } from "../payment.types";
+import { PAYMENT_STATUS_LABELS } from "../paymentStatusLabels";
 import { SessionSplitsEditor } from "./SessionSplitsEditor";
 
 function formatDate(iso: string): string {
@@ -35,8 +36,8 @@ function formatDate(iso: string): string {
   });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const classes: Record<string, string> = {
+function StatusBadge({ status }: { status: PaymentStatus }) {
+  const classes: Record<PaymentStatus, string> = {
     Pending:     "bg-yellow-500/10 text-yellow-700",
     CashPending: "bg-orange-500/10 text-orange-700",
     Captured:    "bg-blue-500/10   text-blue-700",
@@ -46,7 +47,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", classes[status] ?? "bg-muted")}>
-      {status}
+      {PAYMENT_STATUS_LABELS[status]}
     </span>
   );
 }

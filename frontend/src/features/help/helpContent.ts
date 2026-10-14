@@ -1183,6 +1183,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"View\" on any row to open its details, or \"Load more\" to see older payments.",
     ],
     tips: [
+      "Card deposit statuses: Pending — waiting for the client to enter their card. On hold — the client's card is authorised and the amount is reserved, but not charged yet. Paid — charged. Refunded — money returned or released (all or part). Failed — the card payment didn't go through or the hold expired; the client can pay again.",
       "If a client cancels late while their deposit is on hold, TattooOS charges only the part your cancellation policy keeps and releases the rest. If you cancel the appointment, the hold is released in full.",
       "If a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.",
       "If POK reports that a held deposit's authorisation expired or was cancelled, the payment shows Failed and the client can pay again.",
