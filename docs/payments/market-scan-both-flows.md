@@ -4,6 +4,13 @@ Prepared 31 July 2026. Supersedes and consolidates the earlier memos in this fol
 Fresh research, wider scope, nothing assumed from the previous rounds.
 Not legal, tax or financial advice.
 
+> **STATUS UPDATE (2026-10-02, Amendment D):** Flow B's final provider decision is now POK, not
+> Polar or any other option compared in this scan — see
+> `docs/payments/ADR-0001-amendment-D-pok-final-both-flows.md`. POK's recurring-billing feature
+> is still in testing on POK's side as of this update, so the decision is contingent, not active.
+> This document is left intact as the historical record of the market comparison that led to the
+> original Polar recommendation; it is no longer the live reference for the Flow B provider.
+
 ---
 
 ## 0. The two findings that changed my view this round

@@ -126,7 +126,7 @@ Steps 0–6 need no external credentials and can start today.
 
 ## What ADR-0001 got right and keeps
 
-POK for Flow A, Polar for Flow B (Paddle fallback), easyPos for fiscalization, cash always on,
+POK for Flow A, Polar for Flow B (Paddle fallback), easyPos for fiscalization, cash always on, [Flow B provider superseded 2026-10-02 — see ADR-0001 Amendment D, POK final for both flows, Flow B contingent on POK recurring-billing GA]
 `PlatformFeeAmount` built at 0% from day one, three separate provider abstractions, no platform
 balance, webhooks as triggers only. Nothing in the audit disturbs any of it.
 
