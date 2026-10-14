@@ -64,6 +64,22 @@ public class PaymentHandlerIntegrationTests
     }
 
     [Fact]
+    public async Task CreatePaymentIntent_PersistsHoldExpiresAt()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+        Guid appointmentId = await SeedAppointment(tenantId, artistId, clientId);
+        await SeedStudio(tenantId);
+
+        PaymentIntentResponse result = await RunCreateHandler(tenantId, appointmentId, clientId);
+
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Payment stored = await verify.Payments.SingleAsync(p => p.Id == result.PaymentId);
+        stored.HoldExpiresAt.Should().NotBeNull();
+        stored.HoldExpiresAt!.Value.Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
     public async Task CreatePaymentIntent_WithValidAppointment_ReturnsClientToken()
     {
         Guid tenantId = Guid.NewGuid();

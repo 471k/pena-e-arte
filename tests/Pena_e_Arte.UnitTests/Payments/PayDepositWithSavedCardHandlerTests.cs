@@ -149,6 +149,29 @@ public class PayDepositWithSavedCardHandlerTests
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
 
+    [Fact]
+    public async Task Handle_PendingHoldNearExpiry_CancelsAndMintsFreshHoldThenSetsUpThreeDs()
+    {
+        // The saved-card flow shares CreateDepositPaymentCommand's ResolveOrCreateHoldAsync, so it
+        // never sets up 3DS against an order that is about to expire at POK.
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        Guid methodId = await SeedSavedMethod(clientId, "card-abc");
+        await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending, "order-expiring", "order-expiring",
+            holdExpiresAt: DateTime.UtcNow.AddMinutes(5));
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "order-expiring", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
+
+        PayWithSavedCardSetupResponse result = await CreateSut()
+            .Handle(new PayDepositWithSavedCardCommand(new PayWithSavedCardRequest(appointmentId, methodId)), default);
+
+        await _provider.Received(1).CancelAsync(_studioId, "order-expiring", Arg.Any<CancellationToken>());
+        result.OrderId.Should().Be("order-new");
+        await _cardTokens.Received(1).SetupTokenizedThreeDsAsync(_studioId, "order-new", "card-abc", Arg.Any<CancellationToken>());
+        await _cardTokens.DidNotReceive().SetupTokenizedThreeDsAsync(
+            Arg.Any<Guid>(), "order-expiring", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     private async Task<Guid> SeedClient(Guid userId)
     {
         Client client = new()
@@ -195,7 +218,8 @@ public class PayDepositWithSavedCardHandlerTests
     }
 
     private async Task<Guid> SeedPayment(
-        Guid appointmentId, ClientPaymentMethod method, PaymentStatus status, string? intentId, string? clientToken)
+        Guid appointmentId, ClientPaymentMethod method, PaymentStatus status, string? intentId, string? clientToken,
+        DateTime? holdExpiresAt = null)
     {
         Payment payment = new()
         {
@@ -207,6 +231,7 @@ public class PayDepositWithSavedCardHandlerTests
             Status = status,
             ProviderReferenceId = intentId,
             ClientToken = clientToken,
+            HoldExpiresAt = holdExpiresAt,
         };
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
