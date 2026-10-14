@@ -3417,7 +3417,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Revenue reports</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/reports</code>: a monthly revenue trend chart for the last 12 months, plus a per-artist revenue breakdown for the last 30 days. Only fully paid deposits count (card captured or cash confirmed) — pending, refunded, or forfeited ones don't.</p>
+<p>At <code>/reports</code>: a monthly revenue trend chart for the last 12 months, plus a per-artist revenue breakdown for the last 30 days. Revenue counts deposits the studio actually collected: card deposits once charged, and cash deposits once confirmed. After a partial refund, only the part you kept counts. Pending deposits, card deposits that are only authorised (not yet charged), and fully refunded deposits don't.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 420" role="img" aria-label="Reports wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>

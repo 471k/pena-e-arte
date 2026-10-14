@@ -56,6 +56,35 @@ public class CompleteAppointmentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_HeldCardDeposit_CapturesAndSetsPaidAtAndDepositStatusPaid()
+    {
+        // Revenue reports filter on PaidAt != null: a deposit collected by completing the
+        // appointment must carry PaidAt, exactly like CaptureDepositCommand sets it.
+        Guid appointmentId = SeedAppointment(Guid.NewGuid());
+        Payment payment = new()
+        {
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = Guid.NewGuid(),
+            Amount = 1234m,
+            Currency = "ALL",
+            Status = PaymentStatus.Captured,
+            Method = ClientPaymentMethod.Card,
+            ProviderReferenceId = "pok_held",
+        };
+        _db.Payments.Add(payment);
+        _db.SaveChanges();
+
+        await CreateSut().Handle(new CompleteAppointmentCommand(appointmentId), default);
+
+        await _paymentProvider.Received(1).CaptureAsync(_studioId, "pok_held", Arg.Any<CancellationToken>());
+        Payment stored = _db.Payments.Single(p => p.Id == payment.Id);
+        stored.Status.Should().Be(PaymentStatus.Paid);
+        stored.PaidAt.Should().NotBeNull();
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Paid);
+    }
+
+    [Fact]
     public async Task Handle_NoArtistAssigned_ThrowsBusinessRuleViolationException()
     {
         Guid appointmentId = SeedAppointment(artistId: null, AppointmentStatus.Pending);

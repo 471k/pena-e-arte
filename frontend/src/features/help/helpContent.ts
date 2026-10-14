@@ -1477,7 +1477,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Export CSV\" to download a payment-by-payment revenue ledger, ready to hand to an accountant.",
     ],
     tips: [
-      "Only fully paid deposits (card captured or cash confirmed) count toward these figures — pending or refunded ones don't.",
+      "Revenue counts deposits the studio actually collected: card deposits once charged, and cash deposits once confirmed. After a partial refund, only the part you kept counts. Pending deposits, card deposits that are only authorised (not yet charged), and fully refunded deposits don't.",
       "Totals are in your studio's currency. Payments recorded in any other currency are never mixed into a total — the report tells you how many were left out.",
     ],
   },

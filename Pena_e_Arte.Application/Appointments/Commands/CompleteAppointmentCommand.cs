@@ -36,7 +36,7 @@ public class CompleteAppointmentHandler(
         appointment.Status = AppointmentStatus.Completed;
         appointment.UpdatedAt = DateTime.UtcNow;
 
-        // Capture the Stripe hold that was authorised at booking time
+        // Capture the card hold that was authorised at booking time
         Domain.Entities.Payment? payment = await db.Payments
             .FirstOrDefaultAsync(p =>
                 p.AppointmentId == appointment.Id &&
@@ -46,8 +46,11 @@ public class CompleteAppointmentHandler(
         if (payment is not null && !string.IsNullOrEmpty(payment.ProviderReferenceId))
         {
             await paymentProvider.CaptureAsync(payment.StudioId, payment.ProviderReferenceId, ct);
+            DateTime now = DateTime.UtcNow;
             payment.Status = PaymentStatus.Paid;
-            payment.UpdatedAt = DateTime.UtcNow;
+            payment.PaidAt = now;                       // revenue reports filter on PaidAt != null
+            payment.UpdatedAt = now;
+            appointment.DepositStatus = DepositStatus.Paid;
         }
 
         await db.SaveChangesAsync(ct);
