@@ -238,16 +238,16 @@ public class PokPaymentProviderTests
         handler.Requests.Should().ContainSingle().Which.BearerToken.Should().Be("cached-token");
     }
 
-    // The first four rows are real POK staging shapes read from the merchant-scoped GET on
-    // 2026-10-07 (sanitised to flags only). The two held shapes and the last five rows are
-    // synthetic until the release gate's T1 / aging probe record the real ones (runbook §3.1).
+    // The first five rows are real POK staging shapes, sanitised to flags only: created, expired
+    // and the two paid shapes were read from the merchant-scoped GET on 2026-10-07; the held shape
+    // was observed on staging 2026-10-14 (release gate T1/T9: an autoCapture:false order after
+    // 3-D Secure, before capture). The last five rows are synthetic edge cases (runbook §3.1).
     [Theory]
     [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":false,"canBeCaptured":false,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"created"}}}""", PaymentProviderStatus.Pending)]
     [InlineData("""{"data":{"sdkOrder":{"autoCapture":true,"isConfirmed":false,"canBeCaptured":false,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"expired"}}}""", PaymentProviderStatus.Pending)]
     [InlineData("""{"data":{"sdkOrder":{"autoCapture":true,"isConfirmed":true,"canBeCaptured":false,"isCaptured":true,"isCompleted":true,"isCanceled":false,"isRefunded":false,"capturedAmount":100,"status":"paid"}}}""", PaymentProviderStatus.Captured)]
     [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":false,"isCaptured":true,"isCompleted":true,"isCanceled":false,"isRefunded":false,"capturedAmount":60,"status":"paid"}}}""", PaymentProviderStatus.Captured)]
-    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":true,"capturedAmount":0}}}""", PaymentProviderStatus.Authorized)]
-    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":false,"capturedAmount":0}}}""", PaymentProviderStatus.Authorized)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"awaiting_capture"}}}""", PaymentProviderStatus.Authorized)]
     [InlineData("""{"data":{"sdkOrder":{"isRefunded":true}}}""", PaymentProviderStatus.Refunded)]
     [InlineData("""{"data":{"sdkOrder":{"isCanceled":true}}}""", PaymentProviderStatus.Canceled)]
     [InlineData("""{"data":{"sdkOrder":{"canBeCaptured":true}}}""", PaymentProviderStatus.Authorized)]
@@ -265,7 +265,8 @@ public class PokPaymentProviderTests
     {
         // Regression for the pre-gate MapStatus, which checked isCompleted before canBeCaptured:
         // a held order with isCompleted:true would have mapped to Captured and been marked Paid
-        // without ever being captured, so the hold lapsed and the studio was never paid.
+        // without ever being captured, so the hold lapsed and the studio was never paid. Staging
+        // kept isCompleted false while held (2026-10-14); this synthetic shape stays as a guard.
         PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(
             """{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":true,"capturedAmount":0}}}""");
 
