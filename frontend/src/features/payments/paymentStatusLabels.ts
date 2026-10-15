@@ -7,6 +7,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   [PaymentStatus.CashPending]: "Cash Pending",
   [PaymentStatus.Captured]: "On hold",
   [PaymentStatus.Paid]: "Paid",
-  [PaymentStatus.Refunded]: "Refunded",
+  // Filter label: one raw status covers refunds, released holds and late-cancel partial captures.
+  [PaymentStatus.Refunded]: "Refunded or released",
   [PaymentStatus.Failed]: "Failed",
 };

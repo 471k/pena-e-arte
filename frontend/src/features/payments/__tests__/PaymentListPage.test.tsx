@@ -465,4 +465,27 @@ describe("PaymentListPage", () => {
     expect(within(cardList).getByText("Maria Silva")).toBeInTheDocument();
     expect(within(cardList).getByText(/Card · Paid/)).toBeInTheDocument();
   });
+
+  // ── Outcome wording (G-5 / G-6 / G-13) ─────────────────────────────────────────
+
+  it("labels refunded-status rows by what happened, under one 'Refunded or released' filter", async () => {
+    const partlyRefunded: PaymentResponse = {
+      ...PAYMENT_CARD, id: "pay-r1", appointmentId: "appt-r1", clientName: "Rita Partial",
+      status: "Refunded", refundedAmount: 20, appointmentStatus: "Completed",
+    };
+    const released: PaymentResponse = {
+      ...PAYMENT_CARD, id: "pay-r2", appointmentId: "appt-r2", clientName: "Rui Released",
+      status: "Refunded", paidAt: null, refundedAmount: PAYMENT_CARD.amount, appointmentStatus: "Cancelled",
+    };
+    server.use(
+      http.get("http://localhost/api/v1/payments", () => HttpResponse.json([PAYMENT_CARD, partlyRefunded, released])),
+    );
+    renderPage();
+    await screen.findAllByText("Rita Partial");
+
+    expect(screen.getByRole("button", { name: "Refunded or released" })).toBeInTheDocument();
+    expect(screen.getAllByText("Partly refunded").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Released").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Refunded")).not.toBeInTheDocument();
+  });
 });

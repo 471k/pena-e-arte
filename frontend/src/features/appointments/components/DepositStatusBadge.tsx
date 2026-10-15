@@ -17,7 +17,8 @@ const DEPOSIT_STATUS_STYLES: Record<DepositStatus, string> = {
 const DEPOSIT_STATUS_LABELS: Record<DepositStatus, string> = {
   [DepositStatus.Pending]:   "Pending",
   [DepositStatus.Paid]:      "Paid",
-  [DepositStatus.Forfeited]: "Forfeited",
+  // "Kept" matches the payment pages' wording (G-13): the studio kept it under its cancellation policy.
+  [DepositStatus.Forfeited]: "Kept",
   [DepositStatus.Refunded]:  "Refunded",
   [DepositStatus.PrePaid]:   "Prepaid (Package)",
 };

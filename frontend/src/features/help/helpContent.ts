@@ -91,6 +91,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Cancellation can only be self-served for a Pending or Confirmed appointment — once it's Completed or marked as a no-show, contact the studio directly.",
       "The refund outcome shown is a preview; the studio's cancellation policy (notice window and late-cancel refund %) is what's actually applied.",
       "If your deposit was only authorised (not yet charged): cancelling with enough notice releases the hold, so you're never charged; cancelling late means the studio charges only the share its cancellation policy keeps, and the rest of the hold is released. Your bank may take a few days to show a release.",
+      "Afterwards, My Bookings says what happened to your deposit: \"Hold released — Nothing was charged\", \"Deposit refunded\" with the amount back on your card, \"Partly charged\" with what the studio's policy kept and what was released, or \"Deposit kept\".",
     ],
     relatedArticleIds: ["client-reschedule-booking"],
   },
@@ -1181,7 +1182,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Track deposits and payments",
     route: "/payments",
-    keywords: ["payment list", "cash pending", "paid", "capture", "on hold", "refund", "authorised", "held deposit"],
+    keywords: ["payment list", "cash pending", "paid", "capture", "on hold", "refund", "authorised", "held deposit", "partly refunded", "released", "kept", "receipt"],
     summary: "Lists every payment recorded in your studio — card and cash — so you can track what's been paid, is pending, or refunded.",
     steps: [
       "Go to Payments to see the list.",
@@ -1190,7 +1191,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"View\" on any row to open its details, or \"Load more\" to see older payments.",
     ],
     tips: [
-      "Card deposit statuses: Pending — waiting for the client to enter their card. On hold — the client's card is authorised and the amount is reserved, but not charged yet. Paid — charged. Refunded — money returned or released (all or part). Failed — the card payment didn't go through or the hold expired; the client can pay again.",
+      "Card deposit statuses: Pending — waiting for the client to enter their card. On hold — the client's card is authorised and the amount is reserved, but not charged yet. Paid — charged. Partly refunded — you refunded part of it; the payment shows how much you kept and how much went back. Refunded — the whole amount went back to the client. Released — the hold was let go, nothing was charged. Kept / Partly kept — the client cancelled late and your cancellation policy kept all or part of it (any rest was released). Failed — the card payment didn't go through or the hold expired; the client can pay again.",
+      "Each payment shows a line under its amount saying what happened to the money, e.g. \"1,000 kept · 234 refunded\". The \"Refunded or released\" filter shows every payment where some or all of the money went back or was never charged.",
+      "Download receipt appears only when money was actually charged or collected — a released hold has no receipt.",
       "To charge a deposit that's on hold, open the payment and click \"Capture deposit\". Completing the appointment, or marking it a no-show, captures it automatically.",
       "If a client cancels late while their deposit is on hold, TattooOS charges only the part your cancellation policy keeps and releases the rest. If you cancel the appointment, the hold is released in full.",
       "To refund a card payment, open a Paid payment, click Refund, enter an amount for a partial refund (or leave it blank for the full amount) and click Confirm refund. Each payment can be refunded once.",
@@ -2023,7 +2026,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-deposit-statuses",
     roles: [Owner, Artist, Client],
     question: "What do the different deposit statuses mean?",
-    answer: "Pending means the deposit hasn't been paid yet. Paid means it's been received (card captured or cash confirmed). Refunded means it was paid back to the client. Forfeited means the studio kept the deposit under its cancellation terms (for example, a late cancellation or a no-show).",
+    answer: "Pending means the deposit hasn't been paid yet. On hold means the card is authorised and the amount reserved, but not charged yet. Paid means it's been received (card charged or cash confirmed). Partly refunded or Refunded means some or all of it went back to the client's card. Released (Hold released) means the hold was let go and nothing was charged. Kept (or Partly kept / Partly charged) means the studio kept all or part of it under its cancellation policy, for example after a late cancellation or a no-show.",
     relatedArticleIds: ["owner-payments"],
   },
   {
