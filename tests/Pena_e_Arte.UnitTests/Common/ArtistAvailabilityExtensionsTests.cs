@@ -311,8 +311,12 @@ public class ArtistAvailabilityExtensionsTests
         DateTime slot = SummerMonday.AddHours(8); // 10:00 local
         _db.Appointments.Add(new Appointment
         {
-            StudioId = _studioId, ArtistId = _artistId, ClientId = Guid.NewGuid(),
-            Date = slot.AddMinutes(30), EndDate = slot.AddMinutes(90), DurationMinutes = 60,
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = Guid.NewGuid(),
+            Date = slot.AddMinutes(30),
+            EndDate = slot.AddMinutes(90),
+            DurationMinutes = 60,
             Status = Domain.Enums.AppointmentStatus.Confirmed,
         });
         _db.SaveChanges();
@@ -333,7 +337,10 @@ public class ArtistAvailabilityExtensionsTests
         SeedArtistSchedule(DayOfWeek.Monday);
         _db.ArtistTimeOffs.Add(new ArtistTimeOff
         {
-            StudioId = _studioId, ArtistId = _artistId, StartDate = SummerMonday.Date, EndDate = SummerMonday.Date,
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            StartDate = SummerMonday.Date,
+            EndDate = SummerMonday.Date,
         });
         _db.SaveChanges();
         DateTime sundayLateUtc = SummerMonday.AddHours(-1).AddMinutes(-30); // Monday 00:30 local

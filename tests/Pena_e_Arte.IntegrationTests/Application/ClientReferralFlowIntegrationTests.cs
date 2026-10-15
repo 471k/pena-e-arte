@@ -58,7 +58,7 @@ public class ClientReferralFlowIntegrationTests(DatabaseFixture fixture)
 
         // 2. Referee books using the code.
         CreateAppointmentRequest refereeReq = new(
-            artistId, refereeClientId, DateTime.UtcNow.AddDays(3), 90, null, ReferralCode: code.Code);
+            artistId, refereeClientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, ReferralCode: code.Code);
         AppointmentResponse refereeBooking = await RunCreateAppointment(studioId, refereeReq);
 
         // 3. Referee's deposit was reduced.
@@ -75,7 +75,7 @@ public class ClientReferralFlowIntegrationTests(DatabaseFixture fixture)
 
         // 5. Referrer books, spending their earned reward.
         CreateAppointmentRequest referrerReq = new(
-            artistId, referrerClientId, DateTime.UtcNow.AddDays(4), 90, null, ReferralRewardId: reward.Id);
+            artistId, referrerClientId, DateTime.UtcNow.Date.AddDays(4).AddHours(9), 90, null, ReferralRewardId: reward.Id);
         AppointmentResponse referrerBooking = await RunCreateAppointment(studioId, referrerReq);
 
         // 6. Referrer's deposit was reduced, reward marked redeemed.
@@ -100,7 +100,7 @@ public class ClientReferralFlowIntegrationTests(DatabaseFixture fixture)
             CountryCode = "AL",
             Currency = "EUR",
             IsActive = true,
-            TrialExpiresAt = DateTime.UtcNow.AddDays(14),
+            TrialExpiresAt = DateTime.UtcNow.Date.AddDays(14).AddHours(9),
         };
         db.Studios.Add(studio);
         await db.SaveChangesAsync();

@@ -49,7 +49,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        CreateAppointmentRequest req = new(artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null);
+        CreateAppointmentRequest req = new(artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
         AppointmentResponse result = await RunCreateHandler(tenantId, req);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -63,7 +63,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(5);
+        DateTime start = DateTime.UtcNow.Date.AddDays(5).AddHours(9);
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120));
 
         // New appointment overlaps the existing one (starts 60 min into it)
@@ -80,7 +80,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(6);
+        DateTime start = DateTime.UtcNow.Date.AddDays(6).AddHours(9);
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120),
                               AppointmentStatus.Cancelled);
 
@@ -98,7 +98,7 @@ public class AppointmentHandlerIntegrationTests
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
         (Guid artistId2, _) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(7);
+        DateTime start = DateTime.UtcNow.Date.AddDays(7).AddHours(9);
         await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(120));
 
         // Same slot but different artist — no conflict
@@ -116,7 +116,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantB = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantA);
 
-        DateTime start = DateTime.UtcNow.AddDays(8);
+        DateTime start = DateTime.UtcNow.Date.AddDays(8).AddHours(9);
         await SeedAppointment(tenantA, artistId, clientId, start, start.AddMinutes(120));
 
         // tenantB creates artist/client with same IDs (impossible in prod but tests filter isolation)
@@ -137,7 +137,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(10);
+        DateTime start = DateTime.UtcNow.Date.AddDays(10).AddHours(9);
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
@@ -170,7 +170,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(11);
+        DateTime start = DateTime.UtcNow.Date.AddDays(11).AddHours(9);
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90),
                                             AppointmentStatus.Completed);
 
@@ -190,7 +190,7 @@ public class AppointmentHandlerIntegrationTests
         Guid userId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
 
-        DateTime start = DateTime.UtcNow.AddDays(10);
+        DateTime start = DateTime.UtcNow.Date.AddDays(10).AddHours(9);
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         ICurrentUser clientUser = Substitute.For<ICurrentUser>();
@@ -217,7 +217,7 @@ public class AppointmentHandlerIntegrationTests
         await SeedArtistAndClient(tenantId, userId);
         (Guid artistId, Guid otherClientId) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(10);
+        DateTime start = DateTime.UtcNow.Date.AddDays(10).AddHours(9);
         Guid apptId = await SeedAppointment(tenantId, artistId, otherClientId, start, start.AddMinutes(90));
 
         ICurrentUser clientUser = Substitute.For<ICurrentUser>();
@@ -239,7 +239,7 @@ public class AppointmentHandlerIntegrationTests
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(12);
+        DateTime start = DateTime.UtcNow.Date.AddDays(12).AddHours(9);
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90),
                                             AppointmentStatus.Confirmed);
         Guid paymentId;
@@ -289,7 +289,7 @@ public class AppointmentHandlerIntegrationTests
         Guid userId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId, userId);
 
-        DateTime start = DateTime.UtcNow.AddDays(10);
+        DateTime start = DateTime.UtcNow.Date.AddDays(10).AddHours(9);
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
 
         ICurrentUser clientUser = Substitute.For<ICurrentUser>();
@@ -298,7 +298,7 @@ public class AppointmentHandlerIntegrationTests
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         RescheduleAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _realtime, _sender, _jobs);
-        DateTime newStart = DateTime.UtcNow.AddDays(11);
+        DateTime newStart = DateTime.UtcNow.Date.AddDays(11).AddHours(9);
         AppointmentResponse result = await handler.Handle(
             new RescheduleAppointmentCommand(apptId, new RescheduleAppointmentRequest(newStart, 90, null)), default);
 
@@ -324,7 +324,7 @@ public class AppointmentHandlerIntegrationTests
 
         Func<Task> act = () => handler.Handle(
             new RescheduleAppointmentCommand(apptId,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(3), 90, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
@@ -342,7 +342,7 @@ public class AppointmentHandlerIntegrationTests
         Guid promoId = await SeedPromoCode(tenantId, "SAVE20", 20m, null, true);
 
         CreateAppointmentRequest req = new(
-            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, PromoCode: "save20");
+            artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, PromoCode: "save20");
         AppointmentResponse result = await RunCreateHandler(tenantId, req);
 
         result.DepositAmount.Should().Be(80m);
@@ -361,7 +361,7 @@ public class AppointmentHandlerIntegrationTests
         await SeedDepositRule(tenantId, 100m);
 
         CreateAppointmentRequest req = new(
-            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, PromoCode: "DOESNOTEXIST");
+            artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, PromoCode: "DOESNOTEXIST");
         AppointmentResponse result = await RunCreateHandler(tenantId, req);
 
         result.DepositAmount.Should().Be(100m);
@@ -378,7 +378,7 @@ public class AppointmentHandlerIntegrationTests
         await SeedPromoCode(tenantB, "CROSSTENANT", 20m, null, true);
 
         CreateAppointmentRequest req = new(
-            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, PromoCode: "CROSSTENANT");
+            artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, PromoCode: "CROSSTENANT");
         AppointmentResponse result = await RunCreateHandler(tenantA, req);
 
         result.DepositAmount.Should().Be(100m);

@@ -47,7 +47,7 @@ public class RequestCatalogDesignHandlerIntegrationTests
         Guid catalogDesignId = await SeedCatalogDesign(tenantId, artistId, "https://r2/flash-a.png");
 
         CreateAppointmentRequest booking = new(
-            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, "Booking the flash piece");
+            artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, "Booking the flash piece");
         AppointmentResponse result = await RunHandler(tenantId, catalogDesignId, booking);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -75,7 +75,7 @@ public class RequestCatalogDesignHandlerIntegrationTests
         Guid catalogDesignId = await SeedCatalogDesign(tenantId, artistId, "https://r2/flash-b.png");
 
         CreateAppointmentRequest booking = new(
-            artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null, "Booking");
+            artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, "Booking");
         await RunHandler(tenantId, catalogDesignId, booking);
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
@@ -94,9 +94,9 @@ public class RequestCatalogDesignHandlerIntegrationTests
         Guid catalogDesignId = await SeedCatalogDesign(tenantId, artistId, "https://r2/flash-c.png");
 
         await RunHandler(tenantId, catalogDesignId,
-            new(artistId, clientA, DateTime.UtcNow.AddDays(3), 60, null, "First booking"));
+            new(artistId, clientA, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 60, null, "First booking"));
         await RunHandler(tenantId, catalogDesignId,
-            new(artistId, clientB, DateTime.UtcNow.AddDays(4), 60, null, "Second booking"));
+            new(artistId, clientB, DateTime.UtcNow.Date.AddDays(4).AddHours(9), 60, null, "Second booking"));
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
         List<Design> clones = await verify.Designs
@@ -123,7 +123,7 @@ public class RequestCatalogDesignHandlerIntegrationTests
         seedCtx.Designs.Add(notCatalog);
         await seedCtx.SaveChangesAsync();
 
-        CreateAppointmentRequest booking = new(artistId, clientId, DateTime.UtcNow.AddDays(3), 60, null, "x");
+        CreateAppointmentRequest booking = new(artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 60, null, "x");
 
         Func<Task> act = () => RunHandler(tenantId, notCatalog.Id, booking);
 
