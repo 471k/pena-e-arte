@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Domain.Constants;
@@ -24,9 +25,14 @@ public record ConnectPokAccountCommand(Guid StudioId, ConnectPokAccountRequest R
     public Guid AuditTargetId => StudioId;
 }
 
-public class ConnectPokAccountHandler(IAppDbContext db, ISecretsProvider secrets)
+public class ConnectPokAccountHandler(IAppDbContext db, ISecretsProvider secrets, ILogger<ConnectPokAccountHandler> logger)
     : IRequestHandler<ConnectPokAccountCommand>
 {
+    /// <summary>What the owner sees when the keys can't be stored because the secrets store is
+    /// down (C-8) — was a bare 500 before.</summary>
+    public const string SecretsStoreUnavailableMessage =
+        "We couldn't save your POK keys because our secure key store is temporarily unavailable. Nothing was changed — please try again in a few minutes.";
+
     public async Task Handle(ConnectPokAccountCommand command, CancellationToken ct)
     {
         Studio studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == command.StudioId, ct)
@@ -65,12 +71,21 @@ public class ConnectPokAccountHandler(IAppDbContext db, ISecretsProvider secrets
                 ["keySecret"] = command.Request.KeySecret,
             }, ct);
         }
-        catch
+        catch (Exception ex)
         {
             studio.PokMerchantId = previousMerchantId;
             if (isNewCredentialRef)
                 db.StudioCredentialRefs.Remove(credentialRef);
             await db.SaveChangesAsync(ct);
+
+            if (ex is SecretsStoreUnavailableException)
+            {
+                logger.LogError(
+                    "Secrets store unavailable while connecting POK for studio {StudioId}; the connection was reverted.",
+                    command.StudioId);
+                throw new ServiceUnavailableException(SecretsStoreUnavailableMessage);
+            }
+
             throw;
         }
     }

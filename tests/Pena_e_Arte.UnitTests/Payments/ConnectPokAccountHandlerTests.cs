@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Contracts.Requests;
@@ -16,7 +17,7 @@ public class ConnectPokAccountHandlerTests
     private readonly ISecretsProvider _secrets = Substitute.For<ISecretsProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private ConnectPokAccountHandler CreateSut() => new(_db, _secrets);
+    private ConnectPokAccountHandler CreateSut() => new(_db, _secrets, NullLogger<ConnectPokAccountHandler>.Instance);
 
     [Fact]
     public async Task Handle_NoExistingCredentialRef_CreatesOneAndSetsMerchantId()
@@ -127,6 +128,24 @@ public class ConnectPokAccountHandlerTests
         // merchant while Vault's write for it failed — that would be the mismatched-pair bug.
         _db.Studios.Single(s => s.Id == _studioId).PokMerchantId.Should().Be("old-merchant");
         _db.StudioCredentialRefs.Count(c => c.StudioId == _studioId).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_SecretsStoreUnavailable_Returns503WithAnActionableMessageAndReverts()
+    {
+        // C-8: a sealed/unreachable Vault was a bare 500; now a 503 the owner can act on, with
+        // the half-made connection reverted exactly as before.
+        await SeedStudioAsync();
+        _secrets.SetSecretAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new SecretsStoreUnavailableException("sealed", new HttpRequestException("503"))));
+        var request = new ConnectPokAccountRequest("key-1", "secret-1", "merchant-1");
+
+        Func<Task> act = () => CreateSut().Handle(new ConnectPokAccountCommand(_studioId, request), default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>()
+            .WithMessage(ConnectPokAccountHandler.SecretsStoreUnavailableMessage);
+        _db.Studios.Single(s => s.Id == _studioId).PokMerchantId.Should().BeNull();
+        _db.StudioCredentialRefs.Any(c => c.StudioId == _studioId).Should().BeFalse();
     }
 
     [Fact]

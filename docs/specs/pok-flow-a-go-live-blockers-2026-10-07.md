@@ -18,7 +18,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-5 Webhook fan-out | Engineering | No (before real volume) | Open; gate saw 1 webhook per authorisation only | Debounce + own rate-limit policy |
 | C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — evidence attached below | Send in writing |
 | C-7 Check POK keys at connect | Engineering | No | Open | Build; then drop the Help tip "doesn't test your keys" |
-| C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | Open | Auto-unseal or runbook + alert; 503 vs 422 split |
+| C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | **Done in code + alerting** (branch `fix/vault-outage-not-reconnect`): 503 vs 422 split, connect-POK 503, 5-minute Vault health probe + `vault-unavailable` alert, runbook | Phi: keep the unseal key shares reachable; first real alert test after merge (see C-8) |
 | C-9 Saved-card tokenisation | Engineering | No (Saved card tab must stay unused) | Open, not tested by the gate | Separate prompt |
 | C-10 "Stripe PI" labels | Engineering | No | Open | Cosmetic rename |
 | C-11 Production first-transaction protocol | Phi | **Yes** | Not started | Run after C-2, C-8, C-13 |
@@ -121,8 +121,32 @@ Unchanged. Gate friction supports it: the API Keys dialog shows the three values
 value is only discovered at checkout.
 
 ## C-8 — Vault resilience before go-live (**yes**)
-Unchanged. Gate note: the dev-mode Vault had to stay up overnight; any restart would have lost the
-keys and needed a reconnect.
+Gate note: the dev-mode Vault had to stay up overnight; any restart would have lost the keys and
+needed a reconnect.
+
+**Done (approach: manual unseal + alert, as ADR-0002 chose — no cloud KMS):**
+- `ISecretsProvider` tells the two failures apart: `SecretNotFoundException` (Vault answered, nothing
+  stored) vs `SecretsStoreUnavailableException` (sealed 503, unreachable, erroring).
+- `PokAuthClient`: missing → 422 "Reconnect POK"; unavailable → **503 "Card payments are temporarily
+  unavailable. Please try again later or pay in cash."** plus an error log "Secrets store unavailable"
+  (studio id and error type only). Before, every Vault failure told owners to reconnect.
+- `ConnectPokAccountCommand`: a Vault outage reverts the half-made connection (as before) and returns
+  **503 "We couldn't save your POK keys because our secure key store is temporarily unavailable.
+  Nothing was changed — please try again in a few minutes."** instead of a bare 500.
+- Cancelling an appointment while Vault is down is refused and retried, never marked released on a
+  guess (the release path's status re-read fails too); a forfeit keeps the deposit on hold.
+- `VaultHealthCheckJob` (Hangfire, every 5 min) probes the unauthenticated `/v1/sys/health` and logs
+  `VaultHealthCheckFailed` when Vault is sealed, uninitialised, unhealthy or unreachable; it skips
+  environments without Vault (staging).
+- Grafana rule `vault-unavailable` (Loki, production namespace) emails ops@ on either log line.
+- Runbook: `docs/infra/vault-self-hosted-runbook.md`, "When the 'Vault sealed or unreachable' alert
+  fires"; `docs/infra/alerting-runbook.md` lists the rule; ADR-0002 records the resolution.
+- Help + manual: the owner's connect-POK tip for the new 503.
+
+**Still for Phi:** keep three of the five unseal key shares reachable for whoever is on call; after the
+merge, one real alert test is worthwhile (e.g. during a quiet window, restart the Vault pod, confirm the
+email arrives within ~6 minutes, unseal, confirm it resolves). Auto-unseal stays an option if restarts
+become frequent.
 
 ## C-9 — Saved-card tokenisation
 Unchanged; the gate never used the Saved card tab.

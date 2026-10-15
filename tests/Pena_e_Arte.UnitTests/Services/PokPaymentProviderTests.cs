@@ -137,6 +137,39 @@ public class PokPaymentProviderTests
     }
 
     [Fact]
+    public async Task CreatePaymentHoldAsync_SecretMissingInVault_AsksTheOwnerToReconnect()
+    {
+        await SeedConnectedStudioAsync();
+        _secrets.GetSecretAsync($"{SecretPath}:keyId", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new SecretNotFoundException("no secret")));
+        FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));
+
+        Func<Task> act = () => CreateSut(handler).CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 1234m, "ALL"), default);
+
+        await act.Should().ThrowAsync<PaymentProviderNotConnectedException>().WithMessage("*Reconnect POK*");
+        handler.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreatePaymentHoldAsync_VaultSealed_IsATemporaryOutageNotReconnect()
+    {
+        // C-8: before, a sealed Vault told every owner to reconnect POK. Now it's a 503.
+        await SeedConnectedStudioAsync();
+        _secrets.GetSecretAsync($"{SecretPath}:keyId", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<string>(new SecretsStoreUnavailableException(
+                "sealed", new VaultSharp.Core.VaultApiException(HttpStatusCode.ServiceUnavailable, "Vault is sealed"))));
+        FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));
+
+        Func<Task> act = () => CreateSut(handler).CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 1234m, "ALL"), default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>()
+            .WithMessage(PokAuthClient.CardPaymentsTemporarilyUnavailableMessage);
+        handler.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
     public void Capabilities_ReportTheCardDepositsSwitch()
     {
         FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));

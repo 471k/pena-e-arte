@@ -167,6 +167,13 @@ try
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 8)); // staggered after past-due-reminder (7am)
 
+        // C-8: a sealed Vault (single-node, manually unsealed — ADR-0002) alerts within minutes
+        // instead of surfacing only when a client tries to pay.
+        recurringJobs.AddOrUpdate<VaultHealthCheckJob>(
+            "vault-health-check",
+            j => j.RunAsync(CancellationToken.None),
+            "*/5 * * * *");
+
         recurringJobs.AddOrUpdate<WaitlistNotificationExpiryJob>(
             "waitlist-notification-expiry",
             j => j.RunAsync(CancellationToken.None),

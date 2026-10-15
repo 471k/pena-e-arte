@@ -2,6 +2,7 @@ using System.Net;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Infrastructure.Services;
 using VaultSharp;
 using VaultSharp.Core;
@@ -58,7 +59,7 @@ public class VaultSecretsProviderTests
 
         Func<Task> act = () => CreateSut().GetSecretAsync("studios/x/pok:keyId", default);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<SecretNotFoundException>();
     }
 
     [Fact]
@@ -69,7 +70,31 @@ public class VaultSecretsProviderTests
 
         Func<Task> act = () => CreateSut().GetSecretAsync("studios/x/pok:keyId", default);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<SecretsStoreUnavailableException>();
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_NothingAtPath_ThrowsNotFound()
+    {
+        _kv.ReadSecretAsync("studios/x/pok", null, "secret", null)
+            .Returns(Task.FromException<Secret<SecretData>>(new VaultApiException(HttpStatusCode.NotFound, "no value found")));
+
+        Func<Task> act = () => CreateSut().GetSecretAsync("studios/x/pok:keyId", default);
+
+        await act.Should().ThrowAsync<SecretNotFoundException>();
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_VaultSealed_ThrowsUnavailableNotNotFound()
+    {
+        // C-8: a sealed Vault answers 503. That's an outage, never "the studio has no keys".
+        _kv.ReadSecretAsync("studios/x/pok", null, "secret", null)
+            .Returns(Task.FromException<Secret<SecretData>>(new VaultApiException(HttpStatusCode.ServiceUnavailable, "Vault is sealed")));
+
+        Func<Task> act = () => CreateSut().GetSecretAsync("studios/x/pok:keyId", default);
+
+        (await act.Should().ThrowAsync<SecretsStoreUnavailableException>())
+            .Which.InnerException.Should().BeOfType<VaultApiException>();
     }
 
     [Fact]
@@ -123,7 +148,7 @@ public class VaultSecretsProviderTests
         Func<Task> act = () => CreateSut().SetSecretAsync(
             "studios/x/pok", new Dictionary<string, string> { ["keyId"] = "k" }, default);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        await act.Should().ThrowAsync<SecretsStoreUnavailableException>();
         await _kv.DidNotReceive().WriteSecretAsync(
             Arg.Any<string>(), Arg.Any<Dictionary<string, object>>(), Arg.Any<int?>(), Arg.Any<string>());
     }
