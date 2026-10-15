@@ -188,7 +188,7 @@ public static class InfrastructureServiceExtensions
         // provider — a studio with none connected gets PaymentProviderNotConnectedException, not
         // NullPaymentProvider (kept only as a standalone class for tests/seeder compilation).
         services.Configure<PokOptions>(configuration.GetSection(PokOptions.Section));
-        services.AddHttpClient("Pok", client => client.Timeout = TimeSpan.FromSeconds(20));
+        services.AddPokHttpClient();
         services.AddScoped<PokAuthClient>();
         services.AddScoped<IPaymentProvider, PokPaymentProvider>();
         services.AddScoped<IPokCardTokenService, PokCardTokenService>();
@@ -282,4 +282,13 @@ public static class InfrastructureServiceExtensions
         RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
         ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED
     };
+
+    // POK puts the merchant id and full order ids in the request path
+    // (/merchants/{merchantId}/sdk-orders/{orderId}/...), and IHttpClientFactory's default logging
+    // handlers write every request URI at Information ("Sending HTTP request {HttpMethod} {Uri}") —
+    // .NET only redacts the query string. Seen in the 2026-10-14 staging gate (C-17), so this client
+    // gets no framework loggers; PokPaymentProvider logs its own order references (8-char prefixes).
+    internal static IHttpClientBuilder AddPokHttpClient(this IServiceCollection services) =>
+        services.AddHttpClient("Pok", client => client.Timeout = TimeSpan.FromSeconds(20))
+            .RemoveAllLoggers();
 }
