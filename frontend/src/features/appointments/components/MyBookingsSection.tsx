@@ -18,7 +18,12 @@ import type { AppointmentResponse } from "../appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 
-const PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS = 24;
+// Must equal the backend's AppointmentSelfServiceDefaults.CancellationWindowHours (48), which
+// ClientCancellationPolicy applies when a studio has no deposit rule (or the rule leaves the
+// window empty). It was 24 here: 24–48 h before an appointment the client was promised "a full
+// refund" and offered Reschedule, while the server refused the reschedule and kept the whole
+// deposit on cancel (G-3, re-tested live 2026-10-15).
+const PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS = 48;
 
 // Same notice window backs both self-cancel (refund %) and self-reschedule (hard cutoff) —
 // mirrors ClientCancellationPolicy on the backend.

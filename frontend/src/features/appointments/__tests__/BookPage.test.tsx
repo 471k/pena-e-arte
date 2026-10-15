@@ -1147,7 +1147,42 @@ describe("MyBookingsSection", () => {
     );
     renderMyBookings();
     expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
-    expect(screen.getByText(/less than 24 hours away/i)).toBeInTheDocument();
+    expect(screen.getByText(/less than 48 hours away/i)).toBeInTheDocument();
+  });
+
+  // G-3: with no deposit rule the server's default window is 48 h — 24–48 h before the
+  // appointment the client must not be offered Reschedule or promised a full refund.
+  it("30 hours before, with no deposit rule: Reschedule is disabled (server default 48 h)", async () => {
+    const in30h = new Date(Date.now() + 30 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
+    expect(screen.getByText(/less than 48 hours away/i)).toBeInTheDocument();
+  });
+
+  it("30 hours before, with no deposit rule: cancelling warns the deposit is forfeited, not refunded", async () => {
+    const in30h = new Date(Date.now() + 30 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h, depositAmount: 50, depositStatus: "Paid" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
+          providerReferenceId: "pi_1", clientToken: null, cashNote: null,
+          paidAt: "2026-01-01T00:00:00Z", clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
+    expect(screen.queryByText(/full refund/i)).not.toBeInTheDocument();
   });
 
   it("clicking 'Reschedule' opens the reschedule dialog with a client-facing description", async () => {
