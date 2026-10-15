@@ -206,6 +206,8 @@ and already final-shape; Amendment D changes nothing about it.
 
 ### 6.4 Runbook cross-reference
 
+> **Superseded 2026-10-14 — skip this sub-step.** The staging gate ran; see the runbook's "§3.1 result" entry. Items 6.1–6.3 still apply.
+
 `docs/payments/runbook-studio-currency-migration-2026-09-27.md` §3.1 is the existing, already-
 written staging-verification checklist for Flow A's two unverified assumptions
 (`PokPaymentProvider.ToPokAmount`'s unit assumption, and the authorized-but-not-captured status

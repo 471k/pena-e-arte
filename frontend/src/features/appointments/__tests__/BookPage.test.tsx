@@ -1053,6 +1053,25 @@ describe("MyBookingsSection", () => {
     expect(screen.queryByText(/full refund/i)).not.toBeInTheDocument();
   });
 
+  it("shows when a held (Captured) card deposit is charged", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, depositStatus: "Pending" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Captured", method: "Card",
+          providerReferenceId: null, clientToken: null, cashNote: null,
+          paidAt: null, clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
+        }),
+      ),
+    );
+    renderMyBookings();
+    expect(
+      await screen.findByText("Deposit authorised — charged by the studio, usually at your appointment"),
+    ).toBeInTheDocument();
+  });
+
   it("'Keep booking' dismisses the confirmation without cancelling", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),

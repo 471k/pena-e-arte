@@ -16,20 +16,20 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// PokCardTokenService, which needs the identical per-studio auth for the card-tokenization
 /// endpoints).
 ///
-/// <b>Two things verified only against docs, not a real sandbox call yet</b> (no staging
-/// credentials existed when this was written — see the calling code's TODOs and the PR
-/// description this shipped in for the concrete verification checklist):
-/// 1. Whether POK's `amount` field expects whole-unit decimals in the currency's ISO minor unit
-///    (e.g. "50.00" for EUR, "5000" for ALL) or minor-unit integers. This provider assumes
-///    whole-unit decimals — see ToPokAmount. If a real staging transaction shows minor-unit
-///    integers instead, change only that one method.
-/// 2. The exact sdkOrder flag combination for "authorized but not yet captured" — POK's docs
-///    don't show that state explicitly. MapStatus now follows POK's own merchant-dashboard
-///    precedence (held before paid, verified 2026-10-07); the staging release gate confirms the
-///    real held shape (runbook §3.1).
-/// Both must be confirmed with a real staging transaction before this goes anywhere near
-/// production traffic. See docs/payments/runbook-studio-currency-migration-2026-09-27.md §3 for
-/// the staging checklist — no studio should be enabled for live card deposits until it's done.
+/// <b>Verified against POK staging on 2026-10-14</b> (release gate; evidence in
+/// docs/payments/runbook-studio-currency-migration-2026-09-27.md, "§3.1 result"):
+/// 1. Amount unit: POK takes whole-unit decimals, exactly what ToPokAmount sends — confirmed for
+///    ALL (create 1234, full capture 1234, partial capture 617, partial refund 234) and EUR
+///    (create 12.34, capture 12.34, refund 2.34), with no currency conversion. ToPokAmount is
+///    unchanged.
+/// 2. Held state (autoCapture:false, after 3-D Secure, before capture): isConfirmed:true,
+///    canBeCaptured:true, isCaptured:false, isCompleted:false, capturedAmount:0, status
+///    "awaiting_capture" — MapStatus maps it to Authorized (held-before-paid precedence, POK's
+///    own dashboard calls it "On hold"). The pre-gate isCompleted-first precedence would not have
+///    misfired on this shape, but stays guarded by a regression test.
+/// Still open (docs/specs/pok-flow-a-go-live-blockers-2026-10-07.md): how long a hold can be
+/// captured after the order's 24 h expiresAt (C-4), and which environments point at POK
+/// production (C-2). No studio is enabled for live card deposits until those are decided.
 /// </summary>
 public sealed class PokPaymentProvider(PokAuthClient authClient, ILogger<PokPaymentProvider> logger) : IPaymentProvider
 {

@@ -196,7 +196,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
     return (
       <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        Deposit authorised — charged when the studio confirms
+        Deposit authorised — charged by the studio, usually at your appointment
       </p>
     );
   }

@@ -57,7 +57,7 @@ function CheckoutForm({
         <CheckCircle2 className="h-12 w-12 text-green-500" />
         <h2 className="text-lg font-semibold">Deposit authorised</h2>
         <p className="text-sm text-muted-foreground max-w-xs">
-          Your card has been authorised. The studio will capture the deposit before your appointment.
+          Your card has been authorised. The studio charges the deposit, usually at your appointment; its cancellation policy applies if you cancel late or miss it.
         </p>
         <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
           Back to booking
@@ -80,7 +80,7 @@ function CheckoutForm({
       <p className="text-sm text-muted-foreground">
         You are authorising a deposit of{" "}
         <span className="font-semibold text-foreground">{formatCurrency(amount, currency)}</span>.
-        Your card will not be charged until the studio confirms your appointment.
+        Your card is authorised now and charged by the studio, usually at your appointment.
       </p>
       <GuestCheckoutForm
         orderId={orderId}
@@ -129,7 +129,7 @@ export function DepositCheckoutPage() {
               <CheckCircle2 className="h-12 w-12 text-green-500" />
               <h2 className="text-lg font-semibold">Deposit authorised</h2>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Your card has been authorised. The studio will capture the deposit before your appointment.
+                Your card has been authorised. The studio charges the deposit, usually at your appointment; its cancellation policy applies if you cancel late or miss it.
               </p>
               <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
                 Back to booking

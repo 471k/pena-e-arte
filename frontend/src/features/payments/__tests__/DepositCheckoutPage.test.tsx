@@ -191,7 +191,7 @@ describe("DepositCheckoutPage", () => {
     renderPage("pay-001", "?status=complete");
 
     expect(await screen.findByText(/deposit authorised/i)).toBeInTheDocument();
-    expect(screen.getByText(/studio will capture/i)).toBeInTheDocument();
+    expect(screen.getByText(/charges the deposit, usually at your appointment/i)).toBeInTheDocument();
     expect(secretFetched).toBe(false);
   });
 
