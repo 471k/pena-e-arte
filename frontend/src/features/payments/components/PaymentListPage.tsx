@@ -13,6 +13,7 @@ import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetPaymentsQuery } from "../paymentsApi";
 import type { PaymentResponse } from "../payment.types";
 import { PaymentStatus } from "../payment.types";
+import { PAYMENT_STATUS_LABELS } from "../paymentStatusLabels";
 
 const PAGE_SIZE = 20;
 
@@ -21,15 +22,6 @@ function formatDate(iso: string): string {
     day: "numeric", month: "short", year: "numeric",
   });
 }
-
-const STATUS_LABELS: Record<PaymentStatus, string> = {
-  [PaymentStatus.Pending]:     "Pending",
-  [PaymentStatus.CashPending]: "Cash Pending",
-  [PaymentStatus.Captured]:    "Captured",
-  [PaymentStatus.Paid]:        "Paid",
-  [PaymentStatus.Refunded]:    "Refunded",
-  [PaymentStatus.Failed]:      "Failed",
-};
 
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   [PaymentStatus.Pending]:     "border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
@@ -43,7 +35,7 @@ const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   return (
     <Badge variant="outline" className={cn(PAYMENT_STATUS_STYLES[status])}>
-      {STATUS_LABELS[status]}
+      {PAYMENT_STATUS_LABELS[status]}
     </Badge>
   );
 }
@@ -115,7 +107,7 @@ export function PaymentListPage() {
   const tableEmptyMessage = search
     ? `No payments match "${search}".`
     : statusFilter
-    ? `No ${STATUS_LABELS[statusFilter]} payments found.`
+    ? `No payments with status "${PAYMENT_STATUS_LABELS[statusFilter]}".`
     : "No payments yet.";
 
   return (
@@ -169,7 +161,7 @@ export function PaymentListPage() {
                     : "border-border bg-background text-muted-foreground hover:border-foreground hover:text-foreground",
                 )}
               >
-                {STATUS_LABELS[s]}
+                {PAYMENT_STATUS_LABELS[s]}
               </button>
             ))}
           </div>

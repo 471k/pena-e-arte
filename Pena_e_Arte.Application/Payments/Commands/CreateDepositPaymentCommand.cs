@@ -27,7 +27,7 @@ public class CreateDepositPaymentHandler(
     // Matches the Postman/REST example (expiresAfterMinutes: 1440) — a full day for the client to
     // complete the card step before the hold self-expires. PaymentReconciliationJob's 3-day stale
     // sweep is the backstop if this and POK's own expiry both somehow miss.
-    private const int HoldDurationMinutes = 1440;
+    internal const int HoldDurationMinutes = 1440;
 
     public async Task<PaymentIntentResponse> Handle(CreateDepositPaymentCommand command, CancellationToken ct)
     {
@@ -92,11 +92,24 @@ public class CreateDepositPaymentHandler(
             PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
                 existing.StudioId, existing.ProviderReferenceId, ct);
 
+            // Legacy rows (owner payment links before HoldExpiresAt was set on them) have no
+            // HoldExpiresAt: POK applied its 24 h default from the last mint, which is UpdatedAt (the
+            // link's retry branch sets it; a new row's UpdatedAt defaults to its creation time). Not
+            // named holdExpiresAt: that local is declared later in the enclosing scope (CS0136).
+            DateTime orderExpiresAt = existing.HoldExpiresAt ?? existing.UpdatedAt.AddMinutes(HoldDurationMinutes);
+
             switch (status)
             {
-                case PaymentProviderStatus.Pending:
-                    // Still awaiting the client — resume with the same hold
+                case PaymentProviderStatus.Pending when orderExpiresAt > DateTime.UtcNow.AddMinutes(10):
+                    // Still awaiting the client and comfortably inside POK's order window — resume.
                     return (existing.Id, existing.ClientToken, PaymentStatus.Pending);
+
+                case PaymentProviderStatus.Pending:
+                    // Unpaid but at (or within 10 minutes of) its POK expiry. POK's public order read,
+                    // which the checkout widget loads, returns 410 "Order is expired" after expiresAt,
+                    // so release it and fall through to mint a fresh hold.
+                    await paymentProvider.CancelAsync(existing.StudioId, existing.ProviderReferenceId, ct);
+                    break;
 
                 case PaymentProviderStatus.Authorized:
                     // Authorized but the webhook never arrived — heal and report

@@ -48,8 +48,12 @@ public class CreatePaymentIntentHandler(
 
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
 
+        // Same 24 h window as client deposits, so PaymentReconciliationJob can release an unpaid
+        // link at its real expiry and CreateDepositPaymentCommand never resumes an expired order.
         (string intentId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
-            new PaymentHoldRequest(tenant.StudioId, paymentId, amount, currency), ct);
+            new PaymentHoldRequest(tenant.StudioId, paymentId, amount, currency,
+                HoldDurationMinutes: CreateDepositPaymentHandler.HoldDurationMinutes), ct);
+        DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(CreateDepositPaymentHandler.HoldDurationMinutes);
 
         Payment payment;
         if (existing is null)
@@ -66,7 +70,8 @@ public class CreatePaymentIntentHandler(
                 Method = ClientPaymentMethod.Card,
                 Provider = "pok",
                 ProviderReferenceId = intentId,
-                ClientToken = clientToken
+                ClientToken = clientToken,
+                HoldExpiresAt = holdExpiresAt,
             };
             db.Payments.Add(payment);
         }
@@ -81,6 +86,7 @@ public class CreatePaymentIntentHandler(
             payment.Provider = "pok";
             payment.ProviderReferenceId = intentId;
             payment.ClientToken = clientToken;
+            payment.HoldExpiresAt = holdExpiresAt;
             payment.UpdatedAt = DateTime.UtcNow;
         }
 

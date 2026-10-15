@@ -288,7 +288,7 @@ non-trivially user-visible:
 | Explicit health-data consent step | Rewrite `client-intake-submit` and `client-consent-sign`; both currently describe a flow with no consent gate | Both sections | **Yes** — `clientTour.ts`, the consent step's copy changes materially |
 | POK connection in studio settings | New owner article; update `owner-studio-profile` | New section | **Yes** — `ownerTour.ts` needs a "connect your payment provider" step, which does not exist |
 | easyPos / fiscalization | New owner article covering what fiscalization is and what a failure means | New section | **Yes** — `ownerTour.ts` |
-| Flow B migration to Polar | Rewrite `owner-billing` and `owner-subscribe` end to end (they describe the Stripe Customer Portal by name) | Both sections | No — existing selectors survive a provider swap |
+| Flow B migration to POK (was: Polar — superseded 2026-10-02 by ADR-0001 Amendment D, contingent on POK's recurring-billing feature reaching production) | Rewrite `owner-billing` and `owner-subscribe` end to end (they describe the Stripe Customer Portal by name) | Both sections | No — existing selectors survive a provider swap |
 | Retention / deletion | New article; `client-profile` needs "how long we keep this" | New section | No |
 
 ---

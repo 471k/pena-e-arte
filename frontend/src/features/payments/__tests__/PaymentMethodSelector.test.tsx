@@ -169,6 +169,7 @@ describe("PaymentMethodSelector", () => {
     expect(form).toBeInTheDocument();
     expect(form.dataset.orderId).toBe("order-test-abcdefg");
     expect(within(form).getByRole("button", { name: /authorise deposit/i })).toBeInTheDocument();
+    expect(screen.getByText(/charged by the studio, usually at your appointment/i)).toBeInTheDocument();
   });
 
   it("card tab shows loading state before the intent is ready", () => {

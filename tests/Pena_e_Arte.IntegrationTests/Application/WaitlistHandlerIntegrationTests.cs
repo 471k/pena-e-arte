@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Waitlists.Commands;
@@ -126,7 +127,8 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         staffUser.Role.Returns("owner");
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), staffUser, _realtime, _sender, _jobs, _stripe);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), staffUser, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
         await handler.Handle(new CancelAppointmentCommand(apptId), default);
 
         await using AppDbContext verify = fixture.CreateDbContext(tenantId);

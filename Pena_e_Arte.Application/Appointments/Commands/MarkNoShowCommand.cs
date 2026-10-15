@@ -45,6 +45,7 @@ public class MarkNoShowHandler(
             {
                 await paymentProvider.CaptureAsync(payment.StudioId, payment.ProviderReferenceId, ct);
                 payment.Status = PaymentStatus.Paid;
+                payment.PaidAt = DateTime.UtcNow;       // revenue reports filter on PaidAt != null
                 payment.UpdatedAt = DateTime.UtcNow;
             }
             else if (payment.Status == PaymentStatus.CashPending)

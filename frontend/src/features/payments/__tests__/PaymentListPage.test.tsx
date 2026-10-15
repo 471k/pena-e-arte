@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { act, render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -45,6 +45,16 @@ const PAYMENT_CASH: PaymentResponse = {
   currency:              "EUR",
 };
 
+// Card deposit authorised but not yet charged — the API calls it "Captured"; owners see "On hold".
+const PAYMENT_HELD: PaymentResponse = {
+  ...PAYMENT_CARD,
+  id:            "pay-003",
+  appointmentId: "appt-003",
+  status:        "Captured",
+  paidAt:        null,
+  clientName:    "Ana Held",
+};
+
 // 20 identical payments to trigger "Load more"
 const PAGE_OF_20: PaymentResponse[] = Array.from({ length: 20 }, (_, i) => ({
   ...PAYMENT_CARD,
@@ -84,8 +94,9 @@ function makeStore() {
 }
 
 function renderPage() {
+  const store = makeStore();
   render(
-    <Provider store={makeStore()}>
+    <Provider store={store}>
       <MemoryRouter initialEntries={["/payments"]}>
         <Routes>
           <Route path="/payments"               element={<PaymentListPage />} />
@@ -95,6 +106,7 @@ function renderPage() {
       </MemoryRouter>
     </Provider>,
   );
+  return store;
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -401,6 +413,41 @@ describe("PaymentListPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Paid" }));
     expect(screen.getAllByText("João Santos")).toHaveLength(2);
+  });
+
+  it("shows a held (Captured) card deposit as 'On hold' in both its badge and its filter pill", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([PAYMENT_CARD, PAYMENT_HELD]),
+      ),
+    );
+    renderPage();
+    await screen.findAllByText("Ana Held");
+
+    expect(screen.getByRole("button", { name: "On hold" })).toBeInTheDocument();
+    // pill + desktop badge + mobile-card badge
+    expect(screen.getAllByText("On hold").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("Captured")).not.toBeInTheDocument();
+  });
+
+  it("shows a status-named empty message when the selected status no longer matches any payment", async () => {
+    let includeHeld = true;
+    server.use(
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json(includeHeld ? [PAYMENT_CARD, PAYMENT_CASH, PAYMENT_HELD] : [PAYMENT_CARD, PAYMENT_CASH]),
+      ),
+    );
+    const user = userEvent.setup();
+    const store = renderPage();
+    await screen.findAllByText("Ana Held");
+
+    await user.click(screen.getByRole("button", { name: "On hold" }));
+    includeHeld = false;
+    await act(async () => {
+      store.dispatch(paymentsApi.util.invalidateTags(["Payment"]));
+    });
+
+    expect(await screen.findByText('No payments with status "On hold".')).toBeInTheDocument();
   });
 
   // ── mobileCard ─────────────────────────────────────────────────────────────────

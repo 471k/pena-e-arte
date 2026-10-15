@@ -65,6 +65,12 @@ public interface IPaymentProvider
     /// <summary>Captures a previously-authorized hold.</summary>
     Task CaptureAsync(Guid studioId, string providerReferenceId, CancellationToken ct);
 
+    /// <summary>Captures part of a previously-authorized hold (at most the authorized amount); the
+    /// provider releases the uncaptured remainder. Amount is major units, already rounded to the
+    /// currency's ISO 4217 minor unit — the same convention as PaymentHoldRequest.Amount; the
+    /// provider converts to its own wire format.</summary>
+    Task CaptureAsync(Guid studioId, string providerReferenceId, decimal amount, string currency, CancellationToken ct);
+
     /// <summary>Cancels/releases a hold that was never captured.</summary>
     Task CancelAsync(Guid studioId, string providerReferenceId, CancellationToken ct);
 

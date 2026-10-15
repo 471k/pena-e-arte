@@ -10,6 +10,18 @@ Docs reviewed in full: [docs.pokpay.io](https://docs.pokpay.io/) (index),
 `Create an Order` schema read field by field. Also the vanilla-JS, React Native, Flutter,
 PHP SDK, WooCommerce and PrestaShop pages via `llms-full.txt`.
 
+> **STATUS UPDATE (2026-10-02, Amendment D):** POK is now the FINAL, decided provider for both
+> flows, by business decision — see `docs/payments/ADR-0001-amendment-D-pok-final-both-flows.md`.
+> Flow A: straightforward, matches this assessment's recommendation. Flow B: this assessment's
+> own precondition below ("do not commit Flow B to POK until they answer the MIT question in
+> writing") has been superseded by the business decision to commit anyway — Phi has learned
+> directly from POK that the recurring-billing feature is in testing and expected to reach
+> production, with a staging environment already obtained. **The written, in-detail answer to
+> priority question #1 below (SCA exemption, enrolment process) is still outstanding** and this
+> assessment's open questions list (§"Questions to send POK, in priority order") remains the live
+> checklist — finalizing the provider did not answer any of them. Everything below is left
+> intact as the original assessment.
+
 ---
 
 ## Verdict up front

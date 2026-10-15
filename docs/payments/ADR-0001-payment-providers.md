@@ -6,6 +6,13 @@
 `easypos-assessment.md`, `paysera-wallet-api-assessment.md`,
 `industry-standard-payments-architecture.md`
 
+> **STATUS UPDATE (2026-10-02, Amendment D):** Flow A's provider choice below is now final
+> (POK), closing what later became a genuinely re-opened question before Amendment D settled it
+> again. **Flow B's provider below (Polar, with Paddle as fallback) is SUPERSEDED — Flow B's
+> final target is now POK, not Polar**, contingent on POK's recurring-billing feature reaching
+> production. See `docs/payments/ADR-0001-amendment-D-pok-final-both-flows.md` for the current
+> decision. The text below is left as-is as the historical record of the original reasoning.
+
 ---
 
 ## Decision

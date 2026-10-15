@@ -81,7 +81,7 @@ function CardCheckoutForm({
           />
         )}
       <p className="text-xs text-center text-muted-foreground">
-        Your card is authorised now and charged when the studio confirms your session.
+        Your card is authorised now and charged by the studio, usually at your appointment. The studio's cancellation policy applies if you cancel late or miss it.
       </p>
     </div>
   );
@@ -157,7 +157,7 @@ function CardTab({
         <p className="text-muted-foreground">
           {data.status === "Paid"
             ? "This deposit has been paid — nothing more to do."
-            : "Your card is authorised and will be charged when the studio confirms your session."}
+            : "Your card is authorised and will be charged by the studio, usually at your appointment. The studio's cancellation policy applies if you cancel late or miss it."}
         </p>
       </div>
     );

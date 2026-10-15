@@ -57,7 +57,7 @@ public class PokPaymentProviderTests
             Options.Create(options ?? new PokOptions { BaseUrl = "https://api-staging.pokpay.io" }),
             factory, redis, NullLogger<PokAuthClient>.Instance);
 
-        return new PokPaymentProvider(authClient);
+        return new PokPaymentProvider(authClient, NullLogger<PokPaymentProvider>.Instance);
     }
 
     private async Task SeedConnectedStudioAsync()
@@ -152,6 +152,73 @@ public class PokPaymentProviderTests
     }
 
     [Fact]
+    public async Task CaptureAsync_PartialAmount_SendsWholeUnitAmount()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/capture") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler);
+
+        await sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        CapturedRequest captureReq = handler.Requests.Single(r => r.Path.EndsWith("/capture"));
+        captureReq.Path.Should().Be($"/merchants/{MerchantId}/sdk-orders/order-abc/capture");
+        captureReq.Body.Should().Contain("\"amount\":617");
+        // A partial capture never needs to read the order first.
+        handler.Requests.Should().NotContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [Fact]
+    public async Task CaptureAsync_Partial409WithSameCapturedAmount_Succeeds()
+    {
+        PokPaymentProvider sut = await CreatePartialCapture409SutAsync("""{"data":{"sdkOrder":{"id":"order-abc","capturedAmount":617}}}""");
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task CaptureAsync_Partial409WithDifferentCapturedAmount_Throws()
+    {
+        // POK already captured the order IN FULL: accepting the 409 would record a released
+        // remainder that was in fact charged.
+        PokPaymentProvider sut = await CreatePartialCapture409SutAsync("""{"data":{"sdkOrder":{"id":"order-abc","capturedAmount":1234}}}""");
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+    }
+
+    [Fact]
+    public async Task CaptureAsync_Partial409WithoutCapturedAmount_Throws()
+    {
+        PokPaymentProvider sut = await CreatePartialCapture409SutAsync("""{"data":{"sdkOrder":{"id":"order-abc"}}}""");
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+    }
+
+    private async Task<PokPaymentProvider> CreatePartialCapture409SutAsync(string orderJson)
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/capture") => new HttpResponseMessage(HttpStatusCode.Conflict),
+            _ => JsonResponse(orderJson),
+        });
+        return CreateSut(handler);
+    }
+
+    [Fact]
     public async Task CreatePaymentHoldAsync_TokenAlreadyCached_SkipsLogin()
     {
         await SeedConnectedStudioAsync();
@@ -171,13 +238,52 @@ public class PokPaymentProviderTests
         handler.Requests.Should().ContainSingle().Which.BearerToken.Should().Be("cached-token");
     }
 
+    // The first five rows are real POK staging shapes, sanitised to flags only: created, expired
+    // and the two paid shapes were read from the merchant-scoped GET on 2026-10-07; the held shape
+    // was observed on staging 2026-10-14 (release gate T1/T9: an autoCapture:false order after
+    // 3-D Secure, before capture). The last five rows are synthetic edge cases (runbook §3.1).
     [Theory]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":false,"canBeCaptured":false,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"created"}}}""", PaymentProviderStatus.Pending)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":true,"isConfirmed":false,"canBeCaptured":false,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"expired"}}}""", PaymentProviderStatus.Pending)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":true,"isConfirmed":true,"canBeCaptured":false,"isCaptured":true,"isCompleted":true,"isCanceled":false,"isRefunded":false,"capturedAmount":100,"status":"paid"}}}""", PaymentProviderStatus.Captured)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":false,"isCaptured":true,"isCompleted":true,"isCanceled":false,"isRefunded":false,"capturedAmount":60,"status":"paid"}}}""", PaymentProviderStatus.Captured)]
+    [InlineData("""{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":false,"isCanceled":false,"isRefunded":false,"capturedAmount":0,"status":"awaiting_capture"}}}""", PaymentProviderStatus.Authorized)]
     [InlineData("""{"data":{"sdkOrder":{"isRefunded":true}}}""", PaymentProviderStatus.Refunded)]
     [InlineData("""{"data":{"sdkOrder":{"isCanceled":true}}}""", PaymentProviderStatus.Canceled)]
-    [InlineData("""{"data":{"sdkOrder":{"isCompleted":true}}}""", PaymentProviderStatus.Captured)]
     [InlineData("""{"data":{"sdkOrder":{"canBeCaptured":true}}}""", PaymentProviderStatus.Authorized)]
+    [InlineData("""{"data":{"sdkOrder":{"isCompleted":true}}}""", PaymentProviderStatus.Failed)]
     [InlineData("""{"data":{"sdkOrder":{}}}""", PaymentProviderStatus.Pending)]
-    public async Task GetStatusAsync_MapsDocumentedFlagsToNormalizedStatus(string orderJson, PaymentProviderStatus expected)
+    public async Task GetStatusAsync_MapsRealPokFlagShapesToNormalizedStatus(string orderJson, PaymentProviderStatus expected)
+    {
+        PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(orderJson);
+
+        result.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_HeldOrderWithIsCompleted_IsNotReportedAsCaptured()
+    {
+        // Regression for the pre-gate MapStatus, which checked isCompleted before canBeCaptured:
+        // a held order with isCompleted:true would have mapped to Captured and been marked Paid
+        // without ever being captured, so the hold lapsed and the studio was never paid. Staging
+        // kept isCompleted false while held (2026-10-14); this synthetic shape stays as a guard.
+        PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(
+            """{"data":{"sdkOrder":{"autoCapture":false,"isConfirmed":true,"canBeCaptured":true,"isCaptured":false,"isCompleted":true,"capturedAmount":0}}}""");
+
+        result.Should().NotBe(PaymentProviderStatus.Captured);
+        result.Should().Be(PaymentProviderStatus.Authorized);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_NullUndocumentedFields_DoNotThrow()
+    {
+        PaymentProviderStatus? result = await GetStatusForOrderJsonAsync(
+            """{"data":{"sdkOrder":{"isConfirmed":null,"isCaptured":null,"capturedAmount":null,"status":null}}}""");
+
+        result.Should().Be(PaymentProviderStatus.Pending);
+    }
+
+    private async Task<PaymentProviderStatus?> GetStatusForOrderJsonAsync(string orderJson)
     {
         await SeedConnectedStudioAsync();
         FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
@@ -188,9 +294,7 @@ public class PokPaymentProviderTests
         });
         PokPaymentProvider sut = CreateSut(handler);
 
-        PaymentProviderStatus? result = await sut.GetStatusAsync(_studioId, "order-1", default);
-
-        result.Should().Be(expected);
+        return await sut.GetStatusAsync(_studioId, "order-1", default);
     }
 
     [Fact]

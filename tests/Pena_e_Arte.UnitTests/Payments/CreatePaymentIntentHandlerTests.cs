@@ -48,6 +48,18 @@ public class CreatePaymentIntentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_SetsHoldExpiresAtAndPassesHoldDurationToProvider()
+    {
+        await SeedStudioAndAppointment();
+
+        await CreateSut().Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
+
+        await _stripe.Received(1).CreatePaymentHoldAsync(
+            Arg.Is<PaymentHoldRequest>(r => r.HoldDurationMinutes == 1440), Arg.Any<CancellationToken>());
+        _db.Payments.Single().HoldExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
     public async Task Handle_ValidRequest_PersistsPaymentToDb()
     {
         await SeedStudioAndAppointment();

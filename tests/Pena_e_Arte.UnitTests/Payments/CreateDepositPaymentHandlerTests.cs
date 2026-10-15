@@ -109,6 +109,63 @@ public class CreateDepositPaymentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_LegacyLinkWithoutExpiry_OlderThan24h_CancelsAndMintsFreshHold()
+    {
+        // No HoldExpiresAt (a payment link from before links carried one): POK's 24 h default ran
+        // from UpdatedAt, so a row last minted 25 h ago is an expired order — never resume it.
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_legacy", clientToken: "secret_legacy", updatedAt: DateTime.UtcNow.AddHours(-25));
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_legacy", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
+
+        PaymentIntentResponse result = await CreateSut()
+            .Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await _provider.Received(1).CancelAsync(_studioId, "pi_legacy", Arg.Any<CancellationToken>());
+        await _provider.Received(1).CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+        result.ClientToken.Should().Be("secret_new");
+    }
+
+    [Fact]
+    public async Task Handle_PendingHoldNearExpiry_CancelsAndMintsFreshHold()
+    {
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_expiring", clientToken: "secret_expiring", holdExpiresAt: DateTime.UtcNow.AddMinutes(5));
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_expiring", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
+
+        PaymentIntentResponse result = await CreateSut()
+            .Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await _provider.Received(1).CancelAsync(_studioId, "pi_expiring", Arg.Any<CancellationToken>());
+        await _provider.Received(1).CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+        result.PaymentId.Should().Be(paymentId); // same row, fresh order
+        _db.Payments.Single(p => p.Id == paymentId).ProviderReferenceId.Should().Be("pi_new");
+    }
+
+    [Fact]
+    public async Task Handle_PendingHoldWellInsideWindow_Resumes()
+    {
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_fresh", clientToken: "secret_fresh", holdExpiresAt: DateTime.UtcNow.AddHours(12));
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_fresh", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
+
+        PaymentIntentResponse result = await CreateSut()
+            .Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        result.ClientToken.Should().Be("secret_fresh");
+        await _provider.DidNotReceive().CancelAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_ExistingCardIntentCancelledAtProvider_MintsFreshIntent()
     {
         Guid clientId = await SeedClient(_clientUserId);
@@ -285,7 +342,8 @@ public class CreateDepositPaymentHandlerTests
 
     private async Task<Guid> SeedPayment(
         Guid appointmentId, ClientPaymentMethod method, PaymentStatus status,
-        string? intentId, string? clientToken, string? cashNote = null)
+        string? intentId, string? clientToken, string? cashNote = null,
+        DateTime? holdExpiresAt = null, DateTime? updatedAt = null)
     {
         Payment payment = new()
         {
@@ -298,7 +356,10 @@ public class CreateDepositPaymentHandlerTests
             ProviderReferenceId = intentId,
             ClientToken = clientToken,
             CashNote = cashNote,
+            HoldExpiresAt = holdExpiresAt,
         };
+        if (updatedAt is { } seededUpdatedAt)
+            payment.UpdatedAt = seededUpdatedAt;
         _db.Payments.Add(payment);
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();

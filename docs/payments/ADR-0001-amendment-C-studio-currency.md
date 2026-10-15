@@ -72,7 +72,7 @@ provider's exceptions.
 | `Payment.Currency` defaulted to `"ALL"` in the domain model (C# initializer) | `Payment.Currency` has no default — always explicitly set from `Studio.Currency` at creation; the MySQL column default is dropped too (no silent fallback at either layer). |
 
 Everything else in ADR-0001 and Amendments A/B stands unchanged: POK plus always-on cash for Flow
-A, Polar (Paddle fallback) for Flow B, easyPos for fiscalization, zero platform commission ever,
+A, Polar (Paddle fallback) for Flow B, easyPos for fiscalization, zero platform commission ever, [Flow B provider superseded 2026-10-02 — see ADR-0001 Amendment D, POK final for both flows, Flow B contingent on POK recurring-billing GA]
 no platform balance/ledger/payout queue for client funds.
 
 ---

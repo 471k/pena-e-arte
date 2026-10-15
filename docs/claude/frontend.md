@@ -281,37 +281,40 @@ export function useSignalR(studioId: string) {
 
 ## Payment UI Pattern
 
-Client-facing payments use a two-tab selector: Card (Stripe) and Cash.
-No PayPal. No wallet providers. No `PayPalScriptProvider` at the app root.
+Client-facing deposit payments (Flow A) use `PaymentMethodSelector`
+(`features/payments/components/PaymentMethodSelector.tsx`) — tabs for **Card** (labelled "New
+card" when the client has saved cards), **Saved card** (only then) and **Cash**, plus the
+gift-card redemption field. No PayPal, no wallet providers. Do not duplicate payment UI in other
+components.
 
-```tsx
-// main.tsx — NO PayPal provider. Stripe Elements is initialised per-payment only.
-// Stripe Elements needs the clientSecret from the server, so it is created per-component:
-<Elements stripe={stripePromise} options={{ clientSecret }}>
-  <PaymentElement />
-</Elements>
-```
+**Card tab:** POK's `GuestCheckoutForm` from `@nebula-ltd/pok-payments-js/react`, mounted with
+the POK order id (the payment's `clientToken`) and `options.env` taken from
+`GET /api/v1/payments/capabilities` → `pokEnvironment` — never guessed from the build mode. The
+widget's `onSuccess` is UX only (ADR-0001): the page re-asks the API (`createDepositPayment` resume
+/ `confirmCardPayment`), which re-reads the order from POK before anything is shown as authorised.
+Deposits are authorised first (POK `autoCapture: false`; shown to owners as "On hold") and charged
+on Capture deposit, Complete or No-show, and partly on a late cancellation. The standalone link
+page `/pay/:paymentId` is `DepositCheckoutPage`. Verified against POK staging 2026-10-14
+(`docs/payments/runbook-studio-currency-migration-2026-09-27.md`, "§3.1 result").
+
+**Saved-card tab:** `AddCardForm`/tokenization — known broken, see
+`docs/specs/pok-flow-a-go-live-blockers-2026-10-07.md` (C-9). Do not extend it until that is fixed.
+
+**Cash tab:** informational panel; on confirm calls `declareCashDeposit` → `Payment { Status = CashPending }`.
+If a card hold exists and is still unpaid, the API releases it at POK first.
 
 **Environment variables (never hardcoded in source):**
 
 ```
-VITE_STRIPE_PUBLISHABLE_KEY   — Stripe publishable key (pk_test_... or pk_live_...)
-VITE_CONTACT_EMAIL            — Platform contact email shown on cash subscription info
+VITE_CONTACT_EMAIL            — Platform contact email (SuspensionBanner, SubscribePage, BillingPage, CurrencySettingsCard)
+VITE_STRIPE_PUBLISHABLE_KEY   — still passed as a build arg (docker-compose.yml, frontend/Dockerfile, cd.yml; placeholder
+                                in frontend/.env.example) but read by no
+                                frontend code: Flow B redirects to server-created Stripe Checkout and billing-portal
+                                URLs. Vestigial; Flow A has no publishable key (POK's widget needs only the order id).
 ```
 
 Both go in `.env.local` (gitignored). A `.env.example` with placeholder values is committed.
 Do NOT add `VITE_PAYPAL_CLIENT_ID` — PayPal is not used.
-
-**`PaymentMethodSelector`** (`features/payments/components/PaymentMethodSelector.tsx`)
-is the single component that renders Card and Cash tabs. Use it wherever a client needs
-to pay a deposit. Do not duplicate payment UI in other components.
-
-**Card tab:** Stripe `PaymentElement` (handles cards, Apple Pay, Google Pay automatically).
-Uses manual capture — deposit is held then captured when the session is complete.
-
-**Cash tab:** Informational panel explaining the client will pay at the studio.
-On confirm, calls `declareCashDeposit` mutation → creates `Payment { Status = CashPending }`.
-No Stripe call.
 
 **`CashDepositConfirmButton`** (`features/payments/components/CashDepositConfirmButton.tsx`)
 is the owner/artist-facing button shown in the dashboard for `CashPending` payments.

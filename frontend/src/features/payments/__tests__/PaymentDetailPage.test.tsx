@@ -166,7 +166,9 @@ describe("PaymentDetailPage", () => {
   it("renders the payment status badge", async () => {
     renderPage("appt-001");
     await screen.findByText(/100/);
-    expect(screen.getByText("Captured")).toBeInTheDocument();
+    // The API's "Captured" means authorised-and-held, so owners see POK's own label.
+    expect(screen.getByText("On hold")).toBeInTheDocument();
+    expect(screen.queryByText("Captured")).not.toBeInTheDocument();
   });
 
   it("renders 'Card' as the method for a card payment", async () => {
@@ -210,6 +212,7 @@ describe("PaymentDetailPage", () => {
   it("owner + Captured + Card → 'Capture deposit' button visible", async () => {
     renderPage("appt-001", Role.Owner);
     expect(await screen.findByRole("button", { name: /capture deposit/i })).toBeInTheDocument();
+    expect(screen.getByText("On hold")).toBeInTheDocument();
   });
 
   it("owner + Pending + Card → shows awaiting-client message", async () => {
