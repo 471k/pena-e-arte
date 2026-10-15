@@ -101,7 +101,10 @@ public class CreateDepositPaymentHandler(
             switch (status)
             {
                 case PaymentProviderStatus.Pending when orderExpiresAt > DateTime.UtcNow.AddMinutes(10):
-                    // Still awaiting the client and comfortably inside POK's order window — resume.
+                    // Still awaiting the client and comfortably inside POK's order window — resume,
+                    // unless card payments were switched off since the order was created (C-13).
+                    // The healing branches below still run: that money was already taken.
+                    CardCurrencyGuard.EnsureCardPaymentsEnabled(paymentProvider);
                     return (existing.Id, existing.ClientToken, PaymentStatus.Pending);
 
                 case PaymentProviderStatus.Pending:

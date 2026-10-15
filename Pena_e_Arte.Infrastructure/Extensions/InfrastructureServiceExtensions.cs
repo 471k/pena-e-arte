@@ -188,6 +188,7 @@ public static class InfrastructureServiceExtensions
         // provider — a studio with none connected gets PaymentProviderNotConnectedException, not
         // NullPaymentProvider (kept only as a standalone class for tests/seeder compilation).
         services.Configure<PokOptions>(configuration.GetSection(PokOptions.Section));
+        services.Configure<CardDepositOptions>(configuration.GetSection(CardDepositOptions.Section));
         services.AddPokHttpClient();
         services.AddScoped<PokAuthClient>();
         services.AddScoped<IPaymentProvider, PokPaymentProvider>();

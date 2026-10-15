@@ -1149,7 +1149,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Connect your POK account for card deposits",
     route: "/studios/me",
-    keywords: ["pok", "connect pok", "card payments", "keyId", "keySecret", "merchant id", "payment provider", "api key", "e-payments", "lost key secret"],
+    keywords: ["pok", "connect pok", "card payments", "keyId", "keySecret", "merchant id", "payment provider", "api key", "e-payments", "lost key secret", "card deposits not switched on"],
     summary: "Connect your studio's own POK merchant account so clients can pay deposits by card — every studio brings its own account, there's no shared platform account.",
     steps: [
       "In your POK merchant dashboard, open E-payments → API Keys.",
@@ -1160,6 +1160,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Your Key Secret is written straight to our secrets vault and is never shown again after you connect — only your Merchant ID stays visible so you can confirm which account is connected.",
       "Until you connect an account, the Card option is unavailable at checkout and clients see Cash only.",
+      "If the card says \"Card deposits aren't switched on in TattooOS yet\", you can still link your POK account now. Clients see Cash only until card deposits go live in TattooOS — nothing else is needed from you.",
       "To switch to a different POK account, click \"Reconnect / change account\" and enter the new credentials — this replaces the old ones.",
       "Card deposits settle directly to your own merchant account — TattooOS never takes a commission or fee from any client deposit, card or cash, now or in the future.",
       "POK takes card deposits in ALL and EUR. If your studio's currency is anything else, clients see Cash only even after you connect.",

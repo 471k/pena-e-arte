@@ -173,6 +173,9 @@ services:
       Stripe__WebhookSecretConnect: ${STRIPE_WEBHOOK_SECRET_CONNECT:-}
       Pok__BaseUrl: ${POK_BASE_URL:-https://api-staging.pokpay.io}
       Pok__WebhookCallbackBaseUrl: ${POK_WEBHOOK_CALLBACK_BASE_URL:-}
+      # Card-deposit kill switch (C-13). On for the local stack (POK staging); production and
+      # staging leave it off until card deposits are approved there.
+      Payments__CardDepositsEnabled: ${PAYMENTS_CARD_DEPOSITS_ENABLED:-true}
       CloudflareR2__AccountId: ${R2_ACCOUNT_ID:-}
       CloudflareR2__AccessKeyId: ${R2_ACCESS_KEY_ID:-}
       CloudflareR2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}

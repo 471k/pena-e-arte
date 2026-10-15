@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -44,7 +45,7 @@ public class PokPaymentProviderTests
         _secrets.GetSecretAsync($"{SecretPath}:keySecret", Arg.Any<CancellationToken>()).Returns("key-secret-value");
     }
 
-    private PokPaymentProvider CreateSut(FakeHttpMessageHandler handler, PokOptions? options = null)
+    private PokPaymentProvider CreateSut(FakeHttpMessageHandler handler, PokOptions? options = null, bool cardDepositsEnabled = true)
     {
         IConnectionMultiplexer redis = Substitute.For<IConnectionMultiplexer>();
         redis.GetDatabase(Arg.Any<int>(), Arg.Any<object?>()).Returns(_cache);
@@ -57,7 +58,10 @@ public class PokPaymentProviderTests
             Options.Create(options ?? new PokOptions { BaseUrl = "https://api-staging.pokpay.io" }),
             factory, redis, NullLogger<PokAuthClient>.Instance);
 
-        return new PokPaymentProvider(authClient, NullLogger<PokPaymentProvider>.Instance);
+        return new PokPaymentProvider(
+            authClient,
+            Options.Create(new CardDepositOptions { CardDepositsEnabled = cardDepositsEnabled }),
+            NullLogger<PokPaymentProvider>.Instance);
     }
 
     private async Task SeedConnectedStudioAsync()
@@ -130,6 +134,51 @@ public class PokPaymentProviderTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*JPY*");
         handler.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Capabilities_ReportTheCardDepositsSwitch()
+    {
+        FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));
+
+        CreateSut(handler, cardDepositsEnabled: true).Capabilities.CardPaymentsEnabled.Should().BeTrue();
+        CreateSut(handler, cardDepositsEnabled: false).Capabilities.CardPaymentsEnabled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreatePaymentHoldAsync_CardPaymentsSwitchedOff_ThrowsWithoutAnyHttpCall()
+    {
+        // Defence in depth behind CardCurrencyGuard for the C-13 kill switch.
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));
+        PokPaymentProvider sut = CreateSut(handler, cardDepositsEnabled: false);
+
+        Func<Task> act = () => sut.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 1234m, "ALL"), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage(CardCurrencyGuard.CardPaymentsSwitchedOffMessage);
+        handler.Requests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CaptureAsync_StillWorksWithCardPaymentsSwitchedOff()
+    {
+        // Switching card payments off must never strand a deposit already on hold.
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/capture") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler, cardDepositsEnabled: false);
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, "order-abc", 617m, "ALL", default);
+
+        await act.Should().NotThrowAsync();
+        handler.Requests.Should().Contain(r => r.Path.EndsWith("/capture"));
     }
 
     [Fact]

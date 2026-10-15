@@ -15,7 +15,13 @@ public sealed record PaymentProviderCapabilities(
     /// must target the same environment as the backend it's talking to, or POK 401s — so the
     /// frontend reads this from the backend rather than guessing independently from its own build
     /// mode, which can drift out of sync with the backend's actual configured host.</summary>
-    string? Environment = null);
+    string? Environment = null,
+    /// <summary>The platform kill switch for card payments (go-live blocker C-13,
+    /// <c>Payments:CardDepositsEnabled</c>). False makes GetPaymentCapabilitiesQuery report
+    /// provider_disabled and CardCurrencyGuard refuse every new card payment; capturing, refunding
+    /// or releasing payments already taken keeps working. Defaults to true so providers and test
+    /// doubles that don't read the switch are unaffected.</summary>
+    bool CardPaymentsEnabled = true);
 
 /// <summary>
 /// Everything a provider needs to open a hold. A request object, not a growing positional
