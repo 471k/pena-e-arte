@@ -27,7 +27,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-14 Several partial refunds | Engineering | No | Open; one-refund limit in our UI re-confirmed 2026-10-15; POK's merchant read after a partial refund still shows `refundableAmount` (1,000 of 1,234) and `can.refund true`, so POK appears to allow more | After C-6 item 7 |
 | C-15 Tell the owner when a held deposit is lost | Engineering | No | Open | Owner notification |
 | C-16 Cancellation side effects before provider call | — | — | **Done** (folded into B3, a58b229b) | None |
-| C-17 Stop framework URI logging for the POK client | Engineering | **Yes** (one-line fix) | Open — confirmed: `System.Net.Http.HttpClient.Pok.*` lines carry the merchant id and full order ids | Add the Serilog override or `RemoveAllLoggers()` |
+| C-17 Stop framework URI logging for the POK client | Engineering | **Yes** (one-line fix) | **Done** (branch `fix/pok-client-no-uri-logging`): the "Pok" client has `RemoveAllLoggers()`; a unit test proves no log line carries the merchant id or order id | None |
 | Legal: EUR deposits for Albanian studios | Legal | Yes for EUR | Open; the gate only proves EUR works technically | Legal sign-off |
 
 ## What shipped with the gate (branch `fix/pok-staging-release-gate-2026-10-07`)
@@ -182,7 +182,10 @@ Done in B3 (a58b229b): reminder jobs are deleted after the save.
 
 ## C-17 — Stop framework URI logging for the POK client (**yes**)
 Confirmed during the gate: the `System.Net.Http.HttpClient.Pok.*` request lines carry the merchant
-id and full order ids. Fix before any deployed environment makes a POK call.
+id and full order ids. **Fixed:** `AddPokHttpClient()` registers the client with `RemoveAllLoggers()`,
+so `IHttpClientFactory` adds no logging handlers to it (outgoing calls aren't traced either — only
+ASP.NET Core instrumentation is on). `PokHttpClientLoggingTests` checks both that the POK client logs
+nothing with the URI and that an ordinary client still would.
 
 ## Found during the gate — not POK-specific
 | # | Finding | Where | Severity | Next action |
