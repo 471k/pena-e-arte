@@ -25,6 +25,10 @@ public sealed class PokAuthClient(
     IAppDbContext db, ISecretsProvider secrets, IOptions<PokOptions> options,
     IHttpClientFactory httpClientFactory, IConnectionMultiplexer redis, ILogger<PokAuthClient> logger)
 {
+    /// <summary>What a client or owner sees while the secrets store is down (C-8).</summary>
+    public const string CardPaymentsTemporarilyUnavailableMessage =
+        "Card payments are temporarily unavailable. Please try again later or pay in cash.";
+
     private readonly PokOptions _options = options.Value;
 
     public string BaseUrl => _options.BaseUrl;
@@ -107,23 +111,31 @@ public sealed class PokAuthClient(
         // studio+provider, two fields inside it) — not a full "path:field" key. GetSecretAsync's
         // ":field" suffix is appended here for each of the two fields it holds.
         //
-        // A missing/unreadable secret here (Vault down, or the crash-consistency gap between
-        // ConnectPokAccountCommand's DB commit and its Vault write — see that command's own
-        // comment) surfaces the same actionable message as "never connected": ISecretsProvider
-        // doesn't distinguish "unreachable" from "missing" (both throw InvalidOperationException),
-        // and ExceptionMiddleware has no mapping for that type, which would otherwise bubble up as
-        // a bare 500 instead of the 422 PAYMENT_PROVIDER_NOT_CONNECTED every other "not set up yet"
-        // path in this class already returns.
+        // Two different failures (C-8):
+        // - the secret isn't there (the crash-consistency gap between ConnectPokAccountCommand's
+        //   DB commit and its Vault write — see that command's own comment): the same actionable
+        //   422 PAYMENT_PROVIDER_NOT_CONNECTED as "never connected";
+        // - the secrets store can't be used (sealed after a restart, unreachable, erroring): a
+        //   temporary outage, 503 — never "reconnect", the keys are still stored. Logged as an error
+        //   so the outage alerts; the message carries no secret, only the studio id.
         try
         {
             string keyId = await secrets.GetSecretAsync($"{row.CredentialRef.SecretPath}:keyId", ct);
             string keySecret = await secrets.GetSecretAsync($"{row.CredentialRef.SecretPath}:keySecret", ct);
             return (keyId, keySecret, row.PokMerchantId);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (SecretNotFoundException)
         {
             throw new PaymentProviderNotConnectedException(
-                "This studio's POK connection is incomplete or unreadable. Reconnect POK in Payment Settings.");
+                "This studio's POK connection is incomplete. Reconnect POK in Payment Settings.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Exception cause = ex.InnerException ?? ex;
+            logger.LogError(
+                "Secrets store unavailable while resolving POK credentials for studio {StudioId} ({ErrorType}, HTTP {VaultStatus}); card payments fail with 503 until it recovers.",
+                studioId, cause.GetType().Name, (cause as VaultSharp.Core.VaultApiException)?.HttpStatusCode);
+            throw new ServiceUnavailableException(CardPaymentsTemporarilyUnavailableMessage);
         }
     }
 

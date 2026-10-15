@@ -1165,6 +1165,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Card deposits settle directly to your own merchant account — TattooOS never takes a commission or fee from any client deposit, card or cash, now or in the future.",
       "POK takes card deposits in ALL and EUR. If your studio's currency is anything else, clients see Cash only even after you connect.",
       "Lost your Key Secret? POK only shows it once. Create a new API key in POK, reconnect here with the new values, then delete the old key in POK.",
+      "If connecting says our secure key store is temporarily unavailable, nothing was saved — wait a few minutes and connect again. While that lasts, clients see card payments as temporarily unavailable and can still pay in cash; your stored keys aren't affected.",
       "TattooOS doesn't test your keys when you connect. If one value is wrong, card payments fail at checkout — so copy all three values from the same API key.",
       "POK Business may open in Albanian: E-payments is \"Pagesat Online\", and you can switch the language at the bottom of the left menu.",
       "Treat the Key Secret like a password: don't take a screenshot of the window that shows it or send it to anyone. If it was shared, create a new key and delete the old one.",

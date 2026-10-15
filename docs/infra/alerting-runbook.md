@@ -9,7 +9,7 @@ customer complained. This is the first real alerting for this cluster.
 
 ## What exists
 
-Three Grafana Alerting rules, provisioned as code via
+Four Grafana Alerting rules, provisioned as code via
 `k8s/observability/grafana-alerting-configmap.yaml` (same file-provisioning mechanism
 `grafana-configmap.yaml` already uses for dashboards/datasources — mounted at
 `/etc/grafana/provisioning/alerting/alerting.yaml`), evaluated every 1 minute, all routed to one
@@ -20,6 +20,7 @@ contact point.
 | API pod not ready | Prometheus (`up{service="tattooos-api"}`, the same series `api-overview.json`'s "Scrape target up" panel already renders) | `< 1` for 5 minutes | A normal rolling deploy replaces a pod in well under 2 minutes end to end (kubelet's default readiness/liveness periods plus rollout time); 5 continuous minutes unreachable is a real outage, not deploy noise. |
 | API 5xx error rate spike | Prometheus, the same percent formula as the dashboard's "Error rate (5xx as % of total)" panel | `> 5%` for 5 minutes | Comfortably above the background noise of a handful of isolated/retried requests at low traffic, low enough to catch a real regression before it compounds. First-cut threshold — tune once real production traffic gives a baseline. |
 | Hangfire job failure rate | Loki, `count_over_time({namespace="tattooos"} \|= "HangfireJobFailed" [15m])` | `>= 1` in 15 minutes | The log line is emitted only when a job lands in its final `Failed` state, i.e. after Hangfire's automatic retries (10 attempts) are exhausted — so a single line already means a job is dead, not a transient blip. The threshold was `>= 3` until 2026-10-03, which could never fire for one broken daily/monthly job (that is how `industry-report`'s R2 upload failure on 2026-10-01 went unnoticed). This alert only became possible on 2026-09-05: see "Why a new log line was needed" below. |
+| Vault sealed or unreachable | Loki, `count_over_time({namespace="tattooos"} \|~ "VaultHealthCheckFailed\|Secrets store unavailable" [15m])` | `>= 1` in 15 minutes, severity critical | Added 2026-10-15 (go-live blocker C-8). Production Vault is single-node and manually unsealed (ADR-0002), so it stays sealed after any restart and every POK card payment returns 503 until someone unseals it. `VaultHealthCheckJob` probes `/v1/sys/health` every 5 minutes and logs `VaultHealthCheckFailed` on anything but healthy, so the alert fires within ~6 minutes even with no payment traffic; real payments that hit a dead Vault log `Secrets store unavailable`. What to do: `docs/infra/vault-self-hosted-runbook.md`, "When the 'Vault sealed or unreachable' alert fires". |
 
 **Receiver:** Grafana's built-in `email` contact point, sent through Resend's SMTP relay
 (`smtp.resend.com`, username `resend`, password = the same `RESEND_API_KEY` the app already uses

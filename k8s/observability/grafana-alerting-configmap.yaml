@@ -6,7 +6,8 @@ metadata:
 data:
   # Grafana's file-based Alerting provisioning format (apiVersion: 1) — same provisioning
   # mechanism grafana-configmap.yaml already uses for dashboards/datasources, extended with a
-  # third mounted file rather than a new mechanism. Three rules, all evaluated every 1m:
+  # third mounted file rather than a new mechanism. Four rules, all evaluated every 1m (the
+  # fourth, vault-unavailable, is described next to it below):
   #
   # 1. api-pod-not-ready: reuses the exact `up{service="tattooos-api", environment=...}`
   #    series api-overview.json's "Scrape target up" panel already renders (no new metric).
@@ -181,6 +182,47 @@ data:
               severity: warning
             annotations:
               summary: "A Hangfire job exhausted its retries and failed in the last 15 minutes (query Loki for HangfireJobFailed to see which)"
+
+          # Same single-stage Loki form as hangfire-job-failure-rate above (a Loki count
+          # aggregation, which Grafana alerts on directly). Go-live blocker C-8: production Vault
+          # is single-node and manually unsealed (ADR-0002), so after any restart it stays sealed
+          # until someone unseals it, and every POK card payment returns 503 meanwhile.
+          # VaultHealthCheckJob logs "VaultHealthCheckFailed" every 5 minutes while Vault is
+          # sealed/unreachable; PokAuthClient and ConnectPokAccountCommand log "Secrets store
+          # unavailable" when a real request hits it. Either line alerts.
+          - uid: vault-unavailable
+            title: Vault sealed or unreachable
+            condition: A
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: loki-uid
+                model:
+                  refId: A
+                  expr: >-
+                    count_over_time({namespace="tattooos"} |~ "VaultHealthCheckFailed|Secrets store unavailable" [15m])
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  conditions:
+                    - evaluator:
+                        type: gte
+                        params: [1]
+                      operator:
+                        type: and
+                      query:
+                        params: ["A"]
+                      reducer:
+                        type: last
+                      type: query
+            for: 1m
+            noDataState: OK
+            execErrState: Alerting
+            labels:
+              severity: critical
+            annotations:
+              summary: "Vault is sealed or unreachable: POK card payments return 503 until it is unsealed (docs/infra/vault-self-hosted-runbook.md, 'After every Vault pod restart')"
 
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from

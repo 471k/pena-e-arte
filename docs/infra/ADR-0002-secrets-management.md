@@ -104,6 +104,14 @@ path — but it is a real operational gap that must be resolved (auto-unseal via
 documented on-call runbook) before the per-tenant-credentials feature this mechanism exists for
 actually ships and starts depending on Vault being reachable.
 
+**Resolved 2026-10-15 (go-live blocker C-8): manual unseal + alert**, keeping this addendum's
+no-KMS choice. `VaultHealthCheckJob` probes `/v1/sys/health` every 5 minutes; the Grafana rule
+`vault-unavailable` emails ops@ when Vault is sealed or unreachable; the response steps are in
+`docs/infra/vault-self-hosted-runbook.md`. The app now tells an outage apart from a missing secret:
+`ISecretsProvider` throws `SecretsStoreUnavailableException` vs `SecretNotFoundException`, so a
+sealed Vault is a 503 "Card payments are temporarily unavailable", never "reconnect POK".
+Auto-unseal stays an option if restarts become frequent.
+
 No `VaultSharp` code changes — same as this ADR's original point about HCP Vault: only
 `Vault:Address`/`Vault:Token` config differs. `Vault:Address` becomes the in-cluster Service DNS
 name (`http://tattooos-vault.tattooos.svc.cluster.local:8200`); `Vault:Token` becomes a

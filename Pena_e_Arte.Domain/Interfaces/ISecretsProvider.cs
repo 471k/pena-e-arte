@@ -10,6 +10,10 @@ public interface ISecretsProvider
     /// <summary>
     /// Resolves a secret by key. Throws if the secret cannot be resolved — it MUST never
     /// return null and let a downstream call proceed with no credential (fail closed).
+    /// Throws <see cref="Exceptions.SecretNotFoundException"/> when the backend answered and the
+    /// secret or field isn't there, and <see cref="Exceptions.SecretsStoreUnavailableException"/>
+    /// when the backend itself can't be used (sealed, unreachable, erroring) — callers must not
+    /// treat an outage as a missing credential (C-8).
     /// </summary>
     /// <param name="key">
     /// Backend key, format "<path>:<field>" (e.g. "studios/{studioId}/pok:apiKey"). A key
@@ -21,6 +25,7 @@ public interface ISecretsProvider
     /// Writes one or more fields to a secret at <paramref name="path"/>, merging with whatever
     /// already exists there (a KV v2 path can hold several fields — e.g. a studio's POK entry
     /// holds both "keyId" and "keySecret" under one path). Never logs the values.
+    /// Throws <see cref="Exceptions.SecretsStoreUnavailableException"/> when the write can't be made.
     /// </summary>
     Task SetSecretAsync(string path, IReadOnlyDictionary<string, string> fields, CancellationToken ct);
 }

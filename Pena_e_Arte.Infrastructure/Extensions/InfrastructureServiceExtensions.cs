@@ -235,6 +235,10 @@ public static class InfrastructureServiceExtensions
         services.Configure<MarketingOptOutOptions>(configuration.GetSection(MarketingOptOutOptions.Section));
         services.AddSingleton<IMarketingOptOutSigner, MarketingOptOutSigner>();
         services.AddTransient<StorageReconciliationJob>();
+        services.AddTransient<VaultHealthCheckJob>();
+        // Polled every 5 minutes — no framework request logging, or it would log a line each run.
+        services.AddHttpClient(VaultHealthCheckJob.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5))
+            .RemoveAllLoggers();
         services.AddTransient<SendCampaignJob>();
 
         // Webhooks — reuses the Instagram token encryptor above (see ITokenEncryptor's own

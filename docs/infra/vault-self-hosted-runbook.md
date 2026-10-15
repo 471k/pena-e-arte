@@ -63,9 +63,32 @@ Sep 2026 addendum for why). Repeat the `vault operator unseal` step above (3 of 
 shares) before Vault is usable again. Every `ISecretsProvider` call fails closed until this is
 done.
 
-**Zero functional impact today** — nothing in the codebase calls `ISecretsProvider` in a live
-request path yet, confirmed against `InfrastructureServiceExtensions.cs` — but this is a real
-operational gap that must be resolved (auto-unseal via a cloud KMS, or a documented on-call
-paging step) before the per-tenant-credentials feature this mechanism exists for (ADR-0001
-Article 4(g), `StudioCredentialRef`) actually ships and starts depending on Vault being
-reachable.
+**What a sealed Vault breaks now** (POK card deposits read each studio's keys from Vault on every
+payment operation): new card deposits, captures, refunds and releases fail with **503 "Card
+payments are temporarily unavailable"**, and connecting POK fails with a 503 that says nothing was
+changed. Cash, bookings and everything else keep working. No stored key is lost — the data is in
+Raft storage and comes back the moment Vault is unsealed. Owners are **not** told to reconnect
+(go-live blocker C-8; before that fix a sealed Vault read as "reconnect POK").
+
+### When the "Vault sealed or unreachable" alert fires (ops@ email)
+
+Chosen approach (ADR-0002, C-8): **manual unseal + alert**, no cloud-KMS auto-unseal.
+
+1. Check the state: `kubectl exec -n tattooos tattooos-vault-0 -- vault status` — look at
+   `Sealed`. If the pod isn't running, `kubectl get pod -n tattooos tattooos-vault-0` and fix that
+   first.
+2. If sealed: run `vault operator unseal` three times with three of the five key shares (the step
+   above). Key shares never go into chat, tickets or this repo.
+3. Confirm: `vault status` shows `Sealed false`. Within 5 minutes `VaultHealthCheckJob` stops logging
+   `VaultHealthCheckFailed` and the alert resolves on its own (15-minute window).
+4. If it was unreachable rather than sealed (`unreachable (...)` in the log line): check the pod,
+   its PVC and `kubectl logs -n tattooos tattooos-vault-0`.
+
+How the alert works: `VaultHealthCheckJob` (Hangfire, every 5 minutes) calls the unauthenticated
+`/v1/sys/health` and logs `VaultHealthCheckFailed: Vault is {sealed|not initialised|unhealthy|
+unreachable}` on anything but healthy; real payment requests that hit a dead Vault log `Secrets
+store unavailable`. The Grafana rule `vault-unavailable` (`k8s/observability/grafana-alerting-
+configmap.yaml`) emails ops@ when either line appears in production in the last 15 minutes.
+
+Auto-unseal (a cloud KMS, or a second Vault's Transit engine) would remove the manual step but adds
+cost and an external dependency; revisit if restarts become frequent.

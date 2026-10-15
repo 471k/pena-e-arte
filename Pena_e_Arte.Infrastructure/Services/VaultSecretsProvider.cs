@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Options;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using VaultSharp;
 using VaultSharp.Core;
@@ -41,22 +42,28 @@ public class VaultSecretsProvider : ISecretsProvider
         catch (OperationCanceledException)
         {
             // Real cancellation, not a Vault failure — must propagate as-is, not get wrapped
-            // into the fail-closed InvalidOperationException below.
+            // into the fail-closed exceptions below.
             throw;
+        }
+        catch (VaultApiException ex) when (ex.HttpStatusCode == HttpStatusCode.NotFound)
+        {
+            // Vault answered: nothing stored at this path.
+            throw new SecretNotFoundException($"No secret at path '{path}' in Vault.");
         }
         catch (Exception ex)
         {
-            // Fail closed: an unreachable/erroring backend must throw, never yield a null
-            // credential that a downstream caller silently proceeds with.
-            throw new InvalidOperationException(
-                $"Could not resolve secret at path '{path}' from Vault.", ex);
+            // Fail closed: a sealed (503), unreachable or erroring backend must throw, never yield
+            // a null credential — and must not look like "missing", or every owner is told to
+            // reconnect during an outage (C-8).
+            throw new SecretsStoreUnavailableException(
+                $"Vault could not be read for path '{path}'.", ex);
         }
 
         if (secret?.Data?.Data is null
             || !secret.Data.Data.TryGetValue(field, out object? value)
             || value is null)
         {
-            throw new InvalidOperationException(
+            throw new SecretNotFoundException(
                 $"Secret '{key}' is missing or empty — refusing to proceed with no credential (fail closed).");
         }
 
@@ -97,7 +104,7 @@ public class VaultSecretsProvider : ISecretsProvider
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Could not write secret at path '{path}' to Vault.", ex);
+            throw new SecretsStoreUnavailableException($"Could not write secret at path '{path}' to Vault.", ex);
         }
 
         try
@@ -111,7 +118,7 @@ public class VaultSecretsProvider : ISecretsProvider
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Could not write secret at path '{path}' to Vault.", ex);
+            throw new SecretsStoreUnavailableException($"Could not write secret at path '{path}' to Vault.", ex);
         }
     }
 }
