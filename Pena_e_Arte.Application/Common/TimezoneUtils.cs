@@ -13,6 +13,41 @@ namespace Pena_e_Arte.Application.Common;
 /// </summary>
 public static class TimezoneUtils
 {
+    /// <summary>
+    /// A booking instant as UTC. Every caller sends an ISO instant ("…Z"): JSON binds it as Utc,
+    /// query-string binding may hand it over as server-Local (converted back here). Unspecified is
+    /// treated as UTC — the stored-instant convention everywhere in this codebase.
+    /// </summary>
+    public static DateTime AsUtc(DateTime instant) => instant.Kind switch
+    {
+        DateTimeKind.Utc => instant,
+        DateTimeKind.Local => instant.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(instant, DateTimeKind.Utc),
+    };
+
+    /// <summary>
+    /// Studio-local wall-clock time for a UTC instant, for BUSINESS comparisons against
+    /// studio-local data (StudioHours, ArtistSchedules, closures, time off) — G-1, found in the
+    /// 2026-10-14 POK gate: comparing the UTC instant's TimeOfDay with local opening hours refused
+    /// the first 1–2 hours of an Albanian studio's day and accepted 1–2 hours after closing.
+    /// Unlike <see cref="ToStudioLocal"/>, an unusable timezone falls back to UTC (the previous
+    /// behaviour) for any lookup failure, not only "not found".
+    /// </summary>
+    public static DateTime ToStudioLocalForRules(DateTime utcInstant, string? timezone)
+    {
+        if (string.IsNullOrWhiteSpace(timezone))
+            return utcInstant;
+        try
+        {
+            TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById(timezone);
+            return TimeZoneInfo.ConvertTimeFromUtc(AsUtc(utcInstant), tz);
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
+        {
+            return utcInstant;
+        }
+    }
+
     public static DateTime ToStudioLocal(DateTime utc, string timezone)
     {
         try

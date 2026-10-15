@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -52,10 +53,13 @@ public class AssignAppointmentArtistHandler(
 
         // Mirrors CreateAppointmentCommand's specific-artist validation exactly — a fresh
         // copy, not a shared extraction (Decision #10), to avoid touching that already-
-        // working, tested path.
-        DayOfWeek day = appointment.Date.DayOfWeek;
-        TimeSpan startTime = appointment.Date.TimeOfDay;
-        TimeSpan endTime = appointment.EndDate.TimeOfDay;
+        // working, tested path. Compared on the studio's local clock (G-1): appointment.Date is a
+        // UTC instant, ArtistSchedules and time off are studio-local.
+        ArtistAvailabilityExtensions.SlotWindow window = await db.ToStudioWindowAsync(
+            tenant.StudioId, appointment.Date, (int)(appointment.EndDate - appointment.Date).TotalMinutes, ct);
+        DayOfWeek day = window.Day;
+        TimeSpan startTime = window.StartTime;
+        TimeSpan endTime = window.EndTime;
 
         var scheduleEntry = await db.ArtistSchedules
             .Where(s => s.ArtistId == artistId && s.DayOfWeek == day && s.IsAvailable)
@@ -70,8 +74,8 @@ public class AssignAppointmentArtistHandler(
 
         bool onTimeOff = await db.ArtistTimeOffs.AnyAsync(
             t => t.ArtistId == artistId &&
-                 t.StartDate <= appointment.Date.Date &&
-                 t.EndDate >= appointment.Date.Date, ct);
+                 t.StartDate <= window.LocalDate &&
+                 t.EndDate >= window.LocalDate, ct);
 
         if (onTimeOff)
             throw new BusinessRuleViolationException("This artist is on leave on the appointment's date.");

@@ -90,7 +90,7 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
         CreateAppointmentHandler handler = new(db, TenantFor(tenantId), clientUser, _locker, _jobs, _realtime, _sender, _planLimits);
 
         AppointmentResponse result = await handler.Handle(new CreateAppointmentCommand(
-            new CreateAppointmentRequest(artistId, clientId, DateTime.UtcNow.AddDays(3), 90, null,
+            new CreateAppointmentRequest(artistId, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null,
                 PackagePurchaseId: purchaseId)), default);
 
         result.DepositAmount.Should().Be(0m);

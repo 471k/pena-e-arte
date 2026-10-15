@@ -110,7 +110,7 @@ public class AppointmentArtistEndpointAuthorizationTests(DatabaseFixture fixture
         string token = BuildToken(tenantId, "owner");
 
         CreateAppointmentRequest body = new(
-            null, clientId, DateTime.UtcNow.AddDays(3), 90, null, "A small rose on the forearm");
+            null, clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null, "A small rose on the forearm");
         HttpRequestMessage request = new(HttpMethod.Post, "/api/v1/appointments")
         {
             Content = JsonContent.Create(body),
@@ -171,8 +171,8 @@ public class AppointmentArtistEndpointAuthorizationTests(DatabaseFixture fixture
             StudioId = tenantId,
             ArtistId = null,
             ClientId = client.Id,
-            Date = DateTime.UtcNow.AddDays(3),
-            EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(90),
+            Date = DateTime.UtcNow.Date.AddDays(3).AddHours(9),
+            EndDate = DateTime.UtcNow.Date.AddDays(3).AddHours(9).AddMinutes(90),
             DurationMinutes = 90,
             Status = AppointmentStatus.Pending,
             DepositStatus = DepositStatus.Pending,

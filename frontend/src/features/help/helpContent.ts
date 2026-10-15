@@ -1248,7 +1248,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
       "In the Currency card, choose the currency your studio prices and takes payments in. It defaults to your country's currency; you can pick another (for example EUR) until your first payment, gift card, package sale or booth-rent charge is recorded — after that it's locked and only support can change it.",
-      "Below the main form, use the \"Studio hours\" card to set your weekly opening hours — a default Mon–Fri, 9am–6pm schedule is applied automatically at registration, correctable anytime. Clients can only book within these hours, regardless of any individual artist's own working hours.",
+      "Below the main form, use the \"Studio hours\" card to set your weekly opening hours — a default Mon–Fri, 9am–6pm schedule is applied automatically at registration, correctable anytime. Clients can only book within these hours, regardless of any individual artist's own working hours. Studio hours, artists' working hours, closures and time off all follow your studio's timezone — 9am means 9am in your studio, all year round, including after the clocks change.",
     ],
     tips: [
       "Your NIPT is never shown to clients or on your public booking page — it's for invoicing and business verification only.",

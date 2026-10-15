@@ -77,7 +77,7 @@ public class RequestCatalogDesignHandlerTests
         _db.SaveChanges();
 
         Guid spoofedClientId = Guid.NewGuid();
-        CreateAppointmentRequest booking = new(artistId, spoofedClientId, DateTime.UtcNow.AddDays(2), 60, null, "x");
+        CreateAppointmentRequest booking = new(artistId, spoofedClientId, DateTime.UtcNow.Date.AddDays(2).AddHours(9), 60, null, "x");
 
         AppointmentResponse result = await CreateSut(clientUser).Handle(
             new RequestCatalogDesignCommand(catalogDesignId, booking), default);
@@ -89,7 +89,7 @@ public class RequestCatalogDesignHandlerTests
     [Fact]
     public async Task Handle_UnknownCatalogDesign_ThrowsNotFoundException()
     {
-        CreateAppointmentRequest booking = new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(2), 60, null, "x");
+        CreateAppointmentRequest booking = new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(2).AddHours(9), 60, null, "x");
 
         Func<Task> act = () => CreateSut(FakeCurrentUser.Owner()).Handle(
             new RequestCatalogDesignCommand(Guid.NewGuid(), booking), default);

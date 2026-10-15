@@ -218,4 +218,136 @@ public class ArtistAvailabilityExtensionsTests
         available.Should().BeFalse();
         reason.Should().Be("Studio is closed that day.");
     }
+
+    // ── G-1: studio-local hours (Europe/Tirane) ─────────────────────────────
+    // Booking instants arrive as UTC; StudioHours/ArtistSchedules/time off are studio-local.
+    // Fixed dates so both offsets are covered: 19 Oct 2026 is a Monday on summer time (UTC+2),
+    // 2 Nov 2026 a Monday on winter time (UTC+1).
+
+    private static readonly DateTime SummerMonday = new(2026, 10, 19, 0, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime WinterMonday = new(2026, 11, 2, 0, 0, 0, DateTimeKind.Utc);
+
+    private void SeedTiranaStudioOpenNineToSix()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Tirana", Slug = "tirana", Timezone = "Europe/Tirane" });
+        _db.SaveChanges();
+        SeedActiveArtist();
+        SeedStudioHours(DayOfWeek.Monday, TimeSpan.FromHours(9), TimeSpan.FromHours(18));
+        SeedArtistSchedule(DayOfWeek.Monday, TimeSpan.FromHours(9), TimeSpan.FromHours(18));
+    }
+
+    [Fact]
+    public async Task G1_FirstOpeningHourIsBookable_OnTheStudiosClock()
+    {
+        SeedTiranaStudioOpenNineToSix();
+        DateTime nineThirtyTirana = SummerMonday.AddHours(7).AddMinutes(30); // 07:30Z
+
+        (bool available, string? reason) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, nineThirtyTirana, 60, default);
+
+        available.Should().BeTrue(reason);
+        (await _db.IsAnyArtistAvailableAsync(_studioId, nineThirtyTirana, 60, default)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task G1_AfterClosingIsRefused_OnTheStudiosClock()
+    {
+        SeedTiranaStudioOpenNineToSix();
+        DateTime sixThirtyTirana = SummerMonday.AddHours(16).AddMinutes(30); // 16:30Z — inside 09–18 in UTC
+
+        (bool available, string? reason) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, sixThirtyTirana, 60, default);
+
+        available.Should().BeFalse();
+        reason.Should().Be("Outside studio hours (09:00–18:00).");
+        (await _db.IsAnyArtistAvailableAsync(_studioId, sixThirtyTirana, 60, default)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task G1_WinterTimeUsesTheWinterOffset()
+    {
+        SeedTiranaStudioOpenNineToSix();
+
+        (bool nineOClock, _) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, WinterMonday.AddHours(8), 60, default);       // 09:00 local
+        (bool eightThirty, _) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, WinterMonday.AddHours(7).AddMinutes(30), 60, default); // 08:30 local
+
+        nineOClock.Should().BeTrue();
+        eightThirty.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task G1_TheDayIsTheStudiosLocalDay()
+    {
+        // Sunday 22:30Z is already Monday 00:30 in Tirana: Monday's hours apply, not Sunday's.
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Tirana", Slug = "tirana", Timezone = "Europe/Tirane" });
+        _db.SaveChanges();
+        SeedActiveArtist();
+        SeedStudioHours(DayOfWeek.Monday, TimeSpan.Zero, TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)));
+        SeedArtistSchedule(DayOfWeek.Monday);
+        DateTime sundayLateUtc = SummerMonday.AddHours(-1).AddMinutes(-30); // Sunday 22:30Z
+
+        (bool available, string? reason) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, sundayLateUtc, 60, default);
+
+        available.Should().BeTrue(reason);
+    }
+
+    [Fact]
+    public async Task G1_ASlotRunningPastLocalMidnightIsRefused()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Tirana", Slug = "tirana", Timezone = "Europe/Tirane" });
+        _db.SaveChanges();
+        SeedActiveArtist();
+        SeedStudioHours(DayOfWeek.Monday, TimeSpan.Zero, TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)));
+        SeedArtistSchedule(DayOfWeek.Monday);
+        DateTime elevenThirtyTirana = SummerMonday.AddHours(21).AddMinutes(30); // 23:30 local, ends 00:30 Tuesday
+
+        (bool available, _) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, elevenThirtyTirana, 60, default);
+
+        available.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task G1_ConflictsAreStillComparedAsUtcInstants()
+    {
+        SeedTiranaStudioOpenNineToSix();
+        DateTime slot = SummerMonday.AddHours(8); // 10:00 local
+        _db.Appointments.Add(new Appointment
+        {
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = Guid.NewGuid(),
+            Date = slot.AddMinutes(30),
+            EndDate = slot.AddMinutes(90),
+            DurationMinutes = 60,
+            Status = Domain.Enums.AppointmentStatus.Confirmed,
+        });
+        _db.SaveChanges();
+
+        (bool available, string? reason) = await _db.CheckArtistSlotAvailabilityAsync(_studioId, _artistId, slot, 60, default);
+
+        available.Should().BeFalse();
+        reason.Should().Be("That slot is already booked.");
+    }
+
+    [Fact]
+    public async Task G1_TimeOffIsMatchedOnTheStudiosLocalDate()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "Tirana", Slug = "tirana", Timezone = "Europe/Tirane" });
+        _db.SaveChanges();
+        SeedActiveArtist();
+        SeedStudioHours(DayOfWeek.Monday, TimeSpan.Zero, TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)));
+        SeedArtistSchedule(DayOfWeek.Monday);
+        _db.ArtistTimeOffs.Add(new ArtistTimeOff
+        {
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            StartDate = SummerMonday.Date,
+            EndDate = SummerMonday.Date,
+        });
+        _db.SaveChanges();
+        DateTime sundayLateUtc = SummerMonday.AddHours(-1).AddMinutes(-30); // Monday 00:30 local
+
+        (bool available, string? reason) = await _db.CheckArtistScheduleAsync(_studioId, _artistId, sundayLateUtc, 60, default);
+
+        available.Should().BeFalse();
+        reason.Should().Be("Artist is on leave that day.");
+    }
 }

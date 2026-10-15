@@ -310,7 +310,7 @@ public class CreateAppointmentHandlerTests
     [Fact]
     public async Task Handle_ArtistNotFound_ThrowsNotFoundException()
     {
-        CreateAppointmentRequest req = new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        CreateAppointmentRequest req = new(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
 
         Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
@@ -519,7 +519,7 @@ public class CreateAppointmentHandlerTests
     public async Task Handle_StudioChoiceBooking_ArtistAvailable_PersistsNullArtistId()
     {
         SeedArtist();
-        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
 
         AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
@@ -534,7 +534,7 @@ public class CreateAppointmentHandlerTests
         _db.DepositRules.Add(new DepositRule { StudioId = _studioId, Name = "20%", AmountPercent = 20m, IsActive = true });
         await _db.SaveChangesAsync();
 
-        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
         AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
         // No specific artist rate to compute from at booking time — deferred to assignment.
@@ -545,7 +545,7 @@ public class CreateAppointmentHandlerTests
     public async Task Handle_StudioChoiceBooking_NoActiveArtist_ThrowsBusinessRuleViolationException()
     {
         // No artist seeded at all — nothing can ever be available.
-        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
 
         Func<Task> act = () => CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
@@ -556,7 +556,7 @@ public class CreateAppointmentHandlerTests
     public async Task Handle_StudioChoiceBooking_DoesNotAcquireSlotLock()
     {
         SeedArtist();
-        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        CreateAppointmentRequest req = new(null, Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
 
         await CreateSut().Handle(new CreateAppointmentCommand(req), default);
 
@@ -607,7 +607,7 @@ public class CreateAppointmentHandlerTests
     }
 
     private CreateAppointmentRequest ValidRequest(decimal? artistHourlyRate = null) =>
-        new(SeedArtist(artistHourlyRate), Guid.NewGuid(), DateTime.UtcNow.AddDays(3), 90, null);
+        new(SeedArtist(artistHourlyRate), Guid.NewGuid(), DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null);
 
     // ── Client-to-Client Referral (P1 #4) ──────────────────────────────────────────
 
