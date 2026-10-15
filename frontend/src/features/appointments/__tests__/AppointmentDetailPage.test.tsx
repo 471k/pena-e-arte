@@ -278,11 +278,11 @@ describe("AppointmentDetailPage", () => {
     expect(within(depositSection as HTMLElement).getByText("Refunded")).toBeInTheDocument();
   });
 
-  it("renders 'Forfeited' deposit badge for no-show appointment", async () => {
+  it("renders 'Kept' deposit badge for no-show appointment (forfeited deposit)", async () => {
     renderPage("appt-005");
     await screen.findByText("90 min");
     const depositSection = screen.getByText("Deposit").closest("div");
-    expect(within(depositSection as HTMLElement).getByText("Forfeited")).toBeInTheDocument();
+    expect(within(depositSection as HTMLElement).getByText("Kept")).toBeInTheDocument();
   });
 
   // ── Artist/Owner actions on pending ────────────────────────────────────────

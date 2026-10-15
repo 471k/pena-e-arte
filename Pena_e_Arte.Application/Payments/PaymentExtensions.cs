@@ -21,5 +21,7 @@ internal static class PaymentExtensions
         p.Appointment?.Date, // null when the navigation wasn't loaded
         (splits ?? p.SessionSplits).Select(s =>
             new SessionSplitResponse(s.Id, s.PaymentId, s.Label, s.Amount, s.PaidAt)).ToList(),
-        p.Currency);
+        p.Currency,
+        p.RefundedAmount,
+        p.Appointment?.Status.ToString()); // null when the navigation wasn't loaded
 }

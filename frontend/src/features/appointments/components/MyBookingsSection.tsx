@@ -7,9 +7,11 @@ import { Separator } from "@/shared/components/ui/separator";
 import { useGetMyAppointmentsQuery, useCancelAppointmentMutation } from "../appointmentsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetPaymentByAppointmentQuery } from "@/features/payments/paymentsApi";
+import { describeDeposit } from "@/features/payments/depositOutcome";
 import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
+import { cn } from "@/shared/utils/cn";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
@@ -170,14 +172,6 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
 
   if (appt.depositAmount <= 0) return null;
 
-  if (appt.depositStatus === DepositStatus.Forfeited) {
-    return <p className="text-xs text-muted-foreground">Deposit forfeited</p>;
-  }
-
-  if (appt.depositStatus === DepositStatus.Refunded) {
-    return <p className="text-xs text-muted-foreground">Deposit refunded</p>;
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
@@ -187,21 +181,37 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
     );
   }
 
-  // Settled states — nothing for the client to do
-  if (appt.depositStatus === DepositStatus.Paid || payment?.status === "Paid") {
+  // Settled states — nothing for the client to do. Worded from what actually happened to the
+  // money (G-13/G-14): a full refund, a partial refund, a released hold and a late-cancel partial
+  // charge used to read "Deposit paid" or "Deposit refunded" interchangeably.
+  if (payment && (payment.status === "Paid" || payment.status === "Refunded" || payment.status === "Captured")) {
+    const outcome = describeDeposit(payment);
+    const positive = outcome.kind === "paid" || outcome.kind === "onHold";
+    return (
+      <div className="space-y-0.5">
+        <p className={cn("flex items-center gap-1.5 text-xs",
+          positive ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+          {positive && <CheckCircle2 className="h-3.5 w-3.5" />}
+          {outcome.clientLabel}
+        </p>
+        {outcome.clientDetail && <p className="text-xs text-muted-foreground">{outcome.clientDetail}</p>}
+      </div>
+    );
+  }
+
+  // No payment row to describe (e.g. data from before payments existed): fall back to the
+  // appointment's own deposit status.
+  if (appt.depositStatus === DepositStatus.Forfeited) {
+    return <p className="text-xs text-muted-foreground">Deposit kept</p>;
+  }
+  if (appt.depositStatus === DepositStatus.Refunded) {
+    return <p className="text-xs text-muted-foreground">Deposit refunded</p>;
+  }
+  if (appt.depositStatus === DepositStatus.Paid) {
     return (
       <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
         <CheckCircle2 className="h-3.5 w-3.5" />
         Deposit paid
-      </p>
-    );
-  }
-
-  if (payment?.status === "Captured") {
-    return (
-      <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        Deposit authorised — charged by the studio, usually at your appointment
       </p>
     );
   }

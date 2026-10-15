@@ -14,6 +14,7 @@ import { useGetPaymentsQuery } from "../paymentsApi";
 import type { PaymentResponse } from "../payment.types";
 import { PaymentStatus } from "../payment.types";
 import { PAYMENT_STATUS_LABELS } from "../paymentStatusLabels";
+import { describeDeposit, type DepositOutcomeKind } from "../depositOutcome";
 
 const PAGE_SIZE = 20;
 
@@ -32,10 +33,25 @@ const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   [PaymentStatus.Failed]:      "border-red-300 bg-red-100 text-red-800 hover:bg-red-100",
 };
 
-function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+// Coloured by what happened (G-13), not the raw status: "Partly kept" is money received.
+const OUTCOME_LIST_STYLES: Record<DepositOutcomeKind, string> = {
+  pending:        PAYMENT_STATUS_STYLES[PaymentStatus.Pending],
+  cashPending:    PAYMENT_STATUS_STYLES[PaymentStatus.CashPending],
+  onHold:         PAYMENT_STATUS_STYLES[PaymentStatus.Captured],
+  paid:           PAYMENT_STATUS_STYLES[PaymentStatus.Paid],
+  kept:           PAYMENT_STATUS_STYLES[PaymentStatus.Paid],
+  partlyKept:     PAYMENT_STATUS_STYLES[PaymentStatus.Paid],
+  partlyRefunded: PAYMENT_STATUS_STYLES[PaymentStatus.Refunded],
+  refunded:       PAYMENT_STATUS_STYLES[PaymentStatus.Refunded],
+  released:       PAYMENT_STATUS_STYLES[PaymentStatus.Refunded],
+  failed:         PAYMENT_STATUS_STYLES[PaymentStatus.Failed],
+};
+
+function PaymentStatusBadge({ payment }: { payment: PaymentResponse }) {
+  const outcome = describeDeposit(payment);
   return (
-    <Badge variant="outline" className={cn(PAYMENT_STATUS_STYLES[status])}>
-      {PAYMENT_STATUS_LABELS[status]}
+    <Badge variant="outline" className={cn(OUTCOME_LIST_STYLES[outcome.kind])} title={outcome.ownerDetail ?? undefined}>
+      {outcome.ownerLabel}
     </Badge>
   );
 }
@@ -234,7 +250,7 @@ export function PaymentListPage() {
               },
               {
                 header: "Status",
-                cell: (p) => <PaymentStatusBadge status={p.status} />,
+                cell: (p) => <PaymentStatusBadge payment={p} />,
               },
               {
                 header: "Method",
@@ -272,7 +288,7 @@ export function PaymentListPage() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium truncate">{p.clientName || "—"}</span>
-                  <PaymentStatusBadge status={p.status} />
+                  <PaymentStatusBadge payment={p} />
                 </div>
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="text-muted-foreground">

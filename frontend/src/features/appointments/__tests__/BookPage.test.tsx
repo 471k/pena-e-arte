@@ -1087,9 +1087,33 @@ describe("MyBookingsSection", () => {
       ),
     );
     renderMyBookings();
-    expect(
-      await screen.findByText("Deposit authorised — charged by the studio, usually at your appointment"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Deposit on hold")).toBeInTheDocument();
+    expect(screen.getByText("Charged by the studio, usually at your appointment")).toBeInTheDocument();
+  });
+
+  // G-13/G-14: the client is told what actually happened to the money, not just a raw status.
+  it.each([
+    ["a full refund", { status: "Refunded", paidAt: "2026-06-01T10:00:00Z", refundedAmount: 50 }, "Deposit refunded", "€50 refunded to your card"],
+    ["a partial refund", { status: "Refunded", paidAt: "2026-06-01T10:00:00Z", refundedAmount: 20 }, "Partly refunded", "€20 refunded to your card"],
+    ["a released hold", { status: "Refunded", paidAt: null, refundedAmount: 50 }, "Hold released", "Nothing was charged"],
+  ])("describes %s in plain words", async (_name, fields, label, detail) => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, depositStatus: "Paid" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, method: "Card",
+          providerReferenceId: null, clientToken: null, cashNote: null,
+          clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
+          appointmentStatus: "Confirmed", ...fields,
+        }),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    expect(screen.getByText(detail)).toBeInTheDocument();
+    expect(screen.queryByText("Deposit paid")).not.toBeInTheDocument();
   });
 
   it("'Keep booking' dismisses the confirmation without cancelling", async () => {

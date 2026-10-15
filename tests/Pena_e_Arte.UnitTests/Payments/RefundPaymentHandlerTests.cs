@@ -156,6 +156,82 @@ public class RefundPaymentHandlerTests
         command.AuditTargetId.Should().Be(paymentId);
     }
 
+    // ── G-14 / G-13 ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_FullRefund_MarksTheAppointmentsDepositRefunded()
+    {
+        // G-14: the client's My bookings read "Deposit paid" after a full refund.
+        await SeedStudio();
+        (Guid paymentId, Guid appointmentId) = await SeedPaymentWithAppointment(1234m);
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
+
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Handle_PartialRefund_LeavesTheDepositPaid_BecauseTheStudioStillHoldsPartOfIt()
+    {
+        await SeedStudio();
+        (Guid paymentId, Guid appointmentId) = await SeedPaymentWithAppointment(1234m);
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, 234m), default);
+
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Paid);
+    }
+
+    [Fact]
+    public async Task Handle_Response_CarriesTheRefundedAmountAndAppointmentStatus()
+    {
+        // G-13: the screens need these to show "1,000 kept · 234 refunded".
+        await SeedStudio();
+        (Guid paymentId, _) = await SeedPaymentWithAppointment(1234m);
+
+        PaymentResponse result = await CreateSut().Handle(new RefundPaymentCommand(paymentId, 234m), default);
+
+        result.RefundedAmount.Should().Be(234m);
+        result.AppointmentStatus.Should().Be(AppointmentStatus.Confirmed.ToString());
+    }
+
+    private async Task<(Guid PaymentId, Guid AppointmentId)> SeedPaymentWithAppointment(decimal amount)
+    {
+        Client client = new()
+        {
+            StudioId = _studioId,
+            FirstName = "Test",
+            LastName = "Client",
+            Email = $"{Guid.NewGuid()}@test.com",
+        };
+        _db.Clients.Add(client);
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.Date.AddDays(5).AddHours(9),
+            EndDate = DateTime.UtcNow.Date.AddDays(5).AddHours(10),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Confirmed,
+            DepositAmount = amount,
+            DepositStatus = DepositStatus.Paid,
+        };
+        _db.Appointments.Add(appointment);
+        Payment payment = new()
+        {
+            StudioId = _studioId,
+            AppointmentId = appointment.Id,
+            ClientId = client.Id,
+            Amount = amount,
+            Currency = "ALL",
+            Status = PaymentStatus.Paid,
+            ProviderReferenceId = "order-1",
+            PaidAt = DateTime.UtcNow,
+        };
+        _db.Payments.Add(payment);
+        await _db.SaveChangesAsync();
+        return (payment.Id, appointment.Id);
+    }
+
     private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio

@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Queries;
@@ -29,6 +30,15 @@ public class GetPaymentByAppointmentHandler(IAppDbContext db, ICurrentUser curre
                 return null;
         }
 
-        return payment?.ToResponse();
+        if (payment is null)
+            return null;
+
+        // Looked up separately rather than Include()d: Include is an inner join on this required
+        // link, which would drop the payment altogether if the appointment row were missing.
+        AppointmentStatus? appointmentStatus = await db.Appointments
+            .Where(a => a.Id == payment.AppointmentId)
+            .Select(a => (AppointmentStatus?)a.Status)
+            .FirstOrDefaultAsync(ct);
+        return payment.ToResponse() with { AppointmentStatus = appointmentStatus?.ToString() };
     }
 }

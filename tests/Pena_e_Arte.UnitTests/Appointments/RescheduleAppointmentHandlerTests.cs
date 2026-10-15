@@ -190,12 +190,14 @@ public class RescheduleAppointmentHandlerTests
         return appointment.Id;
     }
 
+    // Fixed 09:00 times: UtcNow + N days crosses the studio's midnight late in the UTC day, and a
+    // slot past midnight is refused since G-1.
     [Fact]
     public async Task Handle_UnassignedAppointment_ArtistAvailableAtNewTime_Succeeds()
     {
         SeedActiveArtistWithFullSchedule();
-        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(2));
-        DateTime newDate = DateTime.UtcNow.AddDays(5);
+        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.Date.AddDays(2).AddHours(9));
+        DateTime newDate = DateTime.UtcNow.Date.AddDays(5).AddHours(9);
 
         var result = await CreateSut().Handle(
             new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, 60, null)), default);
@@ -208,8 +210,8 @@ public class RescheduleAppointmentHandlerTests
     public async Task Handle_UnassignedAppointment_NoArtistAvailableAtNewTime_ThrowsSlotAlreadyBookedException()
     {
         // No active artist seeded at all — nothing is ever available.
-        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(2));
-        DateTime newDate = DateTime.UtcNow.AddDays(5);
+        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.Date.AddDays(2).AddHours(9));
+        DateTime newDate = DateTime.UtcNow.Date.AddDays(5).AddHours(9);
 
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, 60, null)), default);
@@ -224,8 +226,8 @@ public class RescheduleAppointmentHandlerTests
         // literal comparison — two different unassigned appointments overlapping in time is
         // not a real conflict, since neither has actually claimed an artist resource yet.
         SeedActiveArtistWithFullSchedule();
-        DateTime date = DateTime.UtcNow.AddDays(5);
-        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.AddDays(2));
+        DateTime date = DateTime.UtcNow.Date.AddDays(5).AddHours(9);
+        Guid id = await SeedUnassignedAppointment(AppointmentStatus.Pending, DateTime.UtcNow.Date.AddDays(2).AddHours(9));
         await SeedUnassignedAppointment(AppointmentStatus.Pending, date);
 
         var result = await CreateSut().Handle(

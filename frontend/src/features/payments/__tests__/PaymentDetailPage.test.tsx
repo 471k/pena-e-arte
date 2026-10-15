@@ -160,12 +160,12 @@ describe("PaymentDetailPage", () => {
 
   it("renders the payment amount", async () => {
     renderPage("appt-001");
-    expect(await screen.findByText(/100/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /100/ })).toBeInTheDocument();
   });
 
   it("renders the payment status badge", async () => {
     renderPage("appt-001");
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     // The API's "Captured" means authorised-and-held, so owners see POK's own label.
     expect(screen.getByText("On hold")).toBeInTheDocument();
     expect(screen.queryByText("Captured")).not.toBeInTheDocument();
@@ -173,37 +173,37 @@ describe("PaymentDetailPage", () => {
 
   it("renders 'Card' as the method for a card payment", async () => {
     renderPage("appt-001");
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText("Card")).toBeInTheDocument();
   });
 
   it("renders 'Cash' as the method for a cash payment", async () => {
     renderPage("appt-003");
-    await screen.findByText(/60/);
+    await screen.findByRole("heading", { name: /60/ });
     expect(screen.getByText("Cash")).toBeInTheDocument();
   });
 
   it("renders the Stripe PI ID for a card payment", async () => {
     renderPage("appt-001");
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText("pi_test_abc")).toBeInTheDocument();
   });
 
   it("renders the cash note when present", async () => {
     renderPage("appt-003");
-    await screen.findByText(/60/);
+    await screen.findByRole("heading", { name: /60/ });
     expect(screen.getByText("Bring on the day")).toBeInTheDocument();
   });
 
   it("renders the appointment ID", async () => {
     renderPage("appt-001");
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText("appt-001")).toBeInTheDocument();
   });
 
   it("renders paidAt date when present", async () => {
     renderPage("appt-002");
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText(/15 Jun 2026/i)).toBeInTheDocument();
   });
 
@@ -217,7 +217,7 @@ describe("PaymentDetailPage", () => {
 
   it("owner + Pending + Card → shows awaiting-client message", async () => {
     renderPage("appt-004", Role.Owner);
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText(/awaiting client card authorization/i)).toBeInTheDocument();
   });
 
@@ -230,7 +230,7 @@ describe("PaymentDetailPage", () => {
 
   it("cash pending info banner shown for CashPending status", async () => {
     renderPage("appt-003", Role.Owner);
-    await screen.findByText(/60/);
+    await screen.findByRole("heading", { name: /60/ });
     expect(screen.getByText(/awaiting cash collection/i)).toBeInTheDocument();
   });
 
@@ -245,7 +245,7 @@ describe("PaymentDetailPage", () => {
 
   it("artist role does NOT see 'Capture deposit' button", async () => {
     renderPage("appt-001", Role.Artist);
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.queryByRole("button", { name: /capture deposit/i })).not.toBeInTheDocument();
   });
 
@@ -297,7 +297,7 @@ describe("PaymentDetailPage", () => {
   it("'Payments' back button navigates to /payments list", async () => {
     const user = userEvent.setup();
     renderPage("appt-001");
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     await user.click(screen.getByRole("button", { name: /payments/i }));
     expect(screen.getByTestId("list-page")).toBeInTheDocument();
   });
@@ -306,13 +306,13 @@ describe("PaymentDetailPage", () => {
 
   it("owner sees 'Session Splits' section", async () => {
     renderPage("appt-001", Role.Owner);
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText("Session Splits")).toBeInTheDocument();
   });
 
   it("splits editor shows 'No session splits defined.' when payment has no splits", async () => {
     renderPage("appt-001", Role.Owner);
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(await screen.findByText("No session splits defined.")).toBeInTheDocument();
   });
 
@@ -338,7 +338,47 @@ describe("PaymentDetailPage", () => {
 
   it("non-owner (artist) does NOT see Session Splits section", async () => {
     renderPage("appt-001", Role.Artist);
-    await screen.findByText(/100/);
+    await screen.findByRole("heading", { name: /100/ });
     expect(screen.queryByText("Session Splits")).not.toBeInTheDocument();
+  });
+
+  // ── Outcome wording (G-5 / G-6 / G-13) ────────────────────────────────────────
+
+  function servePayment(fields: Partial<PaymentResponse>) {
+    server.use(
+      http.get("http://localhost/api/v1/payments/appointment/:appointmentId", () =>
+        HttpResponse.json({ ...PAYMENT_CARD_PAID, ...fields })),
+    );
+  }
+
+  it("a partial refund shows 'Partly refunded' with the kept and refunded amounts, and keeps the receipt", async () => {
+    servePayment({ status: "Refunded", refundedAmount: 30, appointmentStatus: "Completed" });
+    renderPage("appt-002", Role.Owner);
+    expect(await screen.findByText("Partly refunded")).toBeInTheDocument();
+    expect(screen.getByText("€70 kept · €30 refunded")).toBeInTheDocument();
+    expect(screen.queryByText("Refunded")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /download receipt/i })).toBeInTheDocument();
+  });
+
+  it("a released hold shows 'Released', says nothing was charged and offers no receipt", async () => {
+    servePayment({ status: "Refunded", paidAt: null, refundedAmount: 100, appointmentStatus: "Cancelled" });
+    renderPage("appt-002", Role.Owner);
+    expect(await screen.findByText("Released")).toBeInTheDocument();
+    expect(screen.getByText("Nothing was charged")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /download receipt/i })).not.toBeInTheDocument();
+  });
+
+  it("a late-cancel partial capture shows 'Partly kept' with the policy split", async () => {
+    servePayment({ status: "Refunded", refundedAmount: 50, appointmentStatus: "Cancelled" });
+    renderPage("appt-002", Role.Owner);
+    expect(await screen.findByText("Partly kept")).toBeInTheDocument();
+    expect(screen.getByText("€50 kept · €50 released (cancellation policy)")).toBeInTheDocument();
+  });
+
+  it("a deposit kept in full on a late cancel shows 'Kept', not 'Paid'", async () => {
+    servePayment({ appointmentStatus: "Cancelled" });
+    renderPage("appt-002", Role.Owner);
+    expect(await screen.findByText("Kept")).toBeInTheDocument();
+    expect(screen.getByText("€100 kept (cancellation policy)")).toBeInTheDocument();
   });
 });

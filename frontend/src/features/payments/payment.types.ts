@@ -28,6 +28,10 @@ export interface PaymentResponse {
   appointmentDate:       string | null;
   splits?:               SessionSplitResponse[];
   currency:              string;
+  /** Given back: refunded after a charge, or released from a hold in a partial capture. */
+  refundedAmount?:       number | null;
+  /** The appointment's status when the API loaded it ("Cancelled" = late-cancel outcome). */
+  appointmentStatus?:    string | null;
 }
 
 export interface PaymentIntentResponse {

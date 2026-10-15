@@ -55,11 +55,22 @@ public class RefundPaymentHandler(
         payment.RefundedAmount = refundAmount;
         payment.UpdatedAt = DateTime.UtcNow;
 
+        // G-14: a full refund means the client no longer has a deposit with the studio — the
+        // appointment must say so too (it stayed "Paid", so the client's My bookings still read
+        // "Deposit paid"). A partial refund leaves it Paid: the studio still holds part of it.
+        Appointment? appointment = await db.Appointments.FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+        if (refundAmount >= payment.Amount && appointment is not null)
+        {
+            appointment.DepositStatus = DepositStatus.Refunded;
+            appointment.UpdatedAt = DateTime.UtcNow;
+        }
+
         await db.SaveChangesAsync(ct);
 
-        await realtime.NotifyStudioAsync(payment.StudioId, "PaymentRefunded", payment.ToResponse(), ct);
+        PaymentResponse response = payment.ToResponse() with { AppointmentStatus = appointment?.Status.ToString() };
+        await realtime.NotifyStudioAsync(payment.StudioId, "PaymentRefunded", response, ct);
         await sender.Send(new SendPaymentRefundedNotificationCommand(payment.Id), ct);
 
-        return payment.ToResponse();
+        return response;
     }
 }

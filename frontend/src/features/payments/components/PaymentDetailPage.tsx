@@ -27,7 +27,7 @@ import {
   useDownloadInvoiceMutation,
 } from "../paymentsApi";
 import { PaymentMethod, PaymentStatus } from "../payment.types";
-import { PAYMENT_STATUS_LABELS } from "../paymentStatusLabels";
+import { describeDeposit, OUTCOME_BADGE_CLASSES, type DepositOutcomeKind } from "../depositOutcome";
 import { SessionSplitsEditor } from "./SessionSplitsEditor";
 
 function formatDate(iso: string): string {
@@ -36,18 +36,10 @@ function formatDate(iso: string): string {
   });
 }
 
-function StatusBadge({ status }: { status: PaymentStatus }) {
-  const classes: Record<PaymentStatus, string> = {
-    Pending:     "bg-yellow-500/10 text-yellow-700",
-    CashPending: "bg-orange-500/10 text-orange-700",
-    Captured:    "bg-blue-500/10   text-blue-700",
-    Paid:        "bg-green-500/10  text-green-700",
-    Refunded:    "bg-slate-500/10  text-slate-700",
-    Failed:      "bg-red-500/10    text-red-700",
-  };
+function StatusBadge({ kind, label }: { kind: DepositOutcomeKind; label: string }) {
   return (
-    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", classes[status] ?? "bg-muted")}>
-      {PAYMENT_STATUS_LABELS[status]}
+    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", OUTCOME_BADGE_CLASSES[kind] ?? "bg-muted")}>
+      {label}
     </span>
   );
 }
@@ -226,7 +218,9 @@ export function PaymentDetailPage() {
   const isRefunded   = payment.status === PaymentStatus.Refunded;
   const isCard       = payment.method === PaymentMethod.Card;
   const isCash       = payment.method === PaymentMethod.Cash;
-  const hasReceipt   = isPaid || isRefunded;
+  const outcome      = describeDeposit(payment);
+  // Only when money was actually charged/collected — a released hold has nothing to receipt (G-6).
+  const hasReceipt   = (isPaid || isRefunded) && outcome.charged;
 
   return (
     <div className="min-h-screen bg-background">
@@ -326,8 +320,11 @@ export function PaymentDetailPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-semibold">{formatCurrency(payment.amount, payment.currency)}</h1>
-              <StatusBadge status={payment.status} />
+              <StatusBadge kind={outcome.kind} label={outcome.ownerLabel} />
             </div>
+            {outcome.ownerDetail && (
+              <p className="text-sm text-muted-foreground">{outcome.ownerDetail}</p>
+            )}
             <p className="text-xs text-muted-foreground font-mono">
               {payment.id}
             </p>
