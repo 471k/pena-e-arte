@@ -34,14 +34,14 @@ public static class ArtistAvailabilityExtensions
     public static async Task<bool> IsAnyArtistAvailableAsync(
         this IAppDbContext db, Guid studioId, DateTime date, int durationMinutes, CancellationToken ct)
     {
-        DateTime end = date.AddMinutes(durationMinutes);
-        DayOfWeek day = date.DayOfWeek;
-        TimeSpan startTime = date.TimeOfDay;
-        TimeSpan endTime = end.TimeOfDay;
+        SlotWindow w = await db.ToStudioWindowAsync(studioId, date, durationMinutes, ct);
+        DayOfWeek day = w.Day;
+        TimeSpan startTime = w.StartTime;
+        TimeSpan endTime = w.EndTime;
 
         bool studioClosed = await db.StudioClosures.IgnoreQueryFilters().AnyAsync(
             c => c.StudioId == studioId && c.DeletedAt == null
-                 && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
+                 && c.StartDate <= w.LocalDate && c.EndDate >= w.LocalDate, ct);
         if (studioClosed) return false;
 
         StudioHours? studioHours = await db.StudioHours.IgnoreQueryFilters().FirstOrDefaultAsync(
@@ -73,7 +73,7 @@ public static class ArtistAvailabilityExtensions
         HashSet<Guid> onTimeOffArtistIds = (await db.ArtistTimeOffs.IgnoreQueryFilters()
             .Where(t => t.StudioId == studioId && t.DeletedAt == null
                         && candidateArtistIds.Contains(t.ArtistId)
-                        && t.StartDate <= date.Date && t.EndDate >= date.Date)
+                        && t.StartDate <= w.LocalDate && t.EndDate >= w.LocalDate)
             .Select(t => t.ArtistId)
             .ToListAsync(ct))
             .ToHashSet();
@@ -81,7 +81,7 @@ public static class ArtistAvailabilityExtensions
         HashSet<Guid> conflictedArtistIds = (await db.Appointments.IgnoreQueryFilters()
             .Where(a => a.StudioId == studioId && a.DeletedAt == null
                         && a.ArtistId != null && candidateArtistIds.Contains(a.ArtistId.Value)
-                        && a.Date < end && a.EndDate > date
+                        && a.Date < w.UtcEnd && a.EndDate > w.UtcStart
                         && a.Status != AppointmentStatus.Cancelled)
             .Select(a => a.ArtistId!.Value)
             .ToListAsync(ct))
@@ -114,14 +114,14 @@ public static class ArtistAvailabilityExtensions
         this IAppDbContext db, Guid studioId, Guid artistId, DateTime date, int durationMinutes,
         CancellationToken ct)
     {
-        DateTime end = date.AddMinutes(durationMinutes);
-        DayOfWeek day = date.DayOfWeek;
-        TimeSpan startTime = date.TimeOfDay;
-        TimeSpan endTime = end.TimeOfDay;
+        SlotWindow w = await db.ToStudioWindowAsync(studioId, date, durationMinutes, ct);
+        DayOfWeek day = w.Day;
+        TimeSpan startTime = w.StartTime;
+        TimeSpan endTime = w.EndTime;
 
         bool studioClosed = await db.StudioClosures.IgnoreQueryFilters().AnyAsync(
             c => c.StudioId == studioId && c.DeletedAt == null
-                 && c.StartDate <= date.Date && c.EndDate >= date.Date, ct);
+                 && c.StartDate <= w.LocalDate && c.EndDate >= w.LocalDate, ct);
         if (studioClosed)
             return (false, "Studio is closed that day.");
 
@@ -146,7 +146,7 @@ public static class ArtistAvailabilityExtensions
 
         bool onLeave = await db.ArtistTimeOffs.IgnoreQueryFilters().AnyAsync(
             t => t.StudioId == studioId && t.DeletedAt == null && t.ArtistId == artistId &&
-                 t.StartDate <= date.Date && t.EndDate >= date.Date, ct);
+                 t.StartDate <= w.LocalDate && t.EndDate >= w.LocalDate, ct);
 
         if (onLeave)
             return (false, "Artist is on leave that day.");
@@ -168,18 +168,47 @@ public static class ArtistAvailabilityExtensions
         (bool available, string? reason) = await db.CheckArtistScheduleAsync(studioId, artistId, date, durationMinutes, ct);
         if (!available) return (available, reason);
 
-        DateTime end = date.AddMinutes(durationMinutes);
+        DateTime start = TimezoneUtils.AsUtc(date);
+        DateTime end = start.AddMinutes(durationMinutes);
         bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(a =>
             a.StudioId == studioId &&
             a.DeletedAt == null &&
             a.ArtistId == artistId &&
             a.Date < end &&
-            a.EndDate > date &&
+            a.EndDate > start &&
             a.Status != AppointmentStatus.Cancelled, ct);
 
         if (conflict)
             return (false, "That slot is already booked.");
 
         return (true, null);
+    }
+
+    /// <summary>
+    /// A requested slot as both UTC instants (for conflicts with stored appointments, which are
+    /// UTC) and the studio's local wall clock (for StudioHours, ArtistSchedules, closures and time
+    /// off, which are all studio-local) — G-1: these used to compare the UTC instant's TimeOfDay
+    /// and DayOfWeek with local hours, refusing the first 1–2 hours of an Albanian studio's day and
+    /// accepting 1–2 hours after closing. EndTime is measured from the start's local midnight, so a
+    /// slot that runs past midnight ends after 24:00 and fails every "ends by closing time" check.
+    /// </summary>
+    internal readonly record struct SlotWindow(
+        DateTime UtcStart, DateTime UtcEnd, DateTime LocalDate, DayOfWeek Day, TimeSpan StartTime, TimeSpan EndTime);
+
+    internal static async Task<SlotWindow> ToStudioWindowAsync(
+        this IAppDbContext db, Guid studioId, DateTime date, int durationMinutes, CancellationToken ct)
+    {
+        string? timezone = await db.Studios.IgnoreQueryFilters()
+            .Where(s => s.Id == studioId)
+            .Select(s => s.Timezone)
+            .FirstOrDefaultAsync(ct);
+
+        DateTime utcStart = TimezoneUtils.AsUtc(date);
+        DateTime utcEnd = utcStart.AddMinutes(durationMinutes);
+        DateTime localStart = TimezoneUtils.ToStudioLocalForRules(utcStart, timezone);
+        DateTime localEnd = TimezoneUtils.ToStudioLocalForRules(utcEnd, timezone);
+
+        return new SlotWindow(
+            utcStart, utcEnd, localStart.Date, localStart.DayOfWeek, localStart.TimeOfDay, localEnd - localStart.Date);
     }
 }

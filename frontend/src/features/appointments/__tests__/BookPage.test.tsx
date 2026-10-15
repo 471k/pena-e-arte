@@ -735,6 +735,26 @@ describe("BookAppointmentForm", () => {
     expect(sawArtistIdParam).toBe(false);
   });
 
+  it("the slot-check call sends the slot as a UTC instant, exactly like the submit (G-1)", async () => {
+    let sentDate: string | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/check-slot", ({ request }) => {
+        sentDate = new URL(request.url).searchParams.get("date");
+        return HttpResponse.json({ available: true, reason: null });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+
+    const typed = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(screen.getByLabelText(/date.*time/i), typed);
+
+    await screen.findByText(/this slot is available/i);
+    expect(sentDate).toBe(new Date(typed).toISOString());
+  });
+
   it("shows studio-assigns-artist confirmation copy for a studio-choice booking", async () => {
     server.use(
       http.post("http://localhost/api/v1/appointments", () =>

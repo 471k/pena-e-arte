@@ -149,6 +149,6 @@ public class CreateAppointmentPackageBookingTests
     }
 
     private CreateAppointmentRequest ValidRequest(Guid artistId, Guid? packagePurchaseId) =>
-        new(artistId, _clientId, DateTime.UtcNow.AddDays(3), 90, null,
+        new(artistId, _clientId, DateTime.UtcNow.Date.AddDays(3).AddHours(9), 90, null,
             PackagePurchaseId: packagePurchaseId);
 }
