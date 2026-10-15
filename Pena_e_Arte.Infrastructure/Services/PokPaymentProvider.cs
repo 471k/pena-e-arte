@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
@@ -31,7 +33,10 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// captured after the order's 24 h expiresAt (C-4), and which environments point at POK
 /// production (C-2). No studio is enabled for live card deposits until those are decided.
 /// </summary>
-public sealed class PokPaymentProvider(PokAuthClient authClient, ILogger<PokPaymentProvider> logger) : IPaymentProvider
+public sealed class PokPaymentProvider(
+    PokAuthClient authClient,
+    IOptions<CardDepositOptions> cardDeposits,
+    ILogger<PokPaymentProvider> logger) : IPaymentProvider
 {
     public PaymentProviderCapabilities Capabilities { get; } = new(
         SupportsAuthCapture: true,
@@ -44,11 +49,19 @@ public sealed class PokPaymentProvider(PokAuthClient authClient, ILogger<PokPaym
         // is the single source of truth for which POK environment is live; the frontend reads
         // it from here (via PaymentCapabilitiesResponse) instead of guessing independently
         // from its own build mode, which can drift out of sync with this backend's actual host.
-        Environment: authClient.Environment);
+        Environment: authClient.Environment,
+        // Go-live kill switch (C-13): off unless Payments:CardDepositsEnabled is true.
+        CardPaymentsEnabled: cardDeposits.Value.CardDepositsEnabled);
 
     public async Task<(string ProviderReferenceId, string ClientToken)> CreatePaymentHoldAsync(
         PaymentHoldRequest request, CancellationToken ct)
     {
+        // Defence in depth behind CardCurrencyGuard, like the currency check below.
+        if (!Capabilities.CardPaymentsEnabled)
+        {
+            throw new BusinessRuleViolationException(CardCurrencyGuard.CardPaymentsSwitchedOffMessage);
+        }
+
         // Defence in depth behind CardCurrencyGuard (which every caller already runs before
         // reaching a provider at all) — this provider must never accept a currency it can't
         // actually charge in, even if a future caller forgets the guard.

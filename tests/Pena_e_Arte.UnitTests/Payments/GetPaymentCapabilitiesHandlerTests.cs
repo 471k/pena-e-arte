@@ -45,6 +45,24 @@ public class GetPaymentCapabilitiesHandlerTests
     }
 
     [Fact]
+    public async Task Handle_CardPaymentsSwitchedOff_ReturnsProviderDisabledEvenForAConnectedSupportedStudio()
+    {
+        // C-13 kill switch: a connected ALL studio that would otherwise be available gets
+        // provider_disabled, and the widget environment isn't handed out.
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true,
+            SupportedCurrencies: ["ALL", "EUR"], Environment: "staging", CardPaymentsEnabled: false));
+        await SeedConnectedStudioAsync(currency: "ALL");
+
+        PaymentCapabilitiesResponse result = await CreateSut().Handle(new GetPaymentCapabilitiesQuery(), default);
+
+        result.CardPaymentsAvailable.Should().BeFalse();
+        result.PokEnvironment.Should().BeNull();
+        result.CardUnavailableReason.Should().Be(CardUnavailableReasons.ProviderDisabled);
+        result.Currency.Should().Be("ALL");
+    }
+
+    [Fact]
     public async Task Handle_StudioCurrencyNotSupportedByProvider_ReturnsUnavailableBeforeCheckingConnection()
     {
         // JPY isn't in POK's supported set even though this studio IS connected — the currency

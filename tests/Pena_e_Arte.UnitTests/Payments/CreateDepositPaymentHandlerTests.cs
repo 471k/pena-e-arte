@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -163,6 +164,61 @@ public class CreateDepositPaymentHandlerTests
         result.ClientToken.Should().Be("secret_fresh");
         await _provider.DidNotReceive().CancelAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _provider.DidNotReceive().CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    private void SwitchCardPaymentsOff() =>
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"],
+            CardPaymentsEnabled: false));
+
+    [Fact]
+    public async Task Handle_CardPaymentsSwitchedOff_RefusesANewHoldWithoutCallingTheProvider()
+    {
+        SwitchCardPaymentsOff();
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId, depositAmount: 80m);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage(CardCurrencyGuard.CardPaymentsSwitchedOffMessage);
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+        _db.Payments.Any(p => p.AppointmentId == appointmentId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_CardPaymentsSwitchedOff_DoesNotResumeAnUnpaidOrderCreatedBefore()
+    {
+        SwitchCardPaymentsOff();
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_open", clientToken: "secret_open", holdExpiresAt: DateTime.UtcNow.AddHours(12));
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_open", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage(CardCurrencyGuard.CardPaymentsSwitchedOffMessage);
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_CardPaymentsSwitchedOff_StillHealsAPaymentAlreadyAuthorised()
+    {
+        // Money already taken must never be stranded by the switch.
+        SwitchCardPaymentsOff();
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_paid_elsewhere", clientToken: "secret_paid", holdExpiresAt: DateTime.UtcNow.AddHours(12));
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_paid_elsewhere", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Authorized);
+
+        await CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Captured);
     }
 
     [Fact]

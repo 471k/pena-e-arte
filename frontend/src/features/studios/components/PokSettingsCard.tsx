@@ -7,8 +7,10 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import {
   useConnectPokAccountMutation,
+  useGetPaymentCapabilitiesQuery,
   useGetPokConnectionStatusQuery,
 } from "@/features/payments/paymentsApi";
+import { CardUnavailableReasons } from "@/features/payments/payment.types";
 import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 
 /**
@@ -18,7 +20,12 @@ import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
  */
 export function PokSettingsCard() {
   const { data: status, isLoading: statusLoading } = useGetPokConnectionStatusQuery();
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery();
   const [connect, { isLoading: isConnecting }] = useConnectPokAccountMutation();
+  // The platform kill switch (go-live blocker C-13) is off: owners may still link their account,
+  // but clients only see Cash until card deposits are switched on.
+  const cardDepositsSwitchedOff =
+    capabilities?.cardUnavailableReason === CardUnavailableReasons.ProviderDisabled;
 
   const [keyId, setKeyId] = useState("");
   const [keySecret, setKeySecret] = useState("");
@@ -58,6 +65,12 @@ export function PokSettingsCard() {
           isn't registered there, POK won't be able to approve an account for you — use Cash for
           deposits instead.
         </p>
+        {cardDepositsSwitchedOff && (
+          <p role="status" className="rounded-md border px-3 py-2 text-xs text-muted-foreground">
+            Card deposits aren't switched on in TattooOS yet. You can link your POK account now —
+            until card deposits go live, clients pay their deposit in cash.
+          </p>
+        )}
 
         {statusLoading && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">

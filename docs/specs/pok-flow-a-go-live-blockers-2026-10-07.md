@@ -23,7 +23,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-10 "Stripe PI" labels | Engineering | No | Open | Cosmetic rename |
 | C-11 Production first-transaction protocol | Phi | **Yes** | Not started | Run after C-2, C-8, C-13 |
 | C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; refunds return the 2.5 % share) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
-| C-13 Kill switch + owner tour step | Engineering | **Yes** | Open | Build the flag before C-2 production |
+| C-13 Kill switch + owner tour step | Engineering | **Yes** | **Kill switch built** (branch `feat/card-deposits-kill-switch`): `Payments:CardDepositsEnabled`, off unless set; tour step still to ship with go-live | At go-live: set `Payments__CardDepositsEnabled=true` for production together with C-2, and ship the "Connect POK" tour step in that change |
 | C-14 Several partial refunds | Engineering | No | Open; one-refund limit in our UI re-confirmed 2026-10-15; POK's merchant read after a partial refund still shows `refundableAmount` (1,000 of 1,234) and `can.refund true`, so POK appears to allow more | After C-6 item 7 |
 | C-15 Tell the owner when a held deposit is lost | Engineering | No | Open | Owner notification |
 | C-16 Cancellation side effects before provider call | — | — | **Done** (folded into B3, a58b229b) | None |
@@ -167,8 +167,27 @@ observable with sandbox cards (UNKNOWN).
 - The cash no-show branch question stays.
 
 ## C-13 — Kill switch and the go-live owner tour step (**yes**)
-Unchanged. The Help/manual "Connect POK" guide shipped with the gate; the onboarding-tour step
-still ships with the switch.
+**Kill switch built.** `Payments:CardDepositsEnabled` (`CardDepositOptions`), `false` in
+`appsettings.json`, so production and staging have card payments off until it's set to `true` there;
+`docker-compose.yml` turns it on for the local stack (`PAYMENTS_CARD_DEPOSITS_ENABLED`, default true).
+`PokPaymentProvider` reports it as `PaymentProviderCapabilities.CardPaymentsEnabled`:
+- `GetPaymentCapabilitiesQuery` returns `provider_disabled` (clients see "Card payments are
+  temporarily unavailable" and Cash), before any per-studio check;
+- `CardCurrencyGuard` refuses every new card payment (deposits, saved-card deposits, owner payment
+  links, gift cards, packages) with "Card payments aren't available right now. Please pay in cash.",
+  and `CreatePaymentHoldAsync` refuses too (defence in depth); resuming an unpaid order created
+  before the switch-off is refused as well (`EnsureCardPaymentsEnabled` in the resume branch);
+- an order that was already handed out can still be paid on POK's own hosted page until it expires
+  (24 h) — the app can't stop that, but the webhook/reconciliation records it correctly as held;
+- capture, refund and release of payments already taken are not affected, so turning it off never
+  strands a held deposit;
+- the owner's "Card deposits — POK" card says "Card deposits aren't switched on in TattooOS yet" and
+  still lets the owner link an account (Help + manual tip added).
+
+**Still to do at go-live:** set `Payments__CardDepositsEnabled=true` for production in the same change
+as C-2 (k8s production overlay or secret), and ship the dedicated "Connect POK" onboarding-tour step
+(`data-tour="owner-pok-card"` on `PokSettingsCard`, a step with `route: "/studios/me"`) in that change.
+To switch card payments off again in an emergency: set it back to `false` and redeploy.
 
 ## C-14 — Several partial refunds per payment
 Confirmed in the UI: after a partial refund (T3: 234 of 1,234) the payment shows "Refunded" and the

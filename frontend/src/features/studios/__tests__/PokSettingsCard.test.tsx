@@ -9,14 +9,21 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { PokSettingsCard } from "@/features/studios/components/PokSettingsCard";
-import type { PokConnectionStatusResponse } from "@/features/payments/payment.types";
+import type { PaymentCapabilitiesResponse, PokConnectionStatusResponse } from "@/features/payments/payment.types";
 
 const NOT_CONNECTED: PokConnectionStatusResponse = { connected: false, merchantId: null };
 const CONNECTED: PokConnectionStatusResponse = { connected: true, merchantId: "merchant-abc" };
+const CAPS_NOT_CONNECTED: PaymentCapabilitiesResponse = {
+  cardPaymentsAvailable: false, pokEnvironment: null, currency: "ALL", cardUnavailableReason: "provider_not_connected",
+};
+const CAPS_SWITCHED_OFF: PaymentCapabilitiesResponse = {
+  cardPaymentsAvailable: false, pokEnvironment: null, currency: "ALL", cardUnavailableReason: "provider_disabled",
+};
 
 const server = setupServer(
   http.get("http://localhost/api/v1/payments/pok/connection", () => HttpResponse.json(NOT_CONNECTED)),
   http.post("http://localhost/api/v1/payments/pok/connect", () => new HttpResponse(null, { status: 200 })),
+  http.get("http://localhost/api/v1/payments/capabilities", () => HttpResponse.json(CAPS_NOT_CONNECTED)),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -119,5 +126,21 @@ describe("PokSettingsCard", () => {
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
     expect(await screen.findByText(/invalid credentials/i)).toBeInTheDocument();
+  });
+
+  it("tells the owner when card deposits are switched off platform-wide, and still allows linking", async () => {
+    server.use(http.get("http://localhost/api/v1/payments/capabilities", () => HttpResponse.json(CAPS_SWITCHED_OFF)));
+    renderCard();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/card deposits aren't switched on in tattooos yet/i);
+    expect(screen.getByRole("status")).toHaveTextContent(/clients pay their deposit in cash/i);
+    expect(await screen.findByLabelText(/key id/i)).toBeInTheDocument();
+  });
+
+  it("shows no switched-off note when card deposits are on", async () => {
+    renderCard();
+
+    expect(await screen.findByLabelText(/key id/i)).toBeInTheDocument();
+    expect(screen.queryByText(/aren't switched on/i)).not.toBeInTheDocument();
   });
 });

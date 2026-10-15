@@ -29,7 +29,9 @@ public class GetPaymentCapabilitiesHandler(IPaymentProvider paymentProvider, IAp
             .Select(s => s.Currency)
             .SingleAsync(ct);
 
-        if (!paymentProvider.Capabilities.SupportsAuthCapture)
+        // The platform kill switch (C-13) and a provider without auth/capture both mean "no card
+        // payments on this platform right now" — the same reason, checked before anything per-studio.
+        if (!paymentProvider.Capabilities.CardPaymentsEnabled || !paymentProvider.Capabilities.SupportsAuthCapture)
         {
             return new PaymentCapabilitiesResponse(
                 CardPaymentsAvailable: false, Currency: currency, CardUnavailableReason: CardUnavailableReasons.ProviderDisabled);
