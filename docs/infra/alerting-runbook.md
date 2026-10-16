@@ -19,8 +19,8 @@ contact point.
 |---|---|---|---|
 | API pod not ready | Prometheus (`up{service="tattooos-api"}`, the same series `api-overview.json`'s "Scrape target up" panel already renders) | `< 1` for 5 minutes | A normal rolling deploy replaces a pod in well under 2 minutes end to end (kubelet's default readiness/liveness periods plus rollout time); 5 continuous minutes unreachable is a real outage, not deploy noise. |
 | API 5xx error rate spike | Prometheus, the same percent formula as the dashboard's "Error rate (5xx as % of total)" panel | `> 5%` for 5 minutes | Comfortably above the background noise of a handful of isolated/retried requests at low traffic, low enough to catch a real regression before it compounds. First-cut threshold — tune once real production traffic gives a baseline. |
-| Hangfire job failure rate | Loki, `count_over_time({namespace="tattooos"} \|= "HangfireJobFailed" [15m])` | `>= 1` in 15 minutes | The log line is emitted only when a job lands in its final `Failed` state, i.e. after Hangfire's automatic retries (10 attempts) are exhausted — so a single line already means a job is dead, not a transient blip. The threshold was `>= 3` until 2026-10-03, which could never fire for one broken daily/monthly job (that is how `industry-report`'s R2 upload failure on 2026-10-01 went unnoticed). This alert only became possible on 2026-09-05: see "Why a new log line was needed" below. |
-| Vault sealed or unreachable | Loki, `count_over_time({namespace="tattooos"} \|~ "VaultHealthCheckFailed\|Secrets store unavailable" [15m])` | `>= 1` in 15 minutes, severity critical | Added 2026-10-15 (go-live blocker C-8). Production Vault is single-node and manually unsealed (ADR-0002), so it stays sealed after any restart and every POK card payment returns 503 until someone unseals it. `VaultHealthCheckJob` probes `/v1/sys/health` every 5 minutes and logs `VaultHealthCheckFailed` on anything but healthy, so the alert fires within ~6 minutes even with no payment traffic; real payments that hit a dead Vault log `Secrets store unavailable`. What to do: `docs/infra/vault-self-hosted-runbook.md`, "When the 'Vault sealed or unreachable' alert fires". |
+| Hangfire job failure rate | Loki, `sum(count_over_time({namespace="tattooos"} \|= "HangfireJobFailed" [15m]))` (instant query → reduce → threshold) | `>= 1` in 15 minutes | The log line is emitted only when a job lands in its final `Failed` state, i.e. after Hangfire's automatic retries (10 attempts) are exhausted — so a single line already means a job is dead, not a transient blip. The threshold was `>= 3` until 2026-10-03, which could never fire for one broken daily/monthly job (that is how `industry-report`'s R2 upload failure on 2026-10-01 went unnoticed). This alert only became possible on 2026-09-05: see "Why a new log line was needed" below. |
+| Vault sealed or unreachable | Loki, `sum(count_over_time({namespace="tattooos"} \|~ "VaultHealthCheckFailed\|Secrets store unavailable" [15m]))` (instant query → reduce → threshold) | `>= 1` in 15 minutes, severity critical | Added 2026-10-15 (go-live blocker C-8). Production Vault is single-node and manually unsealed (ADR-0002), so it stays sealed after any restart and every POK card payment returns 503 until someone unseals it. `VaultHealthCheckJob` probes `/v1/sys/health` every 5 minutes and logs `VaultHealthCheckFailed` on anything but healthy, so the alert fires within ~6 minutes even with no payment traffic; real payments that hit a dead Vault log `Secrets store unavailable`. What to do: `docs/infra/vault-self-hosted-runbook.md`, "When the 'Vault sealed or unreachable' alert fires". |
 
 **Receiver:** Grafana's built-in `email` contact point, sent through Resend's SMTP relay
 (`smtp.resend.com`, username `resend`, password = the same `RESEND_API_KEY` the app already uses
@@ -99,3 +99,16 @@ and label values — confirming the full chain (Prometheus → Grafana alert rul
 Resend SMTP relay → inbox) actually works, not just that the YAML looks right. The `[RESOLVED]`
 notification also arrived once the API came back healthy, confirming the full fire → recover →
 resolve → notify lifecycle, not just the initial fire.
+
+**2026-10-16: the two Loki rules had the same bug, hidden.** They kept the single-stage form
+because it "worked" for Loki. It didn't: `count_over_time` returns one series per log stream (one
+per API pod), so as soon as matching lines existed the rule evaluated to `health=error` ("frame
+cannot uniquely be identified by its labels: has duplicate results with labels {}") and fired
+only because `execErrState: Alerting`. With no matching lines it showed `health=ok`, which is why
+nobody noticed. Found by the real C-8 test: production Vault was sealed after a node reboot
+(~13 Oct), the alert emails did arrive at ops@, but each one carried `grafana_state_reason:
+Error`. Both rules now use `sum(...)` as an instant query plus reduce → threshold, the same
+pipeline as the Prometheus rules; checked first with Grafana's `/api/v1/eval` against live Loki
+(sealed Vault → `C = 1`, no matching lines → no data → OK). After any change to these rules,
+check `/api/prometheus/grafana/api/v1/rules` for `health=ok` **while the condition is true**,
+not only while it is quiet.
