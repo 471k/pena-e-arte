@@ -16,17 +16,18 @@ for go-live.** The blocking items below must be decided or built first.
 | C-3 Gift-card / package card purchases | Phi (product) | No (separate flow) | Open, not tested by the gate | Decide option (a) hide or (b) build |
 | C-4 When a deposit is charged | Phi + Finance + Legal | **Yes, if holds don't last** | Holds survive day 2 (T9 captured 26 h after authorisation); day 8 pending (T9b, from 2026-10-22) | Decide (a)/(b)/(c); Help now says "charged by the studio, usually at your appointment" |
 | C-5 Webhook fan-out | Engineering | No (before real volume) | Open; gate saw 1 webhook per authorisation only | Debounce + own rate-limit policy |
-| C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — evidence attached below | Send in writing |
+| C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — items 2, 7, 11 and the refund part of 10 answered by our own staging probe on 2026-10-16 (see C-6); email not sent yet | Send in writing; the answered items become "please confirm" |
 | C-7 Check POK keys at connect | Engineering | No | Open | Build; then drop the Help tip "doesn't test your keys" |
 | C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | **Done in code + alerting** (branch `fix/vault-outage-not-reconnect`): 503 vs 422 split, connect-POK 503, 5-minute Vault health probe + `vault-unavailable` alert, runbook | Phi: keep the unseal key shares reachable; first real alert test after merge (see C-8) |
 | C-9 Saved-card tokenisation | Engineering | No (Saved card tab must stay unused) | Open, not tested by the gate | Separate prompt |
 | C-10 "Stripe PI" labels | Engineering | No | Open | Cosmetic rename |
 | C-11 Production first-transaction protocol | Phi | **Yes** | Not started | Run after C-2, C-8, C-13 |
-| C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; refunds return the 2.5 % share) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
+| C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; a partial refund returns the 2.5 % share; a full refund, or partial refunds adding up to the full amount, return the whole fee; display rounding half-up per line) — Help + manual now explain them to owners and clients (2026-10-16) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
 | C-13 Kill switch + owner tour step | Engineering | **Yes** | **Kill switch built** (branch `feat/card-deposits-kill-switch`): `Payments:CardDepositsEnabled`, off unless set; tour step still to ship with go-live | At go-live: set `Payments__CardDepositsEnabled=true` for production together with C-2, and ship the "Connect POK" tour step in that change |
-| C-14 Several partial refunds | Engineering | No | Open; one-refund limit in our UI re-confirmed 2026-10-15; POK's merchant read after a partial refund still shows `refundableAmount` (1,000 of 1,234) and `can.refund true`, so POK appears to allow more | After C-6 item 7 |
+| C-14 Several partial refunds | Engineering | No | Open in our app (one refund per payment, re-confirmed on main 2026-10-16); **POK allows several** — proven 2026-10-16 (R1) | Build: allow refunds until the refunded total reaches the amount (industry standard) |
 | C-15 Tell the owner when a held deposit is lost | Engineering | No | Open | Owner notification |
 | C-16 Cancellation side effects before provider call | — | — | **Done** (folded into B3, a58b229b) | None |
+| C-18 Store POK's fee and net per payment | Engineering, after Finance (C-12) | No (recommendation) | Not started — today `Payment` keeps only gross `Amount` and `RefundedAmount`; owners must use POK Business for net figures | After C-12: store POK's `receiverAmount` (net, unrounded) and the fee per capture/refund, show them on the payment page and offer net in reports/CSV |
 | C-17 Stop framework URI logging for the POK client | Engineering | **Yes** (one-line fix) | **Done** (branch `fix/pok-client-no-uri-logging`): the "Pok" client has `RemoveAllLoggers()`; a unit test proves no log line carries the merchant id or order id | None |
 | Legal: EUR deposits for Albanian studios | Legal | Yes for EUR | Open; the gate only proves EUR works technically | Legal sign-off |
 
@@ -116,6 +117,28 @@ cancel. Each one enqueued a full reconciliation run.
     report a cancelled/failed 3-D Secure with a specific code so the app can show a clear message (G-10)? Can the
     challenge be sized so CANCEL is visible?
 
+**Probe run 2026-10-16 (our own staging tests; local stack from 2026-10-14; T9b untouched).** Orders created
+directly at POK staging (R2–R4, 100 ALL each) and one app booking (R1, 1,234 ALL), all closed afterwards; end
+balances matched the predictions exactly (ALL Balance 4,282.10, Frozen 1,183.15 = T9b only).
+- **Item 2 — refund on an authorised, uncaptured order (R2):** POK **rejects** it: 400 "Order not eligible for
+  refund"; the order stays `awaiting_capture`, nothing charged. The held order already reports `can.refund false`,
+  `refundableAmount 0`. Cancel released it (free). Our cancel-not-refund choice (B3) is right.
+- **Item 7 — several partial refunds (R1):** **yes.** 234 refunded in the app, then 1,000 directly → `refunded`,
+  `refundableAmount 0`. Our app still allows only one (C-14).
+- **Item 10, refund part (R1):** when partial refunds add up to the full amount, **the last one returns the rest of
+  the 2.5 % plus the fixed 20 ALL**: 234 → studio debited 228.15 (fee back 5.85); 1,000 → debited 955.00 (fee back
+  45.00); total fee returned 50.85 = the whole original fee. POK labels the completing refund "Refund", not "Partial
+  refund". Still for POK: what the cardholder's card receives, and what `commissions{}` is (absent on every read
+  today; `merchant.coversCommissionFees: true`).
+- **Item 11 — hosted page (R3, R4):** **`redirectUrl` and `failRedirectUrl` are accepted on create** and echoed with
+  `&orderId=<id>` appended. Paid (R3, R2): POK shows "Payment Complete — Your payment has been successfully processed.
+  Thank you!", then ~1.5 s later redirects to `redirectUrl`. 3-D Secure cancelled (R4, card 1091): POK shows "Payment
+  failed", then ~2.5 s later redirects to `failRedirectUrl`. Fixes G-12. Still for POK: the one-off 500 of 15 Oct.
+- **Rounding (feeds C-12):** R3 captured 45 of a 100 hold; POK stores the net unrounded (`receiverAmount` 23.875)
+  and rounds each displayed line half-up on its own: "Bank commission 21.13", "Total received 23.88" (sum 45.01 for
+  a 45.00 payment). The earlier 35.425 → 35.42 fits half-up on a binary float.
+- **Tokens:** POK's SDK access token expires after about 5 minutes (our app logs in per request; no change).
+
 ## C-7 — Check POK keys at connect time
 Unchanged. Gate friction supports it: the API Keys dialog shows the three values once; a wrong
 value is only discovered at checkout.
@@ -168,6 +191,8 @@ balances; PROVEN on staging unless marked):
 | Hold released (cancel) | **none** | cdd8e625: in neither balance, no commission line |
 | Partial capture | fee on the captured part only; the released rest is free | 9fe2af20 |
 | Partial refund of R | merchant debited **R − 2.5 % × R**; the 2.5 % share of the original fee comes back, the fixed 20 / 0.20 doesn't | a650760e refund 234 → 228.15; f7aad8b0 refund 2.34 → 2.28 |
+| Partial refunds adding up to the full amount | **the last one returns the remaining 2.5 % plus the fixed 20 ALL** — the whole fee comes back in total (2026-10-16) | b16afb26: 234 → 228.15, then 1,000 → 955.00 (fee back 45.00) |
+| Display rounding | each displayed line rounded **half-up** separately; net stored unrounded | e380b551: 45 captured → commission 21.13, total received 23.88 (`receiverAmount` 23.875) |
 | Full refund | **the whole commission comes back, fixed 20 ALL included**: merchant debited the net 1,183.15 ("Amount 1,183.15 + Bank commission 50.85 = Paid Amount 1,234.00"); balance 5,202.02 → 4,018.87 (re-test 2026-10-15) | 8f868704 |
 
 Balances match exactly: ALL 116.00 + 1,183.15 + 581.575 − 228.15 = 1,652.575 (shown 1,652.57); EUR 11.8315 − 2.28
@@ -178,16 +203,18 @@ observable with sandbox cards (UNKNOWN).
 **For Finance (a decision, not built here):**
 - Revenue reports use gross (`Payment.Amount`). A studio actually receives gross − 2.5 % − 20 ALL per card
   deposit. Decide whether reports show POK fees or a net figure.
-- Owner refund screen: refunding R costs the studio R − 2.5 %·R from its POK balance, and the original 20 ALL
-  fixed fee isn't returned. Decide whether the refund dialog says so.
+- Owner refund screen: a partial refund of R costs the studio R − 2.5 %·R from its POK balance and the fixed
+  20 ALL isn't returned; a full refund (or partials adding up to it) returns the whole fee. Decide whether the
+  refund dialog says so. Help and the manual now explain it (owner article "Where card deposit money goes").
 - Cost case for B3 (no change needed): releasing a hold is free, while "capture in full, then refund in full"
-  costs at least the 20 ALL fixed fee (whether a full refund returns it is unknown). A late-cancel partial
+  costs nothing either (a full refund returns the whole fee — proven 2026-10-15/16). A late-cancel partial
   capture costs 20 + 2.5 % of the kept share — the same as capturing in full and refunding the rest
   (50.85 − 15.425 = 35.425). So holds beat charge-at-booking on cost only for full cancellations; C-4 still
   depends on how long holds last.
-- Help and the manual say "your full deposit goes to the studio — TattooOS never takes a cut". True for
-  TattooOS, but POK's card fee is deducted before the studio receives it. Wording waits for POK's written
-  answer (C-6 items 5 and 10) and Finance.
+- **Done 2026-10-16 (Phi's call: be transparent now):** Help and the manual explain where card deposit money goes —
+  hold → Frozen balance, charge → Balance minus POK's fee, refunds, payouts, where to see each figure — with the
+  staging fee as a labelled example ("your contract with POK sets your rate"). Re-check the wording when POK
+  confirms production pricing (C-6 item 5) and Finance decides C-12.
 - The cash no-show branch question stays.
 
 ## C-13 — Kill switch and the go-live owner tour step (**yes**)
@@ -215,7 +242,20 @@ To switch card payments off again in an emergency: set it back to `false` and re
 
 ## C-14 — Several partial refunds per payment
 Confirmed in the UI: after a partial refund (T3: 234 of 1,234) the payment shows "Refunded" and the
-Refund button disappears, so the remaining 1,000 can't be refunded from the app.
+Refund button disappears, so the remaining 1,000 can't be refunded from the app. Still true on main
+(`RefundPaymentCommand` accepts only `Status == Paid` and sets `Refunded`). **POK allows several partial
+refunds (proven 2026-10-16, R1)**, and the payments products in this category (Stripe-based ones) refund until
+the refunded total reaches the amount. Build: keep the payment refundable while `RefundedAmount < Amount`, add
+each refund to `RefundedAmount`, set `Refunded` only when it reaches the amount. Help says "refunded once" until
+then.
+
+## C-18 — Store POK's fee and net per payment (recommendation, after C-12)
+Today `Payment` keeps only the gross `Amount` and `RefundedAmount`; POK's fee and the net that reached the
+studio exist only in POK Business, so owners reconcile there (Help says so). After Finance decides C-12: read
+POK's `transaction.receiverAmount` (net, unrounded) after each capture and refund, store the fee and net on the
+payment, show them on the owner's payment page ("Client paid · POK fee · You received"), and offer net in the
+revenue report and CSV. Needs a migration and a test per path (capture, partial capture, partial/full refund,
+release).
 
 ## C-15 — Tell the owner when a held deposit is lost
 Unchanged.
@@ -243,7 +283,7 @@ nothing with the URI and that an ordinary client still would.
 | G-9 | The frontend container reports "unhealthy" from the moment it starts (local stack): its `HEALTHCHECK` (`wget --spider http://localhost:8080/`) gets "Connection refused" inside the container, while the app serves 200 through the published port. | `frontend/Dockerfile` HEALTHCHECK | Low (misleading status; check whether deployed probes share it) | Use `http://127.0.0.1:8080/` — verified 2026-10-15 inside the container: nginx listens on IPv4 only, `localhost` resolves to `::1` first (refused), `127.0.0.1` answers |
 | G-8 | The cancellation email failed locally ("Failed to send cancellation email") — expected with no Resend key; noted only so it isn't mistaken for a regression. | Local `.env` | None | — |
 | G-10 | After the client cancels POK's 3-D Secure challenge (T8 re-test), POK's form shows "Error! Something went wrong!" and the app shows a red toast "Something went wrong!" (the SDK's `onError` message passed through unchanged) — neither says nothing was charged or how to retry. Help now explains it (client-deposit-pay tip, manual callout). | `PaymentMethodSelector` `handleError` → `MyBookingsSection` / `BookAppointmentForm` `toast.error(message)` | Medium (client confusion at the payment step) | Map the SDK's 3-D Secure cancel/failure to an app message ("Payment not completed — nothing was charged. Try again or pay in cash."); depends on C-6 item 12 |
-| G-12 | A client who pays on POK's hosted page (owner payment link, T6 path) is redirected to POK's default `redirectUrl` (a POK development site that doesn't load) — they never see a confirmation or come back to TattooOS. The payment itself is fine (webhook → "healed to held"). | `PokPaymentProvider` order creation (no `redirectUrl`/`failRedirectUrl` sent) | High for payment links (client sees an error page after paying) | Send `redirectUrl` (e.g. the client's My bookings / a payment-result page) and `failRedirectUrl` when creating the order, once POK confirms the fields (C-6 item 11) |
+| G-12 | A client who pays on POK's hosted page (owner payment link, T6 path) is redirected to POK's default `redirectUrl` (a POK development site that doesn't load) — they never see a confirmation or come back to TattooOS. The payment itself is fine (webhook → "healed to held"). | `PokPaymentProvider` order creation (no `redirectUrl`/`failRedirectUrl` sent) | High for payment links (client sees an error page after paying) | **Unblocked 2026-10-16:** POK accepts both fields and honours them after its own result screen (C-6 item 11); an app-created order (R1) still carries POK's dead default. Send `redirectUrl` (a payment-result page or My bookings) and `failRedirectUrl` when creating the order |
 | G-13 | The owner's payment page shows only the original amount and one status: a 234 partial refund (kept 1,000), a released hold (kept 0) and a late-cancel partial capture (kept 617) all read "ALL 1,234 · Refunded". The owner can't see how much the studio actually kept. The statuses are also inconsistent: a late cancel where the studio keeps 100 % ends "Paid / Forfeited", one where it keeps 50 % ends "Refunded / Refunded" (re-test 2026-10-15). The client sees the same confusion: My bookings says "Deposit refunded" when the studio kept half, and "Deposit paid" after a partial or full refund (G-14). | `PaymentDetailPage` (amount rows) | Medium (owner reconciliation) | **Fixed** (branch `fix/payment-status-wording`): the API now returns `refundedAmount` and the appointment's status; owner list + detail and the client's My bookings show what happened — On hold, Paid, Partly refunded, Refunded, Released, Partly kept, Kept — with a line such as "1,000 kept · 234 refunded"; the appointment page's "Forfeited" badge reads "Kept"; Help + manual updated. The stored statuses are unchanged |
 | G-14 | After an owner refunds a captured deposit in full, the appointment's `DepositStatus` stays "Paid", so the client's My bookings still says "Deposit paid" (re-test 2026-10-15, T8). No money risk: a later cancel skips the refund because the payment is already Refunded. | `RefundPaymentCommand` (never updates `Appointment.DepositStatus`) | Medium (wrong status shown to the client) | **Fixed** (branch `fix/payment-status-wording`): a full refund sets `DepositStatus = Refunded`; a partial refund leaves it Paid and My bookings shows "Partly refunded · 234 refunded to your card"; 3 handler tests |
 | G-15 | After an owner cancels from the appointment page, the page calls `navigate(-1)`. When the appointment was opened from a direct link (new tab, notification, email), "back" leaves TattooOS. Seen once in the 2026-10-15 re-test (INFERRED from code + that run). | `AppointmentDetailPage.handleCancelConfirmed` | Low | Navigate to the appointments list instead of history back |

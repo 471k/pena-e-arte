@@ -118,6 +118,7 @@ toast "Deposit captured.", DB Paid; POK merchant read `paid`, captured 1234, net
 showed `awaiting_capture` / `can.capture true` and the frozen balance still held the funds. The 02:00 UTC
 reconciliation run (15 Oct) ran before `expiresAt` and didn't touch T9.
 T9b at +8 days: pending (from 2026-10-22 15:36Z).
+**Probe run, 2026-10-16** (direct POK staging orders R2-R4 + one app booking R1; T9b untouched; end balances matched exactly): refund on an uncaptured hold is rejected (400 "Order not eligible for refund"); several partial refunds are allowed and the one that completes the amount returns the whole fee incl. the fixed 20 ALL; `redirectUrl`/`failRedirectUrl` are accepted and honoured after POK's own result screen (G-12 unblocked); displayed fee lines are rounded half-up one by one. Details: go-live blockers doc, C-6 "Probe run 2026-10-16".
 **Re-test of every gate step, 2026-10-15** (new bookings and test-card payments; each money click on Phi's "go";
 POK balances read by Phi before and after): capture (T8, T6, T9, EUR E2), full refund (T8), partial refund (T6,
 E2), owner cancel releasing a hold (G1b), client late cancel with a 50 % rule (G10b: 500 of 1,000 captured) and
