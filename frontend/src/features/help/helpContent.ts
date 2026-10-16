@@ -1189,7 +1189,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "The client pays: POK puts a hold on the client's card for the deposit. Nothing is charged yet. In POK Business the amount shows under your account's Frozen balance (Dashboard → Details), already minus POK's card fee.",
       "The deposit is charged when you click \"Capture deposit\", complete the appointment, mark a no-show, or a late cancellation keeps part of it. POK then moves the amount from Frozen balance to your Balance, minus its card fee on the amount charged.",
       "To check any payment, open POK Business → Transactions and click it: \"Paid Amount\" is what the client paid, \"Bank commission\" is POK's fee, and \"Total received\" is what reached your Balance.",
-      "Your Balance is your money. Move it to your bank from POK Business (\"Transfer to bank\" or \"Withdraw money\") — POK decides when transfers arrive and whether it charges for them.",
+      "Your Balance is your money; money still on hold (Frozen balance) can't be paid out yet. In POK Business, add your bank account once under Accounts → Bank Accounts, then open \"Withdraw money\" (or \"Transfer to bank\" on the Dashboard), enter the amount, pick the account and click \"Transfer\" — or set up a \"Recurring transfer\" for automatic payouts. POK decides when transfers arrive and whether it charges for them.",
     ],
     tips: [
       "The client pays exactly the deposit shown, with no card surcharge. POK's card fee is paid by you, the studio, out of the deposit. TattooOS takes nothing, card or cash.",
