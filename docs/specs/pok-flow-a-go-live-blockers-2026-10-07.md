@@ -137,7 +137,13 @@ balances matched the predictions exactly (ALL Balance 4,282.10, Frozen 1,183.15 
 - **Rounding (feeds C-12):** R3 captured 45 of a 100 hold; POK stores the net unrounded (`receiverAmount` 23.875)
   and rounds each displayed line half-up on its own: "Bank commission 21.13", "Total received 23.88" (sum 45.01 for
   a 45.00 payment). The earlier 35.425 → 35.42 fits half-up on a binary float.
-- **Tokens:** POK's SDK access token expires after about 5 minutes (our app logs in per request; no change).
+- **Tokens (measured 2026-10-16 20:27Z):** POK's SDK access token is a JWT valid for **600 s (10 min)**; the login
+  response also returns `expiresIn` and `expiresAt`, with no refresh token; a read at 9.6 min → 200, at 10.1 min →
+  401 "Expired token". `PokAuthClient` already caches the token in Redis per studio and renews it 60 s before
+  `expiresAt` — no change. (An earlier "about 5 minutes" here was a guess without the login time.)
+- **Payouts (item 5, screen only):** POK Business "Withdraw money" (= the Dashboard's "Transfer to bank") offers
+  only the Balance, never the frozen balance, to a bank account added under Accounts → Bank Accounts, once or as a
+  "Recurring transfer". No fee, minimum or timing is shown — still for POK.
 
 ## C-7 — Check POK keys at connect time
 Unchanged. Gate friction supports it: the API Keys dialog shows the three values once; a wrong
