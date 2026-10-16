@@ -48,10 +48,10 @@ data:
           # (2026-09-05, first real deploy of this ConfigMap): a single-stage model with
           # conditions/evaluator/reducer embedded directly against the prometheus-uid
           # datasource evaluates to "invalid format of evaluation results ... looks like time
-          # series data, only reduced data can be alerted on" in this Grafana version — it
-          # only works when the query source is itself already a Loki count aggregation
-          # (see hangfire-job-failure-rate below, which uses that simpler single-stage form
-          # successfully). Confirmed via the real Grafana API after deploy, not assumed from
+          # series data, only reduced data can be alerted on" in this Grafana version. The
+          # Loki rules below were left on that single-stage form because it seemed to work;
+          # it didn't (see the note above hangfire-job-failure-rate), so all four rules now use
+          # this pipeline. Confirmed via the real Grafana API after deploy, not assumed from
           # provisioning YAML alone.
           - uid: api-pod-not-ready
             title: API pod not ready
@@ -149,9 +149,18 @@ data:
             annotations:
               summary: "tattooos-api 5xx rate has exceeded 5% for 5+ minutes"
 
+          # The two Loki rules below use the same A -> B (reduce) -> C (threshold) pipeline, with
+          # A wrapped in sum() and run as an instant query. They used a single-stage "classic
+          # condition" until 2026-10-16, which only looked like it worked: count_over_time
+          # returns one series per log stream (one per API pod), so with matching lines the
+          # rule evaluated to Error ("looks like time series data" / "duplicate results with
+          # labels {}") and fired only because execErrState is Alerting. Found by the real C-8
+          # test (production Vault sealed after a node reboot): every alert email carried
+          # "grafana_state_reason: Error". With no matching lines Loki returns nothing, which is
+          # NoData -> OK, so the rule resolves on its own once the 15-minute window is clean.
           - uid: hangfire-job-failure-rate
             title: Hangfire job failure rate
-            condition: A
+            condition: C
             data:
               - refId: A
                 relativeTimeRange:
@@ -161,20 +170,33 @@ data:
                 model:
                   refId: A
                   expr: >-
-                    count_over_time({namespace="tattooos"} |= "HangfireJobFailed" [15m])
+                    sum(count_over_time({namespace="tattooos"} |= "HangfireJobFailed" [15m]))
+                  queryType: instant
                   intervalMs: 1000
                   maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
                   conditions:
                     - evaluator:
-                        type: gte
-                        params: [1]
-                      operator:
-                        type: and
-                      query:
-                        params: ["A"]
-                      reducer:
-                        type: last
-                      type: query
+                        type: gt
+                        params: [0]
             for: 1m
             noDataState: OK
             execErrState: Alerting
@@ -183,16 +205,15 @@ data:
             annotations:
               summary: "A Hangfire job exhausted its retries and failed in the last 15 minutes (query Loki for HangfireJobFailed to see which)"
 
-          # Same single-stage Loki form as hangfire-job-failure-rate above (a Loki count
-          # aggregation, which Grafana alerts on directly). Go-live blocker C-8: production Vault
-          # is single-node and manually unsealed (ADR-0002), so after any restart it stays sealed
-          # until someone unseals it, and every POK card payment returns 503 meanwhile.
-          # VaultHealthCheckJob logs "VaultHealthCheckFailed" every 5 minutes while Vault is
-          # sealed/unreachable; PokAuthClient and ConnectPokAccountCommand log "Secrets store
-          # unavailable" when a real request hits it. Either line alerts.
+          # Same summed Loki pipeline as hangfire-job-failure-rate above. Go-live blocker C-8:
+          # production Vault is single-node and manually unsealed (ADR-0002), so after any
+          # restart it stays sealed until someone unseals it, and every POK card payment returns
+          # 503 meanwhile. VaultHealthCheckJob logs "VaultHealthCheckFailed" every 5 minutes
+          # while Vault is sealed/unreachable; PokAuthClient and ConnectPokAccountCommand log
+          # "Secrets store unavailable" when a real request hits it. Either line alerts.
           - uid: vault-unavailable
             title: Vault sealed or unreachable
-            condition: A
+            condition: C
             data:
               - refId: A
                 relativeTimeRange:
@@ -202,20 +223,33 @@ data:
                 model:
                   refId: A
                   expr: >-
-                    count_over_time({namespace="tattooos"} |~ "VaultHealthCheckFailed|Secrets store unavailable" [15m])
+                    sum(count_over_time({namespace="tattooos"} |~ "VaultHealthCheckFailed|Secrets store unavailable" [15m]))
+                  queryType: instant
                   intervalMs: 1000
                   maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
                   conditions:
                     - evaluator:
-                        type: gte
-                        params: [1]
-                      operator:
-                        type: and
-                      query:
-                        params: ["A"]
-                      reducer:
-                        type: last
-                      type: query
+                        type: gt
+                        params: [0]
             for: 1m
             noDataState: OK
             execErrState: Alerting
