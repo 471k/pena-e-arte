@@ -29,6 +29,7 @@ namespace Pena_e_Arte.Infrastructure.Services;
 ///    "awaiting_capture" — MapStatus maps it to Authorized (held-before-paid precedence, POK's
 ///    own dashboard calls it "On hold"). The pre-gate isCompleted-first precedence would not have
 ///    misfired on this shape, but stays guarded by a regression test.
+/// 3. Hosted-page return (2026-10-16): redirectUrl / failRedirectUrl are honoured — see PaymentResultUrl.
 /// Still open (docs/specs/pok-flow-a-go-live-blockers-2026-10-07.md): how long a hold can be
 /// captured after the order's 24 h expiresAt (C-4), and which environments point at POK
 /// production (C-2). No studio is enabled for live card deposits until those are decided.
@@ -36,8 +37,12 @@ namespace Pena_e_Arte.Infrastructure.Services;
 public sealed class PokPaymentProvider(
     PokAuthClient authClient,
     IOptions<CardDepositOptions> cardDeposits,
+    IAppSettings appSettings,
     ILogger<PokPaymentProvider> logger) : IPaymentProvider
 {
+    /// <summary>Frontend page a payer lands on after paying on POK's own hosted page (G-12).</summary>
+    public const string PaymentResultPath = "/payment-result";
+
     public PaymentProviderCapabilities Capabilities { get; } = new(
         SupportsAuthCapture: true,
         SupportsHoldExpiry: true,
@@ -82,7 +87,9 @@ public sealed class PokPaymentProvider(
             MerchantCustomReference = request.PaymentId.ToString(),
             WebhookUrl = string.IsNullOrEmpty(authClient.WebhookCallbackBaseUrl)
                 ? null
-                : $"{authClient.WebhookCallbackBaseUrl.TrimEnd('/')}/api/v1/webhooks/pok"
+                : $"{authClient.WebhookCallbackBaseUrl.TrimEnd('/')}/api/v1/webhooks/pok",
+            RedirectUrl = PaymentResultUrl("paid", request.PaymentId),
+            FailRedirectUrl = PaymentResultUrl("failed", request.PaymentId),
         };
 
         using HttpRequestMessage req = new(HttpMethod.Post, $"{authClient.BaseUrl}/merchants/{merchantId}/sdk-orders");
@@ -255,6 +262,21 @@ public sealed class PokPaymentProvider(
     /// </summary>
     private static decimal ToPokAmount(decimal amount, string currency) => CurrencyCatalog.Round(amount, currency);
 
+    /// <summary>
+    /// Where POK's hosted page sends the payer after its own result screen (G-12): without these,
+    /// POK falls back to a default development URL that doesn't load. Verified on POK staging
+    /// 2026-10-16: both fields are stored, POK appends "&amp;orderId=&lt;id&gt;" (so our URL always
+    /// carries a query string), paid → redirectUrl, cancelled 3-D Secure → failRedirectUrl. The
+    /// in-app card form (SDK) ignores them. Only https is sent — POK has only been seen with
+    /// https, and a local http base must never break order creation.
+    /// </summary>
+    private string? PaymentResultUrl(string status, Guid paymentId)
+    {
+        if (!Uri.TryCreate(appSettings.BaseUrl, UriKind.Absolute, out Uri? baseUri) || baseUri.Scheme != Uri.UriSchemeHttps)
+            return null;
+        return $"{appSettings.BaseUrl.TrimEnd('/')}{PaymentResultPath}?status={status}&payment={paymentId:D}";
+    }
+
     // --- Wire DTOs -----------------------------------------------------------------------
 
     private sealed class CreateOrderRequestBody
@@ -265,6 +287,10 @@ public sealed class PokPaymentProvider(
         [JsonPropertyName("expiresAfterMinutes")] public int? ExpiresAfterMinutes { get; init; }
         [JsonPropertyName("merchantCustomReference")] public string? MerchantCustomReference { get; init; }
         [JsonPropertyName("webhookUrl")] public string? WebhookUrl { get; init; }
+        [JsonPropertyName("redirectUrl"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? RedirectUrl { get; init; }
+        [JsonPropertyName("failRedirectUrl"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? FailRedirectUrl { get; init; }
     }
 
     private sealed class CreateOrderResponse

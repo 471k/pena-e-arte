@@ -4,6 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, FileSignature, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/shared/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -31,6 +32,7 @@ export function SignConsentFormPage() {
   useDocumentMeta({ title: "Sign Consent Form — TattooOS", canonical: "/forms/consent/new" });
 
   const navigate = useNavigate();
+  const goBack = useGoBack("/book");
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
@@ -100,7 +102,7 @@ export function SignConsentFormPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-0 z-10">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-2">

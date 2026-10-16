@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Lock } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/shared/hooks";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button }   from "@/shared/components/ui/button";
@@ -34,7 +34,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 export function ChangePasswordPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack("/");
   const [changePassword, { isLoading }] = useChangePasswordMutation();
 
   const {
@@ -56,7 +56,7 @@ export function ChangePasswordPage() {
       toast.error("Failed to change password. Check your current password.");
     } else {
       toast.success("Password changed.");
-      navigate(-1);
+      goBack();
     }
   }
 

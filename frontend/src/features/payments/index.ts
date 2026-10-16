@@ -25,4 +25,5 @@ export { PaymentListPage }          from "./components/PaymentListPage";
 export { PaymentDetailPage }        from "./components/PaymentDetailPage";
 export { CreatePaymentIntentPage }  from "./components/CreatePaymentIntentPage";
 export { DepositCheckoutPage }      from "./components/DepositCheckoutPage";
+export { PaymentResultPage }        from "./components/PaymentResultPage";
 export { SessionSplitsEditor }      from "./components/SessionSplitsEditor";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/shared/hooks";
 import { toast } from "sonner";
 import { ArrowLeft, ClipboardList, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -34,7 +34,7 @@ function newField(): IntakeFormFieldDefinition {
 export function IntakeFormBuilderPage() {
   useDocumentMeta({ title: "Intake Form Builder — TattooOS", canonical: "/intake-form-builder" });
 
-  const navigate = useNavigate();
+  const goBack = useGoBack("/");
   const { data: template, isLoading, isError } = useGetMyIntakeFormTemplateQuery();
   const [upsertTemplate, { isLoading: isSaving }] = useUpsertIntakeFormTemplateMutation();
 
@@ -115,7 +115,7 @@ export function IntakeFormBuilderPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <p className="text-sm text-destructive-text">Failed to load your intake form.</p>
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="sm" onClick={goBack}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
@@ -126,7 +126,7 @@ export function IntakeFormBuilderPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-2">
