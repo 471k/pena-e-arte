@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useGoBack } from "@/shared/hooks";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,6 +49,7 @@ function toDateInput(iso: string): string {
 export function TattooRecordDetailPage() {
   const { id: clientId, tattooId } = useParams<{ id: string; tattooId: string }>();
   const navigate = useNavigate();
+  const goBack = useGoBack(`/clients/${clientId}`);
   const canManage = usePermission(Role.Artist);
 
   const {
@@ -127,7 +129,7 @@ export function TattooRecordDetailPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <p className="text-sm text-destructive-text">Tattoo record not found.</p>
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="sm" onClick={goBack}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>

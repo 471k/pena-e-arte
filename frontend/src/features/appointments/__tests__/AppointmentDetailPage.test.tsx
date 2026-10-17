@@ -554,3 +554,39 @@ describe("AppointmentDetailPage", () => {
     expect(screen.queryByRole("button", { name: /send reminder/i })).not.toBeInTheDocument();
   });
 });
+
+// ── Opened directly (email, notification, new tab) — G-15 ───────────────────────
+// With no in-app page behind it, "back" must not leave TattooOS: it goes to the schedule.
+
+function renderPageDirect(apptId: string, role: Role = Role.Artist) {
+  render(
+    <Provider store={makeStore(role)}>
+      <MemoryRouter initialEntries={[`/appointments/${apptId}`]}>
+        <Routes>
+          <Route path="/appointments/:id" element={<AppointmentDetailPage />} />
+          <Route path="/schedule" element={<div data-testid="schedule-page" />} />
+          <Route path="*" element={<div data-testid="back-page" />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
+describe("AppointmentDetailPage opened directly", () => {
+  it("back button goes to the schedule instead of leaving the app", async () => {
+    const user = userEvent.setup();
+    renderPageDirect("appt-001", Role.Artist);
+    await screen.findByText("90 min");
+    await user.click(screen.getByRole("button", { name: /back/i }));
+    expect(await screen.findByTestId("schedule-page")).toBeInTheDocument();
+  });
+
+  it("after cancelling, goes to the schedule instead of leaving the app", async () => {
+    const user = userEvent.setup();
+    renderPageDirect("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: /^cancel appointment$/i }));
+    expect(await screen.findByTestId("schedule-page")).toBeInTheDocument();
+  });
+});

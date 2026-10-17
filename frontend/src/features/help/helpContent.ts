@@ -356,6 +356,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
       "You pay exactly the deposit shown — there's no card surcharge. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut.",
       "If the studio refunds you, the refund goes back to the card you paid with. If the studio releases a hold instead, nothing was ever charged.",
+      "If you pay on POK's own payment page instead of inside TattooOS, POK shows its result and then brings you back to TattooOS: \"Payment received\", or \"Payment not completed\" (nothing was charged) with a Try again button.",
       "If you come back to pay after a day, a fresh card form is prepared automatically — just pay again from the same page.",
       "To stop at the bank's confirmation step, scroll down inside the bank's window and click \"Cancel\". Nothing is charged, even though you'll then see \"Something went wrong!\" — to try again, click \"Finish deposit payment\" in My bookings, or pay in cash.",
     ],
@@ -499,7 +500,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Reschedule\" to pick a new date/time.",
       "Click \"Mark no-show\" if the client didn't attend, or \"Cancel appointment\" and confirm if it needs to be cancelled.",
     ],
-    tips: ["The client's name is a link straight to their client profile."],
+    tips: [
+      "The client's name is a link straight to their client profile.",
+      "The back arrow, and cancelling, return you to the page you came from. If you opened the appointment from an email, a notification or a new tab, they take you to your Schedule instead.",
+    ],
     warnings: ["Cancelling an appointment cannot be undone."],
     relatedArticleIds: ["artist-send-manual-reminder", "artist-messaging"],
   },
@@ -2155,5 +2159,11 @@ export const FAQ_ITEMS: FaqItem[] = [
     question: "Where did the menu go, or how do I make it smaller?",
     answer: "The menu is the vertical bar on the left (on a phone, the three-line button at the top left). Click the panel button at the top left of the page (next to the TattooOS name), or press Ctrl+B (Cmd+B on a Mac), to shrink it to icons; do the same to bring it back. Related pages are grouped into categories you can expand and fold.",
     relatedArticleIds: ["navigation-sidebar"],
+  },
+  {
+    id: "faq-page-not-found",
+    roles: [Client, Artist, Owner, Admin],
+    question: "Why do I see \"Page not found\"?",
+    answer: "The link you followed points to a page that doesn't exist or has moved — often a mistyped or outdated link. Use the button on that page to go to your home page (or, when you're not signed in, the home page or Discover). If a link inside TattooOS sent you there, let us know through the Contact page.",
   },
 ];

@@ -1396,6 +1396,7 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>No platform fee, no surcharge:</strong> you pay exactly the deposit shown. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut, on card or cash payments, now or in the future.</div>
 <div class="callout callout-tip"><strong>Refunds:</strong> if the studio refunds you, the refund goes back to the card you paid with. If the studio releases a hold instead, nothing was ever charged.</div>
+<div class="callout callout-tip"><strong>Paying on POK's own page:</strong> if you pay on POK's payment page instead of inside TattooOS, POK shows its result and then brings you back to TattooOS (<code>/payment-result</code>): "Payment received", or "Payment not completed" — nothing was charged — with a <span class="step-title">Try again</span> button.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> if you come back to pay after a day, a fresh card form is prepared automatically — just pay again from the same page.</div>
 <div class="callout callout-tip"><strong>Stopping at the bank step:</strong> to stop at the bank's confirmation step (3-D Secure), scroll down inside the bank's window and click <span class="step-title">Cancel</span>. Nothing is charged, even though you'll then see "Something went wrong!" — to try again, click <span class="step-title">Finish deposit payment</span> in My bookings, or pay in cash.</div>
 <div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#client-saved-payment-methods">Manage saved payment methods</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
@@ -1562,7 +1563,7 @@ ol.steps li { margin: 6px 0; }
 <li>Type your message and press Enter, or click the send button.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> if you don't have a linked artist yet, you can still always reach the studio owner.</div>
-<div class="crosslinks">See also: <a href="#client-book-appointment">Book an appointment</a></div>
+<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a></div>
 </section>
 
 <section id="client-referrals" data-role="client">
@@ -1579,7 +1580,7 @@ ol.steps li { margin: 6px 0; }
 <li>To redeem someone else's code instead of your own, enter it in the booking form's <span class="step-title">Referral code</span> field.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> you can't redeem your own code, and each code can only be redeemed once per person — enforced even if you try twice.</div>
-<div class="crosslinks">See also: <a href="#client-book-appointment">Book an appointment</a></div>
+<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a></div>
 </section>
 
 <section id="artist-schedule" data-role="artist">
@@ -2722,6 +2723,7 @@ ol.steps li { margin: 6px 0; }
 <li>A <span class="step-title">Needs artist</span> badge marks a Pending appointment where the client let the studio choose — open it and assign an artist before it can be confirmed.</li>
 <li>Click <span class="step-title">Export CSV</span> to download a spreadsheet-ready copy of your appointments.</li>
 </ol>
+<div class="callout callout-tip"><strong>Going back:</strong> the back arrow, and cancelling, return you to the page you came from. If you opened the appointment from an email, a notification or a new tab, they take you to your Schedule instead of leaving TattooOS.</div>
 <div class="crosslinks">See also: <a href="#artist-schedule">Artist: weekly schedule</a>, <a href="#owner-appointment-detail">Appointment detail</a></div>
 </section>
 
@@ -2749,6 +2751,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Charge deposit</span> to jump straight into <a href="#owner-create-payment">creating a payment</a> pre-filled for this appointment.</li>
 </ol>
 <div class="callout callout-warn"><strong>Confirm is blocked until assigned:</strong> a studio-choice booking can't be confirmed — by either the UI or the server — until you've picked an artist. Sending a manual reminder is blocked the same way.</div>
+<div class="callout callout-tip"><strong>Going back:</strong> the back arrow, and cancelling, return you to the page you came from. If you opened the appointment from an email, a notification or a new tab, they take you to your Schedule instead of leaving TattooOS.</div>
 <div class="crosslinks">See also: <a href="#artist-appointment-detail">Artist: appointment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#owner-messaging">Owner: messages</a></div>
 </section>
 
@@ -3768,7 +3771,7 @@ ol.steps li { margin: 6px 0; }
 <li>If you weren't connected at the time, the same entry is waiting the next time you open the bell or visit <span class="step-title">Notifications</span> — and every admin account also gets the notice by email regardless.</li>
 <li>Go to <span class="step-title">Notifications</span> for the full history, spanning every studio that has ever registered — not scoped to one studio the way an owner's own log is.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-studio-detail">Studio detail</a>, <a href="#owner-notifications">Owner: review sent notifications</a></div>
+<div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-studio-detail">Studio detail</a>, <a href="#owner-notifications-log">Owner: review sent notifications</a></div>
 </section>
 
 <section id="admin-plans" data-role="admin">
@@ -4112,6 +4115,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Who can suspend a studio?</span> Only the platform team (Admin role) — see <a href="#admin-studios">Studio list</a>. This is separate from billing status.</li>
 <li><span class="step-title">How do referral codes work?</span> A studio shares a link; a new studio that registers with that code gets a free month once it subscribes. See <a href="#owner-referral">Referral programme</a>.</li>
 <li><span class="step-title">Can I pay my deposit in cash instead of by card?</span> Yes — the deposit flow always offers both options.</li>
+<li><span class="step-title">Why do I see "Page not found"?</span> The link points to a page that doesn't exist or has moved — often a mistyped or outdated link. Use the button on that page to go to your home page (or, when you're not signed in, the home page or Discover). If a link inside TattooOS sent you there, let us know through the Contact page.</li>
 <li><span class="step-title">Why does my portfolio photo count for Discover ranking?</span> Photo views are recorded to help rank the Discover feed and profile pages by relevance/popularity.</li>
 <li><span class="step-title">Can I share a design with someone who doesn't have an account?</span> Yes — use <a href="#artist-share-design">Share a design</a> to generate a 30-day public link.</li>
 <li><span class="step-title">What if I forget my password?</span> Use <a href="#guest-forgot-password">Forgot password</a> — a reset link is emailed regardless of whether the account exists, for security.</li>

@@ -24,7 +24,7 @@ import { SavedPaymentMethodsPage } from "@/features/saved-payment-methods";
 import { PromoCodeListPage, PromoCodeDetailPage, CreatePromoCodePage } from "@/features/promo-codes";
 import { ReportsPage, MyEarningsPage } from "@/features/reports";
 import { NotificationLogListPage } from "@/features/notifications";
-import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage } from "@/features/payments";
+import { PaymentListPage, PaymentDetailPage, CreatePaymentIntentPage, DepositCheckoutPage, PaymentResultPage } from "@/features/payments";
 import {
   AdminDashboardPage,
   AdminStudioListPage,
@@ -39,7 +39,7 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, InstagramDataDeletionPage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, InstagramDataDeletionPage, NotFoundPage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
 import { WaitlistQueuePage, MyWaitlistPage } from "@/features/waitlist";
@@ -94,11 +94,13 @@ function IndexRedirect() {
   return <Navigate to={getRoleRedirectPath(role, impersonating)} replace />;
 }
 
-function CatchAllRedirect() {
+// Any URL no route matches gets a real "Page not found" instead of a silent redirect, so a broken
+// link is visible and the user chooses where to go next.
+function NotFoundRoute() {
   const role = useAppSelector((s) => s.auth.role);
   const impersonating = useAppSelector((s) => s.auth.impersonation !== null);
-  if (!role) return <Navigate to="/discover" replace />;
-  return <Navigate to={getRoleRedirectPath(role, impersonating)} replace />;
+  if (!role) return <NotFoundPage homePath="/" homeLabel="Go to the home page" showDiscover />;
+  return <NotFoundPage homePath={getRoleRedirectPath(role, impersonating)} homeLabel="Back to TattooOS" />;
 }
 
 export function AppRoot() {
@@ -178,6 +180,8 @@ export const routes = [
   { path: "/unsubscribe",     element: <UnsubscribePage /> },
   // Status page Meta links to after its Instagram Data Deletion callback (App Review requirement).
   { path: "/data-deletion/instagram", element: <InstagramDataDeletionPage /> },
+  // Where POK's hosted payment page returns the payer (G-12) — public: the payer may not be signed in.
+  { path: "/payment-result", element: <PaymentResultPage /> },
 
   {
     path: "/",
@@ -556,7 +560,7 @@ export const routes = [
       },
     ],
   },
-  { path: "*", element: <CatchAllRedirect /> },
+  { path: "*", element: <NotFoundRoute /> },
 ];
 
 export const router = createBrowserRouter(routes);

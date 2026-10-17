@@ -23,4 +23,5 @@ export { FaqPage } from "./components/FaqPage";
 export { LawyerReviewBanner, HAS_FINAL_LEGAL_COPY } from "./components/LawyerReviewBanner";
 export { UnsubscribePage } from "./components/UnsubscribePage";
 export { InstagramDataDeletionPage } from "./components/InstagramDataDeletionPage";
+export { NotFoundPage } from "./components/NotFoundPage";
 export { marketingApi, useWithdrawMarketingOptInQuery } from "./marketingApi";

@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useGoBack } from "@/shared/hooks";
 import {
   ArrowLeft, CalendarClock, CalendarDays, Check, CreditCard, Download, Loader2, MessageCircle, Send, Trash2, UserRound, UserX,
 } from "lucide-react";
@@ -117,6 +118,8 @@ export function AppointmentDetailPage() {
 
   const { id }       = useParams<{ id: string }>();
   const navigate     = useNavigate();
+  // Opened from an email or notification there's no in-app page behind it (G-15).
+  const goBack       = useGoBack("/schedule");
   const isArtistPlus = usePermission(Role.Artist);
   const canOwner     = usePermission(Role.Owner);
   const role         = useAppSelector((s) => s.auth.role);
@@ -176,7 +179,7 @@ export function AppointmentDetailPage() {
     setCancelDialogOpen(false);
     if ("data" in result) {
       toast.success("Appointment cancelled.");
-      navigate(-1);
+      goBack();
     } else {
       toast.error("Failed to cancel appointment.");
     }
@@ -226,7 +229,7 @@ export function AppointmentDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">
+        <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-2">

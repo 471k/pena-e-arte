@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, CheckCircle, ClipboardList, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/shared/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -137,6 +138,7 @@ export function SubmitIntakeFormPage() {
   useDocumentMeta({ title: "Submit Intake Form — TattooOS", canonical: "/forms/intake/new" });
 
   const navigate = useNavigate();
+  const goBack = useGoBack("/book");
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
@@ -249,7 +251,7 @@ export function SubmitIntakeFormPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-3 px-6 py-3 border-b bg-background sticky top-0 z-10">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+        <Button variant="ghost" size="sm" onClick={goBack} className="gap-1.5">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex items-center gap-2">

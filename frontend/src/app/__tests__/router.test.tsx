@@ -295,3 +295,40 @@ describe("public policy routes", () => {
     expect(contactRouter.state.location.pathname).toBe("/contact");
   });
 });
+
+// ── Unknown URLs and the payment return page ────────────────────────────────────
+// Unknown paths used to redirect silently (CatchAllRedirect); they now show "Page not found".
+
+describe("unknown URLs", () => {
+  function renderAt(path: string, role: string | null) {
+    const store = makeAuthStore(role);
+    const testRouter = createMemoryRouter(routes, { initialEntries: [path] });
+    render(
+      <Provider store={store}>
+        <RouterProvider router={testRouter} />
+      </Provider>,
+    );
+    return testRouter;
+  }
+
+  it("shows Page not found to a guest, with the home page and Discover, without redirecting", async () => {
+    const testRouter = renderAt("/no-such-page", null);
+    expect(await screen.findByRole("heading", { name: /page not found/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /go to the home page/i })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: /discover studios/i })).toHaveAttribute("href", "/discover");
+    expect(testRouter.state.location.pathname).toBe("/no-such-page");
+  });
+
+  it("offers a signed-in owner their own home", async () => {
+    renderAt("/no-such-page", Role.Owner);
+    expect(await screen.findByRole("heading", { name: /page not found/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /back to tattooos/i })).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: /discover studios/i })).not.toBeInTheDocument();
+  });
+
+  it("serves the public payment return page at /payment-result (G-12)", async () => {
+    const testRouter = renderAt("/payment-result?status=paid&payment=00000000-0000-0000-0000-000000000001&orderId=x", null);
+    expect(await screen.findByRole("heading", { name: /payment received/i })).toBeInTheDocument();
+    expect(testRouter.state.location.pathname).toBe("/payment-result");
+  });
+});

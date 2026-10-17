@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -45,8 +46,11 @@ public class PokPaymentProviderTests
         _secrets.GetSecretAsync($"{SecretPath}:keySecret", Arg.Any<CancellationToken>()).Returns("key-secret-value");
     }
 
-    private PokPaymentProvider CreateSut(FakeHttpMessageHandler handler, PokOptions? options = null, bool cardDepositsEnabled = true)
+    private PokPaymentProvider CreateSut(FakeHttpMessageHandler handler, PokOptions? options = null, bool cardDepositsEnabled = true,
+        string appBaseUrl = "https://app.example.test")
     {
+        IAppSettings appSettings = Substitute.For<IAppSettings>();
+        appSettings.BaseUrl.Returns(appBaseUrl);
         IConnectionMultiplexer redis = Substitute.For<IConnectionMultiplexer>();
         redis.GetDatabase(Arg.Any<int>(), Arg.Any<object?>()).Returns(_cache);
 
@@ -61,6 +65,7 @@ public class PokPaymentProviderTests
         return new PokPaymentProvider(
             authClient,
             Options.Create(new CardDepositOptions { CardDepositsEnabled = cardDepositsEnabled }),
+            appSettings,
             NullLogger<PokPaymentProvider>.Instance);
     }
 
@@ -118,6 +123,51 @@ public class PokPaymentProviderTests
         // (unverified-against-a-real-sandbox) assumption. No more x100/÷100 anywhere.
         createReq.Body.Should().Contain("\"amount\":150");
         createReq.Body.Should().Contain("\"autoCapture\":false");
+    }
+
+    [Fact]
+    public async Task CreatePaymentHoldAsync_SendsOurPaymentResultPagesAsRedirectUrls()
+    {
+        // G-12: without these POK sends a hosted-page payer to its own dead default URL.
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse("""{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/sdk-orders") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler, appBaseUrl: "https://app.example.test/");
+        Guid paymentId = Guid.NewGuid();
+
+        await sut.CreatePaymentHoldAsync(new PaymentHoldRequest(_studioId, paymentId, 150m, "ALL"), default);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Requests.Single(r => r.Path.EndsWith("/sdk-orders")).Body);
+        body.RootElement.GetProperty("redirectUrl").GetString()
+            .Should().Be($"https://app.example.test/payment-result?status=paid&payment={paymentId:D}");
+        body.RootElement.GetProperty("failRedirectUrl").GetString()
+            .Should().Be($"https://app.example.test/payment-result?status=failed&payment={paymentId:D}");
+    }
+
+    [Theory]
+    [InlineData("http://localhost:8081")]
+    [InlineData("")]
+    public async Task CreatePaymentHoldAsync_NonHttpsBaseUrl_OmitsRedirectUrls(string appBaseUrl)
+    {
+        // A local http stack must never risk POK refusing the order; the fields are left out entirely.
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse("""{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/sdk-orders") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler, appBaseUrl: appBaseUrl);
+
+        await sut.CreatePaymentHoldAsync(new PaymentHoldRequest(_studioId, Guid.NewGuid(), 150m, "ALL"), default);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Requests.Single(r => r.Path.EndsWith("/sdk-orders")).Body);
+        body.RootElement.TryGetProperty("redirectUrl", out _).Should().BeFalse();
+        body.RootElement.TryGetProperty("failRedirectUrl", out _).Should().BeFalse();
     }
 
     [Fact]
