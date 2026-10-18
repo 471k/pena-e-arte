@@ -30,9 +30,12 @@ const pokHookState: {
 } = { payByCardToken: vi.fn() };
 
 vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
-  GuestCheckoutForm: (props: { orderId: string; onSuccess?: () => void }) => (
+  GuestCheckoutForm: (props: { orderId: string; onSuccess?: () => void; onError?: (e: { message?: string }) => void }) => (
     <div data-testid="pok-checkout-form" data-order-id={props.orderId}>
       <button type="button" onClick={() => props.onSuccess?.()}>Authorise deposit</button>
+      <button type="button" onClick={() => props.onError?.({ message: "3DS processing failed. Please try again" })}>
+        Fail payment
+      </button>
     </div>
   ),
   usePOK: (
@@ -229,6 +232,64 @@ describe("PaymentMethodSelector", () => {
     expect(depositCalls).toBe(2);
   });
 
+  it("widget onError replaces the form with a plain message and hides the 'authorised now' note", async () => {
+    const user    = userEvent.setup();
+    const onError = vi.fn();
+    renderSelector(vi.fn(), onError);
+
+    const form = await screen.findByTestId("pok-checkout-form");
+    await user.click(within(form).getByRole("button", { name: /fail payment/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Your bank couldn't verify this card. Try again, or use a different card.");
+    expect(alert).toHaveTextContent(/nothing was charged/i);
+    expect(onError).toHaveBeenCalledExactlyOnceWith(
+      "Your bank couldn't verify this card. Try again, or use a different card.",
+    );
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
+    expect(screen.queryByText(/authorised now/i)).not.toBeInTheDocument();
+  });
+
+  it("Try again re-checks the deposit, then shows a fresh card form when it's still unpaid", async () => {
+    const user = userEvent.setup();
+    let depositCalls = 0;
+    server.use(
+      http.post("http://localhost/api/v1/payments/deposit", () => {
+        depositCalls += 1;
+        return HttpResponse.json(INTENT_RESP);
+      }),
+    );
+    renderSelector();
+
+    const form = await screen.findByTestId("pok-checkout-form");
+    await user.click(within(form).getByRole("button", { name: /fail payment/i }));
+    await user.click(await screen.findByRole("button", { name: /try again/i }));
+
+    expect(await screen.findByTestId("pok-checkout-form")).toBeInTheDocument();
+    expect(screen.getByText(/authorised now/i)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(depositCalls).toBe(2);
+  });
+
+  it("Try again reports success instead of a second payment when the deposit turns out authorised", async () => {
+    const user      = userEvent.setup();
+    const onSuccess = vi.fn();
+    let depositCalls = 0;
+    server.use(
+      http.post("http://localhost/api/v1/payments/deposit", () => {
+        depositCalls += 1;
+        return HttpResponse.json({ ...INTENT_RESP, status: depositCalls > 1 ? "Captured" : "Pending" });
+      }),
+    );
+    renderSelector(onSuccess);
+
+    const form = await screen.findByTestId("pok-checkout-form");
+    await user.click(within(form).getByRole("button", { name: /fail payment/i }));
+    await user.click(await screen.findByRole("button", { name: /try again/i }));
+
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledExactlyOnceWith("card"));
+  });
+
   it("switches to cash tab on click", async () => {
     const user = userEvent.setup();
     renderSelector();
@@ -413,7 +474,7 @@ describe("PaymentMethodSelector", () => {
       pokHookState.onError?.({ message: "Card declined." });
 
       await vi.waitFor(() => {
-        expect(onError).toHaveBeenCalledWith("Card declined.");
+        expect(onError).toHaveBeenCalledWith("The card payment didn't go through. Try again, or use a different card.");
       });
     });
 
