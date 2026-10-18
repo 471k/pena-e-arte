@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GuestCheckoutForm, usePOK } from "@nebula-ltd/pok-payments-js/react";
 import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
-import { Banknote, CheckCircle2, CreditCard, Loader2, Star } from "lucide-react";
+import { AlertCircle, Banknote, CheckCircle2, CreditCard, Loader2, Star } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
@@ -12,6 +12,7 @@ import {
   usePayWithSavedCardMutation,
 } from "@/features/payments/paymentsApi";
 import { CardUnavailableReasons, type PayWithSavedCardSetupResponse } from "@/features/payments/payment.types";
+import { describeCardPaymentError } from "@/features/payments/cardPaymentError";
 import { useGetSavedPaymentMethodsQuery } from "@/features/saved-payment-methods/savedPaymentMethodsApi";
 import type { SavedPaymentMethodResponse } from "@/features/saved-payment-methods/savedPaymentMethod.types";
 import { RedeemGiftCardField } from "@/features/gift-cards/components/RedeemGiftCardField";
@@ -37,6 +38,11 @@ function CardCheckoutForm({
   & { orderId: string; pokEnvironment: "staging" | "production" }) {
   const [createDeposit] = useCreateDepositPaymentMutation();
   const [confirming, setConfirming] = useState(false);
+  // After a failed attempt POK's widget stays on its own "Error!" screen with no way back, so we
+  // replace it with our message + "Try again", which remounts a fresh widget (new key) on the same
+  // order — a failed attempt leaves the POK order unpaid and payable.
+  const [failure, setFailure] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   async function handleSuccess() {
     // The widget's own onSuccess is UX only — never the source of truth (ADR-0001: a webhook,
@@ -60,26 +66,61 @@ function CardCheckoutForm({
   }
 
   function handleError(err: PaymentErrorResponse) {
-    onError(err.message ?? "Card payment failed. Please try again.");
+    const message = describeCardPaymentError(err.message);
+    setFailure(message);
+    onError(message);
+  }
+
+  async function handleRetry() {
+    // Re-check with the backend first: if POK did authorise despite reporting an error, the
+    // reconciling create/resume call says so and we finish instead of offering a second payment.
+    setConfirming(true);
+    try {
+      const result = await createDeposit({ appointmentId }).unwrap();
+      if (result.status === "Captured" || result.status === "Paid") {
+        onSuccess("card");
+        return;
+      }
+    } catch {
+      // Couldn't re-check (e.g. offline for a moment) — still offer a fresh form.
+    } finally {
+      setConfirming(false);
+    }
+    setFailure(null);
+    setAttempt((n) => n + 1);
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Confirming payment…</span>
+      </div>
+    );
+  }
+
+  if (failure) {
+    return (
+      <div role="alert" className="rounded-lg border border-input bg-muted/50 p-4 space-y-3 text-sm">
+        <p className="font-medium flex items-start gap-2 text-destructive-text">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          {failure}
+        </p>
+        <p className="text-muted-foreground">Nothing was charged to your card.</p>
+        <Button className="w-full" onClick={() => void handleRetry()}>Try again</Button>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-3">
-      {confirming
-        ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Confirming payment…</span>
-          </div>
-        )
-        : (
-          <GuestCheckoutForm
-            orderId={orderId}
-            onSuccess={() => void handleSuccess()}
-            onError={handleError}
-            options={{ env: pokEnvironment, locale: "en", countrySelect: "modal" }}
-          />
-        )}
+      <GuestCheckoutForm
+        key={attempt}
+        orderId={orderId}
+        onSuccess={() => void handleSuccess()}
+        onError={handleError}
+        options={{ env: pokEnvironment, locale: "en", countrySelect: "modal" }}
+      />
       <p className="text-xs text-center text-muted-foreground">
         Your card is authorised now and charged by the studio, usually at your appointment. The studio's cancellation policy applies if you cancel late or miss it.
       </p>
@@ -249,7 +290,7 @@ function SavedCardTab({
   }
 
   function handlePokError(err: PaymentErrorResponse) {
-    onError(err.message ?? "Card payment failed. Please try again.");
+    onError(describeCardPaymentError(err.message));
     setSetup(null);
   }
 
