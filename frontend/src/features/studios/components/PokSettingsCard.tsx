@@ -114,7 +114,9 @@ export function PokSettingsCard() {
                 onClick={() => void handleConnect()}
                 disabled={isConnecting || !keyId.trim() || !keySecret.trim() || !merchantId.trim()}
               >
-                {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Connect"}
+                {isConnecting
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Checking with POK…</>
+                  : "Connect"}
               </Button>
               {status?.connected && (
                 <Button variant="outline" size="sm" onClick={() => setEditing(false)} disabled={isConnecting}>

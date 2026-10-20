@@ -128,6 +128,24 @@ describe("PokSettingsCard", () => {
     expect(await screen.findByText(/invalid credentials/i)).toBeInTheDocument();
   });
 
+  it("says it is checking with POK while the keys are tested (C-7)", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post("http://localhost/api/v1/payments/pok/connect", async () => {
+        await new Promise((r) => setTimeout(r, 50_000));
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+    renderCard();
+
+    await user.type(await screen.findByLabelText(/key id/i), "key-1");
+    await user.type(screen.getByLabelText(/key secret/i), "secret-1");
+    await user.type(screen.getByLabelText(/merchant id/i), "merchant-1");
+    await user.click(screen.getByRole("button", { name: /connect/i }));
+
+    expect(await screen.findByRole("button", { name: /checking with pok/i })).toBeDisabled();
+  });
+
   it("tells the owner when card deposits are switched off platform-wide, and still allows linking", async () => {
     server.use(http.get("http://localhost/api/v1/payments/capabilities", () => HttpResponse.json(CAPS_SWITCHED_OFF)));
     renderCard();
