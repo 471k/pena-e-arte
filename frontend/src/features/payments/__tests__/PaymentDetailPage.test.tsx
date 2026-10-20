@@ -374,6 +374,33 @@ describe("PaymentDetailPage", () => {
     expect(screen.getByRole("button", { name: /download receipt/i })).toBeInTheDocument();
   });
 
+  // ── C-14: several partial refunds ─────────────────────────────────────────────
+
+  it("a partly refunded card payment offers 'Refund more' with what's left, and refuses more than that", async () => {
+    const user = userEvent.setup();
+    servePayment({ status: "Refunded", refundedAmount: 30, appointmentStatus: "Completed" });
+    renderPage("appt-002", Role.Owner);
+
+    await user.click(await screen.findByRole("button", { name: "Refund more — €70 left" }));
+    expect(screen.getByText("€30 already refunded · €70 left to refund")).toBeInTheDocument();
+    expect(screen.getByLabelText(/leave blank to refund the rest/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/leave blank to refund the rest/i), "80");
+    await user.click(screen.getByRole("button", { name: /confirm refund/i }));
+    expect(screen.getByText("Only €70 is left to refund.")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["fully refunded", { status: "Refunded", refundedAmount: 100, appointmentStatus: "Completed" }],
+    ["a released hold", { status: "Refunded", paidAt: null, refundedAmount: 100, appointmentStatus: "Cancelled" }],
+    ["refunded before refundedAmount existed", { status: "Refunded", refundedAmount: null, appointmentStatus: "Completed" }],
+  ] as const)("offers no refund when the payment is %s", async (_label, fields) => {
+    servePayment(fields as Partial<PaymentResponse>);
+    renderPage("appt-002", Role.Owner);
+    await screen.findByRole("heading", { name: /100/ });
+    expect(screen.queryByRole("button", { name: /refund/i })).not.toBeInTheDocument();
+  });
+
   it("a released hold shows 'Released', says nothing was charged and offers no receipt", async () => {
     servePayment({ status: "Refunded", paidAt: null, refundedAmount: 100, appointmentStatus: "Cancelled" });
     renderPage("appt-002", Role.Owner);

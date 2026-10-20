@@ -194,6 +194,93 @@ public class RefundPaymentHandlerTests
         result.AppointmentStatus.Should().Be(AppointmentStatus.Confirmed.ToString());
     }
 
+    // ── C-14: several partial refunds ─────────────────────────────────────────
+
+    [Fact]
+    public async Task Handle_SecondPartialRefund_IsAllowed_AndTheRefundedTotalAddsUp()
+    {
+        // POK allows several partial refunds (staging, 2026-10-16); our app allowed only one.
+        await SeedStudio();
+        (Guid paymentId, Guid appointmentId) = await SeedPaymentWithAppointment(1234m);
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, 234m), default);
+        PaymentResponse second = await CreateSut().Handle(new RefundPaymentCommand(paymentId, 500m), default);
+
+        second.RefundedAmount.Should().Be(734m);
+        _db.Payments.Single(p => p.Id == paymentId).RefundedAmount.Should().Be(734m);
+        await _stripe.Received(1).RefundAsync(_studioId, "order-1", 500m, "ALL", Arg.Any<CancellationToken>());
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Paid);
+    }
+
+    [Fact]
+    public async Task Handle_RefundWithoutAmountAfterAPartialOne_RefundsWhatIsLeft_AndMarksTheDepositRefunded()
+    {
+        await SeedStudio();
+        (Guid paymentId, Guid appointmentId) = await SeedPaymentWithAppointment(1234m);
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, 234m), default);
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
+
+        await _stripe.Received(1).RefundAsync(_studioId, "order-1", 1000m, "ALL", Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.Id == paymentId).RefundedAmount.Should().Be(1234m);
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Refunded);
+    }
+
+    [Fact]
+    public async Task Handle_SecondRefundMoreThanWhatIsLeft_IsRefused_WithoutCallingThePaymentProvider()
+    {
+        await SeedStudio();
+        (Guid paymentId, _) = await SeedPaymentWithAppointment(1234m);
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, 234m), default);
+        _stripe.ClearReceivedCalls();
+
+        Func<Task> act = () => CreateSut().Handle(new RefundPaymentCommand(paymentId, 1001m), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*left to refund*");
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.Id == paymentId).RefundedAmount.Should().Be(234m);
+    }
+
+    [Fact]
+    public async Task Handle_FullyRefundedPayment_CannotBeRefundedAgain()
+    {
+        await SeedStudio();
+        (Guid paymentId, _) = await SeedPaymentWithAppointment(1234m);
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, null), default);
+
+        Func<Task> act = () => CreateSut().Handle(new RefundPaymentCommand(paymentId, 1m), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*left to refund*");
+    }
+
+    [Fact]
+    public async Task Handle_RefundedPaymentFromBeforeRefundedAmountExisted_CountsAsFullyRefunded()
+    {
+        await SeedStudio();
+        Guid paymentId = await SeedPayment(200m, PaymentStatus.Refunded, "pi_old"); // RefundedAmount null
+
+        Func<Task> act = () => CreateSut().Handle(new RefundPaymentCommand(paymentId, 10m), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_TellsTheClientTheAmountOfThisRefund_NotThePaymentsWholeAmount()
+    {
+        // Before C-14 the email/SMS always said the full amount ("a refund of ALL 1,234").
+        await SeedStudio();
+        (Guid paymentId, _) = await SeedPaymentWithAppointment(1234m);
+
+        await CreateSut().Handle(new RefundPaymentCommand(paymentId, 234m), default);
+
+        await _sender.Received(1).Send(
+            Arg.Is<SendPaymentRefundedNotificationCommand>(c => c.PaymentId == paymentId && c.RefundAmount == 234m),
+            Arg.Any<CancellationToken>());
+    }
+
     private async Task<(Guid PaymentId, Guid AppointmentId)> SeedPaymentWithAppointment(decimal amount)
     {
         Client client = new()

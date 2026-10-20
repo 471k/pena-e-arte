@@ -10,7 +10,10 @@ using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Application.Payments.Commands;
 
-public record SendPaymentRefundedNotificationCommand(Guid PaymentId) : IRequest<Unit>;
+/// <param name="RefundAmount">What this refund gave back. Before C-14 the email and SMS always
+/// stated the payment's whole amount, so a client refunded 234 of 1,234 was told "a refund of
+/// 1,234". Null (older callers) falls back to the total refunded so far, then to the amount.</param>
+public record SendPaymentRefundedNotificationCommand(Guid PaymentId, decimal? RefundAmount = null) : IRequest<Unit>;
 
 public class SendPaymentRefundedNotificationHandler(
     IAppDbContext db,
@@ -46,7 +49,8 @@ public class SendPaymentRefundedNotificationHandler(
             return Unit.Value;
         }
 
-        string amountFormatted = MoneyText.Format(payment.Amount, payment.Currency);
+        string amountFormatted = MoneyText.Format(
+            command.RefundAmount ?? payment.RefundedAmount ?? payment.Amount, payment.Currency);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.PaymentRefunded, NotificationChannel.Email, ct);

@@ -44,11 +44,16 @@ function StatusBadge({ kind, label }: { kind: DepositOutcomeKind; label: string 
   );
 }
 
-function RefundSection({ paymentId, currency }: { paymentId: string; currency: string }) {
+// C-14: a card payment can be refunded several times, until the whole amount is back (POK allows
+// several partial refunds). `remaining` = amount − already refunded; leaving the field blank refunds it.
+function RefundSection({ paymentId, currency, remaining, alreadyRefunded }: {
+  paymentId: string; currency: string; remaining: number; alreadyRefunded: number;
+}) {
   const [open, setOpen]           = useState(false);
   const [amountStr, setAmountStr] = useState("");
   const [amountError, setAmountError] = useState<string | null>(null);
   const [refund, { isLoading }]   = useRefundPaymentMutation();
+  const partlyRefunded = alreadyRefunded > 0;
 
   async function handleRefund() {
     const amount = amountStr ? parseFloat(amountStr) : undefined;
@@ -57,14 +62,18 @@ function RefundSection({ paymentId, currency }: { paymentId: string; currency: s
       setAmountError(tooManyDecimalsMessage(currency));
       return;
     }
+    if (amount !== undefined && amount > remaining) {
+      setAmountError(`Only ${formatCurrency(remaining, currency)} is left to refund.`);
+      return;
+    }
     try {
       await refund({ id: paymentId, amount }).unwrap();
       setOpen(false);
       setAmountStr("");
       // G-4: the refund used to succeed silently (only the badge changed).
       toast.success(
-        amount !== undefined
-          ? `Refund of ${formatCurrency(amount, currency)} issued — it goes back to the client's card.`
+        amount !== undefined || partlyRefunded
+          ? `Refund of ${formatCurrency(amount ?? remaining, currency)} issued — it goes back to the client's card.`
           : "Full refund issued — it goes back to the client's card.",
       );
     } catch (e) {
@@ -82,7 +91,7 @@ function RefundSection({ paymentId, currency }: { paymentId: string; currency: s
         className="gap-1.5 text-destructive-text hover:text-destructive-text"
       >
         <RotateCcw className="h-3.5 w-3.5" />
-        Refund
+        {partlyRefunded ? `Refund more — ${formatCurrency(remaining, currency)} left` : "Refund"}
       </Button>
     );
   }
@@ -91,14 +100,19 @@ function RefundSection({ paymentId, currency }: { paymentId: string; currency: s
     <Card>
       <CardContent className="p-4 space-y-3">
         <p className="text-sm font-medium">Issue refund</p>
+        {partlyRefunded && (
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(alreadyRefunded, currency)} already refunded · {formatCurrency(remaining, currency)} left to refund
+          </p>
+        )}
         <div className="space-y-1">
           <Label htmlFor="refund-amount" className="text-xs">
-            Amount ({currencyLabel(currency)}) — leave blank for full refund
+            Amount ({currencyLabel(currency)}) — leave blank to refund {partlyRefunded ? "the rest" : "in full"}
           </Label>
           <MoneyInput
             id="refund-amount"
             currency={currency}
-            placeholder="Full amount"
+            placeholder={partlyRefunded ? formatCurrency(remaining, currency) : "Full amount"}
             value={amountStr}
             onChange={(e) => { setAmountStr(e.target.value); setAmountError(null); }}
           />
@@ -227,6 +241,11 @@ export function PaymentDetailPage() {
   const outcome      = describeDeposit(payment);
   // Only when money was actually charged/collected — a released hold has nothing to receipt (G-6).
   const hasReceipt   = (isPaid || isRefunded) && outcome.charged;
+  // C-14: refundable while money is left. A Refunded payment with no refundedAmount predates
+  // that field and was a full refund.
+  const alreadyRefunded = payment.refundedAmount ?? (isRefunded ? payment.amount : 0);
+  const leftToRefund    = Math.max(0, payment.amount - alreadyRefunded);
+  const canRefund       = (isPaid || isRefunded) && leftToRefund > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -290,7 +309,14 @@ export function PaymentDetailPage() {
             </Button>
           )}
 
-          {isPaid && canOwner && isCard && <RefundSection paymentId={payment.id} currency={payment.currency} />}
+          {canRefund && canOwner && isCard && (
+            <RefundSection
+              paymentId={payment.id}
+              currency={payment.currency}
+              remaining={leftToRefund}
+              alreadyRefunded={alreadyRefunded}
+            />
+          )}
 
           {hasReceipt && (
             <Button
