@@ -27,7 +27,8 @@ public interface IJobScheduler
     void EnqueueWebhookDelivery(Guid studioId, string eventType, Guid resourceId);
 
     /// <summary>
-    /// Runs PaymentReconciliationJob immediately rather than waiting for its normal schedule.
+    /// Runs PaymentReconciliationJob within ~10 s rather than waiting for its normal schedule; a burst
+    /// of triggers inside that window becomes one run (C-5 — POK sends each webhook 3 times in ~3 s).
     /// The POK inbound webhook calls this — POK's webhook payload is undocumented and unsigned
     /// (ADR-0001), so the handler never tries to parse it into "which payment changed"; it only
     /// treats the POST as a hint to re-check sooner, and the job itself re-fetches every
