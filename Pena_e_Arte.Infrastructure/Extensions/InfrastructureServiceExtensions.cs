@@ -191,6 +191,7 @@ public static class InfrastructureServiceExtensions
         services.Configure<CardDepositOptions>(configuration.GetSection(CardDepositOptions.Section));
         services.AddPokHttpClient();
         services.AddScoped<PokAuthClient>();
+        services.AddScoped<IPokCredentialVerifier, PokCredentialVerifier>();
         services.AddScoped<IPaymentProvider, PokPaymentProvider>();
         services.AddScoped<IPokCardTokenService, PokCardTokenService>();
         services.AddScoped<IStripeBillingService, StripeBillingService>();
