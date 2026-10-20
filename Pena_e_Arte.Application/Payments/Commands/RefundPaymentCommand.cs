@@ -36,15 +36,25 @@ public class RefundPaymentHandler(
         if (payment is null)
             throw new NotFoundException(nameof(Payment), command.PaymentId);
 
-        if (payment.Status != PaymentStatus.Paid)
-            throw new BusinessRuleViolationException("Only paid payments can be refunded.");
+        // C-14: a payment can be refunded several times until the whole amount is back (POK allows
+        // several partial refunds — proven on staging 2026-10-16). There is no "PartiallyRefunded"
+        // status: a partly refunded payment is Refunded with RefundedAmount < Amount.
+        // A Refunded payment without a RefundedAmount predates that column — it was a full refund.
+        decimal alreadyRefunded = payment.RefundedAmount
+            ?? (payment.Status == PaymentStatus.Refunded ? payment.Amount : 0m);
+        bool partlyRefunded = payment.Status == PaymentStatus.Refunded && alreadyRefunded < payment.Amount;
+        if (payment.Status != PaymentStatus.Paid && !partlyRefunded)
+            throw new BusinessRuleViolationException("Only paid payments with an amount left to refund can be refunded.");
 
         if (payment.ProviderReferenceId is null)
             throw new BusinessRuleViolationException("Payment has no associated provider reference.");
 
-        decimal refundAmount = command.Amount ?? payment.Amount;
-        if (refundAmount > payment.Amount)
-            throw new BusinessRuleViolationException("Refund amount cannot exceed the original payment amount.");
+        decimal remaining = payment.Amount - alreadyRefunded;
+        decimal refundAmount = command.Amount ?? remaining;
+        if (refundAmount > remaining)
+            throw new BusinessRuleViolationException(alreadyRefunded > 0m
+                ? $"Refund amount cannot exceed the {MoneyText.Format(remaining, payment.Currency)} left to refund on this payment."
+                : "Refund amount cannot exceed the original payment amount.");
         if (!CurrencyCatalog.HasAtMostMinorUnits(refundAmount, payment.Currency))
             throw new BusinessRuleViolationException($"Amount has more decimal places than {payment.Currency} allows.");
 
@@ -52,14 +62,15 @@ public class RefundPaymentHandler(
             payment.StudioId, payment.ProviderReferenceId, refundAmount, payment.Currency, ct);
 
         payment.Status = PaymentStatus.Refunded;
-        payment.RefundedAmount = refundAmount;
+        payment.RefundedAmount = alreadyRefunded + refundAmount;
         payment.UpdatedAt = DateTime.UtcNow;
 
         // G-14: a full refund means the client no longer has a deposit with the studio — the
         // appointment must say so too (it stayed "Paid", so the client's My bookings still read
         // "Deposit paid"). A partial refund leaves it Paid: the studio still holds part of it.
+        // With several refunds, "full" is the running total reaching the amount.
         Appointment? appointment = await db.Appointments.FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
-        if (refundAmount >= payment.Amount && appointment is not null)
+        if (payment.RefundedAmount >= payment.Amount && appointment is not null)
         {
             appointment.DepositStatus = DepositStatus.Refunded;
             appointment.UpdatedAt = DateTime.UtcNow;
@@ -69,7 +80,8 @@ public class RefundPaymentHandler(
 
         PaymentResponse response = payment.ToResponse() with { AppointmentStatus = appointment?.Status.ToString() };
         await realtime.NotifyStudioAsync(payment.StudioId, "PaymentRefunded", response, ct);
-        await sender.Send(new SendPaymentRefundedNotificationCommand(payment.Id), ct);
+        // The client is told what THIS refund gave back — not the payment's whole amount.
+        await sender.Send(new SendPaymentRefundedNotificationCommand(payment.Id, refundAmount), ct);
 
         return response;
     }

@@ -85,6 +85,20 @@ public class SendPaymentRefundedNotificationHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PartialRefund_EmailAndSmsStateTheRefundedAmount_NotTheWholePayment()
+    {
+        // C-14: a client refunded 30 of 100 was told "a refund of 100.00 EUR".
+        (Guid paymentId, _, Client client) = await SeedData(phone: "+355690000000");
+
+        await CreateSut().Handle(new SendPaymentRefundedNotificationCommand(paymentId, 30m), default);
+
+        _emailRenderer.Received(1).RenderPaymentRefunded(client.FirstName, "30.00 EUR", Arg.Any<bool>());
+        await _notifications.Received(1).SendSmsAsync(
+            Arg.Any<string>(), Arg.Is<string>(s => s.Contains("30.00 EUR") && !s.Contains("100.00 EUR")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_EntityNotFound_DoesNotSendEmail()
     {
         await CreateSut().Handle(new SendPaymentRefundedNotificationCommand(Guid.NewGuid()), default);
