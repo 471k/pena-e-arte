@@ -201,7 +201,7 @@ function DepositPreview({
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Estimated deposit</span>
       <span className="text-sm font-semibold tabular-nums">
-        {currency ? formatCurrency(estimated, currency) : estimated}
+        {currency ? formatCurrency(estimated, currency) : "…"}
       </span>
     </div>
   );
@@ -218,7 +218,7 @@ function ServiceDepositPreview({ service, currency }: { service: ServiceResponse
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Deposit for this service</span>
       <span className="text-sm font-semibold tabular-nums">
-        {currency ? formatCurrency(service.depositAmount, currency) : service.depositAmount}
+        {currency ? formatCurrency(service.depositAmount, currency) : "…"}
       </span>
     </div>
   );
@@ -254,6 +254,10 @@ export function BookAppointmentForm() {
     isFetching: resolvingStudioSlug,
     isError:    studioLookupFailed,
   } = useGetPublicStudioQuery(studioSlug ?? "", { skip: !studioSlug });
+  // The studio being booked carries its own currency — use it first. "My studio" is refetched while
+  // the session switches to that studio, so right after arriving via ?studio=<slug> it can still be
+  // empty, which used to show the deposit as a bare number ("1234.", G-2).
+  const bookingCurrency = targetStudio?.currency ?? studioCurrency;
 
   const { isSwitching, error: switchError, ensure } = useEnsureActiveStudio();
   const [switchAttempted, setSwitchAttempted] = useState(false);
@@ -558,10 +562,16 @@ export function BookAppointmentForm() {
         <div className="text-center space-y-1">
           <p className="text-sm font-medium">Appointment requested!</p>
           <p className="text-xs text-muted-foreground">
-            Secure your slot with a deposit of{" "}
-            <span className="font-medium text-foreground">
-              {studioCurrency ? formatCurrency(booked.depositAmount, studioCurrency) : booked.depositAmount}
-            </span>.
+            {bookingCurrency ? (
+              <>
+                Secure your slot with a deposit of{" "}
+                <span className="font-medium text-foreground">
+                  {formatCurrency(booked.depositAmount, bookingCurrency)}
+                </span>.
+              </>
+            ) : (
+              "Secure your slot with a deposit."
+            )}
           </p>
           {promoCodeNotRecognized && (
             <p className="text-[11px] text-muted-foreground">
@@ -917,7 +927,7 @@ export function BookAppointmentForm() {
         <div className="space-y-1.5">
           <FieldLabel htmlFor="serviceDeposit">Deposit</FieldLabel>
           <div id="serviceDeposit">
-            <ServiceDepositPreview service={selectedService} currency={studioCurrency} />
+            <ServiceDepositPreview service={selectedService} currency={bookingCurrency} />
           </div>
         </div>
       )}
@@ -957,7 +967,7 @@ export function BookAppointmentForm() {
               durationMinutes={watchedDuration}
               activeRules={activeRules}
               hourlyRate={selectedArtist?.hourlyRate ?? null}
-              currency={studioCurrency}
+              currency={bookingCurrency}
             />
           )}
         </div>
