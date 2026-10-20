@@ -15,9 +15,90 @@ public class ConnectPokAccountHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ISecretsProvider _secrets = Substitute.For<ISecretsProvider>();
+    private readonly IPokCredentialVerifier _verifier = Substitute.For<IPokCredentialVerifier>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private ConnectPokAccountHandler CreateSut() => new(_db, _secrets, NullLogger<ConnectPokAccountHandler>.Instance);
+    public ConnectPokAccountHandlerTests()
+    {
+        _verifier.CheckKeysAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(PokCredentialCheckResult.Valid);
+    }
+
+    private ConnectPokAccountHandler CreateSut() =>
+        new(_db, _secrets, _verifier, NullLogger<ConnectPokAccountHandler>.Instance);
+
+    [Fact]
+    public async Task Handle_ChecksTheKeysWithPokBeforeSaving()
+    {
+        await SeedStudioAsync();
+        var request = new ConnectPokAccountRequest("key-1", "secret-1", "merchant-1");
+
+        await CreateSut().Handle(new ConnectPokAccountCommand(_studioId, request), default);
+
+        await _verifier.Received(1).CheckKeysAsync("key-1", "secret-1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PokRefusesTheKeys_Returns422AndChangesNothing()
+    {
+        // C-7: wrong keys used to be saved silently and only failed at the first checkout.
+        await SeedStudioAsync();
+        _verifier.CheckKeysAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(PokCredentialCheckResult.InvalidKeys);
+        var request = new ConnectPokAccountRequest("key-1", "wrong-secret", "merchant-1");
+
+        Func<Task> act = () => CreateSut().Handle(new ConnectPokAccountCommand(_studioId, request), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage(ConnectPokAccountHandler.InvalidKeysMessage);
+        _db.Studios.Single(s => s.Id == _studioId).PokMerchantId.Should().BeNull();
+        _db.StudioCredentialRefs.Any(c => c.StudioId == _studioId).Should().BeFalse();
+        await _secrets.DidNotReceive().SetSecretAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PokRefusesReplacementKeys_KeepsTheWorkingConnection()
+    {
+        await SeedStudioAsync();
+        _db.Studios.Single(s => s.Id == _studioId).PokMerchantId = "old-merchant";
+        _db.StudioCredentialRefs.Add(new StudioCredentialRef
+        {
+            StudioId = _studioId,
+            Provider = CredentialProvider.Pok,
+            SecretPath = $"studios/{_studioId}/pok",
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        _verifier.CheckKeysAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(PokCredentialCheckResult.InvalidKeys);
+        var request = new ConnectPokAccountRequest("typo-key", "typo-secret", "new-merchant");
+
+        Func<Task> act = () => CreateSut().Handle(new ConnectPokAccountCommand(_studioId, request), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        _db.Studios.Single(s => s.Id == _studioId).PokMerchantId.Should().Be("old-merchant");
+        _db.StudioCredentialRefs.Count(c => c.StudioId == _studioId).Should().Be(1);
+        await _secrets.DidNotReceive().SetSecretAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_PokUnreachable_Returns503AndChangesNothing()
+    {
+        await SeedStudioAsync();
+        _verifier.CheckKeysAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(PokCredentialCheckResult.PokUnreachable);
+        var request = new ConnectPokAccountRequest("key-1", "secret-1", "merchant-1");
+
+        Func<Task> act = () => CreateSut().Handle(new ConnectPokAccountCommand(_studioId, request), default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>()
+            .WithMessage(ConnectPokAccountHandler.PokUnreachableMessage);
+        _db.Studios.Single(s => s.Id == _studioId).PokMerchantId.Should().BeNull();
+        await _secrets.DidNotReceive().SetSecretAsync(
+            Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task Handle_NoExistingCredentialRef_CreatesOneAndSetsMerchantId()

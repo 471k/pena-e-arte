@@ -25,7 +25,8 @@ public record ConnectPokAccountCommand(Guid StudioId, ConnectPokAccountRequest R
     public Guid AuditTargetId => StudioId;
 }
 
-public class ConnectPokAccountHandler(IAppDbContext db, ISecretsProvider secrets, ILogger<ConnectPokAccountHandler> logger)
+public class ConnectPokAccountHandler(
+    IAppDbContext db, ISecretsProvider secrets, IPokCredentialVerifier verifier, ILogger<ConnectPokAccountHandler> logger)
     : IRequestHandler<ConnectPokAccountCommand>
 {
     /// <summary>What the owner sees when the keys can't be stored because the secrets store is
@@ -33,10 +34,27 @@ public class ConnectPokAccountHandler(IAppDbContext db, ISecretsProvider secrets
     public const string SecretsStoreUnavailableMessage =
         "We couldn't save your POK keys because our secure key store is temporarily unavailable. Nothing was changed — please try again in a few minutes.";
 
+    /// <summary>C-7: POK refused the Key ID + Key Secret. Before, wrong keys were saved silently and
+    /// only failed at the studio's first card checkout.</summary>
+    public const string InvalidKeysMessage =
+        "POK didn't accept this Key ID and Key Secret. Copy both again from POK Business → E-payments → API Keys and try again. Nothing was saved.";
+
+    /// <summary>C-7: POK couldn't be asked — we never save keys we haven't been able to check.</summary>
+    public const string PokUnreachableMessage =
+        "We couldn't reach POK to check your keys. Nothing was saved — please try again in a few minutes.";
+
     public async Task Handle(ConnectPokAccountCommand command, CancellationToken ct)
     {
         Studio studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == command.StudioId, ct)
             ?? throw new NotFoundException(nameof(Studio), command.StudioId);
+
+        // Test the keys before anything is written, so a refusal leaves the studio exactly as it was
+        // (including an existing, working connection when the owner is replacing keys).
+        PokCredentialCheckResult check = await verifier.CheckKeysAsync(command.Request.KeyId, command.Request.KeySecret, ct);
+        if (check == PokCredentialCheckResult.InvalidKeys)
+            throw new BusinessRuleViolationException(InvalidKeysMessage);
+        if (check == PokCredentialCheckResult.PokUnreachable)
+            throw new ServiceUnavailableException(PokUnreachableMessage);
 
         StudioCredentialRef? credentialRef = await db.StudioCredentialRefs
             .FirstOrDefaultAsync(c => c.StudioId == command.StudioId && c.Provider == CredentialProvider.Pok, ct);
