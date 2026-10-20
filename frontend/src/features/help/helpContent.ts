@@ -1229,7 +1229,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Download receipt appears only when money was actually charged or collected — a released hold has no receipt.",
       "To charge a deposit that's on hold, open the payment and click \"Capture deposit\". Completing the appointment, or marking it a no-show, captures it automatically.",
       "If a client cancels late while their deposit is on hold, TattooOS charges only the part your cancellation policy keeps and releases the rest. If you cancel the appointment, the hold is released in full.",
-      "To refund a card payment, open a Paid payment, click Refund, enter an amount for a partial refund (or leave it blank for the full amount) and click Confirm refund. Each payment can be refunded once. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see \"Where card deposit money goes\".",
+      "To refund a card payment, open a Paid payment, click Refund, enter an amount for a partial refund (or leave it blank for the full amount) and click Confirm refund. A confirmation message appears once the refund is issued. Each payment can be refunded once. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see \"Where card deposit money goes\".",
       "If a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.",
       "If POK reports that a held deposit's authorisation expired or was cancelled, the payment shows Failed and the client can pay again.",
     ],

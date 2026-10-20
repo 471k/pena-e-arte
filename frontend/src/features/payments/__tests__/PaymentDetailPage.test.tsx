@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -13,6 +13,9 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { PaymentDetailPage } from "@/features/payments/components/PaymentDetailPage";
 import type { PaymentResponse } from "@/features/payments/payment.types";
 import { Role } from "@/shared/types/roles";
+
+const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
+vi.mock("sonner", () => ({ toast: toastMock }));
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -290,6 +293,17 @@ describe("PaymentDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: /refund/i }));
     await user.click(screen.getByRole("button", { name: /confirm refund/i }));
     expect(screen.queryByText(/failed/i)).not.toBeInTheDocument();
+  });
+
+  it("a successful refund confirms it with a toast (G-4)", async () => {
+    const user = userEvent.setup();
+    toastMock.success.mockClear();
+    renderPage("appt-002", Role.Owner);
+    await user.click(await screen.findByRole("button", { name: /refund/i }));
+    await user.click(screen.getByRole("button", { name: /confirm refund/i }));
+    await vi.waitFor(() =>
+      expect(toastMock.success).toHaveBeenCalledWith("Full refund issued — it goes back to the client's card."),
+    );
   });
 
   // ── Navigation ───────────────────────────────────────────────────────────────

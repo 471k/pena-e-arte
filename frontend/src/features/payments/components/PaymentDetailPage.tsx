@@ -61,6 +61,12 @@ function RefundSection({ paymentId, currency }: { paymentId: string; currency: s
       await refund({ id: paymentId, amount }).unwrap();
       setOpen(false);
       setAmountStr("");
+      // G-4: the refund used to succeed silently (only the badge changed).
+      toast.success(
+        amount !== undefined
+          ? `Refund of ${formatCurrency(amount, currency)} issued — it goes back to the client's card.`
+          : "Full refund issued — it goes back to the client's card.",
+      );
     } catch (e) {
       const err = e as { data?: { message?: string } } | undefined;
       toast.error(err?.data?.message ?? "Refund failed. Please try again.");

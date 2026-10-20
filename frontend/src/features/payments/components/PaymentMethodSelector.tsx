@@ -409,11 +409,18 @@ function CashInfoPanel({
       <div className="rounded-lg border border-input bg-muted/50 p-4 space-y-2 text-sm">
         <p className="font-medium">Pay at the studio</p>
         <p className="text-muted-foreground">
-          Your deposit of{" "}
-          <span className="font-medium text-foreground">
-            {capabilities?.currency ? formatCurrency(amount, capabilities.currency) : amount}
-          </span>{" "}
-          will be collected in cash when you arrive.
+          {capabilities?.currency ? (
+            <>
+              Your deposit of{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(amount, capabilities.currency)}
+              </span>{" "}
+              will be collected in cash when you arrive.
+            </>
+          ) : (
+            // Capabilities still loading — never show the bare number (G-2).
+            "Your deposit will be collected in cash when you arrive."
+          )}
           Your booking will be held as pending until the studio confirms receipt.
         </p>
         <p className="text-muted-foreground text-xs">

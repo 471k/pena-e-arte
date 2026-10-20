@@ -28,5 +28,8 @@ COPY --from=build /src/dist /usr/share/nginx/html
 
 EXPOSE 8080
 
+# 127.0.0.1, not localhost: in this image localhost resolves to ::1 first, but nginx listens on
+# IPv4 only (nginx.conf.template "listen 8080;"), so the check failed and Docker showed the
+# container "unhealthy" while it served fine (G-9). The k8s probes hit the pod IP and are unaffected.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q --spider http://localhost:8080/ || exit 1
+    CMD wget -q --spider http://127.0.0.1:8080/ || exit 1
