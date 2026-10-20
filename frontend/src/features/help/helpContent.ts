@@ -1234,6 +1234,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "To refund a card payment, open a Paid payment, click Refund, enter an amount for a partial refund (or leave it blank for the full amount) and click Confirm refund. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click \"Refund more\" — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see \"Where card deposit money goes\".",
       "If a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.",
       "If POK reports that a held deposit's authorisation expired or was cancelled, the payment shows Failed and the client can pay again.",
+      "A card payment's details show its \"POK order\" ID — search for it in POK Business (E-payments → E-orders) to see the same payment, its fee and its refunds there.",
     ],
     relatedArticleIds: ["owner-card-money-flow", "owner-connect-pok", "owner-payment-create"],
   },

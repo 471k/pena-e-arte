@@ -186,10 +186,12 @@ describe("PaymentDetailPage", () => {
     expect(screen.getByText("Cash")).toBeInTheDocument();
   });
 
-  it("renders the Stripe PI ID for a card payment", async () => {
+  it("renders the POK order id for a card payment, labelled 'POK order' (C-10)", async () => {
     renderPage("appt-001");
     await screen.findByRole("heading", { name: /100/ });
     expect(screen.getByText("pi_test_abc")).toBeInTheDocument();
+    expect(screen.getByText("POK order")).toBeInTheDocument();
+    expect(screen.queryByText("Stripe PI")).not.toBeInTheDocument();
   });
 
   it("renders the cash note when present", async () => {

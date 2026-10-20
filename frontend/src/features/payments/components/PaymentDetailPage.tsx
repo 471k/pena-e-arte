@@ -373,8 +373,9 @@ export function PaymentDetailPage() {
             {payment.cashNote && (
               <Row label="Note" value={payment.cashNote} />
             )}
+            {/* C-10: card payments go through POK; this is the POK order id (was labelled "Stripe PI"). */}
             {payment.providerReferenceId && (
-              <Row label="Stripe PI" value={payment.providerReferenceId} mono />
+              <Row label="POK order" value={payment.providerReferenceId} mono />
             )}
           </CardContent>
         </Card>
