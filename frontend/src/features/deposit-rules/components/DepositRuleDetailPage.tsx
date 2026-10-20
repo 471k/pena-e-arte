@@ -22,6 +22,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
+import { PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS, formatNoticeWindow } from "@/shared/utils/noticeWindow";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -237,7 +238,7 @@ export function DepositRuleDetailPage() {
                 </div>
                 <div className="text-xs text-muted-foreground pt-1 border-t space-y-1">
                   <p>
-                    Cancellation notice: {rule.cancellationWindowHours ?? 24} hours
+                    Cancellation notice: {formatNoticeWindow(rule.cancellationWindowHours ?? PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS)}
                     {rule.cancellationWindowHours === null && " (platform default)"}
                   </p>
                   <p>
@@ -324,7 +325,7 @@ export function DepositRuleDetailPage() {
                 type="number"
                 step="1"
                 min="1"
-                placeholder="24 (platform default)"
+                placeholder={`${PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} (platform default)`}
                 {...register("cancellationWindowHours", {
                   setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
                 })}
@@ -335,7 +336,7 @@ export function DepositRuleDetailPage() {
               )}
               <p className="text-xs text-muted-foreground">
                 How much notice a client must give to cancel without forfeiting their deposit.
-                Leave blank to use the platform default (24 hours).
+                Leave blank to use the platform default ({PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} hours).
               </p>
             </div>
 

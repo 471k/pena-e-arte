@@ -11,6 +11,7 @@ import { describeDeposit } from "@/features/payments/depositOutcome";
 import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
+import { PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS, formatNoticeWindow } from "@/shared/utils/noticeWindow";
 import { cn } from "@/shared/utils/cn";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
@@ -25,7 +26,7 @@ import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.t
 // window empty). It was 24 here: 24–48 h before an appointment the client was promised "a full
 // refund" and offered Reschedule, while the server refused the reschedule and kept the whole
 // deposit on cancel (G-3, re-tested live 2026-10-15).
-const PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS = 48;
+// The constant lives in shared/utils/noticeWindow.ts (also used by the owner's deposit-rule page).
 
 // Same notice window backs both self-cancel (refund %) and self-reschedule (hard cutoff) —
 // mirrors ClientCancellationPolicy on the backend.
@@ -57,7 +58,7 @@ function RescheduleArea({ appt, activeRule }: { appt: AppointmentResponse; activ
         title={
           canReschedule
             ? undefined
-            : `This appointment is less than ${noticeWindowHours(activeRule)} hours away — please contact the studio directly to reschedule.`
+            : `This appointment is less than ${formatNoticeWindow(noticeWindowHours(activeRule))} away — please contact the studio directly to reschedule.`
         }
         onClick={() => setOpen(true)}
       >
@@ -65,7 +66,7 @@ function RescheduleArea({ appt, activeRule }: { appt: AppointmentResponse; activ
       </Button>
       {!canReschedule && (
         <p className="text-xs text-muted-foreground">
-          Less than {noticeWindowHours(activeRule)} hours away — contact the studio directly to reschedule.
+          Less than {formatNoticeWindow(noticeWindowHours(activeRule))} away — contact the studio directly to reschedule.
         </p>
       )}
       <RescheduleDialog
@@ -169,6 +170,9 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
     skip: appt.depositAmount <= 0,
   });
   const { currency: studioCurrency } = useStudioCurrency();
+  // The payment row carries its own currency; "my studio" can still be loading right after a studio
+  // switch (G-2), so never fall back to the bare number.
+  const depositCurrency = payment?.currency ?? studioCurrency;
 
   if (appt.depositAmount <= 0) return null;
 
@@ -266,7 +270,9 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
       <CreditCard className="h-3.5 w-3.5" />
       {payment?.status === "Pending"
         ? "Finish deposit payment"
-        : `Pay deposit — ${studioCurrency ? formatCurrency(appt.depositAmount, studioCurrency) : appt.depositAmount}`}
+        : depositCurrency
+          ? `Pay deposit — ${formatCurrency(appt.depositAmount, depositCurrency)}`
+          : "Pay deposit"}
     </Button>
   );
 }

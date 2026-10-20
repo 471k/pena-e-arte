@@ -11,6 +11,7 @@ import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
+import { PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS } from "@/shared/utils/noticeWindow";
 import { useCreateDepositRuleMutation } from "../depositRulesApi";
 import type { CreateDepositRuleRequest } from "../depositRule.types";
 
@@ -162,7 +163,7 @@ export function CreateDepositRulePage() {
               type="number"
               step="1"
               min="1"
-              placeholder="24 (platform default)"
+              placeholder={`${PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} (platform default)`}
               {...register("cancellationWindowHours", {
                 setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
               })}
@@ -173,7 +174,7 @@ export function CreateDepositRulePage() {
             )}
             <p className="text-xs text-muted-foreground">
               How much notice a client must give to cancel without forfeiting their deposit.
-              Leave blank to use the platform default (24 hours).
+              Leave blank to use the platform default ({PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} hours).
             </p>
           </div>
 

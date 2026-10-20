@@ -138,7 +138,8 @@ describe("DepositRuleDetailPage", () => {
   it("shows the platform default cancellation window when null", async () => {
     renderPage();
     await screen.findByText("Standard Deposit");
-    expect(screen.getByText(/cancellation notice: 24 hours \(platform default\)/i)).toBeInTheDocument();
+    // 48 = the backend's AppointmentSelfServiceDefaults.CancellationWindowHours (this read 24 before).
+    expect(screen.getByText(/cancellation notice: 48 hours \(platform default\)/i)).toBeInTheDocument();
     expect(screen.getByText(/late cancellation refund: 0%/i)).toBeInTheDocument();
   });
 
