@@ -36,17 +36,24 @@ never put the root token itself into a GitHub secret:**
 ```bash
 kubectl exec -it tattooos-vault-0 -n tattooos -- vault login <root-token>
 kubectl exec -it tattooos-vault-0 -n tattooos -- vault secrets enable -path=secret kv-v2
-kubectl exec -it tattooos-vault-0 -n tattooos -- vault policy write tattooos-app - <<'EOF'
-path "secret/data/*" {
-  capabilities = ["read"]
+kubectl exec -i tattooos-vault-0 -n tattooos -- vault policy write tattooos-app - <<'EOF'
+path "secret/data/studios/*" {
+  capabilities = ["create", "read", "update", "patch"]
 }
 EOF
 kubectl exec -it tattooos-vault-0 -n tattooos -- vault token create -policy=tattooos-app -period=720h
 ```
 
 Record the resulting token — this is the value for the `VAULT_TOKEN` GitHub Actions secret.
-`-period=720h` makes it a renewable periodic token (30 days) rather than one with a hard expiry;
-nothing currently renews it automatically — a follow-up, not solved here.
+`-period=720h` makes it a renewable periodic token (30 days) rather than one with a hard expiry.
+It expires if nobody renews it within 30 days: `VaultHealthCheckJob` renews it once less than half
+of the period is left (see "How the alert works" below).
+
+**Why these capabilities (2026-10-21):** the first version of this policy was `read` on
+`secret/data/*`, but connecting POK *writes* the studio's keys to `secret/data/studios/{studioId}/pok`
+(`ConnectPokAccountCommand`: KV v2 patch, or a plain create on a studio's first connect) and every
+payment reads them. Checked against a dev Vault 1.18.5: with exactly these four capabilities a create,
+a patch and a read on that path all succeed. Nothing else in the app touches Vault.
 
 **GitHub Actions secrets to add from this runbook:**
 
@@ -86,9 +93,35 @@ Chosen approach (ADR-0002, C-8): **manual unseal + alert**, no cloud-KMS auto-un
 
 How the alert works: `VaultHealthCheckJob` (Hangfire, every 5 minutes) calls the unauthenticated
 `/v1/sys/health` and logs `VaultHealthCheckFailed: Vault is {sealed|not initialised|unhealthy|
-unreachable}` on anything but healthy; real payment requests that hit a dead Vault log `Secrets
-store unavailable`. The Grafana rule `vault-unavailable` (`k8s/observability/grafana-alerting-
+unreachable}` on anything but healthy. When Vault is healthy and the app has a token, it then checks
+the token itself (since 2026-10-21 — the production token had silently expired around 7 Oct while
+`/sys/health` still said healthy):
+- `token/lookup-self`: 403 → `Vault is rejecting the app's token (invalid or expired)`. Fix: see
+  "Replace the app's token" below.
+- Under half of the token's period left → `token/renew-self`, logged as `VaultTokenRenewed` (info).
+  A refused renewal → `Vault is refusing to renew the app's token`.
+- `sys/capabilities-self` on a studio's POK-key path (nothing is written) → `Vault is missing
+  permissions on the studios' POK keys (...)` lists what the policy lacks. Fix: re-run the
+  `vault policy write tattooos-app` step above; the existing token picks the new policy up at once.
+
+Real payment requests that hit a dead Vault log `Secrets store unavailable`. The Grafana rule `vault-unavailable` (`k8s/observability/grafana-alerting-
 configmap.yaml`) emails ops@ when either line appears in production in the last 15 minutes.
 
 Auto-unseal (a cloud KMS, or a second Vault's Transit engine) would remove the manual step but adds
 cost and an external dependency; revisit if restarts become frequent.
+
+## Replace the app's token (expired, revoked or leaked)
+
+Founder action — it needs the root token. Vault must be unsealed first.
+
+1. Log in with the root token (`vault login` without an argument prompts for it, hidden) and, if the
+   policy is still the old read-only one, re-run the `vault policy write tattooos-app` step above.
+2. `vault token create -policy=tattooos-app -period=720h` and copy the `token` value.
+3. Remove the root token the login saved in the pod: `kubectl exec -n tattooos tattooos-vault-0 -- rm -f /root/.vault-token`
+   (`kubectl exec` runs as root with `HOME=/root`; checked 2026-10-21).
+4. `gh secret set VAULT_TOKEN` (it prompts for the value — never put it on the command line).
+5. The token reaches the pods through `tattooos-api-secrets`, which CD rebuilds from GitHub secrets
+   on every run, and the pods read it at start. So: the next deploy picks it up by itself; to apply it
+   now, re-run the latest CD run, then `kubectl rollout restart deployment/tattooos-api -n tattooos`.
+6. Within 5 minutes `VaultHealthCheckFailed` stops; a token that leaked is revoked with
+   `vault token revoke -accessor <accessor>` (the accessor is in `vault list auth/token/accessors`).
