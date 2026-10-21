@@ -39,6 +39,9 @@ const server = setupServer(
   http.post("http://localhost/api/v1/deposit-rules", () =>
     HttpResponse.json(CREATED_RULE, { status: 201 }),
   ),
+  http.get("http://localhost/api/v1/deposit-rules/defaults", () =>
+    HttpResponse.json({ cancellationWindowHours: 48, refundPercentOnLateCancel: 0 }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -207,6 +210,17 @@ describe("CreateDepositRulePage", () => {
     expect(screen.getByRole("button", { name: /deposit rules/i })).toBeDisabled();
 
     resolvePost(HttpResponse.json(CREATED_RULE, { status: 201 }) as unknown as Response);
+  });
+
+  it("describes the platform default notice window the server reports", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/deposit-rules/defaults", () =>
+        HttpResponse.json({ cancellationWindowHours: 72, refundPercentOnLateCancel: 0 }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText(/leave blank to use the platform default \(3 days\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/cancellation notice window/i)).toHaveAttribute("placeholder", "72 (platform default)");
   });
 
   it("'Deposit Rules' back button navigates to /deposit-rules", async () => {

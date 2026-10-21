@@ -12,9 +12,11 @@ function Section({ heading, children }: { heading: string; children: React.React
 
 // REAL copy, derived from the live implementation — NOT aspirational text:
 //   DepositRule.cs, DepositCalculator.cs, ClientCancellationPolicy.cs,
-//   AppointmentSelfServiceDefaults.cs (CancellationWindowHours = 24),
+//   AppointmentSelfServiceDefaults.cs (CancellationWindowHours = 48, RefundPercentOnLateCancel = 0),
 //   MarkNoShowCommand.cs (no-show => DepositStatus.Forfeited).
-// If the underlying behaviour changes, this page must be updated to match.
+// If the underlying behaviour changes, this page must be updated to match. The "48 hours" below is
+// policy text (a public legal page, reviewed as written), so it stays literal instead of reading
+// GET /deposit-rules/defaults like the app screens do.
 export function RefundPolicyPage() {
   return (
     <PublicContentLayout

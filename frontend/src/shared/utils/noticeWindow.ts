@@ -1,9 +1,7 @@
-/**
- * The client self-cancel / self-reschedule notice window. When a deposit rule leaves it empty the
- * backend uses AppointmentSelfServiceDefaults.CancellationWindowHours = 48 — keep this in step
- * with it (G-3: the client screen said 24 while the server applied 48).
- */
-export const PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS = 48;
+// The platform default notice window itself is NOT kept here any more: screens read it from
+// GET /api/v1/deposit-rules/defaults (useGetDepositRuleDefaultsQuery), which serves the backend's
+// AppointmentSelfServiceDefaults. A frontend copy drifted to 24 h while the server applied 48
+// (G-3, G-17, October 2026).
 
 /**
  * "48 hours", "36 hours" — or whole days for longer windows ("3 days", "30 days"), so a 30-day

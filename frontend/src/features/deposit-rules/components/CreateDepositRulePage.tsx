@@ -11,8 +11,8 @@ import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
-import { PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS } from "@/shared/utils/noticeWindow";
-import { useCreateDepositRuleMutation } from "../depositRulesApi";
+import { formatNoticeWindow } from "@/shared/utils/noticeWindow";
+import { useCreateDepositRuleMutation, useGetDepositRuleDefaultsQuery } from "../depositRulesApi";
 import type { CreateDepositRuleRequest } from "../depositRule.types";
 
 const createSchema = z
@@ -35,6 +35,8 @@ type CreateFormValues = z.infer<typeof createSchema>;
 export function CreateDepositRulePage() {
   const navigate = useNavigate();
   const [createRule, { isLoading }] = useCreateDepositRuleMutation();
+  const { data: defaults } = useGetDepositRuleDefaultsQuery();
+  const defaultWindowHours = defaults?.cancellationWindowHours;
 
   const {
     register,
@@ -163,7 +165,7 @@ export function CreateDepositRulePage() {
               type="number"
               step="1"
               min="1"
-              placeholder={`${PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} (platform default)`}
+              placeholder={defaultWindowHours !== undefined ? `${defaultWindowHours} (platform default)` : "Platform default"}
               {...register("cancellationWindowHours", {
                 setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
               })}
@@ -174,7 +176,8 @@ export function CreateDepositRulePage() {
             )}
             <p className="text-xs text-muted-foreground">
               How much notice a client must give to cancel without forfeiting their deposit.
-              Leave blank to use the platform default ({PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} hours).
+              Leave blank to use the platform default
+              {defaultWindowHours !== undefined && ` (${formatNoticeWindow(defaultWindowHours)})`}.
             </p>
           </div>
 

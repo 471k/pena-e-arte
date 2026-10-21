@@ -730,7 +730,9 @@ the backlog-carry-forward detail. This entry is the architecture-level summary.
 - **Phase 1 — Cancellation policy configuration.** `DepositRule` gains
   `CancellationWindowHours` (`int?`, null = platform default) and
   `RefundPercentOnLateCancel` (`int`, default 0). New
-  `Domain/Constants/AppointmentSelfServiceDefaults.CancellationWindowHours = 24`. Migration
+  `Domain/Constants/AppointmentSelfServiceDefaults.CancellationWindowHours = 24` (raised to 48
+  on 2026-08-01; since 2026-10-21 the frontend reads it, with `RefundPercentOnLateCancel = 0`, from
+  `GET /api/v1/deposit-rules/defaults` instead of keeping a copy — G-3/G-17). Migration
   `AddCancellationPolicyToDepositRule`. No DB-level `CHECK` constraint added (no existing
   precedent for one anywhere in this codebase's entity configurations — FluentValidation is
   the sole validation layer, matching the codebase's established convention).

@@ -17,15 +17,18 @@ public static class ClientCancellationPolicy
     /// default, i.e. the deposit is forfeited).
     /// </summary>
     public static int ResolveRefundPercent(DepositRule? rule, DateTime appointmentDate, DateTime nowUtc) =>
-        IsWithinNoticeWindow(rule, appointmentDate, nowUtc) ? 100 : rule?.RefundPercentOnLateCancel ?? 0;
+        IsWithinNoticeWindow(rule, appointmentDate, nowUtc)
+            ? 100
+            : rule?.RefundPercentOnLateCancel ?? AppointmentSelfServiceDefaults.RefundPercentOnLateCancel;
+
+    /// <summary>The notice window that applies: the rule's own, or the platform default.</summary>
+    public static int NoticeWindowHours(DepositRule? rule) =>
+        rule?.CancellationWindowHours ?? AppointmentSelfServiceDefaults.CancellationWindowHours;
 
     /// <summary>
     /// True when the client is cancelling/rescheduling with at least the required notice.
     /// Used directly (without the refund math) to gate client self-reschedule in Phase 3.
     /// </summary>
-    public static bool IsWithinNoticeWindow(DepositRule? rule, DateTime appointmentDate, DateTime nowUtc)
-    {
-        int windowHours = rule?.CancellationWindowHours ?? AppointmentSelfServiceDefaults.CancellationWindowHours;
-        return (appointmentDate - nowUtc).TotalHours >= windowHours;
-    }
+    public static bool IsWithinNoticeWindow(DepositRule? rule, DateTime appointmentDate, DateTime nowUtc) =>
+        (appointmentDate - nowUtc).TotalHours >= NoticeWindowHours(rule);
 }

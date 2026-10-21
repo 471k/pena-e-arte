@@ -71,8 +71,7 @@ public class RescheduleAppointmentHandler(
 
             if (!ClientCancellationPolicy.IsWithinNoticeWindow(rule, appointment.Date, DateTime.UtcNow))
             {
-                int windowHours = rule?.CancellationWindowHours
-                    ?? Domain.Constants.AppointmentSelfServiceDefaults.CancellationWindowHours;
+                int windowHours = ClientCancellationPolicy.NoticeWindowHours(rule);
                 throw new BusinessRuleViolationException(
                     $"This appointment is less than {windowHours} hours away — please contact the studio directly to reschedule.");
             }
