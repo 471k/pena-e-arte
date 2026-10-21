@@ -218,10 +218,19 @@ function renderPage(initialPath = "/register") {
 
 // ── Step helpers ──────────────────────────────────────────────────────────────
 
+// Typing character by character re-renders the whole RegisterStudioPage (watch() on 7 fields) on every
+// keystroke — ~6 s for a 17-character studio name in jsdom, and the file's step-2 tests kept timing out.
+// fill() clicks the field and pastes the value: one change event, the same end state. Real typing stays
+// where per-keystroke behaviour is what's tested (slug auto-generation).
+async function fill(user: ReturnType<typeof userEvent.setup>, el: HTMLElement, text: string) {
+  await user.click(el);
+  await user.paste(text);
+}
+
 async function fillStep1(user: ReturnType<typeof userEvent.setup>, studioName = "Ink & Soul Studio") {
-  await user.type(screen.getByLabelText(/studio name/i), studioName);
-  await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
-  await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+  await fill(user, screen.getByLabelText(/studio name/i), studioName);
+  await fill(user, screen.getByLabelText(/business tax id/i), "L01234567A");
+  await fill(user, screen.getByLabelText(/street address/i), "Rua Central 5");
   await user.click(screen.getByTestId("mock-location-picker"));
 }
 
@@ -259,7 +268,7 @@ describe("RegisterStudioPage — step 1", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    await fill(user, screen.getByLabelText(/studio name/i), "My Studio");
 
     expect(screen.getByText(/tattooos\.co\//i)).toBeInTheDocument();
   });
@@ -277,7 +286,7 @@ describe("RegisterStudioPage — step 1", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    await fill(user, screen.getByLabelText(/studio name/i), "My Studio");
     // Do NOT pick a location
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -289,7 +298,7 @@ describe("RegisterStudioPage — step 1", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
+    await fill(user, screen.getByLabelText(/studio name/i), "My Studio");
     await user.click(screen.getByTestId("mock-location-picker"));
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -302,8 +311,8 @@ describe("RegisterStudioPage — step 1", () => {
       const user = userEvent.setup();
       renderPage();
 
-      await user.type(screen.getByLabelText(/studio name/i), "My Studio");
-      await user.type(screen.getByLabelText(/business tax id/i), badNipt);
+      await fill(user, screen.getByLabelText(/studio name/i), "My Studio");
+      await fill(user, screen.getByLabelText(/business tax id/i), badNipt);
       await user.click(screen.getByTestId("mock-location-picker"));
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -315,8 +324,8 @@ describe("RegisterStudioPage — step 1", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText(/studio name/i), "My Studio");
-    await user.type(screen.getByLabelText(/business tax id/i), "L01234567A");
+    await fill(user, screen.getByLabelText(/studio name/i), "My Studio");
+    await fill(user, screen.getByLabelText(/business tax id/i), "L01234567A");
     await user.click(screen.getByTestId("mock-location-picker"));
     await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -339,7 +348,7 @@ describe("RegisterStudioPage — step 1", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    await fill(user, screen.getByLabelText(/street address/i), "Rua Central 5");
     // "Pick location" mock fires streetAddress: "" — simulates a rural pin drop.
     await user.click(screen.getByTestId("mock-location-picker"));
 
@@ -411,9 +420,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "short");
-    await user.type(screen.getByLabelText(/confirm password/i), "short");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "short");
+    await fill(user, screen.getByLabelText(/confirm password/i), "short");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
@@ -424,9 +433,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "Different1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "Different1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
@@ -437,9 +446,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
@@ -450,9 +459,9 @@ describe("RegisterStudioPage — step 2", () => {
     const store = renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
@@ -468,9 +477,9 @@ describe("RegisterStudioPage — step 2", () => {
     const store = renderPage("/register?ref=PROMO50");
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
@@ -491,9 +500,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
@@ -515,9 +524,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
@@ -539,9 +548,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     await screen.findByTestId("dashboard");
@@ -560,9 +569,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText("Slug already taken.")).toBeInTheDocument();
@@ -577,9 +586,9 @@ describe("RegisterStudioPage — step 2", () => {
     renderPage();
 
     await advanceToStep2(user);
-    await user.type(screen.getByLabelText(/^email$/i), "owner@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/^email$/i), "owner@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /register/i }));
 
     expect(await screen.findByText(/unable to reach the server/i)).toBeInTheDocument();
@@ -672,11 +681,11 @@ describe("RegisterStudioPage — solo artist mode", () => {
     renderPage();
 
     await switchToSoloMode(user);
-    await user.type(screen.getByLabelText(/first name/i), "Jane");
-    await user.type(screen.getByLabelText(/last name/i), "Doe");
-    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "Different1!");
+    await fill(user, screen.getByLabelText(/first name/i), "Jane");
+    await fill(user, screen.getByLabelText(/last name/i), "Doe");
+    await fill(user, screen.getByLabelText(/^email$/i), "jane@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "Different1!");
     await user.click(screen.getByRole("button", { name: /create my account/i }));
 
     expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
@@ -687,11 +696,11 @@ describe("RegisterStudioPage — solo artist mode", () => {
     const store = renderPage();
 
     await switchToSoloMode(user);
-    await user.type(screen.getByLabelText(/first name/i), "Jane");
-    await user.type(screen.getByLabelText(/last name/i), "Doe");
-    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/first name/i), "Jane");
+    await fill(user, screen.getByLabelText(/last name/i), "Doe");
+    await fill(user, screen.getByLabelText(/^email$/i), "jane@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /create my account/i }));
 
     await screen.findByTestId("dashboard");
@@ -715,11 +724,11 @@ describe("RegisterStudioPage — solo artist mode", () => {
     renderPage();
 
     await switchToSoloMode(user);
-    await user.type(screen.getByLabelText(/first name/i), "Jane");
-    await user.type(screen.getByLabelText(/last name/i), "Doe");
-    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/first name/i), "Jane");
+    await fill(user, screen.getByLabelText(/last name/i), "Doe");
+    await fill(user, screen.getByLabelText(/^email$/i), "jane@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /create my account/i }));
 
     await screen.findByTestId("dashboard");
@@ -738,11 +747,11 @@ describe("RegisterStudioPage — solo artist mode", () => {
     renderPage();
 
     await switchToSoloMode(user);
-    await user.type(screen.getByLabelText(/first name/i), "Jane");
-    await user.type(screen.getByLabelText(/last name/i), "Doe");
-    await user.type(screen.getByLabelText(/^email$/i), "jane@test.com");
-    await user.type(screen.getByLabelText(/^password$/i), "ValidPass1!");
-    await user.type(screen.getByLabelText(/confirm password/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/first name/i), "Jane");
+    await fill(user, screen.getByLabelText(/last name/i), "Doe");
+    await fill(user, screen.getByLabelText(/^email$/i), "jane@test.com");
+    await fill(user, screen.getByLabelText(/^password$/i), "ValidPass1!");
+    await fill(user, screen.getByLabelText(/confirm password/i), "ValidPass1!");
     await user.click(screen.getByRole("button", { name: /create my account/i }));
 
     expect(await screen.findByText("Email already registered.")).toBeInTheDocument();
