@@ -56,6 +56,31 @@ describe("OnboardingTour", () => {
     spy.mockRestore();
   });
 
+  it("renders into <body>, outside the header's stacking context, and stays clickable over a modal layer", async () => {
+    // On mobile the tour used to sit inside the z-20 sticky header, behind the open nav drawer (z-50).
+    renderTour([{ targetSelector: '[data-tour="target-a"]', title: "Step 1", body: "Body 1" }]);
+    const dialog = await screen.findByRole("dialog", { name: "Step 1" });
+    const root = dialog.closest("[data-onboarding-tour]") as HTMLElement;
+    expect(root).not.toBeNull();
+    expect(root.parentElement).toBe(document.body);
+    expect(root.style.pointerEvents).toBe("auto");
+  });
+
+  it("keeps the popover on screen when the target is taller than the screen", async () => {
+    // e.g. the Studio hours card on a phone: no room below or above it.
+    const spy = vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+      top: 10, left: 10, right: 380, bottom: 1400, width: 370, height: 1390, x: 10, y: 10,
+      toJSON: () => ({}),
+    } as DOMRect);
+    renderTour([{ targetSelector: '[data-tour="target-a"]', title: "Tall", body: "Body" }]);
+
+    const dialog = await screen.findByRole("dialog", { name: "Tall" });
+    const top = parseFloat(dialog.style.top);
+    expect(top).toBeLessThanOrEqual(window.innerHeight - 240 - 8);
+    expect(top).toBeGreaterThanOrEqual(8);
+    spy.mockRestore();
+  });
+
   it("skips a step whose selector never resolves and advances to the next", async () => {
     const steps: TourStep[] = [
       { targetSelector: '[data-tour="missing"]', title: "Missing", body: "Never appears" },

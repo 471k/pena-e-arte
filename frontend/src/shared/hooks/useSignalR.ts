@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
+import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { designsApi } from "@/features/designs/designsApi";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
@@ -16,9 +17,8 @@ export function useSignalR(studioId: string | null | undefined) {
   useEffect(() => {
     if (!studioId || !token) return;
 
-    // In dev the Vite proxy doesn't reliably forward WebSocket upgrades for SignalR,
-    // so connect directly to the backend. In production the hubs are on the same origin.
-    const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
+    // Direct to the local backend only for a dev browser on this machine; relative otherwise (see hubBaseUrl).
+    const hubBase = hubBaseUrl();
 
     function buildConnection(path: string) {
       return createHubConnection(`${hubBase}${path}`, token!);
