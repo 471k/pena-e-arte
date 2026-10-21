@@ -128,7 +128,7 @@ export function OwnerLayout() {
   useSignalR(tenantId);
   useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep } = useNavShell();
+  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();
@@ -246,7 +246,7 @@ export function OwnerLayout() {
             <ArtistModeSwitcher artistId={myArtist.id} />
           </div>
         )}
-        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
+        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <Button
@@ -259,7 +259,7 @@ export function OwnerLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} />
+          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
           <MessagesNavBadge />
           <StudioJoinInviteBell enabled={!!studio?.isSolo} />
           <NotificationBell />

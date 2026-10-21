@@ -74,7 +74,7 @@ export function ClientLayout() {
   const tenantId  = useAppSelector((s) => s.auth.tenantId);
   useSignalR(tenantId);
   useChatHub();
-  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep } = useNavShell();
+  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
 
   function handleLogout() {
     dispatch(logout());
@@ -91,10 +91,10 @@ export function ClientLayout() {
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
 
-        <NavDrawer sections={NAV_SECTIONS} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
+        <NavDrawer sections={NAV_SECTIONS} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} />
+          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
           <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
