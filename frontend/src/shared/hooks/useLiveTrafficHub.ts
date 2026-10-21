@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
+import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
 import { platformApi } from "@/features/platform/platformApi";
 import type { LiveTrafficSnapshotResponse } from "@/features/platform/platform.types";
 
@@ -27,13 +28,8 @@ export function useLiveTrafficHub(enabled: boolean): {
   useEffect(() => {
     if (!active) return;
 
-    // Connecting directly to the backend (bypassing Vite's dev proxy) is deliberate for real
-    // local dev — see useSignalR.ts's note that the proxy doesn't reliably forward WebSocket
-    // upgrades. But "localhost:5078" only means anything when the browser and the dev server
-    // are the same machine; a remote client (e.g. testing through a Cloudflare Tunnel to a
-    // public hostname) needs a relative URL instead, routed through the proxy on this machine.
-    const isLocalDevBrowser = import.meta.env.DEV && window.location.hostname === "localhost";
-    const hubBase = isLocalDevBrowser ? "http://localhost:5078" : "";
+    // Direct to the local backend only for a dev browser on this machine; relative otherwise (see hubBaseUrl).
+    const hubBase = hubBaseUrl();
 
     const connection = createHubConnection(`${hubBase}/hubs/traffic`, token!);
 
