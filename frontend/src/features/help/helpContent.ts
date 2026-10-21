@@ -1174,7 +1174,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Lost your Key Secret? POK only shows it once. Create a new API key in POK, reconnect here with the new values, then delete the old key in POK.",
       "If connecting says our secure key store is temporarily unavailable, nothing was saved — wait a few minutes and connect again. While that lasts, clients see card payments as temporarily unavailable and can still pay in cash; your stored keys aren't affected.",
       "When you click \"Connect\", TattooOS first checks your Key ID and Key Secret with POK (\"Checking with POK…\"). If POK doesn't accept them, nothing is saved — your current connection, if any, stays as it was — and you see what to do. Keys from POK's test system and from its live system aren't interchangeable.",
-      "The Merchant ID isn't checked yet — copy it from the same API key window as the two keys, or card payments fail at checkout.",
+      "TattooOS also checks that the Merchant ID belongs to those keys. If it doesn't, nothing is saved and you're asked to copy the Merchant ID from the same API key window as the two keys.",
       "If connecting says TattooOS couldn't reach POK, nothing was saved — try again in a few minutes.",
       "POK Business may open in Albanian: E-payments is \"Pagesat Online\", and you can switch the language at the bottom of the left menu.",
       "Treat the Key Secret like a password: don't take a screenshot of the window that shows it or send it to anyone. If it was shared, create a new key and delete the old one.",
