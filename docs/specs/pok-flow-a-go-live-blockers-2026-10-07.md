@@ -172,6 +172,16 @@ needed a reconnect.
   fires"; `docs/infra/alerting-runbook.md` lists the rule; ADR-0002 records the resolution.
 - Help + manual: the owner's connect-POK tip for the new 503.
 
+**Reopened 2026-10-21 — the app's own token (hard blocker until Phi replaces it):** the production
+API's Vault token was rejected ("invalid token", 403 on `lookup-self`) — a 30-day periodic token from
+7 Sep that nothing renewed, so it expired around 7 Oct while `/sys/health` kept saying healthy and no
+alert fired. Its policy was also read-only, but connecting POK writes the studio's keys. Neither showed
+because card payments are off in production and no studio has connected there. Fixed in code:
+`VaultHealthCheckJob` now looks the token up (403 → alert), renews it once under half its period is
+left, and checks its permissions on the studios' POK-key path with `capabilities-self` (missing →
+alert). **Phi:** apply the new `tattooos-app` policy and issue a new token (runbook, "Replace the app's
+token"). Until then the production alert fires every 5 minutes, which is correct.
+
 **Still for Phi:** keep three of the five unseal key shares reachable for whoever is on call; after the
 merge, one real alert test is worthwhile (e.g. during a quiet window, restart the Vault pod, confirm the
 email arrives within ~6 minutes, unseal, confirm it resolves). Auto-unseal stays an option if restarts
