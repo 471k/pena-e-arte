@@ -12,3 +12,15 @@ metadata:
 data:
   GeoIp__DatabasePath: "/data/geoip/GeoLite2-City.mmdb"
   GeoIp__AsnDatabasePath: "/data/geoip/GeoLite2-ASN.mmdb"
+  # POK card deposits — THE GO-LIVE SWITCH (blockers doc C-2 + C-13). These three values are what
+  # production runs today, written out so going live is a reviewed change to these lines only:
+  #   Pok__BaseUrl                    "https://api.pokpay.io"
+  #   Pok__WebhookCallbackBaseUrl     "https://app.tattooos.co"
+  #   Payments__CardDepositsEnabled   "true"
+  # Change them only on Phi's explicit go and in two deploys (docs/infra/pok-go-live-runbook.md): first
+  # the host and webhook, then card deposits on together with the "Connect POK" tour step. POK keys are
+  # per environment: studios connected against POK staging must reconnect with production keys. Once
+  # card deposits have been on, never point Pok__BaseUrl back at staging; turn card deposits off instead.
+  Pok__BaseUrl: "https://api-staging.pokpay.io"
+  Pok__WebhookCallbackBaseUrl: ""
+  Payments__CardDepositsEnabled: "false"

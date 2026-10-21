@@ -12,7 +12,7 @@ for go-live.** The blocking items below must be decided or built first.
 | Item | Owner | Blocks go-live? | Status after the gate | Next action |
 |---|---|---|---|---|
 | C-1 Staging Vault | Phi (infra) | No (staging parity only) | Open — deployed staging has no Vault at all (`cd.yml` leaves `Vault__Address` unset on purpose), so connecting POK or taking a card deposit on staging.tattooos.co can't work; every POK test ran on the local stack | Phi decides: a second manually-unsealed Vault, or a dev-mode one that forgets the keys on every restart |
-| C-2 POK host + webhook per environment | Phi | **Yes — this is the switch** | Open (production still calls POK staging) | Ship staging config any time; production only at go-live with C-11/C-13 |
+| C-2 POK host + webhook per environment | Phi | **Yes — this is the switch** | Open (production still calls POK staging). **Prepared 2026-10-21:** both overlays now spell out `Pok__BaseUrl`, `Pok__WebhookCallbackBaseUrl` and `Payments__CardDepositsEnabled` (production unchanged; staging gets its webhook address) | Go live in two deploys per `docs/infra/pok-go-live-runbook.md`: host + webhook first, card deposits on second |
 | C-3 Gift-card / package card purchases | Phi (product) | No (separate flow) | Open, not tested by the gate | Decide option (a) hide or (b) build |
 | C-4 When a deposit is charged | Phi + Finance + Legal | **Yes, if holds don't last** | Holds survive day 2 (T9 captured 26 h after authorisation); day 8 pending (T9b, from 2026-10-22) | Decide (a)/(b)/(c); Help now says "charged by the studio, usually at your appointment" |
 | C-5 Webhook fan-out | Engineering | No (before real volume) | **Debounced** (PR #265, 3c0576d3, live 2026-10-21): POK sends each webhook 3 times in ~3 s (staging 17–18 Oct); the first trigger marks a 10 s Redis window and schedules ONE reconciliation run at its end, later triggers in the window are skipped (the run starts after them); Redis down → run at once as before. The webhook stays rate-limited ("billing") | Later: re-check only the order named in the webhook (needs a per-payment reconciliation path) |
@@ -21,9 +21,9 @@ for go-live.** The blocking items below must be decided or built first.
 | C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | **Done** (PR #249; real alert test passed 2026-10-16): 503 vs 422 split, connect-POK 503, 5-minute Vault health probe + `vault-unavailable` alert, runbook. **Reopened and resolved 2026-10-21:** the app's own Vault token had expired and its policy was read-only — the probe now checks, renews and permission-checks the token (PR #274), and Phi issued a new token with the write policy | Phi: keep the unseal key shares reachable |
 | C-9 Saved-card tokenisation | Engineering | No (Saved card tab must stay unused) | Open, not tested by the gate | Separate prompt |
 | C-10 "Stripe PI" labels | Engineering | No | **Done** (PR #266, 6e626082, live 2026-10-21): the payment page labels the id "POK order"; Help + manual say where to look it up in POK Business | None |
-| C-11 Production first-transaction protocol | Phi | **Yes** | Not started | Run after C-2, C-8, C-13 |
+| C-11 Production first-transaction protocol | Phi | **Yes** | Not started; the minimum test list is in `docs/infra/pok-go-live-runbook.md` (step 2) | Run right after card deposits are switched on |
 | C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; a partial refund returns the 2.5 % share; a full refund, or partial refunds adding up to the full amount, return the whole fee; display rounding half-up per line) — Help + manual now explain them to owners and clients (2026-10-16) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
-| C-13 Kill switch + owner tour step | Engineering | **Yes** | **Kill switch built** (branch `feat/card-deposits-kill-switch`): `Payments:CardDepositsEnabled`, off unless set; tour step still to ship with go-live | At go-live: set `Payments__CardDepositsEnabled=true` for production together with C-2, and ship the "Connect POK" tour step in that change |
+| C-13 Kill switch + owner tour step | Engineering | **Yes** | **Kill switch built** (PR #248): `Payments:CardDepositsEnabled`, off unless set; tour step ready as draft PR #278 | At go-live: set `Payments__CardDepositsEnabled: "true"` in the production overlay in PR #278, after the C-2 host switch (runbook step 2) |
 | C-14 Several partial refunds | Engineering | No | **Done** (PR #264, 69d043d5, live 2026-10-21): refunds allowed until the refunded total reaches the amount ("Refund more — … left"); `RefundedAmount` accumulates; the deposit turns Refunded when the total is reached; the client's refund email/SMS now state the amount of that refund (they always said the whole payment). **POK allows several** — proven 2026-10-16 (R1) | None |
 | C-15 Tell the owner when a held deposit is lost | Engineering | No | Open | Owner notification |
 | C-16 Cancellation side effects before provider call | — | — | **Done** (folded into B3, a58b229b) | None |
@@ -51,6 +51,14 @@ therefore ran on the local stack with dev-mode Vault.
 Unchanged. Gate note: with `Pok__WebhookCallbackBaseUrl` set, POK called the webhook within seconds
 of every authorisation (T1, T5a, T5b, T6, T9, T9b, T1E). Staging value: `https://staging.tattooos.co`;
 production: `https://app.tattooos.co` — production only at go-live.
+**Prepared 2026-10-21:** the values live in `k8s/overlays/{production,staging}/api-config-patch.yaml`.
+Production keeps today's values (POK staging host, no webhook, card deposits off), written out so the
+switch is a reviewed change to those lines. Staging now sends POK its webhook address; card deposits
+stay off there until it has a Vault (C-1). How to switch, check and roll back:
+`docs/infra/pok-go-live-runbook.md`. Two points from writing it: studios that saved keys on production
+saved POK *staging* keys and must reconnect after the switch, and after card deposits are on, the
+emergency step is the kill switch only, never pointing production back at POK staging (held deposits
+would become unreachable).
 
 ## C-3 — Gift-card and package card purchases (product decision)
 Unchanged; not tested by the gate (out of scope).
@@ -198,7 +206,8 @@ Unchanged; the gate never used the Saved card tab.
 **Done 2026-10-21 (PR #266):** "Stripe PI" → "POK order".
 
 ## C-11 — Production first-transaction protocol (**yes**)
-Unchanged.
+The minimum before inviting a real studio is in `docs/infra/pok-go-live-runbook.md`, step 2; the full
+list (PT1–PT13) is kept with the POK email draft outside this repo.
 
 ## C-12 — Fees and settlement reconciliation (Finance)
 **Measured on POK staging, 2026-10-14** (merchant-scoped order reads, the Transactions page and both account
@@ -255,10 +264,12 @@ observable with sandbox cards (UNKNOWN).
 - the owner's "Card deposits — POK" card says "Card deposits aren't switched on in TattooOS yet" and
   still lets the owner link an account (Help + manual tip added).
 
-**Still to do at go-live:** set `Payments__CardDepositsEnabled=true` for production in the same change
-as C-2 (k8s production overlay or secret), and ship the dedicated "Connect POK" onboarding-tour step
-(`data-tour="owner-pok-card"` on `PokSettingsCard`, a step with `route: "/studios/me"`) in that change.
-To switch card payments off again in an emergency: set it back to `false` and redeploy.
+**Still to do at go-live:** set `Payments__CardDepositsEnabled: "true"` in the production overlay and
+ship the dedicated "Connect POK" onboarding-tour step (`data-tour="owner-pok-card"` on
+`PokSettingsCard`, a step with `route: "/studios/me"`; ready as draft PR #278) in one change, after
+the C-2 host switch has been deployed (`docs/infra/pok-go-live-runbook.md`, step 2).
+To switch card payments off again in an emergency: the runbook's "Emergency" section (patch the
+ConfigMap and restart the API in minutes, then the same change in the overlay).
 
 ## C-14 — Several partial refunds per payment
 **Done 2026-10-21 (PR #264):** see the table row. What it fixed, as found:
