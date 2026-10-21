@@ -288,6 +288,20 @@ export function PaymentDetailPage() {
             </Button>
           )}
 
+          {/* C-15: a failed card payment (incl. a hold POK ended) can be asked for again, by card link
+              or as cash — the API reuses this row for the new payment. */}
+          {payment.status === PaymentStatus.Failed && canOwner && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/payments/new?appointmentId=${appointmentId}`)}
+              className="gap-1.5"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              New payment
+            </Button>
+          )}
+
           {payment.status === PaymentStatus.CashPending && canOwner && isCash && (
             <Button
               size="sm"

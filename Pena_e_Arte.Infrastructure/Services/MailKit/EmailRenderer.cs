@@ -39,6 +39,9 @@ public class EmailRenderer : IEmailRenderer
     private static readonly string _paymentRefundedTemplate =
         LoadEmbeddedTemplate("PaymentRefunded.html");
 
+    private static readonly string _depositHoldLostTemplate =
+        LoadEmbeddedTemplate("DepositHoldLost.html");
+
     private static readonly string _studioRegisteredAdminTemplate =
         LoadEmbeddedTemplate("StudioRegisteredAdmin.html");
 
@@ -247,6 +250,26 @@ public class EmailRenderer : IEmailRenderer
         };
 
         return TemplateRenderer.Render(_paymentRefundedTemplate, vars);
+    }
+
+    public string RenderDepositHoldLost(
+        string clientFullName,
+        string amountFormatted,
+        string appointmentDate,
+        string paymentUrl,
+        bool showBranding)
+    {
+        Dictionary<string, string> vars = new()
+        {
+            // The client typed their own name; encode it so it can't add markup to the owner's email.
+            ["client_full_name"] = System.Net.WebUtility.HtmlEncode(clientFullName),
+            ["amount_formatted"] = amountFormatted,
+            ["appointment_date"] = appointmentDate,
+            ["payment_url"] = paymentUrl,
+            ["show_branding"] = showBranding.ToString().ToLowerInvariant(),
+        };
+
+        return TemplateRenderer.Render(_depositHoldLostTemplate, vars);
     }
 
     public string RenderAftercare(

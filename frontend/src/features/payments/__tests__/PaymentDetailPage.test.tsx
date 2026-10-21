@@ -64,10 +64,19 @@ const PAYMENT_PENDING: PaymentResponse = {
   status: "Pending",
 };
 
+// A held deposit whose hold POK ended before it was charged (C-15) — the reconciliation job marks it Failed.
+const PAYMENT_HOLD_LOST: PaymentResponse = {
+  ...PAYMENT_CARD_CAPTURED,
+  id:     "pay-005",
+  appointmentId: "appt-005",
+  status: "Failed",
+};
+
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
   http.get("http://localhost/api/v1/payments/appointment/:appointmentId", ({ params }) => {
+    if (params.appointmentId === "appt-005") return HttpResponse.json(PAYMENT_HOLD_LOST);
     if (params.appointmentId === "appt-001") return HttpResponse.json(PAYMENT_CARD_CAPTURED);
     if (params.appointmentId === "appt-002") return HttpResponse.json(PAYMENT_CARD_PAID);
     if (params.appointmentId === "appt-003") return HttpResponse.json(PAYMENT_CASH_PENDING);
@@ -157,6 +166,29 @@ describe("PaymentDetailPage", () => {
     renderPage("appt-999");
     await user.click(await screen.findByRole("button", { name: /create payment/i }));
     expect(screen.getByTestId("new-page")).toBeInTheDocument();
+  });
+
+  // ── Failed payment (incl. a hold POK ended, C-15) ───────────────────────────
+
+  it("a failed payment says nothing was charged and offers the owner a new payment", async () => {
+    const user = userEvent.setup();
+    renderPage("appt-005");
+    expect(await screen.findByText(/nothing was charged: the card payment didn't go through, or its hold ended/i))
+      .toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /new payment/i }));
+    expect(screen.getByTestId("new-page")).toBeInTheDocument();
+  });
+
+  it("an artist does not get the new-payment button on a failed payment", async () => {
+    renderPage("appt-005", Role.Artist);
+    await screen.findByText(/nothing was charged/i);
+    expect(screen.queryByRole("button", { name: /new payment/i })).not.toBeInTheDocument();
+  });
+
+  it("a held deposit does not offer a new payment", async () => {
+    renderPage("appt-001");
+    await screen.findByRole("button", { name: /capture deposit/i });
+    expect(screen.queryByRole("button", { name: /new payment/i })).not.toBeInTheDocument();
   });
 
   // ── Detail rendering ────────────────────────────────────────────────────────

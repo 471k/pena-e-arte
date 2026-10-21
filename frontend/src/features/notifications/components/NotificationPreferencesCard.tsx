@@ -10,7 +10,10 @@ import {
 } from "../notificationsApi";
 import type { NotificationChannel, NotificationPreferenceItem, NotificationType } from "../notification.types";
 
-const NOTIFICATION_TYPES: { value: NotificationType; label: string }[] = [
+const CHANNELS: NotificationChannel[] = ["Email", "Sms"];
+
+/** `channels` lists the ones the event is actually sent on; the others show a dash, not a dead toggle. */
+const NOTIFICATION_TYPES: { value: NotificationType; label: string; channels?: NotificationChannel[] }[] = [
   { value: "AppointmentCreated",    label: "Appointment created" },
   { value: "AppointmentConfirmed",  label: "Appointment confirmed" },
   { value: "AppointmentCancelled",  label: "Appointment cancelled" },
@@ -20,9 +23,13 @@ const NOTIFICATION_TYPES: { value: NotificationType; label: string }[] = [
   { value: "ConsentFormSigned",     label: "Consent form signed" },
   { value: "DesignReviewed",        label: "Design reviewed" },
   { value: "MessageReceived",       label: "New message received" },
+  // C-15: to the owner only, by email, when POK ends a card hold before the deposit was charged.
+  { value: "DepositHoldLost",       label: "Card deposit hold ended (to you)", channels: ["Email"] },
 ];
 
-const CHANNELS: NotificationChannel[] = ["Email", "Sms"];
+function channelsOf(type: NotificationType): NotificationChannel[] {
+  return NOTIFICATION_TYPES.find((t) => t.value === type)?.channels ?? CHANNELS;
+}
 
 const CHANNEL_LABELS: Record<NotificationChannel, string> = {
   Email: "Email",
@@ -60,13 +67,14 @@ export function NotificationPreferencesCard() {
 
   function toggle(type: NotificationType, channel: NotificationChannel) {
     const key = prefKey(type, channel);
-    setLocal((prev) => ({ ...prev, [key]: !prev[key] }));
+    // Unsaved preferences show as on (`?? true` below), so flip from that, not from undefined.
+    setLocal((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }));
     setDirty(true);
   }
 
   async function handleSave() {
     const preferences: NotificationPreferenceItem[] = NOTIFICATION_TYPES.flatMap(({ value: type }) =>
-      CHANNELS.map((channel) => ({
+      channelsOf(type).map((channel) => ({
         type,
         channel,
         isEnabled: local[prefKey(type, channel)] ?? true,
@@ -120,11 +128,21 @@ export function NotificationPreferencesCard() {
                     <td className="px-3 py-2.5 text-foreground">{label}</td>
                     {CHANNELS.map((channel) => (
                       <td key={channel} className="px-3 py-2.5 text-center">
-                        <ToggleSwitch
-                          checked={local[prefKey(type, channel)] ?? true}
-                          onChange={() => toggle(type, channel)}
-                          aria-label={`${label} via ${CHANNEL_LABELS[channel]}`}
-                        />
+                        {channelsOf(type).includes(channel) ? (
+                          <ToggleSwitch
+                            checked={local[prefKey(type, channel)] ?? true}
+                            onChange={() => toggle(type, channel)}
+                            aria-label={`${label} via ${CHANNEL_LABELS[channel]}`}
+                          />
+                        ) : (
+                          <span
+                            className="text-muted-foreground"
+                            title={`Not sent by ${CHANNEL_LABELS[channel]}`}
+                            aria-label={`${label}: not sent by ${CHANNEL_LABELS[channel]}`}
+                          >
+                            —
+                          </span>
+                        )}
                       </td>
                     ))}
                   </tr>

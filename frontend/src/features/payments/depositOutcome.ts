@@ -39,7 +39,9 @@ export function describeDeposit(p: DepositFields): DepositOutcome {
       return { kind: "cashPending", ownerLabel: "Cash pending", ownerDetail: `${money(p.amount)} to collect in cash`,
         clientLabel: "Paying in cash at the studio", clientDetail: null, charged: false };
     case PaymentStatus.Failed:
-      return { kind: "failed", ownerLabel: "Failed", ownerDetail: "The payment didn't go through",
+      // Also what a held deposit becomes when POK ends the hold before it is charged (C-15).
+      return { kind: "failed", ownerLabel: "Failed",
+        ownerDetail: "Nothing was charged: the card payment didn't go through, or its hold ended",
         clientLabel: "Payment didn't go through", clientDetail: null, charged: false };
     case PaymentStatus.Captured:
       return { kind: "onHold", ownerLabel: "On hold",

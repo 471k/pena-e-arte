@@ -89,4 +89,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs, IConnectionMultip
 
     public void EnqueueWebhookDelivery(Guid studioId, string eventType, Guid resourceId) =>
         backgroundJobs.Enqueue<WebhookDeliveryJob>(j => j.DeliverAsync(studioId, eventType, resourceId, default));
+
+    public void EnqueueDepositHoldLostNotification(Guid paymentId) =>
+        backgroundJobs.Enqueue<DepositHoldLostNotificationJob>(j => j.ExecuteAsync(paymentId, default));
 }

@@ -1217,7 +1217,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Track deposits and payments",
     route: "/payments",
-    keywords: ["payment list", "cash pending", "paid", "capture", "on hold", "refund", "authorised", "held deposit", "partly refunded", "released", "kept", "receipt"],
+    keywords: ["payment list", "cash pending", "paid", "capture", "on hold", "refund", "authorised", "held deposit", "partly refunded", "released", "kept", "receipt", "failed", "hold ended", "hold expired"],
     summary: "Lists every payment recorded in your studio — card and cash — so you can track what's been paid, is pending, or refunded.",
     steps: [
       "Go to Payments to see the list.",
@@ -1226,14 +1226,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"View\" on any row to open its details, or \"Load more\" to see older payments.",
     ],
     tips: [
-      "Card deposit statuses: Pending — waiting for the client to enter their card. On hold — the client's card is authorised and the amount is reserved, but not charged yet. Paid — charged. Partly refunded — you refunded part of it; the payment shows how much you kept and how much went back. Refunded — the whole amount went back to the client. Released — the hold was let go, nothing was charged. Kept / Partly kept — the client cancelled late and your cancellation policy kept all or part of it (any rest was released). Failed — the card payment didn't go through or the hold expired; the client can pay again.",
+      "Card deposit statuses: Pending — waiting for the client to enter their card. On hold — the client's card is authorised and the amount is reserved, but not charged yet. Paid — charged. Partly refunded — you refunded part of it; the payment shows how much you kept and how much went back. Refunded — the whole amount went back to the client. Released — the hold was let go, nothing was charged. Kept / Partly kept — the client cancelled late and your cancellation policy kept all or part of it (any rest was released). Failed — the card payment didn't go through or the hold ended; nothing was charged, and you can ask for the deposit again.",
       "Each payment shows a line under its amount saying what happened to the money, e.g. \"1,000 kept · 234 refunded\". The \"Refunded or released\" filter shows every payment where some or all of the money went back or was never charged.",
       "Download receipt appears only when money was actually charged or collected — a released hold has no receipt.",
       "To charge a deposit that's on hold, open the payment and click \"Capture deposit\". Completing the appointment, or marking it a no-show, captures it automatically.",
       "If a client cancels late while their deposit is on hold, TattooOS charges only the part your cancellation policy keeps and releases the rest. If you cancel the appointment, the hold is released in full.",
       "To refund a card payment, open a Paid payment, click Refund, enter an amount for a partial refund (or leave it blank for the full amount) and click Confirm refund. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click \"Refund more\" — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see \"Where card deposit money goes\".",
       "If a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.",
-      "If POK reports that a held deposit's authorisation expired or was cancelled, the payment shows Failed and the client can pay again.",
+      "If POK ends a deposit's hold before you charged it (the authorisation expired or was cancelled), the payment shows Failed and can't be charged any more. TattooOS emails you and adds a notification, unless the appointment was cancelled anyway. To keep the deposit, open the payment and click \"New payment\" to send the client a new card payment link or to record that they'll pay in cash. Charging held deposits at the appointment avoids this.",
       "A card payment's details show its \"POK order\" ID — search for it in POK Business (E-payments → E-orders) to see the same payment, its fee and its refunds there.",
     ],
     relatedArticleIds: ["owner-card-money-flow", "owner-connect-pok", "owner-payment-create"],
@@ -1444,7 +1444,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Review sent notifications",
     route: "/notifications",
-    keywords: ["email log", "sms log", "delivery status"],
+    keywords: ["email log", "sms log", "delivery status", "notification preferences", "turn off notifications", "hold ended"],
     summary: "A log of every email and SMS notification your studio has sent to clients, showing whether each one was delivered successfully.",
     steps: [
       "Go to Notifications to see the full log.",
@@ -1452,6 +1452,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Use the From/To date pickers to narrow the log to a date range.",
       "Click any entry to see its full content.",
     ],
+    tips: [
+      "Choose which notifications are sent on the \"Notification preferences\" card in Studio Settings: one switch per event and channel. A dash means that event isn't sent by that channel.",
+      "\"Card deposit hold ended\" goes to you, not the client: an email (and a bell notification) when POK ends a deposit's hold before you charged it, so you can ask for the deposit again.",
+    ],
+    relatedArticleIds: ["owner-payments"],
   },
   {
     id: "owner-billing",
