@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
+import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
 import { messagingApi } from "./messagingApi";
 import type { ChatMessageResponse } from "./messaging.types";
 
@@ -18,7 +19,7 @@ export function useChatHub() {
   useEffect(() => {
     if (!token) return;
 
-    const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
+    const hubBase = hubBaseUrl();
     const connection = createHubConnection(`${hubBase}/hubs/chat`, token!);
 
     // Block bodies required — see useSignalR.ts for why an implicit-return arrow breaks

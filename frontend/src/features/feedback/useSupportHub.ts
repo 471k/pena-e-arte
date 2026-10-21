@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
+import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
 import { feedbackApi } from "./feedbackApi";
 import type { FeedbackMessageResponse } from "./feedback.types";
 
@@ -14,7 +15,7 @@ export function useSupportHub(feedbackReportId: string | null) {
   useEffect(() => {
     if (!feedbackReportId || !token) return;
 
-    const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
+    const hubBase = hubBaseUrl();
     const conn = createHubConnection(`${hubBase}/hubs/support`, token!);
 
     // Block body required — see useSignalR.ts for why an implicit-return arrow breaks
