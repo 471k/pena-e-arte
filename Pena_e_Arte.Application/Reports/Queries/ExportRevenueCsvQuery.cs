@@ -24,6 +24,15 @@ public class ExportRevenueCsvHandler(IAppDbContext db, ICurrentTenant tenant)
 {
     public async Task<string> Handle(ExportRevenueCsvQuery query, CancellationToken ct)
     {
+        string? timezone = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Timezone)
+            .FirstOrDefaultAsync(ct);
+        // Stored instants are UTC; the owner reads the studio's wall-clock time (Help: the timezone
+        // "controls how appointment times are shown in emails, texts, and reports").
+        string Local(DateTime utc) => TimezoneUtils.ToStudioLocalForRules(utc, timezone)
+            .ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
         StringBuilder sb = new();
         sb.Append(CsvUtils.Bom);
         CsvUtils.AppendRow(sb, "Paid At", "Client", "Artist", "Appointment Date", "Amount",
@@ -49,10 +58,10 @@ public class ExportRevenueCsvHandler(IAppDbContext db, ICurrentTenant tenant)
             // is nothing to exclude here, just the right number of decimals per row.
             string amountFormat = "F" + CurrencyCatalog.MinorUnits(p.Currency).ToString(CultureInfo.InvariantCulture);
             CsvUtils.AppendRow(sb,
-                p.PaidAt!.Value.ToString("yyyy-MM-dd HH:mm"),
+                Local(p.PaidAt!.Value),
                 $"{p.Client.FirstName} {p.Client.LastName}",
                 p.Appointment.Artist is null ? "" : $"{p.Appointment.Artist.FirstName} {p.Appointment.Artist.LastName}",
-                p.Appointment.Date.ToString("yyyy-MM-dd HH:mm"),
+                Local(p.Appointment.Date),
                 p.Amount.ToString(amountFormat, CultureInfo.InvariantCulture),
                 p.RetainedAmount().ToString(amountFormat, CultureInfo.InvariantCulture),
                 p.Currency,
