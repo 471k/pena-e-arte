@@ -108,9 +108,20 @@ public static class InfrastructureServiceExtensions
         // negotiate + connect land on the same pod; the frontend avoids that by connecting over
         // WebSockets with skipNegotiation (see frontend/src/shared/signalr/createHubConnection.ts).
         // The prefix keeps SignalR's channels apart from any other pub/sub use of the same Redis.
+        // ConnectionFactory waits (max 5 s) for the connection before the backplane subscribes — see
+        // RedisConnectionWait for the pod-start race this closes ("Not connected to Redis." on every deploy).
         services.AddSignalR()
             .AddStackExchangeRedis(redisConnectionString + ",abortConnect=false", options =>
-                options.Configuration.ChannelPrefix = RedisChannel.Literal("pena-e-arte:signalr"));
+            {
+                options.Configuration.ChannelPrefix = RedisChannel.Literal("pena-e-arte:signalr");
+                options.ConnectionFactory = async writer =>
+                {
+                    IConnectionMultiplexer connection = await ConnectionMultiplexer.ConnectAsync(options.Configuration, writer);
+                    await RedisConnectionWait.WaitUntilConnectedAsync(
+                        connection, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(250));
+                    return connection;
+                };
+            });
 
         // Stripe.net stays for Flow B (billing/subscriptions) only. The Flow-A payment-intent /
         // refund services were removed with the deleted Stripe aggregator payment service.
