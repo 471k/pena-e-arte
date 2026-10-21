@@ -42,24 +42,12 @@ services:
     ports:
       - "8200:8200"
 
-  minio:
-    image: minio/minio
-    container_name: pena_e_arte_minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"   # S3 API — matches CloudflareR2.PublicUrl in appsettings.Development.json
-      - "9001:9001"   # Web console — http://localhost:9001
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # No local object storage on purpose (2026-10-21): the API's S3 client always targets Cloudflare R2
+  # (InfrastructureServiceExtensions.CreateR2S3Config builds https://{AccountId}.r2.cloudflarestorage.com),
+  # so the MinIO service that used to be here was never called — and its minio/minio image is no
+  # longer pullable from Docker Hub (G-7). Local uploads use a dev R2 bucket (CloudflareR2__* in .env).
+  # If a local S3 is ever wanted, the app first needs a configurable ServiceURL; then the
+  # community-maintained, pullable drop-in is pgsty/minio:RELEASE.2026-08-04T00-00-00Z.
 
   # Local observability stack — Prometheus/Loki/Tempo/Grafana, wired to the
   # metrics/traces the API already emits (AddApiOpenTelemetry) and the JSON logs
@@ -266,7 +254,6 @@ services:
 volumes:
   mysql_data:
   redis_data:
-  minio_data:
   prometheus_data:
   loki_data:
   tempo_data:

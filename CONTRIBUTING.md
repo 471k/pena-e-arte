@@ -14,7 +14,7 @@ dotnet test
 # Frontend
 cd frontend && pnpm install && pnpm dev
 
-# Local infra (MySQL, Redis, MinIO, Vault dev-mode, observability)
+# Local infra (MySQL, Redis, Vault dev-mode, observability; file uploads go to a dev R2 bucket)
 docker compose up -d mysql redis            # minimum for tests
 # (see .env.example for the required env vars — copy to .env and fill in)
 ```
