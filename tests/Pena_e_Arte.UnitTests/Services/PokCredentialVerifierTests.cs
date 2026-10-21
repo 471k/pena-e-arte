@@ -10,9 +10,14 @@ using Pena_e_Arte.Infrastructure.Services.Pok;
 
 namespace Pena_e_Arte.UnitTests.Services;
 
-/// <summary>C-7: the owner's POK keys are tested with one login before they are saved.</summary>
+/// <summary>
+/// C-7: the owner's POK keys are tested with one login, and the merchant id with one read of a random order
+/// under it, before anything is saved. Status codes as measured on POK staging, 2026-10-21.
+/// </summary>
 public class PokCredentialVerifierTests
 {
+    private const string LoginOk = """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}""";
+
     private static PokCredentialVerifier CreateSut(FakeHttpMessageHandler handler)
     {
         IHttpClientFactory factory = Substitute.For<IHttpClientFactory>();
@@ -27,32 +32,65 @@ public class PokCredentialVerifierTests
         Content = new StringContent(json, Encoding.UTF8, "application/json"),
     };
 
-    [Fact]
-    public async Task CheckKeysAsync_LoginReturnsAToken_IsValid_AndOnlyCallsLogin()
-    {
-        FakeHttpMessageHandler handler = new(_ => Json(HttpStatusCode.OK,
-            """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""));
+    /// <summary>Login answers <paramref name="login"/>; the merchant read answers <paramref name="merchantRead"/>.</summary>
+    private static FakeHttpMessageHandler Pok(HttpResponseMessage login, HttpStatusCode merchantRead = HttpStatusCode.NotFound) =>
+        new(req => req.RequestUri!.AbsolutePath == "/auth/sdk/login"
+            ? login
+            : Json(merchantRead, """{"message":"x"}"""));
 
-        PokCredentialCheckResult result = await CreateSut(handler).CheckKeysAsync("key-1", "secret-1", default);
+    [Fact]
+    public async Task ValidKeysAndOwnMerchant_IsValid_LoginThenOneReadOnlyOrderLookupUnderThatMerchant()
+    {
+        FakeHttpMessageHandler handler = Pok(Json(HttpStatusCode.OK, LoginOk), HttpStatusCode.NotFound);
+
+        PokCredentialCheckResult result = await CreateSut(handler).CheckAsync("key-1", "secret-1", "merchant-1", default);
 
         result.Should().Be(PokCredentialCheckResult.Valid);
-        handler.Requests.Should().ContainSingle();
+        handler.Requests.Should().HaveCount(2);
         handler.Requests[0].Path.Should().Be("/auth/sdk/login");
         handler.Requests[0].Method.Should().Be(HttpMethod.Post);
         handler.Requests[0].Body.Should().Contain("\"keyId\":\"key-1\"").And.Contain("\"keySecret\":\"secret-1\"");
+        handler.Requests[1].Method.Should().Be(HttpMethod.Get);
+        handler.Requests[1].Path.Should().StartWith("/merchants/merchant-1/sdk-orders/");
+        Guid.TryParse(handler.Requests[1].Path.Split('/')[^1], out _).Should().BeTrue("the probe order id is a random GUID");
+        handler.Requests[1].BearerToken.Should().Be("tok");
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.Forbidden)]   // staging: "Access Forbidden!" for a merchant the keys don't belong to
+    [InlineData(HttpStatusCode.BadRequest)]  // not a merchant id POK accepts
+    public async Task ValidKeysButForeignMerchant_IsMerchantMismatch(HttpStatusCode merchantRead)
+    {
+        FakeHttpMessageHandler handler = Pok(Json(HttpStatusCode.OK, LoginOk), merchantRead);
+
+        (await CreateSut(handler).CheckAsync("key-1", "secret-1", "other", default))
+            .Should().Be(PokCredentialCheckResult.MerchantMismatch);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task ValidKeysButMerchantReadUnanswered_IsUnreachable(HttpStatusCode merchantRead)
+    {
+        FakeHttpMessageHandler handler = Pok(Json(HttpStatusCode.OK, LoginOk), merchantRead);
+
+        (await CreateSut(handler).CheckAsync("key-1", "secret-1", "merchant-1", default))
+            .Should().Be(PokCredentialCheckResult.PokUnreachable);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]  // staging: "Your credentials are incorrect..." (wrong secret or unknown key id)
     [InlineData(HttpStatusCode.Unauthorized)]
     [InlineData(HttpStatusCode.Forbidden)]
     [InlineData(HttpStatusCode.NotFound)]
-    public async Task CheckKeysAsync_PokRefusesTheKeys_IsInvalidKeys(HttpStatusCode status)
+    public async Task PokRefusesTheKeys_IsInvalidKeys_AndTheMerchantIsNotQueried(HttpStatusCode status)
     {
-        FakeHttpMessageHandler handler = new(_ => Json(status, """{"message":"Invalid credentials"}"""));
+        FakeHttpMessageHandler handler = Pok(Json(status, """{"message":"Your credentials are incorrect"}"""));
 
-        (await CreateSut(handler).CheckKeysAsync("key-1", "wrong", default))
+        (await CreateSut(handler).CheckAsync("key-1", "wrong", "merchant-1", default))
             .Should().Be(PokCredentialCheckResult.InvalidKeys);
+        handler.Requests.Should().ContainSingle();
     }
 
     [Theory]
@@ -61,33 +99,44 @@ public class PokCredentialVerifierTests
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.RequestTimeout)]
-    public async Task CheckKeysAsync_PokNotAnswering_IsUnreachable_NotInvalid(HttpStatusCode status)
+    public async Task LoginNotAnswered_IsUnreachable_NotInvalid(HttpStatusCode status)
     {
-        FakeHttpMessageHandler handler = new(_ => Json(status, "{}"));
+        FakeHttpMessageHandler handler = Pok(Json(status, "{}"));
 
-        (await CreateSut(handler).CheckKeysAsync("key-1", "secret-1", default))
+        (await CreateSut(handler).CheckAsync("key-1", "secret-1", "merchant-1", default))
             .Should().Be(PokCredentialCheckResult.PokUnreachable);
     }
 
     [Fact]
-    public async Task CheckKeysAsync_NetworkError_IsUnreachable()
+    public async Task NetworkError_IsUnreachable()
     {
         FakeHttpMessageHandler handler = new(_ => throw new HttpRequestException("no route"));
 
-        (await CreateSut(handler).CheckKeysAsync("key-1", "secret-1", default))
+        (await CreateSut(handler).CheckAsync("key-1", "secret-1", "merchant-1", default))
             .Should().Be(PokCredentialCheckResult.PokUnreachable);
     }
 
     [Fact]
-    public async Task CheckKeysAsync_SuccessWithoutAToken_IsUnreachable_NeverValid()
+    public async Task LoginSuccessWithoutAToken_IsUnreachable_NeverValid()
     {
-        FakeHttpMessageHandler handler = new(_ => Json(HttpStatusCode.OK, """{"data":{}}"""));
+        FakeHttpMessageHandler handler = Pok(Json(HttpStatusCode.OK, """{"data":{}}"""));
 
-        (await CreateSut(handler).CheckKeysAsync("key-1", "secret-1", default))
+        (await CreateSut(handler).CheckAsync("key-1", "secret-1", "merchant-1", default))
             .Should().Be(PokCredentialCheckResult.PokUnreachable);
+        handler.Requests.Should().ContainSingle();
     }
 
-    private sealed record CapturedRequest(string Path, HttpMethod Method, string Body);
+    [Fact]
+    public async Task MerchantIdIsEscapedInThePath()
+    {
+        FakeHttpMessageHandler handler = Pok(Json(HttpStatusCode.OK, LoginOk), HttpStatusCode.NotFound);
+
+        await CreateSut(handler).CheckAsync("key-1", "secret-1", "a/b?c", default);
+
+        handler.Requests[1].RawPath.Should().StartWith("/merchants/a%2Fb%3Fc/sdk-orders/");
+    }
+
+    private sealed record CapturedRequest(string Path, string RawPath, HttpMethod Method, string Body, string? BearerToken);
 
     private sealed class FakeHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {
@@ -96,7 +145,9 @@ public class PokCredentialVerifierTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             string body = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
-            Requests.Add(new CapturedRequest(request.RequestUri!.AbsolutePath, request.Method, body));
+            Requests.Add(new CapturedRequest(
+                request.RequestUri!.AbsolutePath, request.RequestUri.GetComponents(UriComponents.Path, UriFormat.UriEscaped).Insert(0, "/"),
+                request.Method, body, request.Headers.Authorization?.Parameter));
             return respond(request);
         }
     }

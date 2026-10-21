@@ -39,6 +39,11 @@ public class ConnectPokAccountHandler(
     public const string InvalidKeysMessage =
         "POK didn't accept this Key ID and Key Secret. Copy both again from POK Business → E-payments → API Keys and try again. Nothing was saved.";
 
+    /// <summary>C-7: the keys are fine, but POK forbids them for this merchant id (staging answers 403
+    /// "Access Forbidden!" for a merchant the keys don't belong to).</summary>
+    public const string MerchantMismatchMessage =
+        "POK accepted your keys, but this Merchant ID doesn't belong to them. Copy the Merchant ID from the same API key window in POK Business and try again. Nothing was saved.";
+
     /// <summary>C-7: POK couldn't be asked — we never save keys we haven't been able to check.</summary>
     public const string PokUnreachableMessage =
         "We couldn't reach POK to check your keys. Nothing was saved — please try again in a few minutes.";
@@ -48,13 +53,19 @@ public class ConnectPokAccountHandler(
         Studio studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == command.StudioId, ct)
             ?? throw new NotFoundException(nameof(Studio), command.StudioId);
 
-        // Test the keys before anything is written, so a refusal leaves the studio exactly as it was
-        // (including an existing, working connection when the owner is replacing keys).
-        PokCredentialCheckResult check = await verifier.CheckKeysAsync(command.Request.KeyId, command.Request.KeySecret, ct);
-        if (check == PokCredentialCheckResult.InvalidKeys)
-            throw new BusinessRuleViolationException(InvalidKeysMessage);
-        if (check == PokCredentialCheckResult.PokUnreachable)
-            throw new ServiceUnavailableException(PokUnreachableMessage);
+        // Test the keys and the merchant id before anything is written, so a refusal leaves the studio
+        // exactly as it was (including an existing, working connection when the owner is replacing keys).
+        PokCredentialCheckResult check = await verifier.CheckAsync(
+            command.Request.KeyId, command.Request.KeySecret, command.Request.MerchantId, ct);
+        switch (check)
+        {
+            case PokCredentialCheckResult.InvalidKeys:
+                throw new BusinessRuleViolationException(InvalidKeysMessage);
+            case PokCredentialCheckResult.MerchantMismatch:
+                throw new BusinessRuleViolationException(MerchantMismatchMessage);
+            case PokCredentialCheckResult.PokUnreachable:
+                throw new ServiceUnavailableException(PokUnreachableMessage);
+        }
 
         StudioCredentialRef? credentialRef = await db.StudioCredentialRefs
             .FirstOrDefaultAsync(c => c.StudioId == command.StudioId && c.Provider == CredentialProvider.Pok, ct);
