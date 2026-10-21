@@ -48,7 +48,7 @@ export function PokSettingsCard() {
   }
 
   return (
-    <Card>
+    <Card data-tour="owner-pok-card">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <CreditCard className="h-4 w-4" /> Card deposits — POK
