@@ -27,3 +27,9 @@ data:
   # at all. Added 2026-10-02 after the staging reminder job texted a load-test number that was never
   # agreed with its owner. Production does not set this, so it is unrestricted.
   Sms__RestrictToAllowList: "true"
+  # Staging always talks to POK staging; POK calls the webhook through the staging site, whose nginx
+  # forwards /api/ to this API. Card deposits stay off: staging has no Vault (see cd.yml's staging
+  # secret step), so no studio can store POK keys here (blockers doc C-1). Turn them on only once it has one.
+  Pok__BaseUrl: "https://api-staging.pokpay.io"
+  Pok__WebhookCallbackBaseUrl: "https://staging.tattooos.co"
+  Payments__CardDepositsEnabled: "false"
