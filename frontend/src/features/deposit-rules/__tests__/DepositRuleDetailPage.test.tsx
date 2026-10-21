@@ -46,7 +46,10 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
-  http.get("http://localhost/api/v1/deposit-rules/:id", () => HttpResponse.json(RULE)),
+  http.get("http://localhost/api/v1/deposit-rules/defaults", () =>
+    HttpResponse.json({ cancellationWindowHours: 48, refundPercentOnLateCancel: 0 }),
+  ),
+  http.get(`http://localhost/api/v1/deposit-rules/${RULE_ID}`, () => HttpResponse.json(RULE)),
   http.put("http://localhost/api/v1/deposit-rules/:id", () => HttpResponse.json(UPDATED_RULE)),
   http.delete("http://localhost/api/v1/deposit-rules/:id", () => new HttpResponse(null, { status: 204 })),
 );
@@ -101,7 +104,7 @@ describe("DepositRuleDetailPage", () => {
 
   it("shows a not-found message when the rule fetch fails", async () => {
     server.use(
-      http.get("http://localhost/api/v1/deposit-rules/:id", () =>
+      http.get(`http://localhost/api/v1/deposit-rules/${RULE_ID}`, () =>
         HttpResponse.json({ message: "error" }, { status: 404 }),
       ),
     );
@@ -125,7 +128,7 @@ describe("DepositRuleDetailPage", () => {
 
   it("renders a percent rule correctly", async () => {
     server.use(
-      http.get("http://localhost/api/v1/deposit-rules/:id", () =>
+      http.get(`http://localhost/api/v1/deposit-rules/${RULE_ID}`, () =>
         HttpResponse.json({ ...RULE, amountFixed: null, amountPercent: 20, isActive: false }),
       ),
     );
@@ -143,9 +146,20 @@ describe("DepositRuleDetailPage", () => {
     expect(screen.getByText(/late cancellation refund: 0%/i)).toBeInTheDocument();
   });
 
+  it("takes the platform default from the server, not from a frontend copy", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/deposit-rules/defaults", () =>
+        HttpResponse.json({ cancellationWindowHours: 72, refundPercentOnLateCancel: 0 }),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Standard Deposit");
+    expect(await screen.findByText(/cancellation notice: 3 days \(platform default\)/i)).toBeInTheDocument();
+  });
+
   it("shows a configured cancellation window without the default label", async () => {
     server.use(
-      http.get("http://localhost/api/v1/deposit-rules/:id", () =>
+      http.get(`http://localhost/api/v1/deposit-rules/${RULE_ID}`, () =>
         HttpResponse.json({ ...RULE, cancellationWindowHours: 48, refundPercentOnLateCancel: 50 }),
       ),
     );

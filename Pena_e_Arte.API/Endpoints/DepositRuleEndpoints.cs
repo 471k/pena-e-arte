@@ -17,6 +17,8 @@ public static class DepositRuleEndpoints
         // deposit amounts while booking. The response carries no owner-sensitive
         // data (name, amount, active flag) and is already tenant-scoped.
         group.MapGet("/", GetDepositRules).RequireAuthorization("ClientAndAbove");
+        // Platform constants only (no tenant data, no input), so no validator.
+        group.MapGet("defaults", GetDepositRuleDefaults).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}", GetDepositRule).RequireAuthorization("ClientAndAbove");
         group.MapPost("/", CreateDepositRule).RequireAuthorization("OwnerOnly");
         group.MapPut("{id:guid}", UpdateDepositRule).RequireAuthorization("OwnerOnly");
@@ -28,6 +30,14 @@ public static class DepositRuleEndpoints
         CancellationToken ct)
     {
         List<DepositRuleResponse> result = await mediator.Send(new GetDepositRulesQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetDepositRuleDefaults(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        DepositRuleDefaultsResponse result = await mediator.Send(new GetDepositRuleDefaultsQuery(), ct);
         return Results.Ok(result);
     }
 

@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.DepositRules.Queries;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Services;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.DepositRules;
@@ -71,6 +72,27 @@ public class GetDepositRulesHandlerTests
         Func<Task> act = () => handler.Handle(new GetDepositRuleQuery(Guid.NewGuid()), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    // GetDepositRuleDefaults ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Defaults_AreTheValuesTheCancellationPolicyApplies()
+    {
+        DepositRuleDefaultsResponse result = await new GetDepositRuleDefaultsHandler()
+            .Handle(new GetDepositRuleDefaultsQuery(), default);
+
+        // Changing these is a policy change: the public refund-policy page, Help (helpContent.ts) and
+        // the user manual state "48 hours" in words and must change with them.
+        result.CancellationWindowHours.Should().Be(48);
+        result.RefundPercentOnLateCancel.Should().Be(0);
+
+        // What the server actually enforces with no rule: full refund at exactly the window, the
+        // default late-cancel share one minute inside it.
+        DateTime now = new(2026, 10, 21, 12, 0, 0, DateTimeKind.Utc);
+        ClientCancellationPolicy.ResolveRefundPercent(null, now.AddHours(result.CancellationWindowHours), now).Should().Be(100);
+        ClientCancellationPolicy.ResolveRefundPercent(null, now.AddHours(result.CancellationWindowHours).AddMinutes(-1), now)
+            .Should().Be(result.RefundPercentOnLateCancel);
     }
 
     private async Task SeedRules(params (string Name, decimal? Fixed, decimal? Percent, bool Active)[] rules)

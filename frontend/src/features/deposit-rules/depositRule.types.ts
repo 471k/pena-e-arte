@@ -11,6 +11,12 @@ export interface DepositRuleResponse {
   refundPercentOnLateCancel: number;
 }
 
+/** What applies when a studio has no active rule or its rule leaves a field empty (server constants). */
+export interface DepositRuleDefaultsResponse {
+  cancellationWindowHours:   number;
+  refundPercentOnLateCancel: number;
+}
+
 export interface CreateDepositRuleRequest {
   name:                      string;
   amountFixed:               number | null;

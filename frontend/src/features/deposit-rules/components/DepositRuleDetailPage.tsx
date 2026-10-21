@@ -22,11 +22,12 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
-import { PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS, formatNoticeWindow } from "@/shared/utils/noticeWindow";
+import { formatNoticeWindow } from "@/shared/utils/noticeWindow";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
   useGetDepositRuleByIdQuery,
+  useGetDepositRuleDefaultsQuery,
   useUpdateDepositRuleMutation,
   useDeleteDepositRuleMutation,
 } from "../depositRulesApi";
@@ -69,6 +70,8 @@ export function DepositRuleDetailPage() {
   const { currency } = useStudioCurrency();
 
   const { data: rule, isLoading, isError } = useGetDepositRuleByIdQuery(id!);
+  const { data: defaults } = useGetDepositRuleDefaultsQuery();
+  const defaultWindowHours = defaults?.cancellationWindowHours;
   const [updateRule, { isLoading: isSaving }] = useUpdateDepositRuleMutation();
   const [deleteRule, { isLoading: isDeleting }] = useDeleteDepositRuleMutation();
 
@@ -238,8 +241,12 @@ export function DepositRuleDetailPage() {
                 </div>
                 <div className="text-xs text-muted-foreground pt-1 border-t space-y-1">
                   <p>
-                    Cancellation notice: {formatNoticeWindow(rule.cancellationWindowHours ?? PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS)}
-                    {rule.cancellationWindowHours === null && " (platform default)"}
+                    Cancellation notice:{" "}
+                    {rule.cancellationWindowHours !== null
+                      ? formatNoticeWindow(rule.cancellationWindowHours)
+                      : defaultWindowHours !== undefined
+                        ? `${formatNoticeWindow(defaultWindowHours)} (platform default)`
+                        : "platform default"}
                   </p>
                   <p>
                     Late cancellation refund: {rule.refundPercentOnLateCancel}%
@@ -325,7 +332,7 @@ export function DepositRuleDetailPage() {
                 type="number"
                 step="1"
                 min="1"
-                placeholder={`${PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} (platform default)`}
+                placeholder={defaultWindowHours !== undefined ? `${defaultWindowHours} (platform default)` : "Platform default"}
                 {...register("cancellationWindowHours", {
                   setValueAs: (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
                 })}
@@ -336,7 +343,8 @@ export function DepositRuleDetailPage() {
               )}
               <p className="text-xs text-muted-foreground">
                 How much notice a client must give to cancel without forfeiting their deposit.
-                Leave blank to use the platform default ({PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS} hours).
+                Leave blank to use the platform default
+                {defaultWindowHours !== undefined && ` (${formatNoticeWindow(defaultWindowHours)})`}.
               </p>
             </div>
 

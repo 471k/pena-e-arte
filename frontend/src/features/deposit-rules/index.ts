@@ -1,12 +1,14 @@
 export { depositRulesApi } from "./depositRulesApi";
 export {
   useGetDepositRulesQuery,
+  useGetDepositRuleDefaultsQuery,
   useGetDepositRuleByIdQuery,
   useCreateDepositRuleMutation,
   useUpdateDepositRuleMutation,
   useDeleteDepositRuleMutation,
 } from "./depositRulesApi";
 export type {
+  DepositRuleDefaultsResponse,
   DepositRuleResponse,
   CreateDepositRuleRequest,
   UpdateDepositRuleRequest,

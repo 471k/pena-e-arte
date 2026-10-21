@@ -147,6 +147,7 @@ const server = setupServer(
   http.get("http://localhost/api/v1/clients/me",              () => HttpResponse.json(MY_CLIENT)),
   http.get("http://localhost/api/v1/clients",                 () => HttpResponse.json([MY_CLIENT, STAFF_CLIENT])),
   http.get("http://localhost/api/v1/deposit-rules",           () => HttpResponse.json([ACTIVE_RULE, INACTIVE_RULE])),
+  http.get("http://localhost/api/v1/deposit-rules/defaults",  () => HttpResponse.json({ cancellationWindowHours: 48, refundPercentOnLateCancel: 0 })),
   http.get("http://localhost/api/v1/services",                () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/saved-payment-methods",   () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
@@ -1028,7 +1029,7 @@ describe("MyBookingsSection", () => {
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
-    expect(screen.getByText(/you'll receive a full refund/i)).toBeInTheDocument();
+    expect(await screen.findByText(/you'll receive a full refund/i)).toBeInTheDocument();
   });
 
   it("shows a forfeiture message when the appointment is within the notice window", async () => {
@@ -1048,7 +1049,7 @@ describe("MyBookingsSection", () => {
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
-    expect(screen.getByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
   });
 
   it("does not show a forfeiture warning for a CashPending (not-yet-collected) deposit", async () => {
@@ -1159,7 +1160,7 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
     );
     renderMyBookings();
-    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: /reschedule/i })).toBeEnabled());
   });
 
   it("disables 'Reschedule' and shows a cutoff message inside the notice window", async () => {
@@ -1170,8 +1171,8 @@ describe("MyBookingsSection", () => {
       ),
     );
     renderMyBookings();
-    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
-    expect(screen.getByText(/less than 48 hours away/i)).toBeInTheDocument();
+    expect(await screen.findByText(/less than 48 hours away/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reschedule/i })).toBeDisabled();
   });
 
   // G-3: with no deposit rule the server's default window is 48 h — 24–48 h before the
@@ -1184,8 +1185,8 @@ describe("MyBookingsSection", () => {
       ),
     );
     renderMyBookings();
-    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
-    expect(screen.getByText(/less than 48 hours away/i)).toBeInTheDocument();
+    expect(await screen.findByText(/less than 48 hours away/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reschedule/i })).toBeDisabled();
   });
 
   it("30 hours before, with no deposit rule: cancelling warns the deposit is forfeited, not refunded", async () => {
@@ -1205,8 +1206,23 @@ describe("MyBookingsSection", () => {
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
-    expect(screen.getByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cancelling now forfeits 100% of your deposit/i)).toBeInTheDocument();
     expect(screen.queryByText(/full refund/i)).not.toBeInTheDocument();
+  });
+
+  it("follows the default window the server reports, not a frontend copy", async () => {
+    const in30h = new Date(Date.now() + 30 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h }]),
+      ),
+      http.get("http://localhost/api/v1/deposit-rules/defaults", () =>
+        HttpResponse.json({ cancellationWindowHours: 24, refundPercentOnLateCancel: 0 }),
+      ),
+    );
+    renderMyBookings();
+    await waitFor(() => expect(screen.getByRole("button", { name: /reschedule/i })).toBeEnabled());
+    expect(screen.queryByText(/less than/i)).not.toBeInTheDocument();
   });
 
   it("clicking 'Reschedule' opens the reschedule dialog with a client-facing description", async () => {

@@ -8,10 +8,10 @@ import { useGetMyAppointmentsQuery, useCancelAppointmentMutation } from "../appo
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetPaymentByAppointmentQuery } from "@/features/payments/paymentsApi";
 import { describeDeposit } from "@/features/payments/depositOutcome";
-import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
+import { useGetDepositRuleDefaultsQuery, useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
-import { PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS, formatNoticeWindow } from "@/shared/utils/noticeWindow";
+import { formatNoticeWindow } from "@/shared/utils/noticeWindow";
 import { cn } from "@/shared/utils/cn";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
@@ -19,34 +19,47 @@ import { RescheduleDialog } from "./RescheduleDialog";
 import { DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
-import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
+import type { DepositRuleDefaultsResponse, DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 
-// Must equal the backend's AppointmentSelfServiceDefaults.CancellationWindowHours (48), which
-// ClientCancellationPolicy applies when a studio has no deposit rule (or the rule leaves the
-// window empty). It was 24 here: 24–48 h before an appointment the client was promised "a full
-// refund" and offered Reschedule, while the server refused the reschedule and kept the whole
-// deposit on cancel (G-3, re-tested live 2026-10-15).
-// The constant lives in shared/utils/noticeWindow.ts (also used by the owner's deposit-rule page).
-
-// Same notice window backs both self-cancel (refund %) and self-reschedule (hard cutoff) —
-// mirrors ClientCancellationPolicy on the backend.
-function noticeWindowHours(activeRule?: DepositRuleResponse): number {
-  return activeRule?.cancellationWindowHours ?? PLATFORM_DEFAULT_CANCELLATION_WINDOW_HOURS;
+// The studio's active rule, or — when it has none or leaves a field empty — the platform defaults
+// the server applies (ClientCancellationPolicy), read from GET /deposit-rules/defaults. A frontend
+// copy of the default said 24 h while the server applied 48: 24–48 h before an appointment the
+// client was promised "a full refund" and offered Reschedule, while the server refused the
+// reschedule and kept the whole deposit (G-3, re-tested live 2026-10-15).
+interface NoticePolicy {
+  activeRule?: DepositRuleResponse;
+  defaults?:   DepositRuleDefaultsResponse;
 }
 
-function isWithinNoticeWindow(appt: AppointmentResponse, activeRule?: DepositRuleResponse): boolean {
+// Same notice window backs both self-cancel (refund %) and self-reschedule (hard cutoff) —
+// mirrors ClientCancellationPolicy on the backend. undefined = not known yet (defaults loading).
+function noticeWindowHours({ activeRule, defaults }: NoticePolicy): number | undefined {
+  return activeRule?.cancellationWindowHours ?? defaults?.cancellationWindowHours;
+}
+
+function lateCancelRefundPercent({ activeRule, defaults }: NoticePolicy): number | undefined {
+  return activeRule?.refundPercentOnLateCancel ?? defaults?.refundPercentOnLateCancel;
+}
+
+function isWithinNoticeWindow(appt: AppointmentResponse, policy: NoticePolicy): boolean | undefined {
+  const windowHours = noticeWindowHours(policy);
+  if (windowHours === undefined) return undefined;
   const hoursUntilAppointment = (new Date(appt.date).getTime() - Date.now()) / (1000 * 60 * 60);
-  return hoursUntilAppointment >= noticeWindowHours(activeRule);
+  return hoursUntilAppointment >= windowHours;
 }
 
 // ── Reschedule appointment ────────────────────────────────────────────────
 
-function RescheduleArea({ appt, activeRule }: { appt: AppointmentResponse; activeRule?: DepositRuleResponse }) {
+function RescheduleArea({ appt, policy }: { appt: AppointmentResponse; policy: NoticePolicy }) {
   const [open, setOpen] = useState(false);
 
   if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
 
-  const canReschedule = isWithinNoticeWindow(appt, activeRule);
+  // Disabled (without the cutoff message) for the moment the window isn't known yet, so the client
+  // is never offered a reschedule the server would refuse.
+  const within = isWithinNoticeWindow(appt, policy);
+  const canReschedule = within === true;
+  const windowHours = noticeWindowHours(policy) ?? 0;
 
   return (
     <>
@@ -56,17 +69,17 @@ function RescheduleArea({ appt, activeRule }: { appt: AppointmentResponse; activ
         className="h-7 px-2 text-xs"
         disabled={!canReschedule}
         title={
-          canReschedule
-            ? undefined
-            : `This appointment is less than ${formatNoticeWindow(noticeWindowHours(activeRule))} away — please contact the studio directly to reschedule.`
+          within === false
+            ? `This appointment is less than ${formatNoticeWindow(windowHours)} away — please contact the studio directly to reschedule.`
+            : undefined
         }
         onClick={() => setOpen(true)}
       >
         Reschedule
       </Button>
-      {!canReschedule && (
+      {within === false && (
         <p className="text-xs text-muted-foreground">
-          Less than {formatNoticeWindow(noticeWindowHours(activeRule))} away — contact the studio directly to reschedule.
+          Less than {formatNoticeWindow(windowHours)} away — contact the studio directly to reschedule.
         </p>
       )}
       <RescheduleDialog
@@ -81,15 +94,15 @@ function RescheduleArea({ appt, activeRule }: { appt: AppointmentResponse; activ
 
 // ── Cancel appointment ────────────────────────────────────────────────────
 
-function CancelArea({ appt, activeRule }: { appt: AppointmentResponse; activeRule?: DepositRuleResponse }) {
+function CancelArea({ appt, policy }: { appt: AppointmentResponse; policy: NoticePolicy }) {
   const [confirming, setConfirming] = useState(false);
   const [cancelAppointment, { isLoading }] = useCancelAppointmentMutation();
   const { data: payment } = useGetPaymentByAppointmentQuery(appt.id, { skip: appt.depositAmount <= 0 });
 
   if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
 
-  const withinNoticeWindow = isWithinNoticeWindow(appt, activeRule);
-  const refundPercentOnLateCancel = activeRule?.refundPercentOnLateCancel ?? 0;
+  const withinNoticeWindow = isWithinNoticeWindow(appt, policy);
+  const refundPercentOnLateCancel = lateCancelRefundPercent(policy);
 
   // A deposit is only actually at risk once money has been taken — a card hold
   // ("Captured") or a completed capture/cash confirmation ("Paid"). A CashPending
@@ -126,10 +139,10 @@ function CancelArea({ appt, activeRule }: { appt: AppointmentResponse; activeRul
     <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
       <p className="text-xs">
         Cancel this appointment?{" "}
-        {hasActiveDeposit &&
-          (withinNoticeWindow
-            ? "You'll receive a full refund."
-            : `Cancelling now forfeits ${100 - refundPercentOnLateCancel}% of your deposit.`)}
+        {/* No promise either way until the policy is known (defaults still loading). */}
+        {hasActiveDeposit && withinNoticeWindow === true && "You'll receive a full refund."}
+        {hasActiveDeposit && withinNoticeWindow === false && refundPercentOnLateCancel !== undefined &&
+          `Cancelling now forfeits ${100 - refundPercentOnLateCancel}% of your deposit.`}
       </p>
       <div className="flex gap-2">
         <Button
@@ -286,11 +299,11 @@ function artistName(artistId: string | null, artists: ArtistResponse[]): string 
 }
 
 function BookingRow({
-  appt, artists, activeRule,
+  appt, artists, policy,
 }: {
   appt: AppointmentResponse;
   artists: ArtistResponse[];
-  activeRule?: DepositRuleResponse;
+  policy: NoticePolicy;
 }) {
   return (
     <div className="py-3 space-y-2">
@@ -320,8 +333,8 @@ function BookingRow({
       )}
       <DepositArea appt={appt} />
       <div className="flex items-center gap-3">
-        <RescheduleArea appt={appt} activeRule={activeRule} />
-        <CancelArea appt={appt} activeRule={activeRule} />
+        <RescheduleArea appt={appt} policy={policy} />
+        <CancelArea appt={appt} policy={policy} />
       </div>
     </div>
   );
@@ -333,7 +346,8 @@ export function MyBookingsSection() {
   const { data: appointments = [], isLoading, isError } = useGetMyAppointmentsQuery();
   const { data: artists = [] } = useGetArtistsQuery(undefined);
   const { data: depositRules = [] } = useGetDepositRulesQuery();
-  const activeRule = depositRules.find((r) => r.isActive);
+  const { data: defaults } = useGetDepositRuleDefaultsQuery();
+  const policy: NoticePolicy = { activeRule: depositRules.find((r) => r.isActive), defaults };
 
   const now = new Date();
 
@@ -393,7 +407,7 @@ export function MyBookingsSection() {
                 {upcoming.map((appt, i) => (
                   <div key={appt.id}>
                     {i > 0 && <Separator />}
-                    <BookingRow appt={appt} artists={artists} activeRule={activeRule} />
+                    <BookingRow appt={appt} artists={artists} policy={policy} />
                   </div>
                 ))}
               </div>
@@ -408,7 +422,7 @@ export function MyBookingsSection() {
                 {past.map((appt, i) => (
                   <div key={appt.id}>
                     {i > 0 && <Separator />}
-                    <BookingRow appt={appt} artists={artists} activeRule={activeRule} />
+                    <BookingRow appt={appt} artists={artists} policy={policy} />
                   </div>
                 ))}
               </div>

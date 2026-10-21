@@ -1,6 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type {
+  DepositRuleDefaultsResponse,
   DepositRuleResponse,
   CreateDepositRuleRequest,
   UpdateDepositRuleRequest,
@@ -14,6 +15,11 @@ export const depositRulesApi = createApi({
     getDepositRules: builder.query<DepositRuleResponse[], void>({
       query: () => "deposit-rules",
       providesTags: ["DepositRule"],
+    }),
+    // Platform constants: they only change with a deploy, so keep them for the whole session.
+    getDepositRuleDefaults: builder.query<DepositRuleDefaultsResponse, void>({
+      query: () => "deposit-rules/defaults",
+      keepUnusedDataFor: 24 * 60 * 60,
     }),
     getDepositRuleById: builder.query<DepositRuleResponse, string>({
       query: (id) => `deposit-rules/${id}`,
@@ -36,6 +42,7 @@ export const depositRulesApi = createApi({
 
 export const {
   useGetDepositRulesQuery,
+  useGetDepositRuleDefaultsQuery,
   useGetDepositRuleByIdQuery,
   useCreateDepositRuleMutation,
   useUpdateDepositRuleMutation,
