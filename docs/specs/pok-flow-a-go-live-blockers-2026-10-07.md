@@ -11,20 +11,20 @@ for go-live.** The blocking items below must be decided or built first.
 
 | Item | Owner | Blocks go-live? | Status after the gate | Next action |
 |---|---|---|---|---|
-| C-1 Staging Vault | Phi (infra) | No (staging parity only) | Open | Build when deployed-staging card testing is wanted |
+| C-1 Staging Vault | Phi (infra) | No (staging parity only) | Open — deployed staging has no Vault at all (`cd.yml` leaves `Vault__Address` unset on purpose), so connecting POK or taking a card deposit on staging.tattooos.co can't work; every POK test ran on the local stack | Phi decides: a second manually-unsealed Vault, or a dev-mode one that forgets the keys on every restart |
 | C-2 POK host + webhook per environment | Phi | **Yes — this is the switch** | Open (production still calls POK staging) | Ship staging config any time; production only at go-live with C-11/C-13 |
 | C-3 Gift-card / package card purchases | Phi (product) | No (separate flow) | Open, not tested by the gate | Decide option (a) hide or (b) build |
 | C-4 When a deposit is charged | Phi + Finance + Legal | **Yes, if holds don't last** | Holds survive day 2 (T9 captured 26 h after authorisation); day 8 pending (T9b, from 2026-10-22) | Decide (a)/(b)/(c); Help now says "charged by the studio, usually at your appointment" |
-| C-5 Webhook fan-out | Engineering | No (before real volume) | **Debounced** (branch `feat/debounce-pok-webhook-reconciliation`, 2026-10-21): POK sends each webhook 3 times in ~3 s (staging 17–18 Oct); the first trigger marks a 10 s Redis window and schedules ONE reconciliation run at its end, later triggers in the window are skipped (the run starts after them); Redis down → run at once as before. The webhook stays rate-limited ("billing") | Later: re-check only the order named in the webhook (needs a per-payment reconciliation path) |
+| C-5 Webhook fan-out | Engineering | No (before real volume) | **Debounced** (PR #265, 3c0576d3, live 2026-10-21): POK sends each webhook 3 times in ~3 s (staging 17–18 Oct); the first trigger marks a 10 s Redis window and schedules ONE reconciliation run at its end, later triggers in the window are skipped (the run starts after them); Redis down → run at once as before. The webhook stays rate-limited ("billing") | Later: re-check only the order named in the webhook (needs a per-payment reconciliation path) |
 | C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — items 2, 7, 11 and the refund part of 10 answered by our own staging probe on 2026-10-16 (see C-6); email not sent yet | Send in writing; the answered items become "please confirm" |
-| C-7 Check POK keys at connect | Engineering | No | **Done**: keys checked (PR #263) — connect logs in to POK once before saving; refused → 422, POK unreachable → 503, nothing saved; staging answers wrong/unknown keys with 400 "Your credentials are incorrect". **Merchant ID checked** (branch `feat/pok-merchant-id-check`, 2026-10-21): one read of a random order under the entered merchant id — staging answers 404 "Order not found" for the keys' own merchant and 403 "Access Forbidden!" for any other → 422 "this Merchant ID doesn't belong to them", nothing saved | None |
-| C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | **Done in code + alerting** (branch `fix/vault-outage-not-reconnect`): 503 vs 422 split, connect-POK 503, 5-minute Vault health probe + `vault-unavailable` alert, runbook | Phi: keep the unseal key shares reachable; first real alert test after merge (see C-8) |
+| C-7 Check POK keys at connect | Engineering | No | **Done**: keys checked (PR #263) — connect logs in to POK once before saving; refused → 422, POK unreachable → 503, nothing saved; staging answers wrong/unknown keys with 400 "Your credentials are incorrect". **Merchant ID checked** (PR #267, ed0dc58b, live 2026-10-21): one read of a random order under the entered merchant id — staging answers 404 "Order not found" for the keys' own merchant and 403 "Access Forbidden!" for any other → 422 "this Merchant ID doesn't belong to them", nothing saved | None |
+| C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | **Done** (PR #249; real alert test passed 2026-10-16): 503 vs 422 split, connect-POK 503, 5-minute Vault health probe + `vault-unavailable` alert, runbook. **Reopened and resolved 2026-10-21:** the app's own Vault token had expired and its policy was read-only — the probe now checks, renews and permission-checks the token (PR #274), and Phi issued a new token with the write policy | Phi: keep the unseal key shares reachable |
 | C-9 Saved-card tokenisation | Engineering | No (Saved card tab must stay unused) | Open, not tested by the gate | Separate prompt |
-| C-10 "Stripe PI" labels | Engineering | No | **Done** (branch `fix/pok-order-label`, 2026-10-21): the payment page labels the id "POK order"; Help + manual say where to look it up in POK Business | None |
+| C-10 "Stripe PI" labels | Engineering | No | **Done** (PR #266, 6e626082, live 2026-10-21): the payment page labels the id "POK order"; Help + manual say where to look it up in POK Business | None |
 | C-11 Production first-transaction protocol | Phi | **Yes** | Not started | Run after C-2, C-8, C-13 |
 | C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; a partial refund returns the 2.5 % share; a full refund, or partial refunds adding up to the full amount, return the whole fee; display rounding half-up per line) — Help + manual now explain them to owners and clients (2026-10-16) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
 | C-13 Kill switch + owner tour step | Engineering | **Yes** | **Kill switch built** (branch `feat/card-deposits-kill-switch`): `Payments:CardDepositsEnabled`, off unless set; tour step still to ship with go-live | At go-live: set `Payments__CardDepositsEnabled=true` for production together with C-2, and ship the "Connect POK" tour step in that change |
-| C-14 Several partial refunds | Engineering | No | **Built** (branch `feat/several-partial-refunds`, 2026-10-21): refunds allowed until the refunded total reaches the amount ("Refund more — … left"); `RefundedAmount` accumulates; the deposit turns Refunded when the total is reached; the client's refund email/SMS now state the amount of that refund (they always said the whole payment). **POK allows several** — proven 2026-10-16 (R1) | None |
+| C-14 Several partial refunds | Engineering | No | **Done** (PR #264, 69d043d5, live 2026-10-21): refunds allowed until the refunded total reaches the amount ("Refund more — … left"); `RefundedAmount` accumulates; the deposit turns Refunded when the total is reached; the client's refund email/SMS now state the amount of that refund (they always said the whole payment). **POK allows several** — proven 2026-10-16 (R1) | None |
 | C-15 Tell the owner when a held deposit is lost | Engineering | No | Open | Owner notification |
 | C-16 Cancellation side effects before provider call | — | — | **Done** (folded into B3, a58b229b) | None |
 | C-18 Store POK's fee and net per payment | Engineering, after Finance (C-12) | No (recommendation) | Not started — today `Payment` keeps only gross `Amount` and `RefundedAmount`; owners must use POK Business for net figures | After C-12: store POK's `receiverAmount` (net, unrounded) and the fee per capture/refund, show them on the payment page and offer net in reports/CSV |
@@ -67,8 +67,9 @@ Options (a) charge at booking, (b) capture before the hold lapses, (c) hybrid �
 client charge-timing strings (Phase 8.3b) and the Help charge-timing tip follow the decision.
 
 ## C-5 — Webhook fan-out
-Unchanged. Gate evidence: one webhook per authorisation; none on capture, refund, partial capture or
-cancel. Each one enqueued a full reconciliation run.
+**Done 2026-10-21 (PR #265):** see the table row. Gate evidence: one webhook per authorisation; none on
+capture, refund, partial capture or cancel. Each one enqueued a full reconciliation run, and POK sends each
+webhook three times in about 3 seconds (staging, 17–18 Oct) — now one run per 10-second window.
 
 ## C-6 — Questions to POK, in writing (with the gate's evidence)
 1. How long can an authorised (`autoCapture: false`) order be captured after its `expiresAt`? — At least
@@ -146,8 +147,10 @@ balances matched the predictions exactly (ALL Balance 4,282.10, Frozen 1,183.15 
   "Recurring transfer". No fee, minimum or timing is shown — still for POK.
 
 ## C-7 — Check POK keys at connect time
-Unchanged. Gate friction supports it: the API Keys dialog shows the three values once; a wrong
-value is only discovered at checkout.
+**Done 2026-10-21 (PRs #263 and #267):** see the table row. Gate friction that motivated it: the API Keys
+dialog shows the three values once; a wrong value was only discovered at checkout. Note: until C-2 the app
+talks to POK staging, so production POK keys entered before go-live are refused at connect (Help says test
+and live keys aren't interchangeable).
 
 ## C-8 — Vault resilience before go-live (**yes**)
 Gate note: the dev-mode Vault had to stay up overnight; any restart would have lost the keys and
@@ -172,15 +175,16 @@ needed a reconnect.
   fires"; `docs/infra/alerting-runbook.md` lists the rule; ADR-0002 records the resolution.
 - Help + manual: the owner's connect-POK tip for the new 503.
 
-**Reopened 2026-10-21 — the app's own token (hard blocker until Phi replaces it):** the production
+**Reopened 2026-10-21 — the app's own token — resolved the same day:** the production
 API's Vault token was rejected ("invalid token", 403 on `lookup-self`) — a 30-day periodic token from
 7 Sep that nothing renewed, so it expired around 7 Oct while `/sys/health` kept saying healthy and no
 alert fired. Its policy was also read-only, but connecting POK writes the studio's keys. Neither showed
 because card payments are off in production and no studio has connected there. Fixed in code:
 `VaultHealthCheckJob` now looks the token up (403 → alert), renews it once under half its period is
 left, and checks its permissions on the studios' POK-key path with `capabilities-self` (missing →
-alert). **Phi:** apply the new `tattooos-app` policy and issue a new token (runbook, "Replace the app's
-token"). Until then the production alert fires every 5 minutes, which is correct.
+alert) — PR #274. Phi applied the new `tattooos-app` policy and issued a new token (runbook, "Replace the
+app's token"); after a redeploy both production API pods hold a valid token (policies `default,
+tattooos-app`, 720 h, renewable) and the probe has logged no failure since (13:28 CEST).
 
 **Still for Phi:** keep three of the five unseal key shares reachable for whoever is on call; after the
 merge, one real alert test is worthwhile (e.g. during a quiet window, restart the Vault pod, confirm the
@@ -191,7 +195,7 @@ become frequent.
 Unchanged; the gate never used the Saved card tab.
 
 ## C-10 — Cosmetic labels
-Unchanged ("Stripe PI" → "POK order").
+**Done 2026-10-21 (PR #266):** "Stripe PI" → "POK order".
 
 ## C-11 — Production first-transaction protocol (**yes**)
 Unchanged.
@@ -257,6 +261,7 @@ as C-2 (k8s production overlay or secret), and ship the dedicated "Connect POK" 
 To switch card payments off again in an emergency: set it back to `false` and redeploy.
 
 ## C-14 — Several partial refunds per payment
+**Done 2026-10-21 (PR #264):** see the table row. What it fixed, as found:
 Confirmed in the UI: after a partial refund (T3: 234 of 1,234) the payment shows "Refunded" and the
 Refund button disappears, so the remaining 1,000 can't be refunded from the app. Still true on main
 (`RefundPaymentCommand` accepts only `Status == Paid` and sets `Refunded`). **POK allows several partial
