@@ -17,7 +17,9 @@ function getStepsForRole(role: Role, hasMultipleStudios: boolean): TourStep[] {
   }
 }
 
-export function useOnboardingTour(role: Role | null, onBeforeStep?: (step: TourStep) => void) {
+export function useOnboardingTour(
+  role: Role | null, onBeforeStep?: (step: TourStep) => void, onTourEnd?: () => void,
+) {
   const [forceActive, setForceActive] = useState(false);
   // Hides the tour immediately on skip/complete without waiting for the
   // invalidated status query to refetch over the network.
@@ -34,6 +36,7 @@ export function useOnboardingTour(role: Role | null, onBeforeStep?: (step: TourS
   function finish() {
     setDismissed(true);
     setForceActive(false);
+    onTourEnd?.();
     if (role) markComplete({ role }).unwrap().catch(() => {});
   }
 
