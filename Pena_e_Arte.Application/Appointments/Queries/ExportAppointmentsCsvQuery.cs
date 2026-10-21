@@ -21,10 +21,14 @@ public class ExportAppointmentsCsvHandler(IAppDbContext db, ICurrentTenant tenan
 {
     public async Task<string> Handle(ExportAppointmentsCsvQuery query, CancellationToken ct)
     {
-        string studioCurrency = await db.Studios
-            .Where(s => s.Id == tenant.StudioId)
-            .Select(s => s.Currency)
-            .SingleAsync(ct);
+        Studio studio = await db.Studios
+            .AsNoTracking()
+            .SingleAsync(s => s.Id == tenant.StudioId, ct);
+        string studioCurrency = studio.Currency;
+        // Stored instants are UTC; the owner reads the studio's wall-clock time (Help: the timezone
+        // "controls how appointment times are shown in emails, texts, and reports").
+        string Local(DateTime utc) => TimezoneUtils.ToStudioLocalForRules(utc, studio.Timezone)
+            .ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
         string amountFormat = "F" + CurrencyCatalog.MinorUnits(studioCurrency).ToString(CultureInfo.InvariantCulture);
 
         StringBuilder sb = new();
@@ -46,8 +50,8 @@ public class ExportAppointmentsCsvHandler(IAppDbContext db, ICurrentTenant tenan
         await foreach (Appointment a in appointmentsQuery.AsAsyncEnumerable().WithCancellation(ct))
         {
             CsvUtils.AppendRow(sb,
-                a.Date.ToString("yyyy-MM-dd HH:mm"),
-                a.EndDate.ToString("yyyy-MM-dd HH:mm"),
+                Local(a.Date),
+                Local(a.EndDate),
                 a.DurationMinutes.ToString(),
                 a.Artist is null ? "" : $"{a.Artist.FirstName} {a.Artist.LastName}",
                 $"{a.Client.FirstName} {a.Client.LastName}",

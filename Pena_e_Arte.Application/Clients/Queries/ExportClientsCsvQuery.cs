@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,13 @@ public class ExportClientsCsvHandler(IAppDbContext db, ICurrentTenant tenant)
 {
     public async Task<string> Handle(ExportClientsCsvQuery query, CancellationToken ct)
     {
+        // "Client Since" is a calendar day in the studio's timezone, not UTC's (a client added at
+        // 00:30 Tirana time belongs to that day, not the previous one).
+        string? timezone = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => s.Timezone)
+            .FirstOrDefaultAsync(ct);
+
         StringBuilder sb = new();
         sb.Append(CsvUtils.Bom);
         CsvUtils.AppendRow(sb, "First Name", "Last Name", "Email", "Phone", "Assigned Artist",
@@ -34,7 +42,8 @@ public class ExportClientsCsvHandler(IAppDbContext db, ICurrentTenant tenant)
             CsvUtils.AppendRow(sb,
                 c.FirstName, c.LastName, c.Email, c.Phone,
                 c.Artist is null ? "" : $"{c.Artist.FirstName} {c.Artist.LastName}",
-                c.CreatedAt.ToString("yyyy-MM-dd"),
+                TimezoneUtils.ToStudioLocalForRules(c.CreatedAt, timezone)
+                    .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 c.MarketingOptIn ? "Yes" : "No");
         }
 

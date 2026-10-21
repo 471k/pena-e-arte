@@ -129,6 +129,25 @@ public class ExportRevenueCsvHandlerTests
         lines[1].Should().Contain(",3000,3000,JPY,");
     }
 
+    [Fact]
+    public async Task Handle_TimesAreInTheStudiosTimezone_NotUtc()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "S", Slug = "s", OwnerEmail = "o@x.test", Timezone = "Europe/Paris" });
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid clientId = await SeedClient("Jane", "Doe");
+        Guid apptId = await SeedAppointment(artistId, clientId);
+        Appointment appt = _db.Appointments.Single(a => a.Id == apptId);
+        appt.Date = new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc);              // 16:00 Paris (CEST)
+        await _db.SaveChangesAsync();
+        await SeedPayment(apptId, clientId, 50m, PaymentStatus.Paid,
+            new DateTime(2026, 11, 5, 23, 30, 0, DateTimeKind.Utc), refundedAmount: null); // 00:30 on 6 Nov in Paris (CET)
+
+        string csv = await CreateSut().Handle(new ExportRevenueCsvQuery(null, null), default);
+
+        string row = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1];
+        row.Should().StartWith("2026-11-06 00:30,").And.Contain(",2026-10-23 16:00,");
+    }
+
     private async Task<Guid> SeedArtist(string firstName, string lastName)
     {
         Artist artist = new()

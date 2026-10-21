@@ -81,6 +81,26 @@ public class ExportClientsCsvHandlerTests
         lines.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task Handle_ClientSinceIsTheDayInTheStudiosTimezone_NotUtc()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "S", Slug = "s", OwnerEmail = "o@x.test", Timezone = "Europe/Paris" });
+        _db.Clients.Add(new Client
+        {
+            StudioId = _studioId,
+            FirstName = "Jane",
+            LastName = "Doe",
+            Email = "jane@example.com",
+            CreatedAt = new DateTime(2026, 11, 5, 23, 30, 0, DateTimeKind.Utc), // 00:30 on 6 Nov in Paris (CET)
+        });
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+
+        string csv = await CreateSut().Handle(new ExportClientsCsvQuery(), default);
+
+        csv.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1].Should().Contain(",2026-11-06,");
+    }
+
     private async Task<Guid> SeedArtist(string firstName, string lastName)
     {
         Artist artist = new()

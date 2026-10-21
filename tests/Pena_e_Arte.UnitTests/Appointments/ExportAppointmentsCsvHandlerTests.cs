@@ -89,6 +89,21 @@ public class ExportAppointmentsCsvHandlerTests
         lines.Should().HaveCount(2);
     }
 
+    [Fact]
+    public async Task Handle_StartAndEndAreInTheStudiosTimezone_NotUtc()
+    {
+        _db.Studios.Single(s => s.Id == _studioId).Timezone = "Europe/Paris";
+        await _db.SaveChangesAsync();
+        Guid artistId = await SeedArtist("Luna", "Artista");
+        Guid clientId = await SeedClient("Jane", "Doe");
+        await SeedAppointment(artistId, clientId, new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc)); // 16:00 Paris (CEST)
+
+        string csv = await CreateSut().Handle(new ExportAppointmentsCsvQuery(null, null), default);
+
+        string row = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries)[1];
+        row.Should().StartWith("2026-10-23 16:00,");
+    }
+
     private async Task<Guid> SeedArtist(string firstName, string lastName)
     {
         Artist artist = new()
