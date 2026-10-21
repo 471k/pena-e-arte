@@ -143,6 +143,20 @@ public class SendConsentFormSignedNotificationHandlerTests
         await _realtime.Received(1)
             .NotifyStudioAsync(studio.Id, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_ShowsTheAppointmentInTheStudiosTimezone_NotUtc()
+    {
+        (Guid formId, Studio studio) = await SeedData();
+        studio.Timezone = "Europe/Paris";
+        _db.Appointments.Single().Date = new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc); // 16:00 in Paris (CEST)
+        await _db.SaveChangesAsync();
+
+        await CreateSut().Handle(new SendConsentFormSignedNotificationCommand(formId), default);
+
+        _emailRenderer.Received(1).RenderConsentFormSigned(
+            Arg.Any<string>(), Arg.Any<string>(), "Friday, 23 October 2026 at 16:00", Arg.Any<bool>());
+    }
 }
 
 

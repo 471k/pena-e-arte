@@ -2,6 +2,7 @@ using System.Globalization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -46,8 +47,9 @@ public class SendConsentFormSignedNotificationHandler(
             return Unit.Value;
         }
 
-        string appointmentDate = form.Appointment.Date.ToString(
-            "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
+        // Appointment.Date is UTC; the owner reads the studio's wall-clock time.
+        string appointmentDate = TimezoneUtils.ToStudioLocalForRules(form.Appointment.Date, studio.Timezone)
+            .ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
 
         string clientFullName = $"{form.Client.FirstName} {form.Client.LastName}";
         string subject = $"Consent form signed — {clientFullName}";

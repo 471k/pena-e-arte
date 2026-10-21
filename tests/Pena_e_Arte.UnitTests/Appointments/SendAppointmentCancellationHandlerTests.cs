@@ -163,6 +163,24 @@ public class SendAppointmentCancellationHandlerTests
             Arg.Is<NotificationLogResponse>(r => r.RecipientName == "Ana Silva"),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_ShowsTheAppointmentInTheStudiosTimezone_NotUtc()
+    {
+        (Guid appointmentId, Guid studioId) = await SeedData();
+        _db.Studios.Add(new Studio { Id = studioId, Name = "S", Slug = "s", OwnerEmail = "o@x.test", Timezone = "Europe/Paris" });
+        Appointment appointment = await _db.Appointments.FirstAsync(a => a.Id == appointmentId);
+        appointment.Date = new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc); // 16:00 in Paris (CEST)
+        await _db.SaveChangesAsync();
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        await _notifications.Received(1).SendEmailAsync(
+            Arg.Any<string>(),
+            "Appointment Cancelled — Fri, 23 Oct 2026 at 16:00",
+            Arg.Is<string>(b => b.Contains("Friday, 23 October 2026 at 16:00") && !b.Contains("14:00")),
+            Arg.Any<CancellationToken>());
+    }
 }
 
 

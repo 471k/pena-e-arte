@@ -324,4 +324,35 @@ public class ManualReminderJobTests(DatabaseFixture fixture)
         reminder.Status.Should().Be(ManualReminderStatus.Failed);
         reminder.FailureReason.Should().Be(ManualReminderFailureReason.PlanLimit);
     }
+
+    [Fact]
+    public async Task SendAsync_DefaultTextShowsTheAppointmentInTheStudiosLocalTime_NotUtc()
+    {
+        Guid studioId = Guid.NewGuid();
+        (Guid reminderId, _) = await SeedReminder(studioId, appointmentStatus: AppointmentStatus.Confirmed);
+
+        await using (AppDbContext setup = fixture.CreateDbContext(Guid.Empty))
+        {
+            setup.Studios.Add(new Studio
+            {
+                Id = studioId,
+                Name = "TZ Studio",
+                Slug = $"tz-studio-{Guid.NewGuid()}",
+                OwnerEmail = "owner@test.com",
+                Timezone = "Europe/Paris",
+            });
+            Appointment appointment = await setup.Appointments.IgnoreQueryFilters().SingleAsync(a => a.StudioId == studioId);
+            appointment.Date = new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc); // 16:00 in Paris (CEST)
+            appointment.EndDate = appointment.Date.AddHours(2);
+            await setup.SaveChangesAsync();
+        }
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendAsync(reminderId);
+
+        await _notifications.Received(1).SendSmsAsync(
+            Arg.Any<string>(),
+            Arg.Is<string>(s => s.Contains("your appointment is Fri 23 Oct at 16:00.")),
+            Arg.Any<CancellationToken>());
+    }
 }

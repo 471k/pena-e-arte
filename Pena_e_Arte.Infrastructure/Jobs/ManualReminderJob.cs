@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -120,7 +122,7 @@ public class ManualReminderJob(
         Studio? studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == reminder.StudioId, ct);
         string studioName = studio?.Name ?? "your studio";
 
-        string body = BuildBody(reminder, studioName);
+        string body = BuildBody(reminder, studioName, studio?.Timezone);
 
         // Claimed and durably persisted before the send itself — if the process dies or the
         // post-send save below fails, the guard above prevents a retry from sending twice.
@@ -159,8 +161,9 @@ public class ManualReminderJob(
         log.Id, log.RecipientId, recipientName, log.Channel.ToString(),
         log.Subject, log.Body, log.SentAt, log.IsSuccess, log.CreatedAt);
 
-    private static string BuildBody(ManualReminder reminder, string studioName)
+    private static string BuildBody(ManualReminder reminder, string studioName, string? timezone)
     {
+        // Appointment.Date is UTC; the client reads the studio's wall-clock time.
         // Same "Reply STOP to opt out." disclosure AppointmentReminderJob's automatic SMS
         // carries — required on every outbound SMS this app sends, not just automatic ones,
         // regardless of whether the artist used the default template or wrote their own text.
@@ -168,7 +171,8 @@ public class ManualReminderJob(
             ? reminder.Message
             : reminder.Appointment is not null
                 ? $"Hi {reminder.RecipientName}, reminder from {studioName} — your appointment is " +
-                  $"{reminder.Appointment.Date:ddd dd MMM 'at' HH:mm}."
+                  TimezoneUtils.ToStudioLocalForRules(reminder.Appointment.Date, timezone)
+                      .ToString("ddd dd MMM 'at' HH:mm", CultureInfo.InvariantCulture) + "."
                 : $"Hi {reminder.RecipientName}, this is a reminder from {studioName}.";
 
         return $"{message} Reply STOP to opt out.";
