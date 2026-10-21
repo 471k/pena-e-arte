@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -155,8 +156,12 @@ export function OnboardingTour({ steps, onComplete, onSkip, onBeforeStep }: Onbo
 
   if (!step) return null;
 
-  return (
-    <div className="fixed inset-0 z-[1200]">
+  // Portalled to <body>: rendered in place, the tour sat inside the sticky header's z-20 stacking
+  // context, so on mobile it showed BEHIND the open nav drawer (Sheet, z-50) and nav-link steps
+  // never worked. pointer-events:auto because Radix's modal Sheet sets pointer-events:none on <body>
+  // while it is open; NavDrawer also ignores "outside" interactions that land on [data-onboarding-tour].
+  return createPortal(
+    <div data-onboarding-tour="" className="fixed inset-0 z-[1200]" style={{ pointerEvents: "auto" }}>
       {targetRect && (
         <>
           <div
@@ -182,7 +187,8 @@ export function OnboardingTour({ steps, onComplete, onSkip, onBeforeStep }: Onbo
           />
         </>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -222,10 +228,15 @@ function TourPopover({ step, targetRect, stepIndex, totalSteps, onBack, onNext, 
     }
   }
 
+  // A target taller than the screen (e.g. the Studio hours card on a phone) leaves room neither above
+  // nor below it — the popover then sits at the screen edge, over the target, instead of off-screen
+  // with its Next button unreachable.
+  const maxEdgeOffset = Math.max(8, window.innerHeight - POPOVER_HEIGHT_ESTIMATE - 8);
+
   switch (placement) {
     case "top":
       style.left   = clamp(targetRect.left, 8, window.innerWidth - POPOVER_WIDTH - 8);
-      style.bottom = window.innerHeight - targetRect.top + GAP;
+      style.bottom = clamp(window.innerHeight - targetRect.top + GAP, 8, maxEdgeOffset);
       break;
     case "left":
       anchorSideVertically();
@@ -238,7 +249,7 @@ function TourPopover({ step, targetRect, stepIndex, totalSteps, onBack, onNext, 
     case "bottom":
     default:
       style.left = clamp(targetRect.left, 8, window.innerWidth - POPOVER_WIDTH - 8);
-      style.top  = targetRect.bottom + GAP;
+      style.top  = clamp(targetRect.bottom + GAP, 8, maxEdgeOffset);
       break;
   }
 

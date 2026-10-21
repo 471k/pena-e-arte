@@ -63,7 +63,7 @@ export function AdminLayout() {
   useAdminNotificationHub();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep } = useNavShell();
+  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
   const { data: openFeedback } = useGetFeedbackReportsQuery({ status: "Open" });
   const openCount = openFeedback?.length ?? 0;
   const { data: openConductReports } = useGetPlatformConductReportsQuery({ status: "Open" });
@@ -85,10 +85,10 @@ export function AdminLayout() {
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight">Platform Admin</span>
 
-        <NavDrawer sections={navSections} title="Platform Admin" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
+        <NavDrawer sections={navSections} title="Platform Admin" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} />
+          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
         </div>

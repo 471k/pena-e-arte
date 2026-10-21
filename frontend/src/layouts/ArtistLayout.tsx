@@ -30,7 +30,7 @@ export function ArtistLayout() {
   useSignalR(tenantId);
   useChatHub();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep } = useNavShell();
+  const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
 
   const { data: myArtist } = useGetMyArtistQuery();
   const { data: openConductReports } = useGetMyConductReportsAsArtistQuery();
@@ -62,7 +62,7 @@ export function ArtistLayout() {
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
 
-        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} />
+        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <Button
@@ -75,7 +75,7 @@ export function ArtistLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} />
+          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
           <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
