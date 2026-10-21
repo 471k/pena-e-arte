@@ -53,13 +53,19 @@ spec:
           # Vault instances briefly running side by side on this single-node cluster,
           # 384Mi OOMKilled again under that contention even after the old instance was
           # removed — 512Mi is what actually held.
+          # 2026-10-21: 512Mi OOMKilled again (exit 137, 2026-10-20 22:35:56Z, 7 restarts in 43 days)
+          # with no contention — Vault sat at 428Mi even while SEALED, so it ran at its ceiling and
+          # every OOM restart re-sealed it (the unnoticed ~3-day seal from ~2026-10-13 fits this).
+          # Raised to request 384Mi / limit 1Gi; the single node had ~800Mi free at the time.
+          # NOTE: changing this restarts vault-0 on the next deploy, which seals Vault — deploy it
+          # while Vault is already sealed, or plan an unseal right after.
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 384Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
       volumes:
         - name: config
           configMap:

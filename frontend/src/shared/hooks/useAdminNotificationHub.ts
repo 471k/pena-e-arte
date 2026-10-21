@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
+import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { incrementUnreadIfVisible } from "@/features/notifications/incrementUnreadIfVisible";
 import type { NotificationLogResponse } from "@/features/notifications/notification.types";
@@ -16,9 +17,8 @@ export function useAdminNotificationHub() {
   useEffect(() => {
     if (!token) return;
 
-    // In dev the Vite proxy doesn't reliably forward WebSocket upgrades for SignalR,
-    // so connect directly to the backend. In production the hubs are on the same origin.
-    const hubBase = import.meta.env.DEV ? "http://localhost:5078" : "";
+    // Direct to the local backend only for a dev browser on this machine; relative otherwise (see hubBaseUrl).
+    const hubBase = hubBaseUrl();
 
     const connection = createHubConnection(`${hubBase}/hubs/notification`, token!);
 
