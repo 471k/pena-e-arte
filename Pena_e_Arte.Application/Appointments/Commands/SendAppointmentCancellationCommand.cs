@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Net;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -33,8 +35,15 @@ public class SendAppointmentCancellationHandler(
             return Unit.Value;
         }
 
-        string subject = $"Appointment Cancelled — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
-        string body = BuildEmailBody(appointment);
+        // appointment.Date is UTC; the client reads the studio's wall-clock time.
+        string? timezone = await db.Studios
+            .Where(s => s.Id == appointment.StudioId)
+            .Select(s => s.Timezone)
+            .FirstOrDefaultAsync(ct);
+        DateTime localDate = TimezoneUtils.ToStudioLocalForRules(appointment.Date, timezone);
+
+        string subject = $"Appointment Cancelled — {localDate.ToString("ddd, dd MMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}";
+        string body = BuildEmailBody(appointment, localDate);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             appointment.StudioId, NotificationType.AppointmentCancelled, NotificationChannel.Email, ct);
@@ -83,7 +92,7 @@ public class SendAppointmentCancellationHandler(
         return Unit.Value;
     }
 
-    private static string BuildEmailBody(Appointment appointment) =>
+    private static string BuildEmailBody(Appointment appointment, DateTime localDate) =>
         $"""
         <!DOCTYPE html>
         <html>
@@ -91,7 +100,7 @@ public class SendAppointmentCancellationHandler(
           <h2 style="color:#c0392b">Appointment Cancelled</h2>
           <p>Hi {System.Net.WebUtility.HtmlEncode(appointment.Client.FirstName)},</p>
           <p>Your tattoo appointment scheduled for:</p>
-          <p style="font-size:1.1em;font-weight:bold">{appointment.Date:dddd, dd MMMM yyyy 'at' HH:mm}</p>
+          <p style="font-size:1.1em;font-weight:bold">{localDate.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}</p>
           <p>has been cancelled.</p>
           <p>If you have any questions or would like to rebook, please contact us.</p>
           <hr/>

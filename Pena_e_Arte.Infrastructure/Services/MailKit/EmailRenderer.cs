@@ -63,7 +63,7 @@ public class EmailRenderer : IEmailRenderer
         Dictionary<string, string> vars = new()
         {
             ["client_first_name"] = clientFirstName,
-            ["appointment_date"] = date.ToString("dddd, dd MMMM yyyy 'at' HH:mm"),
+            ["appointment_date"] = date.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture),
             ["duration_minutes"] = durationMinutes.ToString(),
             ["notes"] = notes ?? string.Empty,
             ["show_notes"] = (notes is not null).ToString().ToLowerInvariant(),

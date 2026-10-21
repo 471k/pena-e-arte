@@ -2,6 +2,7 @@ using System.Globalization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -50,9 +51,10 @@ public class SendIntakeFormSubmittedNotificationHandler(
         {
             Appointment? appointment = await db.Appointments
                 .FirstOrDefaultAsync(a => a.Id == form.AppointmentId.Value, ct);
+            // Appointment.Date is UTC; the owner reads the studio's wall-clock time.
             if (appointment is not null)
-                appointmentDate = appointment.Date.ToString(
-                    "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
+                appointmentDate = TimezoneUtils.ToStudioLocalForRules(appointment.Date, studio.Timezone)
+                    .ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
         }
 
         string clientFullName = $"{form.Client.FirstName} {form.Client.LastName}";

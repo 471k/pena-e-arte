@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -34,9 +36,18 @@ public class AppointmentReminderJob(
             return;
         }
 
+        // appointment.Date is UTC; the client reads the studio's wall-clock time (was printed as UTC,
+        // i.e. 1–2 h early for an Albanian studio, until 2026-10-21).
+        string? timezone = await db.Studios
+            .IgnoreQueryFilters()
+            .Where(s => s.Id == appointment.StudioId)
+            .Select(s => s.Timezone)
+            .FirstOrDefaultAsync(ct);
+        DateTime localDate = TimezoneUtils.ToStudioLocalForRules(appointment.Date, timezone);
+
         string timeLabel = type == "48h" ? "48 hours" : "24 hours";
-        string subject = $"Appointment Reminder — {appointment.Date:ddd, dd MMM yyyy 'at' HH:mm}";
-        string emailBody = BuildEmailBody(appointment, timeLabel);
+        string subject = $"Appointment Reminder — {localDate.ToString("ddd, dd MMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}";
+        string emailBody = BuildEmailBody(appointment, localDate, timeLabel);
 
         bool emailSuccess = await TrySendEmailAsync(appointment, subject, emailBody, ct);
         NotificationLog emailLog = BuildLog(appointment, NotificationChannel.Email, subject, emailBody, emailSuccess);
@@ -46,7 +57,7 @@ public class AppointmentReminderJob(
 
         if (appointment.Client.Phone is not null)
         {
-            string smsBody = $"Reminder: Your tattoo session is in {timeLabel} — {appointment.Date:ddd dd MMM 'at' HH:mm}. Reply STOP to opt out.";
+            string smsBody = $"Reminder: Your tattoo session is in {timeLabel} — {localDate.ToString("ddd dd MMM 'at' HH:mm", CultureInfo.InvariantCulture)}. Reply STOP to opt out.";
             bool smsSuccess = await TrySendSmsAsync(appointment, smsBody, ct);
             NotificationLog smsLog = BuildLog(appointment, NotificationChannel.Sms, null, smsBody, smsSuccess);
             db.NotificationLogs.Add(smsLog);
@@ -110,7 +121,7 @@ public class AppointmentReminderJob(
             IsSuccess = success
         };
 
-    private static string BuildEmailBody(Appointment appointment, string timeLabel) =>
+    private static string BuildEmailBody(Appointment appointment, DateTime localDate, string timeLabel) =>
         $"""
         <!DOCTYPE html>
         <html>
@@ -118,7 +129,7 @@ public class AppointmentReminderJob(
           <h2 style="color:#1a1a1a">Your appointment is in {timeLabel}</h2>
           <p>Hi {WebUtility.HtmlEncode(appointment.Client.FirstName)},</p>
           <p>This is a reminder that your tattoo appointment is scheduled for:</p>
-          <p style="font-size:1.1em;font-weight:bold">{appointment.Date:dddd, dd MMMM yyyy 'at' HH:mm}</p>
+          <p style="font-size:1.1em;font-weight:bold">{localDate.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}</p>
           <p>Duration: {appointment.DurationMinutes} minutes</p>
           {(appointment.Notes is not null ? $"<p>Notes: {WebUtility.HtmlEncode(appointment.Notes)}</p>" : string.Empty)}
           <p>If you need to reschedule, please contact us as soon as possible.</p>

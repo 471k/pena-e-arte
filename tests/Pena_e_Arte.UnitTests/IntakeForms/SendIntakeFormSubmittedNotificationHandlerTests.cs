@@ -173,6 +173,20 @@ public class SendIntakeFormSubmittedNotificationHandlerTests
             "(no appointment date)",
             Arg.Any<bool>());
     }
+
+    [Fact]
+    public async Task Handle_ShowsTheAppointmentInTheStudiosTimezone_NotUtc()
+    {
+        (Guid formId, Studio studio) = await SeedData(withAppointment: true);
+        studio.Timezone = "Europe/Paris";
+        _db.Appointments.Single().Date = new DateTime(2026, 11, 5, 10, 0, 0, DateTimeKind.Utc); // 11:00 in Paris (CET)
+        await _db.SaveChangesAsync();
+
+        await CreateSut().Handle(new SendIntakeFormSubmittedNotificationCommand(formId), default);
+
+        _emailRenderer.Received(1).RenderIntakeFormSubmitted(
+            Arg.Any<string>(), Arg.Any<string>(), "Thursday, 05 November 2026 at 11:00", Arg.Any<bool>());
+    }
 }
 
 

@@ -2,6 +2,7 @@ using System.Globalization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
@@ -48,8 +49,9 @@ public class SendDepositCapturedNotificationHandler(
         }
 
         string amountFormatted = MoneyText.Format(payment.Amount, payment.Currency);
-        string appointmentDate = payment.Appointment.Date.ToString(
-            "dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
+        // Appointment.Date is UTC; the client reads the studio's wall-clock time.
+        string appointmentDate = TimezoneUtils.ToStudioLocalForRules(payment.Appointment.Date, studio.Timezone)
+            .ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.DepositCaptured, NotificationChannel.Email, ct);

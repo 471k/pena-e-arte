@@ -199,6 +199,24 @@ public class SendDepositCapturedNotificationHandlerTests
         await _realtime.Received(1)
             .NotifyStudioAsync(studio.Id, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_EmailAndSmsShowTheAppointmentInTheStudiosTimezone_NotUtc()
+    {
+        (Guid paymentId, Studio studio, _) = await SeedData(phone: "+355691234567");
+        studio.Timezone = "Europe/Paris";
+        _db.Appointments.Single().Date = new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc); // 16:00 in Paris (CEST)
+        await _db.SaveChangesAsync();
+
+        await CreateSut().Handle(new SendDepositCapturedNotificationCommand(paymentId), default);
+
+        _emailRenderer.Received(1).RenderDepositCaptured(
+            Arg.Any<string>(), Arg.Any<string>(), "Friday, 23 October 2026 at 16:00", Arg.Any<bool>());
+        await _notifications.Received(1).SendSmsAsync(
+            "+355691234567",
+            Arg.Is<string>(s => s.Contains("Friday, 23 October 2026 at 16:00")),
+            Arg.Any<CancellationToken>());
+    }
 }
 
 

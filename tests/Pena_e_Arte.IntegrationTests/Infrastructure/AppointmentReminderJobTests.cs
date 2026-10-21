@@ -166,13 +166,48 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task SendReminderAsync_EmailAndSmsShowTheStudiosLocalTime_NotUtc()
+    {
+        // 14:00 UTC on 23 Oct 2026 is 16:00 in Paris (CEST) — the reminder printed 14:00 until 2026-10-21.
+        (Guid appointmentId, _) = await SeedAppointmentWithClient(
+            withPhone: true, timezone: "Europe/Paris", date: new DateTime(2026, 10, 23, 14, 0, 0, DateTimeKind.Utc));
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        await CreateSut(db).SendReminderAsync(appointmentId, "24h");
+
+        await _notifications.Received(1).SendEmailAsync(
+            Arg.Any<string>(),
+            "Appointment Reminder — Fri, 23 Oct 2026 at 16:00",
+            Arg.Is<string>(b => b.Contains("Friday, 23 October 2026 at 16:00")),
+            Arg.Any<CancellationToken>());
+        await _notifications.Received(1).SendSmsAsync(
+            Arg.Any<string>(),
+            Arg.Is<string>(s => s.Contains("Fri 23 Oct at 16:00")),
+            Arg.Any<CancellationToken>());
+    }
+
     private async Task<(Guid AppointmentId, Guid StudioId)> SeedAppointmentWithClient(
         bool withPhone,
-        AppointmentStatus status = AppointmentStatus.Pending)
+        AppointmentStatus status = AppointmentStatus.Pending,
+        string? timezone = null,
+        DateTime? date = null)
     {
         await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
 
         Guid studioId = Guid.NewGuid();
+        if (timezone is not null)
+        {
+            ctx.Studios.Add(new Studio
+            {
+                Id = studioId,
+                Name = "Reminder TZ Studio",
+                Slug = $"reminder-tz-{studioId:N}",
+                OwnerEmail = "owner@example.com",
+                Timezone = timezone,
+            });
+            await ctx.SaveChangesAsync();
+        }
 
         Client client = new()
         {
@@ -200,8 +235,8 @@ public class AppointmentReminderJobTests(DatabaseFixture fixture)
             StudioId = studioId,
             ArtistId = artist.Id,
             ClientId = client.Id,
-            Date = DateTime.UtcNow.AddDays(2),
-            EndDate = DateTime.UtcNow.AddDays(2).AddHours(2),
+            Date = date ?? DateTime.UtcNow.AddDays(2),
+            EndDate = (date ?? DateTime.UtcNow.AddDays(2)).AddHours(2),
             DurationMinutes = 120,
             Status = status,
             DepositStatus = DepositStatus.Paid,
