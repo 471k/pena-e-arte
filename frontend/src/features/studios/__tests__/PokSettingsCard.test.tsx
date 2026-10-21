@@ -9,6 +9,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { PokSettingsCard } from "@/features/studios/components/PokSettingsCard";
+import { ownerTourSteps } from "@/features/help/tours/ownerTour";
 import type { PaymentCapabilitiesResponse, PokConnectionStatusResponse } from "@/features/payments/payment.types";
 
 const NOT_CONNECTED: PokConnectionStatusResponse = { connected: false, merchantId: null };
@@ -58,6 +59,14 @@ describe("PokSettingsCard", () => {
     expect(await screen.findByLabelText(/key id/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/key secret/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/merchant id/i)).toBeInTheDocument();
+  });
+
+  it("is the target of the owner tour's Connect POK step (C-13)", async () => {
+    renderCard();
+    await screen.findByLabelText(/key id/i);
+    const step = ownerTourSteps.find((s) => s.targetSelector === '[data-tour="owner-pok-card"]');
+    expect(step?.route).toBe("/studios/me");
+    expect(document.querySelector(step!.targetSelector)).toHaveTextContent(/card deposits — pok/i);
   });
 
   it("connect button is disabled until all three fields are filled", async () => {
