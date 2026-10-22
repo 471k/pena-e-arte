@@ -126,6 +126,26 @@ public class PokPaymentProviderTests
     }
 
     [Fact]
+    public async Task CreatePaymentHoldAsync_CaptureImmediately_CreatesAnAutoCaptureOrder()
+    {
+        // C-4 (2026-10-22): card deposits are charged when the client pays.
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse("""{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/sdk-orders") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler);
+
+        await sut.CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 150m, "ALL", HoldDurationMinutes: 1440, CaptureImmediately: true),
+            default);
+
+        handler.Requests.Single(r => r.Path.EndsWith("/sdk-orders")).Body.Should().Contain("\"autoCapture\":true");
+    }
+
+    [Fact]
     public async Task CreatePaymentHoldAsync_SendsOurPaymentResultPagesAsRedirectUrls()
     {
         // G-12: without these POK sends a hosted-page payer to its own dead default URL.

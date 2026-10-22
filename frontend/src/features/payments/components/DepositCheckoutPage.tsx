@@ -14,6 +14,10 @@ import {
 } from "../paymentsApi";
 import { PaymentStatus } from "../payment.types";
 
+// Card deposits are charged when the client pays (go-live decision C-4, 2026-10-22).
+const DEPOSIT_PAID_TEXT =
+  "Your card has been charged. If you cancel, the studio's cancellation policy decides how much of the deposit is refunded.";
+
 function CheckoutForm({
   paymentId,
   orderId,
@@ -26,7 +30,8 @@ function CheckoutForm({
 }) {
   const navigate = useNavigate();
   const [confirmCardPayment] = useConfirmCardPaymentMutation();
-  const [succeeded, setSucceeded] = useState(false);
+  // "paid": charged now (every deposit since C-4, 2026-10-22). "held": a hold from before then.
+  const [succeeded, setSucceeded] = useState<"paid" | "held" | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [errorMsg,  setErrorMsg]  = useState<string | null>(null);
 
@@ -39,8 +44,10 @@ function CheckoutForm({
     setConfirming(true);
     try {
       const result = await confirmCardPayment(paymentId).unwrap();
-      if (result.status === PaymentStatus.Captured || result.status === PaymentStatus.Paid) {
-        setSucceeded(true);
+      if (result.status === PaymentStatus.Paid) {
+        setSucceeded("paid");
+      } else if (result.status === PaymentStatus.Captured) {
+        setSucceeded("held");
       } else {
         setErrorMsg("Your card was submitted, but the payment hasn't been confirmed yet. Refresh in a moment to check again.");
       }
@@ -55,9 +62,11 @@ function CheckoutForm({
     return (
       <div className="flex flex-col items-center gap-3 py-8 text-center">
         <CheckCircle2 className="h-12 w-12 text-green-500" />
-        <h2 className="text-lg font-semibold">Deposit authorised</h2>
+        <h2 className="text-lg font-semibold">{succeeded === "paid" ? "Deposit paid" : "Deposit authorised"}</h2>
         <p className="text-sm text-muted-foreground max-w-xs">
-          Your card has been authorised. The studio charges the deposit, usually at your appointment; its cancellation policy applies if you cancel late or miss it.
+          {succeeded === "paid"
+            ? DEPOSIT_PAID_TEXT
+            : "Your card has been authorised. The studio charges the deposit, usually at your appointment; its cancellation policy applies if you cancel late or miss it."}
         </p>
         <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
           Back to booking
@@ -78,9 +87,9 @@ function CheckoutForm({
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
-        You are authorising a deposit of{" "}
+        You are paying a deposit of{" "}
         <span className="font-semibold text-foreground">{formatCurrency(amount, currency)}</span>.
-        Your card is authorised now and charged by the studio, usually at your appointment.
+        Your card is charged now. If you cancel, the studio's cancellation policy decides how much is refunded.
       </p>
       <GuestCheckoutForm
         orderId={orderId}
@@ -127,9 +136,9 @@ export function DepositCheckoutPage() {
           <CardContent className="py-8">
             <div className="flex flex-col items-center gap-3 text-center">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
-              <h2 className="text-lg font-semibold">Deposit authorised</h2>
+              <h2 className="text-lg font-semibold">Deposit paid</h2>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Your card has been authorised. The studio charges the deposit, usually at your appointment; its cancellation policy applies if you cancel late or miss it.
+                {DEPOSIT_PAID_TEXT}
               </p>
               <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
                 Back to booking
@@ -151,7 +160,7 @@ export function DepositCheckoutPage() {
       <main className="max-w-md mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Authorise deposit</CardTitle>
+            <CardTitle className="text-base">Pay deposit</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading && (

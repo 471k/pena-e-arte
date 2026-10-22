@@ -447,7 +447,7 @@ describe("PaymentDetailPage", () => {
     servePayment({ status: "Refunded", refundedAmount: 50, appointmentStatus: "Cancelled" });
     renderPage("appt-002", Role.Owner);
     expect(await screen.findByText("Partly kept")).toBeInTheDocument();
-    expect(screen.getByText("€50 kept · €50 released (cancellation policy)")).toBeInTheDocument();
+    expect(screen.getByText("€50 kept · €50 refunded (cancellation policy)")).toBeInTheDocument();
   });
 
   it("a deposit kept in full on a late cancel shows 'Kept', not 'Paid'", async () => {

@@ -18,11 +18,12 @@ public class ConfirmCardPaymentHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public ConfirmCardPaymentHandlerTests() => _currentUser.Role.Returns("owner"); // no ownership check by default
 
-    private ConfirmCardPaymentHandler CreateSut() => new(_db, _currentUser, _provider);
+    private ConfirmCardPaymentHandler CreateSut() => new(_db, _currentUser, _provider, _jobs);
 
     [Fact]
     public async Task Handle_ProviderReportsAuthorized_HealsPendingToCaptured()
@@ -50,6 +51,25 @@ public class ConfirmCardPaymentHandlerTests
         result.Status.Should().Be(PaymentStatus.Paid.ToString());
         _db.Payments.Single(p => p.Id == paymentId).PaidAt.Should().NotBeNull();
         _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Paid);
+        _jobs.Received(1).EnqueueDepositPaidNotification(paymentId);
+    }
+
+    [Fact]
+    public async Task Handle_PaidOnAnAppointmentCancelledMeanwhile_StaysPendingForReconciliationToRefund()
+    {
+        Guid appointmentId = await SeedAppointmentAsync();
+        _db.Appointments.Single(a => a.Id == appointmentId).Status = AppointmentStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Pending, "order-c", appointmentId);
+        _provider.GetStatusAsync(_studioId, "order-c", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
+
+        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.Status.Should().Be(PaymentStatus.Pending.ToString());
+        _db.Payments.Single(p => p.Id == paymentId).PaidAt.Should().BeNull();
+        _jobs.Received(1).TriggerPaymentReconciliationNow();
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
     }
 
     [Fact]

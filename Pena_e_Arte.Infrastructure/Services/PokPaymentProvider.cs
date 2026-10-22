@@ -30,9 +30,11 @@ namespace Pena_e_Arte.Infrastructure.Services;
 ///    own dashboard calls it "On hold"). The pre-gate isCompleted-first precedence would not have
 ///    misfired on this shape, but stays guarded by a regression test.
 /// 3. Hosted-page return (2026-10-16): redirectUrl / failRedirectUrl are honoured — see PaymentResultUrl.
-/// Still open (docs/specs/pok-flow-a-go-live-blockers-2026-10-07.md): how long a hold can be
-/// captured after the order's 24 h expiresAt (C-4), and which environments point at POK
-/// production (C-2). No studio is enabled for live card deposits until those are decided.
+/// 4. Holds survived 8 days on staging (T9b, 2026-10-22). Card deposits no longer rely on that:
+///    since C-4 (2026-10-22) they are created with autoCapture:true (PaymentHoldRequest
+///    .CaptureImmediately) and charged when the client pays; holds remain for older deposits.
+/// Still open (docs/specs/pok-flow-a-go-live-blockers-2026-10-07.md): which environments point at
+/// POK production (C-2). No studio is enabled for live card deposits until then.
 /// </summary>
 public sealed class PokPaymentProvider(
     PokAuthClient authClient,
@@ -82,7 +84,7 @@ public sealed class PokPaymentProvider(
         {
             Amount = ToPokAmount(request.Amount, request.Currency),
             CurrencyCode = request.Currency,
-            AutoCapture = false,
+            AutoCapture = request.CaptureImmediately,
             ExpiresAfterMinutes = Capabilities.SupportsHoldExpiry ? request.HoldDurationMinutes : null,
             MerchantCustomReference = request.PaymentId.ToString(),
             WebhookUrl = string.IsNullOrEmpty(authClient.WebhookCallbackBaseUrl)

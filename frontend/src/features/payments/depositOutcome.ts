@@ -70,10 +70,13 @@ export function describeDeposit(p: DepositFields): DepositOutcome {
           clientLabel: "Deposit refunded", clientDetail: `${money(givenBack)} refunded to your card`, charged: true };
       }
       if (cancelled) {
+        // Card deposits are charged when the client pays (C-4, 2026-10-22), so the part the policy
+        // doesn't keep goes back to the card as a refund. (A hold from before then was partly
+        // captured instead, and the rest released; "refunded" covers both for the client.)
         return { kind: "partlyKept", ownerLabel: "Partly kept",
-          ownerDetail: `${money(kept)} kept · ${money(givenBack)} released (cancellation policy)`,
-          clientLabel: "Partly charged",
-          clientDetail: `${money(kept)} charged under the studio's cancellation policy, ${money(givenBack)} released`,
+          ownerDetail: `${money(kept)} kept · ${money(givenBack)} refunded (cancellation policy)`,
+          clientLabel: "Partly refunded",
+          clientDetail: `${money(kept)} kept under the studio's cancellation policy, ${money(givenBack)} refunded to your card`,
           charged: true };
       }
       return { kind: "partlyRefunded", ownerLabel: "Partly refunded",

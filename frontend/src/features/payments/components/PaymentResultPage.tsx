@@ -38,8 +38,8 @@ export function PaymentResultPage() {
             <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500" aria-hidden="true" />
             <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
             <p className="text-sm text-muted-foreground">
-              Your card payment went through. For a deposit, your card is only authorised for now — the
-              studio charges it later, usually at your appointment.
+              Your card payment went through and your card has been charged. If you cancel, the studio's
+              cancellation policy decides how much of a deposit is refunded.
             </p>
             <p className="text-sm text-muted-foreground">It can take a minute to show in My bookings.</p>
           </>

@@ -14,7 +14,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-1 Staging Vault | Phi (infra) | No (staging parity only) | Open — deployed staging has no Vault at all (`cd.yml` leaves `Vault__Address` unset on purpose), so connecting POK or taking a card deposit on staging.tattooos.co can't work; every POK test ran on the local stack | Phi decides: a second manually-unsealed Vault, or a dev-mode one that forgets the keys on every restart |
 | C-2 POK host + webhook per environment | Phi | **Yes — this is the switch** | Open (production still calls POK staging). **Prepared 2026-10-21:** both overlays now spell out `Pok__BaseUrl`, `Pok__WebhookCallbackBaseUrl` and `Payments__CardDepositsEnabled` (production unchanged; staging gets its webhook address) | Go live in two deploys per `docs/infra/pok-go-live-runbook.md`: host + webhook first, card deposits on second |
 | C-3 Gift-card / package card purchases | Phi (product) | No (separate flow) | Open, not tested by the gate | Decide option (a) hide or (b) build |
-| C-4 When a deposit is charged | Phi + Finance + Legal | **Yes, if holds don't last** | **Holds survive day 8 on staging:** T9 captured 26 h after authorisation; T9b captured 8 days 0 h 17 min after authorisation (2026-10-22), same fee as an immediate capture. Production limit still asked of POK (C-6 item 1) | Decide (a)/(b)/(c); Help now says "charged by the studio, usually at your appointment" |
+| C-4 When a deposit is charged | Phi + Finance + Legal | ~~Yes~~ No longer | **Decided 2026-10-22: (a) charge at booking**; Legal: charging before the service is legal; Finance: no concern (the deposit is a customer-deposit liability until the service or a forfeit). **Built** (branch `feat/charge-deposit-at-booking`): card deposits and owner card links are created with `autoCapture: true` and charged when the client pays; cancellations refund per the deposit rule; holds from before keep working | Confirm on POK staging, then with the C-11 first real transactions |
 | C-5 Webhook fan-out | Engineering | No (before real volume) | **Debounced** (PR #265, 3c0576d3, live 2026-10-21): POK sends each webhook 3 times in ~3 s (staging 17–18 Oct); the first trigger marks a 10 s Redis window and schedules ONE reconciliation run at its end, later triggers in the window are skipped (the run starts after them); Redis down → run at once as before. The webhook stays rate-limited ("billing") | Later: re-check only the order named in the webhook (needs a per-payment reconciliation path) |
 | C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — items 2, 7, 11 and the refund part of 10 answered by our own staging probe on 2026-10-16 (see C-6); email not sent yet | Send in writing; the answered items become "please confirm" |
 | C-7 Check POK keys at connect | Engineering | No | **Done**: keys checked (PR #263) — connect logs in to POK once before saving; refused → 422, POK unreachable → 503, nothing saved; staging answers wrong/unknown keys with 400 "Your credentials are incorrect". **Merchant ID checked** (PR #267, ed0dc58b, live 2026-10-21): one read of a random order under the entered merchant id — staging answers 404 "Order not found" for the keys' own merchant and 403 "Access Forbidden!" for any other → 422 "this Merchant ID doesn't belong to them", nothing saved | None |
@@ -77,8 +77,24 @@ The production limit is still unknown (C-6 item 1 asks POK, along with whether P
 uncaptured hold itself). Two more staging holds give day 15 (2026-11-02) and day 30 (2026-11-17).
 The client-facing charge-timing strings (Phase 8.3b) and the client-deposit Help tip say the deposit is
 charged "by the studio, usually at your appointment"; no hold-window tip until the production limit is known.
-Options (a) charge at booking, (b) capture before the hold lapses, (c) hybrid — unchanged. The six
-client charge-timing strings (Phase 8.3b) and the Help charge-timing tip follow the decision.
+Options (a) charge at booking, (b) capture before the hold lapses, (c) hybrid.
+**Decided 2026-10-22: (a) charge at booking** (brief with the Finance and Legal answers: the C-4 Claude
+Doc "When to charge card deposits"; Legal confirmed charging before the service is legal). What it changes:
+- `CreateDepositPaymentCommand` (and the saved-card flow sharing it) and `CreatePaymentIntentCommand` create
+  the POK order with `autoCapture: true` (`PaymentHoldRequest.CaptureImmediately`), so the card is charged
+  when the client pays; the payment goes Pending → Paid with no hold and no "Capture deposit".
+- The client's "Deposit received" email/SMS (`SendDepositCapturedNotificationCommand`) is now sent on
+  that transition too (`DepositPaidNotificationJob`), from the confirm call, the resume heal or
+  `PaymentReconciliationJob`.
+- A cancellation refunds a Paid deposit per the deposit rule (`CancelAppointmentCommand`, unchanged).
+- A payment charged after its appointment was cancelled (a payment page left open) is refunded in full by
+  `PaymentReconciliationJob`, the charged twin of releasing a hold; no new deposit order is created for a
+  cancelled appointment.
+- Client strings, Help, the manual and the deposit-outcome labels ("Partly refunded" instead of
+  "Partly charged … released") say the card is charged when the client pays.
+- Holds created before this change keep working (capture, release, reconciliation, C-15).
+Not done, product decision pending: releasing the slot of an online booking request whose deposit isn't
+paid within N minutes (today an unpaid request keeps its slot until someone cancels it).
 
 ## C-5 — Webhook fan-out
 **Done 2026-10-21 (PR #265):** see the table row. Gate evidence: one webhook per authorisation; none on
@@ -302,6 +318,7 @@ reports the hold canceled or failed, or the order completed with nothing captura
 owner then gets an email and a bell entry with a link to the payment, where "New payment" starts a fresh
 request. The last case is a best guess: T9b (2026-10-22) was still capturable at day 8, so no lapsed hold has
 been seen yet. Check it against the first one that lapses (staging holds at day 15 and day 30, or POK's answer).
+Since C-4 (charge at booking) new card deposits never hold, so C-15 only concerns holds created before then.
 
 ## C-16 — Cancellation side effects
 Done in B3 (a58b229b): reminder jobs are deleted after the save.

@@ -18,6 +18,7 @@ public class PayDepositWithSavedCardHandlerTests
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
     private readonly IPokCardTokenService _cardTokens = Substitute.For<IPokCardTokenService>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _clientUserId = Guid.NewGuid();
 
@@ -38,7 +39,7 @@ public class PayDepositWithSavedCardHandlerTests
         _db.ChangeTracker.Clear();
     }
 
-    private PayDepositWithSavedCardHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _cardTokens);
+    private PayDepositWithSavedCardHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _cardTokens, _jobs);
 
     [Fact]
     public async Task Handle_HappyPath_MintsHoldThenSetsUpThreeDs()

@@ -41,7 +41,11 @@ public sealed record PaymentHoldRequest(
     /// <summary>How long the hold stays payable before it self-expires. Only meaningful when
     /// Capabilities.SupportsHoldExpiry is true; a provider without it ignores this and the
     /// caller must not rely on server-side expiry.</summary>
-    int? HoldDurationMinutes = null);
+    int? HoldDurationMinutes = null,
+    /// <summary>True charges the card as soon as the client pays (no hold to capture later):
+    /// card deposits since go-live decision C-4 (2026-10-22, "charge at booking"). False keeps
+    /// the authorise-then-capture hold.</summary>
+    bool CaptureImmediately = false);
 
 /// <summary>
 /// Provider-neutral payment operations for Flow A (client → studio). Replaces the deleted,

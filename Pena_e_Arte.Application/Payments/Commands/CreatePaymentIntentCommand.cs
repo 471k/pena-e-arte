@@ -50,9 +50,11 @@ public class CreatePaymentIntentHandler(
 
         // Same 24 h window as client deposits, so PaymentReconciliationJob can release an unpaid
         // link at its real expiry and CreateDepositPaymentCommand never resumes an expired order.
+        // Charged when the client pays, like client deposits (C-4, 2026-10-22).
         (string intentId, string clientToken) = await paymentProvider.CreatePaymentHoldAsync(
             new PaymentHoldRequest(tenant.StudioId, paymentId, amount, currency,
-                HoldDurationMinutes: CreateDepositPaymentHandler.HoldDurationMinutes), ct);
+                HoldDurationMinutes: CreateDepositPaymentHandler.HoldDurationMinutes,
+                CaptureImmediately: true), ct);
         DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(CreateDepositPaymentHandler.HoldDurationMinutes);
 
         Payment payment;

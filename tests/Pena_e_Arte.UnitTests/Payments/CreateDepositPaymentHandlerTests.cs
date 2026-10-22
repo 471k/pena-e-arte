@@ -17,6 +17,7 @@ public class CreateDepositPaymentHandlerTests
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _clientUserId = Guid.NewGuid();
 
@@ -35,7 +36,7 @@ public class CreateDepositPaymentHandlerTests
         _db.ChangeTracker.Clear();
     }
 
-    private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _provider);
+    private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _jobs);
 
     [Fact]
     public async Task Handle_OwnAppointment_CreatesPendingCardPayment()
@@ -272,6 +273,61 @@ public class CreateDepositPaymentHandlerTests
         result.Status.Should().Be(PaymentStatus.Paid.ToString());
         _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Paid);
         _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Paid);
+        _jobs.Received(1).EnqueueDepositPaidNotification(paymentId);
+    }
+
+    [Fact]
+    public async Task Handle_NewDeposit_IsChargedWhenTheClientPays_NoHold()
+    {
+        // C-4 (2026-10-22): charge at booking.
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+
+        await CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await _provider.Received(1).CreatePaymentHoldAsync(
+            Arg.Is<PaymentHoldRequest>(r => r.CaptureImmediately),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_CancelledAppointment_RefusesAndNeverCallsProvider()
+    {
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        await CancelAppointment(appointmentId);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*cancelled*");
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+        _jobs.DidNotReceive().TriggerPaymentReconciliationNow();
+    }
+
+    [Fact]
+    public async Task Handle_CancelledAppointment_WithCardPaymentInFlight_LeavesItToReconciliation()
+    {
+        // The client may have paid on POK's page after the cancellation: never mark it Paid here;
+        // PaymentReconciliationJob refunds it in full.
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        Guid paymentId = await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_inflight", clientToken: "secret_inflight");
+        await CancelAppointment(appointmentId);
+
+        Func<Task> act = () => CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        _jobs.Received(1).TriggerPaymentReconciliationNow();
+        _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Pending);
+        await _provider.DidNotReceive().GetStatusAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    private async Task CancelAppointment(Guid appointmentId)
+    {
+        _db.Appointments.Single(a => a.Id == appointmentId).Status = AppointmentStatus.Cancelled;
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
     }
 
     [Fact]

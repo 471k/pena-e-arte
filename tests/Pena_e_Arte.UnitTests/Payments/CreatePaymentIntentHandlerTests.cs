@@ -54,8 +54,9 @@ public class CreatePaymentIntentHandlerTests
 
         await CreateSut().Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
 
+        // Charged when the client pays the link, like client deposits (C-4).
         await _stripe.Received(1).CreatePaymentHoldAsync(
-            Arg.Is<PaymentHoldRequest>(r => r.HoldDurationMinutes == 1440), Arg.Any<CancellationToken>());
+            Arg.Is<PaymentHoldRequest>(r => r.HoldDurationMinutes == 1440 && r.CaptureImmediately), Arg.Any<CancellationToken>());
         _db.Payments.Single().HoldExpiresAt.Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(1));
     }
 

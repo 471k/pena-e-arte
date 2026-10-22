@@ -92,4 +92,7 @@ public class JobScheduler(IBackgroundJobClient backgroundJobs, IConnectionMultip
 
     public void EnqueueDepositHoldLostNotification(Guid paymentId) =>
         backgroundJobs.Enqueue<DepositHoldLostNotificationJob>(j => j.ExecuteAsync(paymentId, default));
+
+    public void EnqueueDepositPaidNotification(Guid paymentId) =>
+        backgroundJobs.Enqueue<DepositPaidNotificationJob>(j => j.ExecuteAsync(paymentId, default));
 }

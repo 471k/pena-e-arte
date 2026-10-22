@@ -33,7 +33,7 @@ describe("PaymentResultPage", () => {
   it("paid: says the payment went through and links a client to My bookings", () => {
     renderAt(`?status=paid&payment=${PAYMENT}&orderId=abc`, Role.Client);
     expect(screen.getByRole("heading", { name: /payment received/i })).toBeInTheDocument();
-    expect(screen.getByText(/charges it later, usually at your appointment/i)).toBeInTheDocument();
+    expect(screen.getByText(/your card has been charged/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /go to my bookings/i })).toHaveAttribute("href", "/book");
     expect(screen.queryByRole("link", { name: /try again/i })).not.toBeInTheDocument();
   });

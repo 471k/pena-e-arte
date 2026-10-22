@@ -1001,7 +1001,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Guest checkout — what happens after you submit:</strong> you'll receive one email with a link to set your password and a link to confirm your email. Set your password, then sign in to see the booking under My Bookings and manage it. Lost the email or never got it? Use "Forgot password" on the login page with the same email address any time — no separate resend needed.</div>
 <div class="callout callout-warn"><strong>Guest checkout — one account per email:</strong> if the email you enter already has an account on the platform, the booking is rejected with a message to sign in first instead — it's never silently attached to someone else's existing account.</div>
 <div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
-<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled. If your deposit was only authorised (not yet charged): cancelling with enough notice releases the hold, so you're never charged; cancelling late means the studio charges only the share its cancellation policy keeps, and the rest of the hold is released. Your bank may take a few days to show a release. Afterwards, My Bookings says what happened to your deposit: "Hold released — Nothing was charged", "Deposit refunded" with the amount back on your card, "Partly charged" with what the studio's policy kept and what was released, or "Deposit kept".</div>
+<div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled. A card deposit is charged when you pay it, so a refund goes back to your card; your bank may take a few days to show it. Afterwards, My Bookings says what happened to your deposit: "Deposit refunded" with the amount back on your card, "Partly refunded" with what the studio's policy kept and what came back, or "Deposit kept".</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
 </section>
 
@@ -1371,15 +1371,15 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to authorise a booking deposit. Your card is authorised now and charged by the studio, usually at your appointment (when it's completed or marked as a no-show, or earlier if the studio captures it); the studio's cancellation policy applies if you cancel late or miss it. If you have a saved card, a "Saved card" tab is selected automatically so you can pay in one tap (still with a bank confirmation step the first time); otherwise use the "Card" tab (called "New card" when you have saved cards). If card payments are temporarily unavailable, the page shows a message instead — Cash always remains available at booking, or you can contact the studio directly.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to pay a booking deposit. Your card is charged as soon as you pay; if you cancel, the studio's cancellation policy decides how much is refunded (all of it with enough notice). If you have a saved card, a "Saved card" tab is selected automatically so you can pay in one tap (still with a bank confirmation step the first time); otherwise use the "Card" tab (called "New card" when you have saved cards). If card payments are temporarily unavailable, the page shows a message instead — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="11" font-weight="700">Deposit payment</text>
 <rect x="260" y="60" width="240" height="220" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="280" y="90" font-size="12" font-weight="700">Authorise deposit</text>
-<text x="280" y="112" font-size="8" fill-opacity="0.6">Authorising 50.00. Charged</text>
-<text x="280" y="124" font-size="8" fill-opacity="0.6">usually at your appointment.</text>
+<text x="280" y="90" font-size="12" font-weight="700">Pay deposit</text>
+<text x="280" y="112" font-size="8" fill-opacity="0.6">Paying 50.00. Your card is</text>
+<text x="280" y="124" font-size="8" fill-opacity="0.6">charged now.</text>
 <rect x="280" y="140" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="300" y="172" font-size="8" fill-opacity="0.5">card number / expiry / CVC</text>
 <rect x="280" y="212" width="200" height="26" rx="4" fill="#7c3aed"/><text x="368" y="229" font-size="10" fill="#fff">Pay</text>
@@ -1392,10 +1392,10 @@ ol.steps li { margin: 6px 0; }
 <li>Review the deposit amount shown above the card form.</li>
 <li>Enter your email, card details, name on card and country into the payment form.</li>
 <li>Click <span class="step-title">Pay</span>. If your bank asks you to confirm the payment (3-D Secure), finish that step in the window that opens.</li>
-<li>A confirmation screen appears once authorised — you can return to booking from there.</li>
+<li>A "Deposit paid" screen appears once the payment goes through, and you get a "Deposit received" email — you can return to booking from there.</li>
 </ol>
 <div class="callout callout-tip"><strong>No platform fee, no surcharge:</strong> you pay exactly the deposit shown. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut, on card or cash payments, now or in the future.</div>
-<div class="callout callout-tip"><strong>Refunds:</strong> if the studio refunds you, the refund goes back to the card you paid with. If the studio releases a hold instead, nothing was ever charged.</div>
+<div class="callout callout-tip"><strong>Refunds:</strong> if the studio refunds you, the refund goes back to the card you paid with.</div>
 <div class="callout callout-tip"><strong>Paying on POK's own page:</strong> if you pay on POK's payment page instead of inside TattooOS, POK shows its result and then brings you back to TattooOS (<code>/payment-result</code>): "Payment received", or "Payment not completed" — nothing was charged — with a <span class="step-title">Try again</span> button.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> if you come back to pay after a day, a fresh card form is prepared automatically — just pay again from the same page.</div>
 <div class="callout callout-tip"><strong>If the card payment doesn't go through:</strong> for example when your bank couldn't verify the card, the payment box is replaced by a short message saying what to do next, and "Nothing was charged to your card". Click <span class="step-title">Try again</span> for a fresh card form, use a different card, or pay in cash.</div>
@@ -2579,7 +2579,7 @@ ol.steps li { margin: 6px 0; }
 <li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
 <li>Click <span class="step-title">Create Rule</span>.</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> if a client cancels late while their card deposit is only on hold, TattooOS charges the part you keep (all of it at 0%) and releases the rest.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> card deposits are charged when the client pays. If a client cancels late, TattooOS refunds only the part your policy gives back (nothing at 0%), and you keep the rest.</div>
 <div class="crosslinks">See also: <a href="#owner-deposit-rules">Deposit rule list</a></div>
 </section>
 
@@ -2839,7 +2839,7 @@ ol.steps li { margin: 6px 0; }
 <text x="16" y="25" font-size="12" font-weight="700">Payments</text><text x="640" y="25" font-size="9">+ New payment</text>
 <rect x="20" y="60" width="480" height="24" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <rect x="20" y="94" width="60" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="28" y="106" font-size="7">Pending</text>
-<rect x="88" y="94" width="70" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="96" y="106" font-size="7">On hold</text>
+<rect x="88" y="94" width="70" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="96" y="106" font-size="7">Paid</text>
 <rect x="20" y="118" width="700" height="26" fill="currentColor" fill-opacity="0.04"/>
 <text x="30" y="136" font-size="8">Client</text><text x="150" y="136" font-size="8">Session Date</text><text x="270" y="136" font-size="8">Amount</text><text x="360" y="136" font-size="8">Status</text><text x="460" y="136" font-size="8">Method</text><text x="550" y="136" font-size="8">Date Paid</text>
 <rect x="20" y="146" width="700" height="26" fill="currentColor" fill-opacity="0.02"/>
@@ -2854,9 +2854,9 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Load more</span> at the bottom for older payments.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> card deposits only work once your studio has connected its own POK merchant account — see <a href="#owner-connect-pok">Connect POK</a>. Until then, the Card option is unavailable at checkout and clients see Cash only.</div>
-<div class="callout callout-tip"><strong>Card deposit statuses:</strong> <em>Pending</em> — waiting for the client to enter their card. <em>On hold</em> — the client's card is authorised and the amount is reserved, but not charged yet. <em>Paid</em> — charged. <em>Partly refunded</em> — you refunded part of it; the payment shows how much you kept and how much went back. <em>Refunded</em> — the whole amount went back to the client. <em>Released</em> — the hold was let go, nothing was charged. <em>Kept</em> / <em>Partly kept</em> — the client cancelled late and your cancellation policy kept all or part of it (any rest was released). <em>Failed</em> — the card payment didn't go through or the hold ended; nothing was charged, and you can ask for the deposit again. To charge a deposit that's on hold, open the payment and click <span class="step-title">Capture deposit</span>; completing the appointment, or marking it a no-show, captures it automatically. To refund a card payment, open a Paid payment, click <span class="step-title">Refund</span>, enter an amount for a partial refund (or leave it blank for the full amount) and click <span class="step-title">Confirm refund</span>. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click <span class="step-title">Refund more</span> — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see <a href="#owner-card-money-flow">Where card deposit money goes</a>.</div>
+<div class="callout callout-tip"><strong>Card deposit statuses:</strong> <em>Pending</em> — waiting for the client to pay. <em>Paid</em> — the client paid and the card was charged. <em>Partly refunded</em> — you refunded part of it; the payment shows how much you kept and how much went back. <em>Refunded</em> — the whole amount went back to the client. <em>Kept</em> / <em>Partly kept</em> — the client cancelled late and your cancellation policy kept all or part of it (any rest was refunded). <em>Failed</em> — the card payment didn't go through; nothing was charged, and you can ask for the deposit again. Card deposits are charged when the client pays, so there's nothing to capture; <em>On hold</em> and <em>Released</em> only appear on card deposits taken before 22 Oct 2026, and an older deposit on hold shows <span class="step-title">Capture deposit</span>. If a client pays after the appointment was already cancelled, TattooOS refunds that payment in full automatically. To refund a card payment, open a Paid payment, click <span class="step-title">Refund</span>, enter an amount for a partial refund (or leave it blank for the full amount) and click <span class="step-title">Confirm refund</span>. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click <span class="step-title">Refund more</span> — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see <a href="#owner-card-money-flow">Where card deposit money goes</a>.</div>
 <div class="callout callout-tip"><strong>POK order ID:</strong> a card payment's details show its <span class="step-title">POK order</span> ID — search for it in POK Business (E-payments → E-orders) to see the same payment, its fee and its refunds there.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> if a client's card was authorised but they closed the page before it confirmed, the payment updates by itself, at the latest overnight.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> if a client paid but closed the page before it confirmed, the payment updates by itself, usually within minutes and at the latest overnight; the client gets their "Deposit received" email then.</div>
 <div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a>, <a href="#owner-studio-profile">Studio profile</a></div>
 </section>
 
@@ -2868,25 +2868,25 @@ ol.steps li { margin: 6px 0; }
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Payment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="10" font-weight="700">‹ Payments</text><text x="600" y="25" font-size="9">💳 Capture deposit</text>
+<text x="16" y="25" font-size="10" font-weight="700">‹ Payments</text><text x="600" y="25" font-size="9">↩ Refund</text>
 <circle cx="300" cy="90" r="24" fill="#7c3aed" fill-opacity="0.15"/><text x="290" y="96" font-size="12">¤</text>
 <text x="336" y="86" font-size="16" font-weight="700">50.00</text>
-<rect x="336" y="94" width="55" height="14" rx="7" fill="#3b82f6" fill-opacity="0.5"/><text x="344" y="104" font-size="7">On hold</text>
+<rect x="336" y="94" width="55" height="14" rx="7" fill="#22c55e" fill-opacity="0.5"/><text x="350" y="104" font-size="7">Paid</text>
 <rect x="260" y="140" width="240" height="70" rx="6" fill="currentColor" fill-opacity="0.05"/>
 <text x="272" y="160" font-size="9">Method: Card</text><text x="272" y="178" font-size="9" font-family="monospace">Appointment: 8f2a91e2…</text>
 <text x="260" y="240" font-size="10" font-weight="700">Session Splits</text>
 <rect x="260" y="248" width="240" height="60" rx="6" fill="currentColor" fill-opacity="0.03"/>
 </svg>
 </figure>
-<figcaption>Payment detail — actions change with status: capture, confirm cash, refund, download receipt</figcaption>
+<figcaption>Payment detail — actions change with status: confirm cash, refund, download receipt</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Depending on status: <span class="step-title">Capture deposit</span> (card, authorised state), <span class="step-title">Confirm cash received</span> (cash, pending state), or <span class="step-title">Refund</span> (paid, card only).</li>
-<li>Under the amount, a line says what happened to the money — for example "1,234 reserved on the client's card, not charged yet", "1,000 kept · 234 refunded" or "Nothing was charged".</li>
-<li>When money was actually charged or collected, <span class="step-title">Download receipt</span> generates a PDF invoice. A released hold has no receipt.</li>
+<li>Depending on status: <span class="step-title">Confirm cash received</span> (cash, pending state) or <span class="step-title">Refund</span> (paid, card only). An older card deposit still on hold shows <span class="step-title">Capture deposit</span>.</li>
+<li>Under the amount, a line says what happened to the money — for example "1,234 received", "1,000 kept · 234 refunded" or "Nothing was charged".</li>
+<li>When money was actually charged or collected, <span class="step-title">Download receipt</span> generates a PDF invoice. A payment where nothing was charged has no receipt.</li>
 <li>Use the <span class="step-title">Session Splits</span> editor below to divide the payment across artists/roles for payout tracking.</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> if POK ends a deposit's hold before you charged it (the authorisation expired or was cancelled), the payment shows Failed and can't be charged any more. TattooOS emails you and adds a notification, unless the appointment was cancelled anyway (you can turn this off in <a href="#owner-notifications-prefs">Notification preferences</a>). To keep the deposit, open the payment and click <span class="step-title">New payment</span> to send the client a new card payment link or to record that they'll pay in cash. Charging held deposits at the appointment avoids this.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> if an older deposit's hold ends before you charged it, the payment shows Failed and can't be charged any more. TattooOS emails you and adds a notification, unless the appointment was cancelled anyway (you can turn this off in <a href="#owner-notifications-prefs">Notification preferences</a>). To keep the deposit, open the payment and click <span class="step-title">New payment</span> to send the client a new card payment link or to record that they'll pay in cash.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> refunds are irreversible once processed by the payment provider.</div>
 <div class="crosslinks">See also: <a href="#owner-payments">Payment list</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
 </section>
@@ -2971,17 +2971,17 @@ ol.steps li { margin: 6px 0; }
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>Card deposits go from the client's card straight to <strong>your own POK account</strong>. TattooOS never holds or touches the money, and never takes a fee. POK, the card payment company, charges you its card fee when a deposit is charged. This page shows what happens at each step, what refunds cost, and where to check every figure in <strong>POK Business</strong>.</p>
 <figure class="wireframe">
-<svg viewBox="0 40 760 175" fill="currentColor" role="img" aria-label="Card deposit money flow: client card, hold in Frozen balance, charged to Balance minus POK fee, transfer to your bank">
+<svg viewBox="0 40 760 175" fill="currentColor" role="img" aria-label="Card deposit money flow: client card, charged when the client pays, Balance minus POK fee, transfer to your bank">
 <rect x="20" y="100" width="150" height="70" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.2"/>
 <text x="95" y="128" font-size="11" font-weight="700" text-anchor="middle">Client's card</text>
 <text x="95" y="146" font-size="8" fill-opacity="0.6" text-anchor="middle">pays exactly the deposit</text>
 <text x="95" y="158" font-size="8" fill-opacity="0.6" text-anchor="middle">no surcharge</text>
 <rect x="210" y="100" width="150" height="70" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.2"/>
-<text x="285" y="128" font-size="11" font-weight="700" text-anchor="middle">On hold</text>
-<text x="285" y="146" font-size="8" fill-opacity="0.6" text-anchor="middle">POK "Frozen balance"</text>
-<text x="285" y="158" font-size="8" fill-opacity="0.6" text-anchor="middle">nothing charged yet</text>
+<text x="285" y="128" font-size="11" font-weight="700" text-anchor="middle">Charged</text>
+<text x="285" y="146" font-size="8" fill-opacity="0.6" text-anchor="middle">when the client pays,</text>
+<text x="285" y="158" font-size="8" fill-opacity="0.6" text-anchor="middle">at booking</text>
 <rect x="400" y="100" width="150" height="70" rx="8" fill="#7c3aed" fill-opacity="0.12" stroke="#7c3aed" stroke-opacity="0.5"/>
-<text x="475" y="128" font-size="11" font-weight="700" text-anchor="middle">Charged</text>
+<text x="475" y="128" font-size="11" font-weight="700" text-anchor="middle">Your POK account</text>
 <text x="475" y="146" font-size="8" fill-opacity="0.7" text-anchor="middle">POK "Balance"</text>
 <text x="475" y="158" font-size="8" fill-opacity="0.7" text-anchor="middle">minus POK's card fee</text>
 <rect x="590" y="100" width="150" height="70" rx="8" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.2"/>
@@ -2994,33 +2994,31 @@ ol.steps li { margin: 6px 0; }
 <g fill="currentColor" fill-opacity="0.5">
 <polygon points="206,131 206,139 210,135"/><polygon points="396,131 396,139 400,135"/><polygon points="586,131 586,139 590,135"/>
 </g>
-<text x="285" y="200" font-size="8" fill-opacity="0.6" text-anchor="middle">Hold released → back to the client, free</text>
-<text x="475" y="200" font-size="8" fill-opacity="0.6" text-anchor="middle">Capture, complete, no-show or late cancel</text>
+<text x="285" y="200" font-size="8" fill-opacity="0.6" text-anchor="middle">Cancelled → refunded per your policy</text>
+<text x="475" y="200" font-size="8" fill-opacity="0.6" text-anchor="middle">a full refund costs you no fee</text>
 <text x="380" y="60" font-size="12" font-weight="700" text-anchor="middle">TattooOS never holds the money and takes no fee</text>
 </svg>
 </figure>
 <figcaption>Card deposit money flow — every step happens inside your own POK account</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li><strong>The client pays.</strong> POK puts a hold on the client's card for the deposit. Nothing is charged yet. In POK Business the amount shows under your account's <span class="step-title">Frozen balance</span> (Dashboard → <span class="step-title">Details</span>), already minus POK's card fee.</li>
-<li><strong>The deposit is charged</strong> when you click <span class="step-title">Capture deposit</span>, complete the appointment, mark a no-show, or a late cancellation keeps part of it. POK moves the amount from Frozen balance to your <span class="step-title">Balance</span>, minus its card fee on the amount charged.</li>
+<li><strong>The client pays.</strong> POK charges the client's card for the deposit straight away, and the amount reaches your <span class="step-title">Balance</span> in POK Business, minus POK's card fee. There's nothing for you to capture.</li>
+<li><strong>If the client cancels,</strong> TattooOS refunds what your cancellation policy gives back (all of it with enough notice) to the client's card through POK.</li>
 <li><strong>Check any payment</strong> in POK Business → <span class="step-title">Transactions</span>: click it to see <span class="step-title">Paid Amount</span> (what the client paid), <span class="step-title">Bank commission</span> (POK's fee) and <span class="step-title">Total received</span> (what reached your Balance).</li>
-<li><strong>Get paid out.</strong> Your Balance is your money; money still on hold (Frozen balance) can't be paid out yet. In POK Business, add your bank account once under <span class="step-title">Accounts → Bank Accounts</span>, then open <span class="step-title">Withdraw money</span> (or <span class="step-title">Transfer to bank</span> on the Dashboard), enter the amount, pick the account and click <span class="step-title">Transfer</span> — or set up a <span class="step-title">Recurring transfer</span> for automatic payouts. POK decides when transfers arrive and whether it charges for them.</li>
+<li><strong>Get paid out.</strong> Your Balance is your money and can be paid out. In POK Business, add your bank account once under <span class="step-title">Accounts → Bank Accounts</span>, then open <span class="step-title">Withdraw money</span> (or <span class="step-title">Transfer to bank</span> on the Dashboard), enter the amount, pick the account and click <span class="step-title">Transfer</span> — or set up a <span class="step-title">Recurring transfer</span> for automatic payouts. POK decides when transfers arrive and whether it charges for them.</li>
 </ol>
 <h3>What it costs — example</h3>
 <p>Measured on POK's test system, where the card fee was <strong>2.5% of the amount charged plus a fixed 20 ALL (0.20 EUR) per charge</strong>. Your real rate is set by your contract with POK; every transaction's <span class="step-title">Bank commission</span> shows what you paid. Example deposit: 1,234 ALL.</p>
 <table class="access-table">
 <tr><th>What happens</th><th>Client</th><th>POK's fee</th><th>Your POK Balance</th></tr>
-<tr><td>Hold released (you cancel, or the client cancels in time)</td><td>nothing charged</td><td>0</td><td>no change</td></tr>
-<tr><td>Deposit charged in full</td><td>pays 1,234</td><td>50.85</td><td>+1,183.15</td></tr>
-<tr><td>Late cancellation keeps 50% (617 charged, rest released)</td><td>pays 617</td><td>35.42</td><td>+581.58</td></tr>
-<tr><td>Charged, then refunded in full</td><td>gets 1,234 back</td><td>0 — POK returns its whole fee</td><td>−1,183.15 (back to where you started)</td></tr>
+<tr><td>The client pays the deposit</td><td>pays 1,234</td><td>50.85</td><td>+1,183.15</td></tr>
+<tr><td>Cancelled in time: refunded in full</td><td>gets 1,234 back</td><td>0 — POK returns its whole fee</td><td>−1,183.15 (back to where you started)</td></tr>
 <tr><td>Charged, then 234 refunded</td><td>gets 234 back</td><td>45.00 kept (5.85 returned)</td><td>−228.15 → you keep 955.00</td></tr>
 </table>
-<p>After a partial refund you end up exactly where you'd be if you had charged only the part you kept (1,000 ALL charged would also leave 955.00). Refunds that together add up to the whole deposit work like a full refund: POK returns its whole fee.</p>
+<p>A late cancellation that keeps part of the deposit is a partial refund like the last row. After a partial refund you end up exactly where you'd be if you had charged only the part you kept (1,000 ALL charged would also leave 955.00). Refunds that together add up to the whole deposit work like a full refund: POK returns its whole fee.</p>
 <div class="callout callout-tip"><strong>No surcharge for clients:</strong> the client pays exactly the deposit shown. POK's card fee is paid by you, the studio, out of the deposit. TattooOS takes nothing, card or cash.</div>
 <div class="callout callout-tip"><strong>Several refunds per payment:</strong> you can refund a payment several times — part now, more later — until the whole amount is back. The payment shows how much is already refunded and how much is left.</div>
-<div class="callout callout-tip"><strong>Held deposits:</strong> don't use Refund in POK Business on a payment that is still on hold — POK refuses it. To give a held deposit back, cancel the appointment in TattooOS; the hold is released for free.</div>
+<div class="callout callout-tip"><strong>Refund in TattooOS:</strong> refund from the payment's page in TattooOS (or by cancelling the appointment), not from POK Business — a refund made only in POK Business doesn't show in TattooOS.</div>
 <div class="callout callout-tip"><strong>Rounding:</strong> POK rounds each figure it shows separately, so <span class="step-title">Bank commission</span> plus <span class="step-title">Total received</span> can differ from <span class="step-title">Paid Amount</span> by 0.01 (e.g. 21.13 + 23.88 for a 45.00 charge).</div>
 <div class="callout callout-tip"><strong>TattooOS shows amounts before POK's fee:</strong> deposits and revenue reports in TattooOS use the amount the client paid. For the amounts you actually received, use your POK Business dashboard.</div>
 <div class="crosslinks">See also: <a href="#owner-connect-pok">Connect POK</a>, <a href="#owner-payments">Payment list</a>, <a href="#owner-reports">Revenue reports</a>, <a href="#client-deposit">Client: pay a deposit</a></div>
@@ -3417,7 +3415,7 @@ ol.steps li { margin: 6px 0; }
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (clients set per-studio prefs instead, see <a href="#client-my-studios">My Studios</a>)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
 <p>A table on the Studio Settings page: for each event type (appointment created, deposit captured, form submitted, etc.), toggle whether Email and/or SMS notifications are sent. A dash means that event isn't sent by that channel.</p>
-<p><strong>Card deposit hold ended (to you)</strong> is the one event that goes to you rather than the client: an email and a bell notification when POK ends a deposit's hold before you charged it, so you can ask for the deposit again (see <a href="#owner-payments">Payments</a>). It is sent by email only.</p>
+<p><strong>Card deposit hold ended (to you)</strong> is the one event that goes to you rather than the client: an email and a bell notification when POK ends a deposit's hold before you charged it, so you can ask for the deposit again (see <a href="#owner-payments">Payments</a>). It is sent by email only. Card deposits taken since 22 Oct 2026 are charged when the client pays, so it only concerns older deposits still on hold.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Notification preferences wireframe">
 <rect x="180" y="120" width="400" height="240" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
@@ -4058,18 +4056,18 @@ ol.steps li { margin: 6px 0; }
 <tr><td>Pending</td><td>Deposit not yet paid.</td></tr>
 <tr><td>Paid</td><td>Deposit collected (card captured or cash confirmed).</td></tr>
 <tr><td>Kept</td><td>The studio kept the deposit under its cancellation policy (e.g. no-show/late cancellation). Stored as <code>Forfeited</code>.</td></tr>
-<tr><td>Refunded</td><td>Deposit was returned to the client, or the hold was released.</td></tr>
+<tr><td>Refunded</td><td>Deposit was returned to the client (or, for an older deposit, its hold was released).</td></tr>
 </table>
 <h3>Payment record status</h3>
 <table class="access-table">
 <tr><th>Status</th><th>Meaning</th></tr>
 <tr><td>Pending</td><td>Card payment intent created, awaiting client authorization.</td></tr>
 <tr><td>Cash Pending</td><td>Client chose to pay cash in person; awaiting studio confirmation.</td></tr>
-<tr><td>On hold</td><td><strong>On hold</strong> (<code>Captured</code>) — card authorised, amount reserved, not yet charged. <em>Capture deposit</em> charges it.</td></tr>
+<tr><td>On hold</td><td><strong>On hold</strong> (<code>Captured</code>) — only on card deposits taken before 22 Oct 2026: card authorised, amount reserved, not yet charged. <em>Capture deposit</em> charges it. Card deposits are now charged when the client pays.</td></tr>
 <tr><td>Paid</td><td>Funds fully collected (card captured or cash confirmed).</td></tr>
 <tr><td>Refunded / Partly refunded / Released / Partly kept</td><td>One stored status (<code>Refunded</code>), shown by what happened: <em>Refunded</em> — the whole charge went back; <em>Partly refunded</em> — part went back; <em>Released</em> — a hold was let go, nothing charged; <em>Partly kept</em> — a late cancel charged the share the policy keeps and released the rest. The <em>Refunded or released</em> filter shows all of them.</td></tr>
 <tr><td>Kept</td><td>A paid deposit on a cancelled appointment — the policy kept all of it (stored as <code>Paid</code>).</td></tr>
-<tr><td>Failed</td><td>The card payment didn't go through, or the hold ended before it was charged; nothing was charged. The owner can ask for the deposit again with <em>New payment</em>.</td></tr>
+<tr><td>Failed</td><td>The card payment didn't go through (or an older deposit's hold ended before it was charged); nothing was charged. The owner can ask for the deposit again with <em>New payment</em>.</td></tr>
 </table>
 <div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#client-deposit">Client: pay a deposit</a></div>
 </section>
@@ -4109,7 +4107,7 @@ ol.steps li { margin: 6px 0; }
 <h2>Reference — FAQ</h2>
 <ol class="steps">
 <li><span class="step-title">Can a client use the same account at more than one studio?</span> Yes — see <a href="#client-my-studios">My Studios</a>. You switch which studio is "active" and that's the one your booking form and appointment list use.</li>
-<li><span class="step-title">What happens to my deposit if I cancel?</span> Depends on the studio's policy at that point; My Bookings then says what happened: "Hold released — Nothing was charged", "Deposit refunded", "Partly charged" (what the policy kept and what was released) or "Deposit kept".</li>
+<li><span class="step-title">What happens to my deposit if I cancel?</span> Depends on the studio's policy at that point; My Bookings then says what happened: "Deposit refunded", "Partly refunded" (what the policy kept and what came back to your card) or "Deposit kept".</li>
 <li><span class="step-title">Why can't I remove the "Powered by TattooOS" mark?</span> Only plans with branding removal enabled allow this — see <a href="#owner-branding">Branding</a>.</li>
 <li><span class="step-title">Can I change my studio's URL later?</span> Only once — after that the slug is locked. See <a href="#owner-studio-profile">Studio profile</a>.</li>
 <li><span class="step-title">How do I get a client account without a studio?</span> Sign up directly at <a href="#guest-register-client">client sign up</a> without following a studio's link — you'll pick a studio afterward via Discover.</li>
