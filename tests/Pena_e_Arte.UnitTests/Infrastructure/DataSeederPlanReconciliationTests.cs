@@ -231,4 +231,30 @@ public class DataSeederPlanReconciliationTests
         stored.MaxArtists.Should().Be(20);
         _db.PlanPrices.Single(pp => pp.PlanId == customPlanId).Price.Should().Be(149m);
     }
+
+    // Program.cs reconciles the plan tiers BEFORE DataSeeder.SeedAsync, so the demo-data guard must not
+    // be keyed on a plan: on a fresh database it would always say "already seeded" (2026-10-22).
+    [Fact]
+    public async Task DemoStudiosAlreadySeeded_FreshDatabaseWithOnlyThePlanTiers_IsFalse()
+    {
+        await DataSeeder.ReconcileCoreTiersAsync(_db);
+
+        (await DataSeeder.DemoStudiosAlreadySeededAsync(_db)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DemoStudiosAlreadySeeded_OnceTheFirstDemoStudioExists_IsTrue()
+    {
+        _db.Studios.Add(new Studio
+        {
+            Id = new Guid("bbbb0001-0000-0000-0000-000000000000"),
+            Name = "Ink & Soul Studio",
+            Slug = "ink-soul-studio",
+            CountryCode = "AL",
+            Currency = "EUR",
+        });
+        await _db.SaveChangesAsync();
+
+        (await DataSeeder.DemoStudiosAlreadySeededAsync(_db)).Should().BeTrue();
+    }
 }
