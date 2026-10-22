@@ -62,12 +62,19 @@ public class SendDepositCapturedNotificationHandler(
         bool smsEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.DepositCaptured, NotificationChannel.Sms, ct);
 
+        // Card deposits are paid at booking (C-4), usually while the appointment is still a request the
+        // studio hasn't confirmed: never tell the client it's "secured" before the studio confirms.
+        bool awaitingConfirmation = payment.Appointment.Status == AppointmentStatus.Pending;
+
         // Email to client
-        string emailSubject = "Deposit received — your appointment is secured";
+        string emailSubject = awaitingConfirmation
+            ? "Deposit received — the studio will confirm your appointment"
+            : "Deposit received — your appointment is secured";
         string emailBody = emailRenderer.RenderDepositCaptured(
             payment.Client.FirstName,
             amountFormatted,
             appointmentDate,
+            awaitingConfirmation,
             studio.ShowPlatformBranding);
 
         NotificationLog? emailLog = null;
@@ -107,9 +114,11 @@ public class SendDepositCapturedNotificationHandler(
         // SMS to client
         if (smsEnabled && payment.Client.Phone is not null)
         {
-            string smsBody =
-                $"Hi {payment.Client.FirstName}, your deposit of {amountFormatted} " +
-                $"for your appointment on {appointmentDate} has been received. See you soon!";
+            string smsBody = awaitingConfirmation
+                ? $"Hi {payment.Client.FirstName}, your deposit of {amountFormatted} for your appointment request " +
+                  $"on {appointmentDate} has been received. The studio will confirm soon."
+                : $"Hi {payment.Client.FirstName}, your deposit of {amountFormatted} " +
+                  $"for your appointment on {appointmentDate} has been received. See you soon!";
 
             bool smsSuccess = true;
             try

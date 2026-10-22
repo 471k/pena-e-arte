@@ -224,6 +224,7 @@ public class EmailRenderer : IEmailRenderer
         string clientFirstName,
         string amountFormatted,
         string appointmentDate,
+        bool awaitingStudioConfirmation,
         bool showBranding)
     {
         Dictionary<string, string> vars = new()
@@ -231,6 +232,8 @@ public class EmailRenderer : IEmailRenderer
             ["client_first_name"] = clientFirstName,
             ["amount_formatted"] = amountFormatted,
             ["appointment_date"] = appointmentDate,
+            ["awaiting_confirmation"] = awaitingStudioConfirmation.ToString().ToLowerInvariant(),
+            ["confirmed"] = (!awaitingStudioConfirmation).ToString().ToLowerInvariant(),
             ["show_branding"] = showBranding.ToString().ToLowerInvariant(),
         };
 
