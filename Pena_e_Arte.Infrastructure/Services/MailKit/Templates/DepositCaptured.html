@@ -4,8 +4,14 @@
 <body style="font-family:sans-serif;color:#1a1a1a;max-width:560px;margin:0 auto;padding:24px">
   <h2 style="margin-bottom:4px">Deposit received</h2>
   <p style="color:#555;margin-top:0">Hi {{client_first_name}},</p>
-  <p>Your deposit of <strong>{{amount_formatted}}</strong> has been received and your
-     appointment on <strong>{{appointment_date}}</strong> is now secured.</p>
+  <p>Your deposit of <strong>{{amount_formatted}}</strong> has been received.</p>
+  {{#if awaiting_confirmation}}
+  <p>The studio will confirm your appointment on <strong>{{appointment_date}}</strong> soon. If it can't,
+     you get your deposit back in full.</p>
+  {{/if}}
+  {{#if confirmed}}
+  <p>Your appointment on <strong>{{appointment_date}}</strong> is secured.</p>
+  {{/if}}
   <p style="color:#555;font-size:13px">See you soon!</p>
   {{#if show_branding}}
   <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0">

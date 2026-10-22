@@ -21,14 +21,15 @@ public class SendDepositCapturedNotificationHandlerTests
 
     public SendDepositCapturedNotificationHandlerTests() =>
         _emailRenderer
-            .RenderDepositCaptured(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>())
+            .RenderDepositCaptured(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<bool>())
             .Returns("<html>deposit</html>");
 
     private SendDepositCapturedNotificationHandler CreateSut() =>
         new(_db, _emailRenderer, _notifications, _prefs, _realtime,
             NullLogger<SendDepositCapturedNotificationHandler>.Instance);
 
-    private async Task<(Guid paymentId, Studio studio, Client client)> SeedData(string? phone = null)
+    private async Task<(Guid paymentId, Studio studio, Client client)> SeedData(
+        string? phone = null, AppointmentStatus appointmentStatus = AppointmentStatus.Confirmed)
     {
         Studio studio = new() { Name = "Test Studio", Slug = "test", OwnerEmail = "owner@test.com" };
         _db.Studios.Add(studio);
@@ -51,7 +52,7 @@ public class SendDepositCapturedNotificationHandlerTests
             Date = DateTime.UtcNow.AddDays(3),
             EndDate = DateTime.UtcNow.AddDays(3).AddHours(2),
             DurationMinutes = 120,
-            Status = AppointmentStatus.Confirmed,
+            Status = appointmentStatus,
             DepositStatus = DepositStatus.Paid,
         };
         _db.Appointments.Add(appointment);
@@ -211,12 +212,68 @@ public class SendDepositCapturedNotificationHandlerTests
         await CreateSut().Handle(new SendDepositCapturedNotificationCommand(paymentId), default);
 
         _emailRenderer.Received(1).RenderDepositCaptured(
-            Arg.Any<string>(), Arg.Any<string>(), "Friday, 23 October 2026 at 16:00", Arg.Any<bool>());
+            Arg.Any<string>(), Arg.Any<string>(), "Friday, 23 October 2026 at 16:00", Arg.Any<bool>(), Arg.Any<bool>());
         await _notifications.Received(1).SendSmsAsync(
             "+355691234567",
             Arg.Is<string>(s => s.Contains("Friday, 23 October 2026 at 16:00")),
             Arg.Any<CancellationToken>());
     }
+    // Card deposits are paid at booking (C-4), while the appointment is usually still a request.
+    [Fact]
+    public async Task Handle_RequestNotYetConfirmed_SaysTheStudioWillConfirm_NotSecured()
+    {
+        (Guid paymentId, _, Client client) = await SeedData(phone: "+355691234567", AppointmentStatus.Pending);
+
+        await CreateSut().Handle(new SendDepositCapturedNotificationCommand(paymentId), default);
+
+        _emailRenderer.Received(1).RenderDepositCaptured(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is(true), Arg.Any<bool>());
+        await _notifications.Received(1).SendEmailAsync(
+            client.Email, "Deposit received — the studio will confirm your appointment", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _notifications.Received(1).SendSmsAsync(
+            "+355691234567",
+            Arg.Is<string>(s => s.Contains("appointment request") && s.Contains("The studio will confirm soon.")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ConfirmedAppointment_SaysItIsSecured()
+    {
+        (Guid paymentId, _, Client client) = await SeedData(phone: "+355691234567", AppointmentStatus.Confirmed);
+
+        await CreateSut().Handle(new SendDepositCapturedNotificationCommand(paymentId), default);
+
+        _emailRenderer.Received(1).RenderDepositCaptured(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is(false), Arg.Any<bool>());
+        await _notifications.Received(1).SendEmailAsync(
+            client.Email, "Deposit received — your appointment is secured", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _notifications.Received(1).SendSmsAsync(
+            "+355691234567", Arg.Is<string>(s => s.Contains("See you soon!")), Arg.Any<CancellationToken>());
+    }
 }
+public class DepositCapturedEmailTemplateTests
+{
+    [Fact]
+    public void RenderDepositCaptured_RequestNotYetConfirmed_SaysTheStudioWillConfirm()
+    {
+        string html = new Pena_e_Arte.Infrastructure.Services.MailKit.EmailRenderer().RenderDepositCaptured(
+            "Ana", "2,400.00 ALL", "Tuesday, 27 October 2026 at 11:00", awaitingStudioConfirmation: true, showBranding: false);
 
+        html.Should().Contain("2,400.00 ALL")
+            .And.Contain("The studio will confirm your appointment on <strong>Tuesday, 27 October 2026 at 11:00</strong> soon")
+            .And.Contain("you get your deposit back in full")
+            .And.NotContain("is secured")
+            .And.NotContain("{{");
+    }
 
+    [Fact]
+    public void RenderDepositCaptured_ConfirmedAppointment_SaysItIsSecured()
+    {
+        string html = new Pena_e_Arte.Infrastructure.Services.MailKit.EmailRenderer().RenderDepositCaptured(
+            "Ana", "2,400.00 ALL", "Tuesday, 27 October 2026 at 11:00", awaitingStudioConfirmation: false, showBranding: false);
+
+        html.Should().Contain("Your appointment on <strong>Tuesday, 27 October 2026 at 11:00</strong> is secured")
+            .And.NotContain("will confirm")
+            .And.NotContain("{{");
+    }
+}

@@ -60,10 +60,14 @@ public interface IEmailRenderer
         string appointmentDate,
         bool showBranding);
 
+    /// <param name="awaitingStudioConfirmation">The appointment is still a request the studio hasn't
+    /// confirmed (deposits are paid at booking since C-4): the email says the studio will confirm
+    /// instead of "secured".</param>
     string RenderDepositCaptured(
         string clientFirstName,
         string amountFormatted,
         string appointmentDate,
+        bool awaitingStudioConfirmation,
         bool showBranding);
 
     string RenderPaymentRefunded(
