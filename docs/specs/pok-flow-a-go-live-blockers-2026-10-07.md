@@ -14,7 +14,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-1 Staging Vault | Phi (infra) | No (staging parity only) | Open — deployed staging has no Vault at all (`cd.yml` leaves `Vault__Address` unset on purpose), so connecting POK or taking a card deposit on staging.tattooos.co can't work; every POK test ran on the local stack | Phi decides: a second manually-unsealed Vault, or a dev-mode one that forgets the keys on every restart |
 | C-2 POK host + webhook per environment | Phi | **Yes — this is the switch** | Open (production still calls POK staging). **Prepared 2026-10-21:** both overlays now spell out `Pok__BaseUrl`, `Pok__WebhookCallbackBaseUrl` and `Payments__CardDepositsEnabled` (production unchanged; staging gets its webhook address) | Go live in two deploys per `docs/infra/pok-go-live-runbook.md`: host + webhook first, card deposits on second |
 | C-3 Gift-card / package card purchases | Phi (product) | No (separate flow) | Open, not tested by the gate | Decide option (a) hide or (b) build |
-| C-4 When a deposit is charged | Phi + Finance + Legal | **Yes, if holds don't last** | Holds survive day 2 (T9 captured 26 h after authorisation); day 8 pending (T9b, from 2026-10-22) | Decide (a)/(b)/(c); Help now says "charged by the studio, usually at your appointment" |
+| C-4 When a deposit is charged | Phi + Finance + Legal | **Yes, if holds don't last** | **Holds survive day 8 on staging:** T9 captured 26 h after authorisation; T9b captured 8 days 0 h 17 min after authorisation (2026-10-22), same fee as an immediate capture. Production limit still asked of POK (C-6 item 1) | Decide (a)/(b)/(c); Help now says "charged by the studio, usually at your appointment" |
 | C-5 Webhook fan-out | Engineering | No (before real volume) | **Debounced** (PR #265, 3c0576d3, live 2026-10-21): POK sends each webhook 3 times in ~3 s (staging 17–18 Oct); the first trigger marks a 10 s Redis window and schedules ONE reconciliation run at its end, later triggers in the window are skipped (the run starts after them); Redis down → run at once as before. The webhook stays rate-limited ("billing") | Later: re-check only the order named in the webhook (needs a per-payment reconciliation path) |
 | C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — items 2, 7, 11 and the refund part of 10 answered by our own staging probe on 2026-10-16 (see C-6); email not sent yet | Send in writing; the answered items become "please confirm" |
 | C-7 Check POK keys at connect | Engineering | No | **Done**: keys checked (PR #263) — connect logs in to POK once before saving; refused → 422, POK unreachable → 503, nothing saved; staging answers wrong/unknown keys with 400 "Your credentials are incorrect". **Merchant ID checked** (PR #267, ed0dc58b, live 2026-10-21): one read of a random order under the entered merchant id — staging answers 404 "Order not found" for the keys' own merchant and 403 "Access Forbidden!" for any other → 422 "this Merchant ID doesn't belong to them", nothing saved | None |
@@ -25,7 +25,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; a partial refund returns the 2.5 % share; a full refund, or partial refunds adding up to the full amount, return the whole fee; display rounding half-up per line) — Help + manual now explain them to owners and clients (2026-10-16) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
 | C-13 Kill switch + owner tour step | Engineering | **Yes** | **Kill switch built** (PR #248): `Payments:CardDepositsEnabled`, off unless set; tour step ready as draft PR #278 | At go-live: set `Payments__CardDepositsEnabled: "true"` in the production overlay in PR #278, after the C-2 host switch (runbook step 2) |
 | C-14 Several partial refunds | Engineering | No | **Done** (PR #264, 69d043d5, live 2026-10-21): refunds allowed until the refunded total reaches the amount ("Refund more — … left"); `RefundedAmount` accumulates; the deposit turns Refunded when the total is reached; the client's refund email/SMS now state the amount of that refund (they always said the whole payment). **POK allows several** — proven 2026-10-16 (R1) | None |
-| C-15 Tell the owner when a held deposit is lost | Engineering | No | **Built 2026-10-21** (branch `feat/owner-notified-when-hold-lost`, merge after T9b): when the reconciliation job marks a held deposit Failed because POK reports the hold canceled/failed, the owner gets an email + bell entry (new `DepositHoldLost` preference, email only), except on an appointment cancelled without a forfeit; the payment page offers "New payment" on a Failed payment | Check against T9b (22 Oct) how a lapsed hold actually looks at POK; add that case if it isn't canceled/failed |
+| C-15 Tell the owner when a held deposit is lost | Engineering | No | **Done** (PR #280, 0a64c277, live 2026-10-22): when the reconciliation job marks a held deposit Failed because POK reports the hold canceled/failed, the owner gets an email + bell entry (new `DepositHoldLost` preference, email only), except on an appointment cancelled without a forfeit; the payment page offers "New payment" on a Failed payment. **Not yet seen at POK:** a hold that lapsed by itself — T9b was still capturable at day 8, so the "completed, not capturable, nothing captured → Failed" case is a best guess | When a hold first lapses (the staging holds captured on 2 Nov and 17 Nov, or POK's answer to C-6 item 1), check that it reads as Failed |
 | C-16 Cancellation side effects before provider call | — | — | **Done** (folded into B3, a58b229b) | None |
 | C-18 Store POK's fee and net per payment | Engineering, after Finance (C-12) | No (recommendation) | Not started — today `Payment` keeps only gross `Amount` and `RefundedAmount`; owners must use POK Business for net figures | After C-12: store POK's `receiverAmount` (net, unrounded) and the fee per capture/refund, show them on the payment page and offer net in reports/CSV |
 | C-17 Stop framework URI logging for the POK client | Engineering | **Yes** (one-line fix) | **Done** (branch `fix/pok-client-no-uri-logging`): the "Pok" client has `RemoveAllLoggers()`; a unit test proves no log line carries the merchant id or order id | None |
@@ -67,10 +67,16 @@ Unchanged; not tested by the gate (out of scope).
 **Gate result: holds survive day 2.** T9 (order dd7e1fce, authorised 2026-10-14 15:07:39Z) was captured
 2026-10-15 17:13:09Z — 26 h 05 min after authorisation, 2 h 35 min after the order's `expiresAt`. POK's
 public read returned 410 after `expiresAt`, but the merchant read still showed `can.capture true` and the
-funds stayed in the frozen balance until the capture. The upper limit is still unknown: T9b (order
-f6cdc236) is captured at ≥ 8 days, from 2026-10-22 15:36Z, and C-6 item 1 asks POK. The client-facing
-charge-timing strings (Phase 8.3b) and the client-deposit Help tip now say the deposit is charged "by the
-studio, usually at your appointment"; no hold-window tip yet (needs the day-8 result).
+funds stayed in the frozen balance until the capture.
+**Day 8 (2026-10-22): holds survive day 8 on staging.** T9b (order f6cdc236, authorised 2026-10-14
+15:35:58Z, `expiresAt` 2026-10-15 15:35:17Z) was captured 2026-10-22 15:52:41Z — 8 days 0 h 17 min after
+authorisation, 7 days after `expiresAt` — with POK answering 200 and the app showing Paid. POK Business:
+Confirmed, commission 50.85 on 1,234 ALL (the usual 2.5 % + 20 ALL), net 1,183.15 moved from the frozen
+balance to the balance. Waiting cost nothing extra. The public read again returned 410 after `expiresAt`.
+The production limit is still unknown (C-6 item 1 asks POK, along with whether POK ever releases an
+uncaptured hold itself). Two more staging holds give day 15 (2026-11-02) and day 30 (2026-11-17).
+The client-facing charge-timing strings (Phase 8.3b) and the client-deposit Help tip say the deposit is
+charged "by the studio, usually at your appointment"; no hold-window tip until the production limit is known.
 Options (a) charge at booking, (b) capture before the hold lapses, (c) hybrid — unchanged. The six
 client charge-timing strings (Phase 8.3b) and the Help charge-timing tip follow the decision.
 
@@ -81,7 +87,8 @@ webhook three times in about 3 seconds (staging, 17–18 Oct) — now one run pe
 
 ## C-6 — Questions to POK, in writing (with the gate's evidence)
 1. How long can an authorised (`autoCapture: false`) order be captured after its `expiresAt`? — At least
-   2 h 35 min (T9, captured 26 h after authorisation on 2026-10-15); T9b tests 8 days. Still ask for the limit.
+   7 days (T9b, captured 8 days after authorisation on 2026-10-22, normal fee; T9 at 26 h). Still ask for the
+   production limit and whether POK releases an uncaptured hold by itself.
 2. What does `refund` do on an authorised, uncaptured order? — Not tested (B3 shipped, so the app
    cancels the hold instead; T5a: `isCanceled: true`, nothing captured).
 3. EUR without a EUR account: rejected or converted? — Not tested: Phi created a EUR account first.
@@ -290,7 +297,11 @@ revenue report and CSV. Needs a migration and a test per path (capture, partial 
 release).
 
 ## C-15 — Tell the owner when a held deposit is lost
-Unchanged.
+**Done 2026-10-22 (PR #280):** see the table row. The reconciliation job turns a held deposit Failed when POK
+reports the hold canceled or failed, or the order completed with nothing capturable and nothing captured; the
+owner then gets an email and a bell entry with a link to the payment, where "New payment" starts a fresh
+request. The last case is a best guess: T9b (2026-10-22) was still capturable at day 8, so no lapsed hold has
+been seen yet. Check it against the first one that lapses (staging holds at day 15 and day 30, or POK's answer).
 
 ## C-16 — Cancellation side effects
 Done in B3 (a58b229b): reminder jobs are deleted after the save.

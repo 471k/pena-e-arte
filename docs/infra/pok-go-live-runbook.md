@@ -26,7 +26,7 @@ wrong POK environment, and the first studio (ours) is connected and checked befo
 
 All of these must be true. Tick them in the blockers doc, not here.
 
-- [ ] **C-4 decided** (when a deposit is charged). Waits on the T9b day-8 capture (22 Oct 2026).
+- [ ] **C-4 decided** (when a deposit is charged). The T9b day-8 capture worked on 22 Oct 2026 (normal fee), so this is now Phi's decision with Finance and Legal.
 - [ ] **Legal sign-off for EUR deposits**, only if any studio will take deposits in EUR.
 - [ ] **POK's written answers**, at least on production pricing, the hold limit and privacy (email
       questions Q3, Q5, Q8), or Phi decides to go without them.
