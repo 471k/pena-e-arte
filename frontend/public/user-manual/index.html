@@ -841,7 +841,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Sign in</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✗ (redirected)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google sign-in (Apple too, once configured for this deployment), and a <code>?redirect=</code> deep link back to wherever you came from.</p>
+<p>The sign-in form at <code>/login</code>, shared by every role — the app reads your role from the login response and sends you to the right home screen automatically. Supports "remember me", Google sign-in (Apple too, once configured for this deployment), and a <code>?redirect=</code> deep link back to wherever you came from: a link that needs signing in (from an email, say) opens its page once you've signed in.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign in wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -862,7 +862,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Enter <span class="step-title">Email</span> and <span class="step-title">Password</span>.</li>
-<li>Toggle <span class="step-title">Remember me</span> to stay signed in on this device (uses persistent storage instead of the current tab only).</li>
+<li>Toggle <span class="step-title">Remember me</span> to stay signed in on this device until you sign out, sign in on another device, or don't open TattooOS for 30 days. Without it, closing the browser tab signs you out.</li>
 <li>Click <span class="step-title">Forgot password?</span> if needed.</li>
 <li>Click <span class="step-title">Sign in</span>, or use the <span class="step-title">Google</span> button instead (an <span class="step-title">Apple</span> button appears alongside it once Apple Sign-In is configured for this deployment).</li>
 <li>Links at the bottom lead to client sign-up or studio registration.</li>

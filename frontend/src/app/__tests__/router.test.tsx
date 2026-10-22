@@ -8,7 +8,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { setSessionExpired } from "@/features/ui/uiSlice";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { RoleGuard, AppRoot, getRoleRedirectPath, routes } from "@/app/router";
+import { RoleGuard, AppRoot, getRoleRedirectPath, loginPathFor, routes } from "@/app/router";
 import { contactApi } from "@/features/public/contactApi";
 import { Role } from "@/shared/types/roles";
 
@@ -148,6 +148,43 @@ describe("RoleGuard", () => {
     renderGuard([], null);
     expect(screen.getByTestId("login-page")).toBeInTheDocument();
   });
+
+  it("tells the login page where to come back to (e.g. a payment link from an email)", () => {
+    render(
+      <Provider store={makeAuthStore(null)}>
+        <MemoryRouter initialEntries={["/payments/appt-1?tab=refund"]}>
+          <Routes>
+            <Route element={<RoleGuard allowedRoles={[Role.Owner]} />}>
+              <Route path="/payments/:appointmentId" element={<div data-testid="payment-page" />} />
+            </Route>
+            <Route path="/login" element={<LocationDisplay />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/login?redirect=%2Fpayments%2Fappt-1%3Ftab%3Drefund",
+    );
+  });
+});
+
+// ── loginPathFor ──────────────────────────────────────────────────────────────
+
+describe("loginPathFor", () => {
+  it("adds the page to come back to", () => {
+    expect(loginPathFor({ pathname: "/payments/a1", search: "" })).toBe("/login?redirect=%2Fpayments%2Fa1");
+  });
+
+  it("puts the reason first and keeps the redirect", () => {
+    expect(loginPathFor({ pathname: "/schedule", search: "?view=week" }, "session_expired"))
+      .toBe("/login?reason=session_expired&redirect=%2Fschedule%3Fview%3Dweek");
+  });
+
+  it("adds no redirect for the home page or the login page itself", () => {
+    expect(loginPathFor({ pathname: "/", search: "" })).toBe("/login");
+    expect(loginPathFor({ pathname: "/login", search: "?redirect=%2Fx" }, "session_expired"))
+      .toBe("/login?reason=session_expired");
+  });
 });
 
 // ── AppRoot ───────────────────────────────────────────────────────────────────
@@ -211,6 +248,30 @@ describe("AppRoot", () => {
 
     await screen.findByTestId("login-page");
     expect(screen.getByTestId("location")).toHaveTextContent("/login?reason=session_expired");
+  });
+
+  it("keeps the page the person was on, so they return to it after signing in again", async () => {
+    const store = makeUiStore(false, "owner");
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={["/payments/appt-1"]}>
+          <Routes>
+            <Route path="/" element={<AppRoot />}>
+              <Route path="payments/:appointmentId" element={<div data-testid="payment-page" />} />
+            </Route>
+            <Route path="/login" element={<LocationDisplay />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    act(() => {
+      store.dispatch(setSessionExpired());
+    });
+
+    expect(await screen.findByTestId("location")).toHaveTextContent(
+      "/login?reason=session_expired&redirect=%2Fpayments%2Fappt-1",
+    );
   });
 
   it("clears sessionExpired in Redux after navigation triggered by post-mount dispatch", async () => {

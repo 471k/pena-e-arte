@@ -5,6 +5,7 @@ import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { incrementUnreadIfVisible } from "@/features/notifications/incrementUnreadIfVisible";
 import type { NotificationLogResponse } from "@/features/notifications/notification.types";
+import { isTokenExpired } from "@/shared/utils/jwt";
 
 // Deliberately separate from useSignalR.ts (parameterized by studioId — an admin
 // connection has no single tenant studio to key off for this purpose). Connects only
@@ -15,7 +16,7 @@ export function useAdminNotificationHub() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || isTokenExpired(token)) return;
 
     // Direct to the local backend only for a dev browser on this machine; relative otherwise (see hubBaseUrl).
     const hubBase = hubBaseUrl();

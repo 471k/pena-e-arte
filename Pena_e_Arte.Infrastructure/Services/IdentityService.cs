@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -111,12 +112,35 @@ public class IdentityService(
     public async Task<string> CreateRefreshTokenAsync(string email)
     {
         IdentityUser user = (await userManager.FindByEmailAsync(email))!;
+        return await IssueRefreshTokenAsync(user);
+    }
 
+    // One refresh token per user, replaced on every sign-in and renewal. Its issue time is kept
+    // beside it so a token unused for Jwt:RefreshTokenExpiryDays (default 30) is refused; each
+    // renewal starts a new period, so only that long without opening the app signs someone out.
+    private const string RefreshTokenIssuedAtName = "RefreshTokenIssuedAt";
+
+    private async Task<string> IssueRefreshTokenAsync(IdentityUser user)
+    {
         string randomPart = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
         string refreshToken = $"{user.Id}.{randomPart}";
 
         await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", refreshToken);
+        await userManager.SetAuthenticationTokenAsync(user, "App", RefreshTokenIssuedAtName,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
         return refreshToken;
+    }
+
+    private async Task<bool> RefreshTokenExpiredAsync(IdentityUser user)
+    {
+        string? issuedAtRaw = await userManager.GetAuthenticationTokenAsync(user, "App", RefreshTokenIssuedAtName);
+        // Tokens issued before the issue time was recorded have none: accepted once, and the
+        // renewal that follows records one.
+        if (!long.TryParse(issuedAtRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long issuedAt))
+            return false;
+
+        int expiryDays = configuration.GetValue<int?>("Jwt:RefreshTokenExpiryDays") ?? 30;
+        return DateTimeOffset.FromUnixTimeSeconds(issuedAt).AddDays(expiryDays) < DateTimeOffset.UtcNow;
     }
 
     public async Task<(bool Success, string? AccessToken, string? RefreshToken, string? Error)> RefreshTokenAsync(
@@ -132,9 +156,13 @@ public class IdentityService(
         string? stored = await userManager.GetAuthenticationTokenAsync(user, "App", "RefreshToken");
         if (stored != refreshToken) return (false, null, null, "Invalid refresh token.");
 
-        string newRandom = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-        string newRefreshToken = $"{user.Id}.{newRandom}";
-        await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", newRefreshToken);
+        if (await RefreshTokenExpiredAsync(user))
+        {
+            await userManager.RemoveAuthenticationTokenAsync(user, "App", "RefreshToken");
+            return (false, null, null, "Invalid refresh token.");
+        }
+
+        string newRefreshToken = await IssueRefreshTokenAsync(user);
 
         IList<string> roles = await userManager.GetRolesAsync(user);
         IList<Claim> userClaims = await userManager.GetClaimsAsync(user);
@@ -303,9 +331,7 @@ public class IdentityService(
 
         await userManager.SetAuthenticationTokenAsync(user, "App", "ActiveTenantId", activeStudioId.ToString());
 
-        string newRandom = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-        string newRefreshToken = $"{user.Id}.{newRandom}";
-        await userManager.SetAuthenticationTokenAsync(user, "App", "RefreshToken", newRefreshToken);
+        string newRefreshToken = await IssueRefreshTokenAsync(user);
 
         IList<string> roles = await userManager.GetRolesAsync(user);
         IList<Claim> userClaims = await userManager.GetClaimsAsync(user);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
+import { isTokenExpired } from "@/shared/utils/jwt";
 import { platformApi } from "@/features/platform/platformApi";
 import type { LiveTrafficSnapshotResponse } from "@/features/platform/platform.types";
 
@@ -26,7 +27,9 @@ export function useLiveTrafficHub(enabled: boolean): {
   const active = enabled && !!token;
 
   useEffect(() => {
-    if (!active) return;
+    // An expired token (the app reopened after a break) is renewed by the page's first request;
+    // the new token re-runs this effect.
+    if (!active || isTokenExpired(token!)) return;
 
     // Direct to the local backend only for a dev browser on this machine; relative otherwise (see hubBaseUrl).
     const hubBase = hubBaseUrl();

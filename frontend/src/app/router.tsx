@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Navigate, Outlet, createBrowserRouter, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, createBrowserRouter, useLocation, useNavigate } from "react-router-dom";
+import type { Location } from "react-router-dom";
 import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, RequestChangeEmailPage, ConfirmChangeEmailPage, VerifyEmailPage, ClientRegisterPage, MyStudiosPage } from "@/features/auth";
 import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
@@ -59,11 +60,23 @@ import { clearSessionExpired, clearImpersonationSessionExpired } from "@/feature
 import { useAppDispatch, useAppSelector } from "./hooks";
 import { toast } from "sonner";
 
+// The login page, told where to come back to (LoginPage honours ?redirect= after sign-in), so a
+// link from an email or a bookmark still opens its page once the person has signed in.
+export function loginPathFor(location: Pick<Location, "pathname" | "search">, reason?: string): string {
+  const params = new URLSearchParams();
+  if (reason) params.set("reason", reason);
+  const target = location.pathname + location.search;
+  if (location.pathname !== "/" && !location.pathname.startsWith("/login")) params.set("redirect", target);
+  const query = params.toString();
+  return query ? `/login?${query}` : "/login";
+}
+
 export function RoleGuard({ allowedRoles }: { allowedRoles: Role[] }) {
   const role = useAppSelector((s) => s.auth.role);
   const impersonating = useAppSelector((s) => s.auth.impersonation !== null);
+  const location = useLocation();
 
-  if (!role) return <Navigate to="/login" replace />;
+  if (!role) return <Navigate to={loginPathFor(location)} replace />;
   if (!allowedRoles.includes(role)) return <Navigate to={getRoleRedirectPath(role, impersonating)} replace />;
 
   return <Outlet />;
@@ -106,6 +119,7 @@ function NotFoundRoute() {
 export function AppRoot() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const sessionExpired = useAppSelector((s) => s.ui.sessionExpired);
   const impersonationSessionExpired = useAppSelector((s) => s.ui.impersonationSessionExpired);
 
@@ -113,9 +127,9 @@ export function AppRoot() {
     if (sessionExpired) {
       dispatch(clearSessionExpired());
       dispatch(logout());
-      navigate("/login?reason=session_expired", { replace: true });
+      navigate(loginPathFor(location, "session_expired"), { replace: true });
     }
-  }, [sessionExpired, dispatch, navigate]);
+  }, [sessionExpired, location, dispatch, navigate]);
 
   useEffect(() => {
     if (impersonationSessionExpired) {

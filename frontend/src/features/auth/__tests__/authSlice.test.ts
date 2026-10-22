@@ -75,16 +75,34 @@ describe("authSlice — loadInitialState (token bootstrap)", () => {
 
   // ── Expired token ─────────────────────────────────────────────────────────────
 
-  it("expired token → EMPTY state", async () => {
+  it("expired token without a refresh token → EMPTY state", async () => {
     const store = await makeStore(makeToken({ ...VALID_CLAIMS, exp: EXP_PAST }));
     const s = store.getState().auth;
     expect(s.user).toBeNull();
     expect(s.token).toBeNull();
   });
 
-  it("expired token → removed from localStorage", async () => {
+  it("expired token without a refresh token → removed from localStorage", async () => {
     await makeStore(makeToken({ ...VALID_CLAIMS, exp: EXP_PAST }));
     expect(localStorage.getItem("auth_token")).toBeNull();
+  });
+
+  it("expired token WITH a refresh token → session kept for baseQuery to renew", async () => {
+    const token = makeToken({ ...VALID_CLAIMS, exp: EXP_PAST });
+    vi.resetModules();
+    localStorage.clear();
+    localStorage.setItem("auth_token", token);
+    localStorage.setItem("auth_refresh_token", "user-0001.refresh");
+    const [{ default: authReducer }, { configureStore }] = await Promise.all([
+      import("@/features/auth/authSlice"),
+      import("@reduxjs/toolkit"),
+    ]);
+    const s = configureStore({ reducer: { auth: authReducer } }).getState().auth;
+
+    expect(s.role).toBe("owner");
+    expect(s.token).toBe(token);
+    expect(s.refreshToken).toBe("user-0001.refresh");
+    expect(localStorage.getItem("auth_refresh_token")).toBe("user-0001.refresh");
   });
 
   // ── No-exp token ──────────────────────────────────────────────────────────────

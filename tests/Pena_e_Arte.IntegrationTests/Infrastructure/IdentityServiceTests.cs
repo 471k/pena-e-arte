@@ -322,6 +322,65 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task RefreshTokenAsync_WithinExpiry_RenewsAndStartsANewPeriod()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+        string refreshToken = await sut.CreateRefreshTokenAsync(email);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        await SetRefreshTokenIssuedAtAsync(um, user, DateTimeOffset.UtcNow.AddDays(-29));
+
+        (bool success, _, string? newRefreshToken, _) = await sut.RefreshTokenAsync(refreshToken);
+
+        success.Should().BeTrue();
+        newRefreshToken.Should().NotBe(refreshToken);
+        long issuedAt = long.Parse((await um.GetAuthenticationTokenAsync(user, "App", "RefreshTokenIssuedAt"))!);
+        DateTimeOffset.FromUnixTimeSeconds(issuedAt).Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_OlderThanExpiry_IsRefusedAndRemoved()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+        string refreshToken = await sut.CreateRefreshTokenAsync(email);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        await SetRefreshTokenIssuedAtAsync(um, user, DateTimeOffset.UtcNow.AddDays(-31));
+
+        (bool success, string? accessToken, _, string? error) = await sut.RefreshTokenAsync(refreshToken);
+
+        success.Should().BeFalse();
+        accessToken.Should().BeNull();
+        error.Should().Be("Invalid refresh token.");
+        (await um.GetAuthenticationTokenAsync(user, "App", "RefreshToken")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_TokenIssuedBeforeIssueTimesWereRecorded_IsAcceptedAndGetsOne()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        string email = UniqueEmail();
+        await sut.CreateUserAsync(email, "Password1!", "owner", Guid.NewGuid());
+        string refreshToken = await sut.CreateRefreshTokenAsync(email);
+        IdentityUser user = (await um.FindByEmailAsync(email))!;
+        await um.RemoveAuthenticationTokenAsync(user, "App", "RefreshTokenIssuedAt");
+
+        (bool success, _, _, _) = await sut.RefreshTokenAsync(refreshToken);
+
+        success.Should().BeTrue();
+        (await um.GetAuthenticationTokenAsync(user, "App", "RefreshTokenIssuedAt")).Should().NotBeNull();
+    }
+
+    private static Task SetRefreshTokenIssuedAtAsync(UserManager<IdentityUser> um, IdentityUser user, DateTimeOffset at) =>
+        um.SetAuthenticationTokenAsync(user, "App", "RefreshTokenIssuedAt",
+            at.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    [Fact]
     public async Task LoginAsync_LegacyUserWithNoActiveTenantToken_StillGetsSingleTenantClaim()
     {
         // Regression: accounts created before "ActiveTenantId" tracking existed must be

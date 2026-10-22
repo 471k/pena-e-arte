@@ -16,6 +16,17 @@ interface JwtClaims {
   [ROLE_CLAIM]?: string;
 }
 
+// True when the token's `exp` has passed (or will within `marginSeconds`). A token that can't be
+// read, or has no `exp`, counts as not expired — the server is the judge of those.
+export function isTokenExpired(token: string, marginSeconds = 0): boolean {
+  try {
+    const { exp } = jwtDecode<JwtClaims>(token);
+    return exp !== undefined && Date.now() / 1000 > exp - marginSeconds;
+  } catch {
+    return false;
+  }
+}
+
 export function decodeToken(
   token: string,
 ): AuthPayload & { exp?: number; impersonationSessionId?: string | null } {

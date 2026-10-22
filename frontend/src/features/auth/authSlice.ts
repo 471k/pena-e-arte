@@ -63,6 +63,18 @@ function readImpersonationMeta(sessionId: string, tenantId: string | null, exp: 
   };
 }
 
+// The tokens as persisted right now — another tab may have renewed them since this tab loaded.
+// `remember` is where sign-in put them: localStorage ("remember me") or sessionStorage.
+export function readStoredSession(): { token: string | null; refreshToken: string | null; remember: boolean } {
+  try {
+    const remember = localStorage.getItem(TOKEN_KEY) !== null;
+    const storage  = remember ? localStorage : sessionStorage;
+    return { token: storage.getItem(TOKEN_KEY), refreshToken: storage.getItem(REFRESH_TOKEN_KEY), remember };
+  } catch {
+    return { token: null, refreshToken: null, remember: true };
+  }
+}
+
 function loadInitialState(): AuthState {
   try {
     const token        = localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
@@ -70,7 +82,10 @@ function loadInitialState(): AuthState {
     if (!token) return EMPTY;
 
     const payload = decodeToken(token);
-    if (payload.exp && Date.now() / 1000 > payload.exp) {
+    // The 15-minute access token has usually expired when someone comes back to the app or opens
+    // a link from an email. With a refresh token the session is kept: baseQuery renews it before
+    // the first request. Without one (e.g. an impersonation token, which never renews) it ends.
+    if (payload.exp && Date.now() / 1000 > payload.exp && !refreshToken) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       sessionStorage.removeItem(TOKEN_KEY);
