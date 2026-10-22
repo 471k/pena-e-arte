@@ -133,10 +133,7 @@ public static class DataSeeder
         // plan tiers), not demo data — a studio with no custom template falls back to these.
         await EnsurePlatformConsentTemplatesAsync(db);
 
-        // Snapshot BEFORE reconciling. ReconcileCoreTiersAsync will insert StarterPlanId
-        // if it's missing, which would make a post-reconcile check always true and
-        // silently skip demo-entity seeding on a genuinely fresh database.
-        bool coreEntitiesAlreadySeeded = await db.Plans.AnyAsync(p => p.Id == StarterPlanId);
+        bool coreEntitiesAlreadySeeded = await DemoStudiosAlreadySeededAsync(db);
 
         // Always run: Starter/Growth/Premium/Pro/Free are system-defined tiers, not
         // admin-owned data — their canonical values (and their PlanPrice rows) live in
@@ -156,6 +153,15 @@ public static class DataSeeder
         await SeedStudio1EntitiesAsync(db);
         await SeedStudio2EntitiesAsync(db);
     }
+
+    /// <summary>
+    /// Whether the demo studios (and everything seeded with them) already exist. Keyed on the first
+    /// demo studio, not on a plan: Program.cs reconciles the core plan tiers unconditionally BEFORE
+    /// SeedAsync, so the former plan-based check was always true and a genuinely fresh database never
+    /// got its demo studios (found 2026-10-22).
+    /// </summary>
+    public static Task<bool> DemoStudiosAlreadySeededAsync(IAppDbContext db) =>
+        db.Studios.IgnoreQueryFilters().AnyAsync(s => s.Id == Studio1Id);
 
     // ─── Consent templates ──────────────────────────────────────────────────────
 
