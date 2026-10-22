@@ -26,7 +26,8 @@ export type NotificationType =
   | "IntakeFormSubmitted"
   | "ConsentFormSigned"
   | "DesignReviewed"
-  | "MessageReceived";
+  | "MessageReceived"
+  | "DepositHoldLost";
 
 export type NotificationChannel = "Email" | "Sms";
 

@@ -14,7 +14,8 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// appointment is released). Runs daily (Program.cs, Cron.Daily(2)) and on every POK webhook
 /// (JobScheduler.TriggerPaymentReconciliationNow).
 /// </summary>
-public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider paymentProvider, ILogger<PaymentReconciliationJob> logger)
+public class PaymentReconciliationJob(
+    IAppDbContext db, IPaymentProvider paymentProvider, IJobScheduler jobScheduler, ILogger<PaymentReconciliationJob> logger)
 {
     /// <summary>Unpaid card payments on appointments more than this far in the past are abandoned.</summary>
     private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(3);
@@ -49,6 +50,7 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
                 PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
                     payment.StudioId, payment.ProviderReferenceId!, ct);
                 DateTime now = DateTime.UtcNow;
+                bool tellOwnerHoldLost = false;
 
                 switch (status)
                 {
@@ -65,6 +67,10 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
                         logger.LogWarning(
                             "Held deposit {PaymentId} for studio {StudioId} lost its provider hold ({ProviderStatus}); marked Failed.",
                             payment.Id, payment.StudioId, status);
+                        // C-15: the owner expected to charge this. Not on a cancelled appointment, where
+                        // nothing was left to charge — except a forfeit the studio was keeping.
+                        tellOwnerHoldLost = payment.Appointment.Status != AppointmentStatus.Cancelled
+                            || payment.Appointment.DepositStatus == DepositStatus.Forfeited;
                         break;
                     case PaymentProviderStatus.Authorized
                         when payment.Appointment.Status == AppointmentStatus.Cancelled
@@ -97,6 +103,20 @@ public class PaymentReconciliationJob(IAppDbContext db, IPaymentProvider payment
                 // Save per payment, like ReconcilePendingAsync: a provider side effect (the release
                 // above) is never left unrecorded because a later payment's save failed.
                 await db.SaveChangesAsync(ct);
+
+                // Only after the Failed status is saved, so the notification job finds it.
+                if (tellOwnerHoldLost)
+                {
+                    try
+                    {
+                        jobScheduler.EnqueueDepositHoldLostNotification(payment.Id);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        // The status change is saved; only the email is missed. The payment page still shows Failed.
+                        logger.LogError(ex, "Could not queue the hold-lost notification for payment {PaymentId}.", payment.Id);
+                    }
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

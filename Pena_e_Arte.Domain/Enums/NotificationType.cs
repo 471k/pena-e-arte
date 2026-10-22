@@ -13,4 +13,5 @@ public enum NotificationType
     Aftercare,
     MessageReceived, // in-app messaging — Email channel only, see architecture.md Decisions Log
     WaitlistSlotAvailable,
+    DepositHoldLost, // owner only, Email channel only — the card hold on a deposit ended before it was charged (C-15)
 }

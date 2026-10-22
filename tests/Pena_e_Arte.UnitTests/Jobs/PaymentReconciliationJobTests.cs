@@ -16,6 +16,7 @@ public class PaymentReconciliationJobTests
     private readonly string _dbName = Guid.NewGuid().ToString();
     private readonly FakeDbContext _db;
     private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
+    private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public PaymentReconciliationJobTests()
@@ -23,7 +24,7 @@ public class PaymentReconciliationJobTests
         _db = FakeDbContext.Create(_dbName);
     }
 
-    private PaymentReconciliationJob CreateSut() => new(_db, _stripe, NullLogger<PaymentReconciliationJob>.Instance);
+    private PaymentReconciliationJob CreateSut() => new(_db, _stripe, _jobs, NullLogger<PaymentReconciliationJob>.Instance);
 
     // ── Held deposits (PaymentStatus.Captured) ───────────────────────────────────
 
@@ -108,6 +109,106 @@ public class PaymentReconciliationJobTests
         Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_held_failed");
         _stripe.GetStatusAsync(_studioId, "pi_held_failed", Arg.Any<CancellationToken>())
                .Returns(PaymentProviderStatus.Failed);
+
+        await CreateSut().RunAsync();
+
+        _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
+    }
+
+    // ── C-15: tell the owner when a held deposit is lost ─────────────────────────
+
+    [Theory]
+    [InlineData(PaymentProviderStatus.Canceled)]
+    [InlineData(PaymentProviderStatus.Failed)]
+    public async Task RunAsync_HeldPaymentLostOnLiveAppointment_QueuesOwnerNotificationOnce(PaymentProviderStatus lost)
+    {
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_hold_lost_live");
+        _stripe.GetStatusAsync(_studioId, "pi_hold_lost_live", Arg.Any<CancellationToken>()).Returns(lost);
+
+        await CreateSut().RunAsync();
+        await CreateSut().RunAsync(); // now Failed: no longer in the held pass, so no second notification
+
+        _jobs.Received(1).EnqueueDepositHoldLostNotification(payment.Id);
+    }
+
+    [Fact]
+    public async Task RunAsync_HeldPaymentLostOnCompletedAppointment_QueuesOwnerNotification()
+    {
+        // The owner forgot to charge it after the session: exactly the money C-15 is about.
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(-2), DepositStatus.Pending, AppointmentStatus.Completed);
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_hold_lost_done", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_hold_lost_done", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Canceled);
+
+        await CreateSut().RunAsync();
+
+        _jobs.Received(1).EnqueueDepositHoldLostNotification(payment.Id);
+    }
+
+    [Fact]
+    public async Task RunAsync_HeldForfeitLostOnCancelledAppointment_QueuesOwnerNotification()
+    {
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(-1), DepositStatus.Forfeited, AppointmentStatus.Cancelled);
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_forfeit_lost", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_forfeit_lost", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Canceled);
+
+        await CreateSut().RunAsync();
+
+        _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
+        _jobs.Received(1).EnqueueDepositHoldLostNotification(payment.Id);
+    }
+
+    [Fact]
+    public async Task RunAsync_HeldPaymentLostOnCancelledAppointment_DoesNotNotifyOwner()
+    {
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(5), DepositStatus.Refunded, AppointmentStatus.Cancelled);
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_lost_cancelled", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_lost_cancelled", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Canceled);
+
+        await CreateSut().RunAsync();
+
+        _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Failed);
+        _jobs.DidNotReceive().EnqueueDepositHoldLostNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task RunAsync_HeldPaymentStillAuthorized_DoesNotNotifyOwner()
+    {
+        await SeedPayment(PaymentStatus.Captured, "pi_still_held");
+        _stripe.GetStatusAsync(_studioId, "pi_still_held", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Authorized);
+
+        await CreateSut().RunAsync();
+
+        _jobs.DidNotReceive().EnqueueDepositHoldLostNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task RunAsync_PendingOrderCancelled_DoesNotNotifyOwner()
+    {
+        // An unpaid order that never became a hold is not a lost deposit.
+        await SeedPayment(PaymentStatus.Pending, "pi_pending_gone", holdExpiresAt: DateTime.UtcNow.AddHours(-1));
+        _stripe.GetStatusAsync(_studioId, "pi_pending_gone", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Canceled);
+
+        await CreateSut().RunAsync();
+
+        _jobs.DidNotReceive().EnqueueDepositHoldLostNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task RunAsync_NotificationCannotBeQueued_StillMarksFailed()
+    {
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_queue_down");
+        _stripe.GetStatusAsync(_studioId, "pi_queue_down", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Canceled);
+        _jobs.When(j => j.EnqueueDepositHoldLostNotification(Arg.Any<Guid>()))
+             .Do(_ => throw new InvalidOperationException("job storage down"));
 
         await CreateSut().RunAsync();
 

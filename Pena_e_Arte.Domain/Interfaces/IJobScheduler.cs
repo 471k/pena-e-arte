@@ -35,4 +35,8 @@ public interface IJobScheduler
     /// in-flight payment's real state from POK rather than trusting anything from the request.
     /// </summary>
     void TriggerPaymentReconciliationNow();
+
+    /// <summary>Emails the studio owner (and adds a bell entry) that a held card deposit can no longer be
+    /// charged because POK ended the hold (C-15). Its own job, so a mail failure never touches reconciliation.</summary>
+    void EnqueueDepositHoldLostNotification(Guid paymentId);
 }

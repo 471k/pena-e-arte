@@ -71,6 +71,14 @@ public interface IEmailRenderer
         string amountFormatted,
         bool showBranding);
 
+    /// <summary>To the studio owner: a held card deposit can no longer be charged (C-15).</summary>
+    string RenderDepositHoldLost(
+        string clientFullName,
+        string amountFormatted,
+        string appointmentDate,
+        string paymentUrl,
+        bool showBranding);
+
     string RenderAftercare(
         string clientFirstName,
         string studioName,
