@@ -2276,6 +2276,10 @@ integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clea
 - Created `Pena_e_Arte.API/Extensions/StripeHealthCheck.cs`
 - Registered as `"stripe"` with `tags: ["ready"]` in `Program.cs`
 - `/health/ready` now probes DB, Redis, and Stripe before reporting ready
+- **Changed 2026-10-23:** tagged `"external"` instead — `/health/ready` checks only DB and Redis. A
+  third-party call in readiness let a Stripe outage take every API pod out of service (only platform
+  billing uses Stripe) and could exceed the probe timeout. Still reported on `/health`. API probes now
+  use `timeoutSeconds: 3` (k8s default 1 s timed out once per pod start).
 - Unit tests: `tests/Pena_e_Arte.UnitTests/HealthChecks/StripeHealthCheckTests.cs`
 - Rate limit note: left comment in `Program.cs` about `MaximumAge` for high pod counts
 

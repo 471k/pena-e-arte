@@ -44,12 +44,16 @@ spec:
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 3
+          # timeoutSeconds 3 (Kubernetes' default is 1): a fresh pod's first readiness check opens its
+          # database and Redis connections and logged one "context deadline exceeded" 503 per pod start.
           readinessProbe:
             httpGet:
               path: /health/ready
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 3
           resources:
             requests:

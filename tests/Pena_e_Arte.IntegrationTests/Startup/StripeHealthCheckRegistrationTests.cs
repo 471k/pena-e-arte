@@ -30,8 +30,9 @@ public class StripeHealthCheckRegistrationTests
     }
 
     // Mirrors the exact gate in Program.cs: an unconfigured Stripe key must not register
-    // StripeHealthCheck under the "ready" tag, or /health/ready would report Unhealthy and
-    // block pod readiness for a studio deliberately running Cash-only (a fully independent
+    // StripeHealthCheck at all, or /health would report Unhealthy for a deployment
+    // deliberately running without Stripe billing (since 2026-10-23 the check is tagged
+    // "external", not "ready", so it never gates pod readiness either; a fully independent
     // code path — see DeclareCashDepositCommand/ConfirmCashDepositCommand). Tested as a pure
     // config-read decision for the same reason MigrationsApplyOnStartupTests does: Program.cs
     // is top-level statements, not isolatable via WebApplicationFactory without standing up
