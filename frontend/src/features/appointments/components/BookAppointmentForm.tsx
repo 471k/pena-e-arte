@@ -611,8 +611,8 @@ export function BookAppointmentForm() {
         <p className="text-xs text-muted-foreground">
           {depositDone === "paid"
             ? booked.artistId
-              ? "Your deposit is authorised — the artist will confirm soon."
-              : "Your deposit is authorised — the studio will assign an artist and confirm soon."
+              ? "Your deposit is paid — the artist will confirm soon."
+              : "Your deposit is paid — the studio will assign an artist and confirm soon."
             : depositDone === "cash"
             ? booked.artistId
               ? "Bring the deposit in cash to the studio. The artist will confirm soon."

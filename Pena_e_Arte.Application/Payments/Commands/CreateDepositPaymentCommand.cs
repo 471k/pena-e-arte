@@ -11,9 +11,11 @@ using Pena_e_Arte.Domain.Interfaces;
 namespace Pena_e_Arte.Application.Payments.Commands;
 
 /// <summary>
-/// Client-facing card deposit: creates (or resumes) the provider hold for the caller's own
+/// Client-facing card deposit: creates (or resumes) the provider order for the caller's own
 /// appointment. The amount always comes from the appointment's DepositAmount — never from the
-/// request — so a client cannot choose what to pay.
+/// request — so a client cannot choose what to pay. Since C-4 (2026-10-22, "charge at booking")
+/// the order charges the card as soon as the client pays; there is no hold for the studio to
+/// capture later.
 /// </summary>
 public record CreateDepositPaymentCommand(Guid AppointmentId) : IRequest<PaymentIntentResponse>;
 
@@ -21,7 +23,8 @@ public class CreateDepositPaymentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IPaymentProvider paymentProvider)
+    IPaymentProvider paymentProvider,
+    IJobScheduler jobs)
     : IRequestHandler<CreateDepositPaymentCommand, PaymentIntentResponse>
 {
     // Matches the Postman/REST example (expiresAfterMinutes: 1440) — a full day for the client to
@@ -33,7 +36,7 @@ public class CreateDepositPaymentHandler(
     {
         Appointment appointment = await ResolveOwnAppointmentAsync(db, currentUser, command.AppointmentId, ct);
         (Guid paymentId, string clientToken, PaymentStatus status) =
-            await ResolveOrCreateHoldAsync(db, tenant, paymentProvider, appointment, ct);
+            await ResolveOrCreateHoldAsync(db, tenant, paymentProvider, jobs, appointment, ct);
         return new PaymentIntentResponse(paymentId, clientToken, status.ToString());
     }
 
@@ -70,7 +73,8 @@ public class CreateDepositPaymentHandler(
     /// settled and the caller should report that directly, with no further POK interaction.
     /// </summary>
     internal static async Task<(Guid PaymentId, string ClientToken, PaymentStatus Status)> ResolveOrCreateHoldAsync(
-        IAppDbContext db, ICurrentTenant tenant, IPaymentProvider paymentProvider, Appointment appointment, CancellationToken ct)
+        IAppDbContext db, ICurrentTenant tenant, IPaymentProvider paymentProvider, IJobScheduler jobs,
+        Appointment appointment, CancellationToken ct)
     {
         if (appointment.DepositAmount <= 0)
             throw new BusinessRuleViolationException("This appointment does not require a deposit.");
@@ -79,6 +83,15 @@ public class CreateDepositPaymentHandler(
         // cash declarations are converted in place, never duplicated.
         Payment? existing = await db.Payments
             .FirstOrDefaultAsync(p => p.AppointmentId == appointment.Id, ct);
+
+        if (appointment.Status == AppointmentStatus.Cancelled)
+        {
+            // Never take a deposit for a cancelled appointment. A card payment still in flight is
+            // settled by PaymentReconciliationJob: released, or refunded in full if it was charged.
+            if (existing is { Method: ClientPaymentMethod.Card, Status: PaymentStatus.Pending, ProviderReferenceId: not null })
+                jobs.TriggerPaymentReconciliationNow();
+            throw new BusinessRuleViolationException("This appointment was cancelled, so no deposit is due.");
+        }
 
         // An unauthorized card hold may be resumable — but never trust the stored token
         // blindly: reconcile with the provider first. This also heals local state when
@@ -129,6 +142,7 @@ public class CreateDepositPaymentHandler(
                     appointment.DepositStatus = DepositStatus.Paid;
                     appointment.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(ct);
+                    jobs.EnqueueDepositPaidNotification(existing.Id);
                     return (existing.Id, existing.ClientToken, PaymentStatus.Paid);
 
                     // Canceled / Failed / null (gone) at the provider — fall through and mint a fresh hold
@@ -155,7 +169,8 @@ public class CreateDepositPaymentHandler(
                 PaymentId: paymentId,
                 Amount: appointment.DepositAmount,
                 Currency: currency,
-                HoldDurationMinutes: HoldDurationMinutes),
+                HoldDurationMinutes: HoldDurationMinutes,
+                CaptureImmediately: true),
             ct);
         DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(HoldDurationMinutes);
 

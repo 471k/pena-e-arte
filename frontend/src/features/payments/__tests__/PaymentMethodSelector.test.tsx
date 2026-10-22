@@ -172,7 +172,7 @@ describe("PaymentMethodSelector", () => {
     expect(form).toBeInTheDocument();
     expect(form.dataset.orderId).toBe("order-test-abcdefg");
     expect(within(form).getByRole("button", { name: /authorise deposit/i })).toBeInTheDocument();
-    expect(screen.getByText(/charged by the studio, usually at your appointment/i)).toBeInTheDocument();
+    expect(screen.getByText(/your card is charged now/i)).toBeInTheDocument();
   });
 
   it("card tab shows loading state before the intent is ready", () => {
@@ -232,7 +232,7 @@ describe("PaymentMethodSelector", () => {
     expect(depositCalls).toBe(2);
   });
 
-  it("widget onError replaces the form with a plain message and hides the 'authorised now' note", async () => {
+  it("widget onError replaces the form with a plain message and hides the 'charged now' note", async () => {
     const user    = userEvent.setup();
     const onError = vi.fn();
     renderSelector(vi.fn(), onError);
@@ -247,7 +247,7 @@ describe("PaymentMethodSelector", () => {
       "Your bank couldn't verify this card. Try again, or use a different card.",
     );
     expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
-    expect(screen.queryByText(/authorised now/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/charged now/i)).not.toBeInTheDocument();
   });
 
   it("Try again re-checks the deposit, then shows a fresh card form when it's still unpaid", async () => {
@@ -266,7 +266,7 @@ describe("PaymentMethodSelector", () => {
     await user.click(await screen.findByRole("button", { name: /try again/i }));
 
     expect(await screen.findByTestId("pok-checkout-form")).toBeInTheDocument();
-    expect(screen.getByText(/authorised now/i)).toBeInTheDocument();
+    expect(screen.getByText(/charged now/i)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(depositCalls).toBe(2);
   });

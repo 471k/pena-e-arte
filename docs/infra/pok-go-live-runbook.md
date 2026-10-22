@@ -26,10 +26,12 @@ wrong POK environment, and the first studio (ours) is connected and checked befo
 
 All of these must be true. Tick them in the blockers doc, not here.
 
-- [ ] **C-4 decided** (when a deposit is charged). The T9b day-8 capture worked on 22 Oct 2026 (normal fee), so this is now Phi's decision with Finance and Legal.
+- [x] **C-4 decided** (22 Oct 2026): charge the deposit at booking; Legal and Finance agreed. The change that
+  charges card deposits when the client pays must be live before go-live; the C-11 tests confirm it with real money.
 - [ ] **Legal sign-off for EUR deposits**, only if any studio will take deposits in EUR.
-- [ ] **POK's written answers**, at least on production pricing, the hold limit and privacy (email
-      questions Q3, Q5, Q8), or Phi decides to go without them.
+- [ ] **POK's written answers**, at least on production pricing, refund timing and privacy (email
+      questions Q1, Q3, Q5, Q8), or Phi decides to go without them. The hold limit (Q4) no longer
+      blocks: deposits are charged at booking.
 - [ ] **Production POK merchant account ready:** Phi has the production key ID, key secret and
       merchant ID for our own test studio (kept in KeePass, never in chat or the repo).
 - [ ] **Vault unsealed and the app's token valid.** Claude can check both without seeing a secret:
@@ -111,13 +113,15 @@ stranded. Studios that connected production keys must reconnect again later.
    POK email draft (`claude-shared/pok-gate/fee/pok-email-draft.md`, outside this repo). Use our own
    cards and about 100 ALL per test; a full refund returns POK's whole fee, so the whole list costs
    roughly 50–100 ALL. The minimum before inviting any real studio:
-   - pay a 100 ALL deposit by card, see it **On hold** in the app and in POK Business;
-   - capture it from the app, see **Paid** and POK's fee (2.5 % + 20 ALL on staging);
+   - pay a 100 ALL deposit by card: it shows **Paid** at once in the app (charged at booking, C-4),
+     the "Deposit received" email arrives, and POK Business shows it confirmed with POK's fee
+     (2.5 % + 20 ALL on staging);
    - refund 30 ALL, then the remaining 70 ALL, from the app; both show in POK Business and on the
      card's bank statement, for the full amounts;
-   - book again and cancel inside the free window: the hold is **released**, nothing charged;
-   - POK's webhook reached production: the payment changed state within seconds, not at the
-     nightly sync (Loki: "healed to held" or the payment page updating without a reload).
+   - book again, pay, and cancel inside the free window: the deposit is **refunded in full** and
+     POK returns its whole fee;
+   - POK's webhook reached production: a payment completed on POK's own page (tab closed before
+     returning) turns Paid within seconds, not at the nightly sync.
 5. Watch for a day: Grafana alerts, Loki for `Failed to reconcile`, `VaultHealthCheckFailed` and
    503 responses on `/api/v1/payments/`, and the POK Business dashboard.
 

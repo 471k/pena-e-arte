@@ -39,4 +39,9 @@ public interface IJobScheduler
     /// <summary>Emails the studio owner (and adds a bell entry) that a held card deposit can no longer be
     /// charged because POK ended the hold (C-15). Its own job, so a mail failure never touches reconciliation.</summary>
     void EnqueueDepositHoldLostNotification(Guid paymentId);
+
+    /// <summary>Sends the client the "deposit received" email/SMS once a card deposit turns Paid without
+    /// the owner pressing "Capture deposit" — card deposits are charged when the client pays (C-4).
+    /// Call it once, on the transition to Paid.</summary>
+    void EnqueueDepositPaidNotification(Guid paymentId);
 }

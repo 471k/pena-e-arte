@@ -100,9 +100,9 @@ describe("describeDeposit (G-13)", () => {
     }));
     expect(o.kind).toBe("partlyKept");
     expect(o.ownerLabel).toBe("Partly kept");
-    expect(o.ownerDetail).toBe("ALL 500 kept · ALL 500 released (cancellation policy)");
-    expect(o.clientLabel).toBe("Partly charged");
-    expect(o.clientDetail).toBe("ALL 500 charged under the studio's cancellation policy, ALL 500 released");
+    expect(o.ownerDetail).toBe("ALL 500 kept · ALL 500 refunded (cancellation policy)");
+    expect(o.clientLabel).toBe("Partly refunded");
+    expect(o.clientDetail).toBe("ALL 500 kept under the studio's cancellation policy, ALL 500 refunded to your card");
     expect(o.charged).toBe(true);
   });
 

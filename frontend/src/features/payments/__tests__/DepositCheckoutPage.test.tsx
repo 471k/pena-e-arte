@@ -127,7 +127,7 @@ describe("DepositCheckoutPage", () => {
   it("shows the server's own amount and currency in the form description", async () => {
     renderPage("pay-001");
     await screen.findByTestId("pok-checkout-form");
-    expect(screen.getByText(/authorising a deposit of/i)).toBeInTheDocument();
+    expect(screen.getByText(/paying a deposit of/i)).toBeInTheDocument();
     expect(screen.getByText("€100.50")).toBeInTheDocument();
   });
 
@@ -162,6 +162,20 @@ describe("DepositCheckoutPage", () => {
     expect(confirmCalled).toBe(true);
   });
 
+  it("shows 'Deposit paid' when the backend confirms the card was charged (C-4: charged at booking)", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
+    server.use(
+      http.post("http://localhost/api/v1/payments/:id/confirm", () => HttpResponse.json({ status: "Paid" })),
+    );
+    renderPage("pay-001");
+    const form = await screen.findByTestId("pok-checkout-form");
+    await userEvent.click(within(form).getByRole("button", { name: /authorise deposit/i }));
+
+    expect(await screen.findByText(/deposit paid/i)).toBeInTheDocument();
+    expect(screen.getByText(/your card has been charged/i)).toBeInTheDocument();
+    expect(screen.queryByText(/deposit authorised/i)).not.toBeInTheDocument();
+  });
+
   it("shows an error instead of a false success when the backend confirm call fails", async () => {
     const { default: userEvent } = await import("@testing-library/user-event");
     server.use(
@@ -190,14 +204,14 @@ describe("DepositCheckoutPage", () => {
 
     renderPage("pay-001", "?status=complete");
 
-    expect(await screen.findByText(/deposit authorised/i)).toBeInTheDocument();
-    expect(screen.getByText(/charges the deposit, usually at your appointment/i)).toBeInTheDocument();
+    expect(await screen.findByText(/deposit paid/i)).toBeInTheDocument();
+    expect(screen.getByText(/your card has been charged/i)).toBeInTheDocument();
     expect(secretFetched).toBe(false);
   });
 
   it("success state does NOT show the POK form", async () => {
     renderPage("pay-001", "?status=complete");
-    await screen.findByText(/deposit authorised/i);
+    await screen.findByText(/deposit paid/i);
     expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /authorise/i })).not.toBeInTheDocument();
   });
@@ -206,7 +220,7 @@ describe("DepositCheckoutPage", () => {
 
   it("success state works even when ?amount is also present", async () => {
     renderPage("pay-001", "?status=complete&amount=75.00+EUR");
-    expect(await screen.findByText(/deposit authorised/i)).toBeInTheDocument();
+    expect(await screen.findByText(/deposit paid/i)).toBeInTheDocument();
   });
 
   // ── Capabilities guard ───────────────────────────────────────────────────────

@@ -23,7 +23,7 @@ public record PayDepositWithSavedCardCommand(PayWithSavedCardRequest Request) : 
 
 public class PayDepositWithSavedCardHandler(
     IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser,
-    IPaymentProvider paymentProvider, IPokCardTokenService cardTokens)
+    IPaymentProvider paymentProvider, IPokCardTokenService cardTokens, IJobScheduler jobs)
     : IRequestHandler<PayDepositWithSavedCardCommand, PayWithSavedCardSetupResponse>
 {
     public async Task<PayWithSavedCardSetupResponse> Handle(PayDepositWithSavedCardCommand command, CancellationToken ct)
@@ -43,7 +43,7 @@ public class PayDepositWithSavedCardHandler(
             ?? throw new NotFoundException(nameof(SavedPaymentMethod), req.SavedPaymentMethodId);
 
         (Guid paymentId, string clientToken, PaymentStatus status) =
-            await CreateDepositPaymentHandler.ResolveOrCreateHoldAsync(db, tenant, paymentProvider, appointment, ct);
+            await CreateDepositPaymentHandler.ResolveOrCreateHoldAsync(db, tenant, paymentProvider, jobs, appointment, ct);
 
         if (status != PaymentStatus.Pending)
         {

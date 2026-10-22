@@ -21,7 +21,8 @@ namespace Pena_e_Arte.Application.Payments.Commands;
 /// </summary>
 public record ConfirmCardPaymentCommand(Guid PaymentId) : IRequest<PaymentResponse>;
 
-public class ConfirmCardPaymentHandler(IAppDbContext db, ICurrentUser currentUser, IPaymentProvider paymentProvider)
+public class ConfirmCardPaymentHandler(
+    IAppDbContext db, ICurrentUser currentUser, IPaymentProvider paymentProvider, IJobScheduler jobs)
     : IRequestHandler<ConfirmCardPaymentCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(ConfirmCardPaymentCommand command, CancellationToken ct)
@@ -56,12 +57,21 @@ public class ConfirmCardPaymentHandler(IAppDbContext db, ICurrentUser currentUse
                 break;
 
             case PaymentProviderStatus.Captured when payment.Status != PaymentStatus.Paid:
+                Appointment? appt = await db.Appointments
+                    .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+
+                // Charged on an appointment cancelled meanwhile: never mark it Paid here.
+                // PaymentReconciliationJob refunds it in full; run it now rather than overnight.
+                if (appt is { Status: AppointmentStatus.Cancelled } && payment.Status == PaymentStatus.Pending)
+                {
+                    jobs.TriggerPaymentReconciliationNow();
+                    break;
+                }
+
                 payment.Status = PaymentStatus.Paid;
                 payment.PaidAt = DateTime.UtcNow;
                 payment.UpdatedAt = DateTime.UtcNow;
 
-                Appointment? appt = await db.Appointments
-                    .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
                 if (appt is not null)
                 {
                     appt.DepositStatus = DepositStatus.Paid;
@@ -69,6 +79,10 @@ public class ConfirmCardPaymentHandler(IAppDbContext db, ICurrentUser currentUse
                 }
 
                 await db.SaveChangesAsync(ct);
+                // The client's "deposit received" email. Card deposits are charged when the client
+                // pays (C-4), so this is usually the moment the money arrives.
+                if (appt is not null)
+                    jobs.EnqueueDepositPaidNotification(payment.Id);
                 break;
 
                 // Pending/Canceled/Failed/null — nothing resolved yet at the provider; leave local

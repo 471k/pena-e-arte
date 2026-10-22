@@ -51,6 +51,7 @@ public class PaymentReconciliationJob(
                     payment.StudioId, payment.ProviderReferenceId!, ct);
                 DateTime now = DateTime.UtcNow;
                 bool tellOwnerHoldLost = false;
+                bool tellClientPaid = false;
 
                 switch (status)
                 {
@@ -60,6 +61,8 @@ public class PaymentReconciliationJob(
                             logger.LogWarning(
                                 "Held deposit {PaymentId} for studio {StudioId} was captured at the provider on a cancelled appointment; refund it manually.",
                                 payment.Id, payment.StudioId);
+                        else
+                            tellClientPaid = true; // captured in the POK dashboard: same email as "Capture deposit"
                         break;
                     case PaymentProviderStatus.Canceled or PaymentProviderStatus.Failed:
                         payment.Status = PaymentStatus.Failed;
@@ -117,6 +120,8 @@ public class PaymentReconciliationJob(
                         logger.LogError(ex, "Could not queue the hold-lost notification for payment {PaymentId}.", payment.Id);
                     }
                 }
+                if (tellClientPaid)
+                    QueueDepositPaidNotification(payment);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -159,6 +164,7 @@ public class PaymentReconciliationJob(
                 ? expires < now
                 : payment.Appointment.Date < staleCutoff;
             bool releasable = expiredOrStale || appointmentCancelled;
+            bool tellClientPaid = false;
             try
             {
                 PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
@@ -170,6 +176,11 @@ public class PaymentReconciliationJob(
                 if ((status == PaymentProviderStatus.Pending && releasable)
                     || (status == PaymentProviderStatus.Authorized && appointmentCancelled))
                     await paymentProvider.CancelAsync(payment.StudioId, providerReferenceId, ct);
+                // Paid after (or racing) the cancellation: card deposits are charged when the client
+                // pays (C-4), so this is the charged twin of the authorised case above. Refund it in
+                // full, exactly as that case releases the hold in full.
+                if (status == PaymentProviderStatus.Captured && appointmentCancelled)
+                    await paymentProvider.RefundAsync(payment.StudioId, providerReferenceId, null, payment.Currency, ct);
 
                 // Then re-read right before mutating: never apply this order's verdict to a newer order.
                 string? currentReference = await db.Payments
@@ -206,12 +217,22 @@ public class PaymentReconciliationJob(
                             "Pending payment {PaymentId} for studio {StudioId} was authorised at the provider; healed to held.",
                             payment.Id, payment.StudioId);
                         break;
+                    case PaymentProviderStatus.Captured when appointmentCancelled:
+                        // Refunded in full above. PaidAt is set because the card WAS charged: the client
+                        // sees "Deposit refunded", not "Hold released", and revenue counts the kept 0.
+                        payment.Status = PaymentStatus.Refunded;
+                        payment.PaidAt = now;
+                        payment.RefundedAmount = payment.Amount;
+                        payment.UpdatedAt = now;
+                        payment.Appointment.DepositStatus = DepositStatus.Refunded;
+                        payment.Appointment.UpdatedAt = now;
+                        logger.LogWarning(
+                            "Payment {PaymentId} for studio {StudioId} was paid at the provider on a cancelled appointment; refunded in full.",
+                            payment.Id, payment.StudioId);
+                        break;
                     case PaymentProviderStatus.Captured:
                         MarkPaid(payment, now);
-                        if (appointmentCancelled)
-                            logger.LogWarning(
-                                "Payment {PaymentId} for studio {StudioId} was captured at the provider on a cancelled appointment; refund it manually.",
-                                payment.Id, payment.StudioId);
+                        tellClientPaid = true;
                         break;
                     case PaymentProviderStatus.Pending when releasable:
                         payment.Status = PaymentStatus.Failed; // the unpaid order was cancelled above
@@ -232,11 +253,28 @@ public class PaymentReconciliationJob(
 
                 // Save per payment: only DB work (no provider call) between the re-read and this write.
                 await db.SaveChangesAsync(ct);
+
+                // Only after Paid is saved, so the notification finds it.
+                if (tellClientPaid)
+                    QueueDepositPaidNotification(payment);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Failed to reconcile pending payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
             }
+        }
+    }
+
+    private void QueueDepositPaidNotification(Payment payment)
+    {
+        try
+        {
+            jobScheduler.EnqueueDepositPaidNotification(payment.Id);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Paid is saved; only the client's "deposit received" email is missed.
+            logger.LogError(ex, "Could not queue the deposit-paid notification for payment {PaymentId}.", payment.Id);
         }
     }
 

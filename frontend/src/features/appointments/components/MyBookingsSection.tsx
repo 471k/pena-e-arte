@@ -244,7 +244,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
             toast.success(
               method === "cash"
                 ? "Noted — bring the deposit in cash to the studio."
-                : "Deposit authorised.",
+                : "Deposit paid.",
             );
           }}
           onError={(message) => toast.error(message)}

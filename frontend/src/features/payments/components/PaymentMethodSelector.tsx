@@ -122,7 +122,7 @@ function CardCheckoutForm({
         options={{ env: pokEnvironment, locale: "en", countrySelect: "modal" }}
       />
       <p className="text-xs text-center text-muted-foreground">
-        Your card is authorised now and charged by the studio, usually at your appointment. The studio's cancellation policy applies if you cancel late or miss it.
+        Your card is charged now. If you cancel, the studio's cancellation policy decides how much is refunded.
       </p>
     </div>
   );

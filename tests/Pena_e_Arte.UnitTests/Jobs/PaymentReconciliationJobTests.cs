@@ -88,6 +88,65 @@ public class PaymentReconciliationJobTests
 
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Paid);
         _db.Appointments.Find(appointmentId)!.DepositStatus.Should().Be(DepositStatus.Paid);
+        // Captured in the POK dashboard: the client gets the same email as for "Capture deposit".
+        _jobs.Received(1).EnqueueDepositPaidNotification(payment.Id);
+    }
+
+    // ── Charged when the client pays (C-4, 2026-10-22) ─────────────────────────────
+
+    [Fact]
+    public async Task RunAsync_PendingDepositPaidAtProvider_MarksPaidAndQueuesTheClientEmail()
+    {
+        Guid appointmentId = await SeedAppointment(DateTime.UtcNow.AddDays(5));
+        Payment payment = await SeedPayment(PaymentStatus.Pending, "pi_paid_now", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_paid_now", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
+
+        await CreateSut().RunAsync();
+        await CreateSut().RunAsync(); // now Paid: not reconciled again, so no second email
+
+        Payment updated = _db.Payments.Find(payment.Id)!;
+        updated.Status.Should().Be(PaymentStatus.Paid);
+        updated.PaidAt.Should().NotBeNull();
+        _db.Appointments.Find(appointmentId)!.DepositStatus.Should().Be(DepositStatus.Paid);
+        _jobs.Received(1).EnqueueDepositPaidNotification(payment.Id);
+    }
+
+    [Fact]
+    public async Task RunAsync_DepositPaidOnACancelledAppointment_IsRefundedInFull()
+    {
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(5), DepositStatus.Pending, AppointmentStatus.Cancelled);
+        Payment payment = await SeedPayment(PaymentStatus.Pending, "pi_paid_after_cancel", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_paid_after_cancel", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
+
+        await CreateSut().RunAsync();
+
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_paid_after_cancel", null, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Payment updated = _db.Payments.Find(payment.Id)!;
+        updated.Status.Should().Be(PaymentStatus.Refunded);
+        updated.RefundedAmount.Should().Be(updated.Amount);
+        updated.PaidAt.Should().NotBeNull(); // charged, then refunded: "Deposit refunded", retained 0
+        _db.Appointments.Find(appointmentId)!.DepositStatus.Should().Be(DepositStatus.Refunded);
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task RunAsync_RefundOfAPaymentOnACancelledAppointmentFails_LeavesItPendingForTheNextRun()
+    {
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(5), DepositStatus.Pending, AppointmentStatus.Cancelled);
+        Payment payment = await SeedPayment(PaymentStatus.Pending, "pi_refund_down", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_refund_down", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
+        _stripe.RefundAsync(_studioId, "pi_refund_down", null, Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns<Task<string>>(_ => throw new ServiceUnavailableException("POK unavailable"));
+
+        await CreateSut().RunAsync();
+
+        _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Pending);
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
     }
 
     [Fact]

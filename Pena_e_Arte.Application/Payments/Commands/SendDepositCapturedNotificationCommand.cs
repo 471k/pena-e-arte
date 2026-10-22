@@ -25,10 +25,13 @@ public class SendDepositCapturedNotificationHandler(
 {
     public async Task<Unit> Handle(SendDepositCapturedNotificationCommand command, CancellationToken ct)
     {
+        // By the payment's own id, across tenants: also sent from DepositPaidNotificationJob, which
+        // runs outside a request (no tenant). Only server code sends this command, never a client.
         Payment? payment = await db.Payments
+            .IgnoreQueryFilters()
             .Include(p => p.Client)
             .Include(p => p.Appointment)
-            .FirstOrDefaultAsync(p => p.Id == command.PaymentId, ct);
+            .FirstOrDefaultAsync(p => p.Id == command.PaymentId && p.DeletedAt == null, ct);
 
         if (payment is null)
         {
@@ -38,6 +41,7 @@ public class SendDepositCapturedNotificationHandler(
         }
 
         Studio? studio = await db.Studios
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.Id == payment.StudioId, ct);
 
         if (studio is null)
