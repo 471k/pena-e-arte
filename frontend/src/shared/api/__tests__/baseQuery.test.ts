@@ -99,3 +99,176 @@ describe("baseQuery", () => {
     expect(store.getState().ui.planLimitError).toBeNull();
   });
 });
+
+// ── Session renewal ───────────────────────────────────────────────────────────
+
+const ROLE_CLAIM = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
+const b64url = (s: string) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+function jwt(expOffsetSeconds: number, sub = "user-0001"): string {
+  const claims = {
+    sub, email: "owner@test.com", tenant_id: "studio-0001", [ROLE_CLAIM]: "owner",
+    exp: Math.floor(Date.now() / 1000) + expOffsetSeconds,
+  };
+  return `${b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }))}.${b64url(JSON.stringify(claims))}.sig`;
+}
+
+const EXPIRED = jwt(-600);
+const RENEWED = jwt(900, "user-0001-renewed");
+const OTHER_TAB = jwt(900, "user-0001-other-tab");
+
+let refreshCalls = 0;
+function useRenewalHandlers(refreshAccepts: string | null) {
+  refreshCalls = 0;
+  server.use(
+    http.post("http://localhost/api/v1/auth/refresh", async ({ request }) => {
+      refreshCalls++;
+      const body = (await request.json()) as { refreshToken: string };
+      return body.refreshToken === refreshAccepts
+        ? HttpResponse.json({ accessToken: RENEWED, refreshToken: "rt-new", tokenType: "Bearer" })
+        : HttpResponse.json({ message: "Invalid refresh token." }, { status: 422 });
+    }),
+    http.get("http://localhost/api/v1/protected", ({ request }) => {
+      const auth = request.headers.get("Authorization");
+      return auth === `Bearer ${RENEWED}` || auth === `Bearer ${OTHER_TAB}`
+        ? HttpResponse.json({ ok: true })
+        : HttpResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }),
+  );
+}
+
+function makeSignedInStore(token: string, refreshToken: string) {
+  return configureStore({
+    reducer: { auth: authReducer, ui: uiReducer },
+    preloadedState: {
+      auth: {
+        user: { id: "user-0001", email: "owner@test.com", tenantId: "studio-0001", role: "owner" },
+        token, refreshToken, tenantId: "studio-0001", role: "owner",
+        pendingReferralCode: null, impersonation: null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any,
+    },
+  });
+}
+
+describe("baseQuery — session renewal", () => {
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it("renews an expired access token BEFORE sending, so the request succeeds first time", async () => {
+    useRenewalHandlers("rt-old");
+    localStorage.setItem("auth_token", EXPIRED);
+    localStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+
+    const result = await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(result.data).toEqual({ ok: true });
+    expect(refreshCalls).toBe(1);
+    expect(store.getState().auth.token).toBe(RENEWED);
+    expect(localStorage.getItem("auth_refresh_token")).toBe("rt-new");
+    expect(store.getState().ui.sessionExpired).toBe(false);
+  });
+
+  it("several requests at once with an expired token renew it only once", async () => {
+    useRenewalHandlers("rt-old");
+    localStorage.setItem("auth_token", EXPIRED);
+    localStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+    const api = makeFakeApi(store);
+
+    const results = await Promise.all([
+      baseQuery("protected", api, {}), baseQuery("protected", api, {}), baseQuery("protected", api, {}),
+    ]);
+
+    expect(results.every((r) => r.error === undefined)).toBe(true);
+    expect(refreshCalls).toBe(1);
+  });
+
+  it("keeps renewed tokens in sessionStorage when 'remember me' was off", async () => {
+    useRenewalHandlers("rt-old");
+    sessionStorage.setItem("auth_token", EXPIRED);
+    sessionStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+
+    await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(sessionStorage.getItem("auth_refresh_token")).toBe("rt-new");
+    expect(localStorage.getItem("auth_token")).toBeNull();
+  });
+
+  it("takes the session another tab already renewed instead of renewing with a stale token", async () => {
+    useRenewalHandlers("rt-current");
+    localStorage.setItem("auth_token", OTHER_TAB);
+    localStorage.setItem("auth_refresh_token", "rt-other-tab");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+
+    const result = await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(result.data).toEqual({ ok: true });
+    expect(refreshCalls).toBe(0);
+    expect(store.getState().auth.token).toBe(OTHER_TAB);
+    expect(store.getState().ui.sessionExpired).toBe(false);
+  });
+
+  it("signs out and flags the session as expired when renewal is refused", async () => {
+    useRenewalHandlers("rt-something-else");
+    localStorage.setItem("auth_token", EXPIRED);
+    localStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+
+    const result = await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(result.error?.status).toBe(401);
+    expect(refreshCalls).toBe(1);
+    expect(store.getState().auth.token).toBeNull();
+    expect(store.getState().ui.sessionExpired).toBe(true);
+    expect(localStorage.getItem("auth_refresh_token")).toBeNull();
+  });
+
+  it("keeps the session when renewal can't reach the server (network error), so other tabs aren't signed out", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/refresh", () => HttpResponse.error()),
+      http.get("http://localhost/api/v1/protected", () => HttpResponse.json({ message: "Unauthorized" }, { status: 401 })),
+    );
+    localStorage.setItem("auth_token", EXPIRED);
+    localStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+
+    const result = await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(result.error?.status).toBe(401);
+    expect(store.getState().auth.refreshToken).toBe("rt-old");
+    expect(store.getState().ui.sessionExpired).toBe(false);
+    expect(localStorage.getItem("auth_refresh_token")).toBe("rt-old");
+  });
+
+  it("keeps the session when the server is rate-limiting renewals (429)", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/auth/refresh", () => HttpResponse.json({}, { status: 429 })),
+      http.get("http://localhost/api/v1/protected", () => HttpResponse.json({ message: "Unauthorized" }, { status: 401 })),
+    );
+    localStorage.setItem("auth_token", EXPIRED);
+    localStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(EXPIRED, "rt-old");
+
+    await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(store.getState().ui.sessionExpired).toBe(false);
+    expect(localStorage.getItem("auth_refresh_token")).toBe("rt-old");
+  });
+
+  it("renews and retries once when a not-yet-expired token is rejected with 401", async () => {
+    useRenewalHandlers("rt-old");
+    const revoked = jwt(600, "user-0001-revoked");
+    localStorage.setItem("auth_token", revoked);
+    localStorage.setItem("auth_refresh_token", "rt-old");
+    const store = makeSignedInStore(revoked, "rt-old");
+
+    const result = await baseQuery("protected", makeFakeApi(store), {});
+
+    expect(result.data).toEqual({ ok: true });
+    expect(refreshCalls).toBe(1);
+  });
+});

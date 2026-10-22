@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
+import { isTokenExpired } from "@/shared/utils/jwt";
 import { messagingApi } from "./messagingApi";
 import type { ChatMessageResponse } from "./messaging.types";
 
@@ -17,7 +18,7 @@ export function useChatHub() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || isTokenExpired(token)) return;
 
     const hubBase = hubBaseUrl();
     const connection = createHubConnection(`${hubBase}/hubs/chat`, token!);

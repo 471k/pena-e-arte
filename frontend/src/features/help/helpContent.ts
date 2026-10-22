@@ -2129,6 +2129,12 @@ export const FAQ_ITEMS: FaqItem[] = [
     relatedArticleIds: ["artist-share-design"],
   },
   {
+    id: "faq-stay-signed-in",
+    roles: [Client, Artist, Owner, Admin],
+    question: "How long do I stay signed in?",
+    answer: "With \"Remember me\" ticked, you stay signed in on that device until you sign out, sign in on another device, or don't open TattooOS for 30 days. Without it, closing the browser tab signs you out. If you open a link that needs signing in — from an email, say — you land on that page once you've signed in.",
+  },
+  {
     id: "faq-qr-code-use",
     roles: [Owner],
     question: "What is the studio QR code for?",

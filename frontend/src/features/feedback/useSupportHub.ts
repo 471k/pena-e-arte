@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { createHubConnection } from "@/shared/signalr/createHubConnection";
 import { hubBaseUrl } from "@/shared/signalr/hubBaseUrl";
+import { isTokenExpired } from "@/shared/utils/jwt";
 import { feedbackApi } from "./feedbackApi";
 import type { FeedbackMessageResponse } from "./feedback.types";
 
@@ -13,7 +14,7 @@ export function useSupportHub(feedbackReportId: string | null) {
   const dispatch      = useAppDispatch();
 
   useEffect(() => {
-    if (!feedbackReportId || !token) return;
+    if (!feedbackReportId || !token || isTokenExpired(token)) return;
 
     const hubBase = hubBaseUrl();
     const conn = createHubConnection(`${hubBase}/hubs/support`, token!);

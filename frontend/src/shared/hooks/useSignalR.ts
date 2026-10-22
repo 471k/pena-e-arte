@@ -9,13 +9,14 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { remindersApi } from "@/features/reminders/remindersApi";
 import { incrementUnreadIfVisible } from "@/features/notifications/incrementUnreadIfVisible";
 import type { NotificationLogResponse } from "@/features/notifications/notification.types";
+import { isTokenExpired } from "@/shared/utils/jwt";
 
 export function useSignalR(studioId: string | null | undefined) {
   const token    = useAppSelector((s) => s.auth.token);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    if (!studioId || !token) return;
+    if (!studioId || !token || isTokenExpired(token)) return;
 
     // Direct to the local backend only for a dev browser on this machine; relative otherwise (see hubBaseUrl).
     const hubBase = hubBaseUrl();
