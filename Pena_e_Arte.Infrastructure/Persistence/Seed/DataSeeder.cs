@@ -127,7 +127,6 @@ public static class DataSeeder
         // Always run: ensure seed credentials + artist slugs are correct
         await EnsureSeedUsersAsync(userManager);
         await EnsureArtistSlugsAsync(db);
-        await EnsureStudioHoursAsync(db);
 
         // Always run: platform-default consent templates are system-defined (like the core
         // plan tiers), not demo data — a studio with no custom template falls back to these.
@@ -146,12 +145,66 @@ public static class DataSeeder
         // Guard: demo studios/subscriptions/appointments/designs/etc. still seed only
         // once — unlike the five canonical plans, this fake data has no "correct"
         // canonical state to reconcile toward on every boot.
-        if (coreEntitiesAlreadySeeded)
-            return;
+        if (!coreEntitiesAlreadySeeded)
+        {
+            await SeedStudiosAndSubscriptionsAsync(db);
+            await SeedStudio1EntitiesAsync(db);
+            await SeedStudio2EntitiesAsync(db);
+        }
 
-        await SeedStudiosAndSubscriptionsAsync(db);
-        await SeedStudio1EntitiesAsync(db);
-        await SeedStudio2EntitiesAsync(db);
+        // After the demo studios and artists exist, so a fresh database is bookable on its first boot:
+        // studio hours used to be ensured before the studios existed, and the demo artists never had a
+        // weekly schedule (booking said the artist wasn't available on any day).
+        await EnsureStudioHoursAsync(db);
+        await EnsureArtistSchedulesAsync(db);
+    }
+
+    /// <summary>
+    /// Gives every artist of the demo studios that has no weekly schedule the studio's demo hours
+    /// (Mon–Fri 09:00–18:00, Sat 10:00–16:00). Only fills gaps — an artist with any schedule row is
+    /// left alone.
+    /// </summary>
+    internal static async Task EnsureArtistSchedulesAsync(IAppDbContext db)
+    {
+        Guid[] demoStudios = [Studio1Id, Studio2Id];
+        // IgnoreQueryFilters approved: dev seeder — no tenant context, runs only when Seeding:Enabled.
+        List<Artist> artists = await db.Artists.IgnoreQueryFilters()
+            .Where(a => demoStudios.Contains(a.StudioId) && a.DeletedAt == null)
+            .ToListAsync();
+        HashSet<Guid> scheduled = (await db.ArtistSchedules.IgnoreQueryFilters()
+            .Where(s => demoStudios.Contains(s.StudioId))
+            .Select(s => s.ArtistId)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+
+        foreach (Artist artist in artists.Where(a => !scheduled.Contains(a.Id)))
+        {
+            foreach (DayOfWeek day in new[]
+            {
+                DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday,
+            })
+            {
+                db.ArtistSchedules.Add(new ArtistSchedule
+                {
+                    StudioId = artist.StudioId,
+                    ArtistId = artist.Id,
+                    DayOfWeek = day,
+                    StartTime = new TimeSpan(9, 0, 0),
+                    EndTime = new TimeSpan(18, 0, 0),
+                });
+            }
+
+            db.ArtistSchedules.Add(new ArtistSchedule
+            {
+                StudioId = artist.StudioId,
+                ArtistId = artist.Id,
+                DayOfWeek = DayOfWeek.Saturday,
+                StartTime = new TimeSpan(10, 0, 0),
+                EndTime = new TimeSpan(16, 0, 0),
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     /// <summary>

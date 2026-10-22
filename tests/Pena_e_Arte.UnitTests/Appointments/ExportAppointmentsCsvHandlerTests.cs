@@ -66,12 +66,15 @@ public class ExportAppointmentsCsvHandlerTests
     public async Task Handle_UnassignedAppointment_ShowsEmptyArtistColumn()
     {
         Guid clientId = await SeedClient("Jane", "Doe");
-        await SeedAppointment(null, clientId, DateTime.UtcNow.AddDays(1));
+        // 09:00 UTC = 11:00 in the studio's Europe/Tirane: the same calendar day there. "Now + 1 day"
+        // crossed local midnight when the test ran between 22:00 and 24:00 UTC.
+        DateTime when = DateTime.UtcNow.Date.AddDays(1).AddHours(9);
+        await SeedAppointment(null, clientId, when);
 
         string csv = await CreateSut().Handle(new ExportAppointmentsCsvQuery(null, null), default);
 
         string[] lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        lines[1].Should().StartWith(DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd"));
+        lines[1].Should().StartWith(when.ToString("yyyy-MM-dd") + " 11:00");
     }
 
     [Fact]
