@@ -52,8 +52,12 @@ try
     // Skip registering the Stripe check entirely when no key is configured, rather than
     // letting it report Unhealthy — Cash deposits are a fully independent code path, so an
     // unconfigured Stripe key should not block pod readiness / the whole deployment.
+    // Tagged "external", NOT "ready" (2026-10-23): readiness gates whether a pod gets traffic, so it
+    // checks only this app's own dependencies (database, Redis). A Stripe call on every 5-second probe
+    // made a Stripe slowdown or outage take every API pod out of service (only platform billing uses
+    // Stripe), and its network round-trip could exceed the probe timeout. It still shows on /health.
     if (!string.IsNullOrWhiteSpace(builder.Configuration["Stripe:SecretKey"]))
-        healthChecksBuilder.AddCheck<StripeHealthCheck>("stripe", tags: ["ready"]);
+        healthChecksBuilder.AddCheck<StripeHealthCheck>("stripe", tags: ["external"]);
 
     WebApplication app = builder.Build();
 
@@ -254,8 +258,6 @@ try
     app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
         Predicate = check => check.Tags.Contains("ready"),
-        // Add this if Stripe rate limits become a concern at high pod counts:
-        // MaximumAge = TimeSpan.FromSeconds(30),
     });
     app.MapPrometheusScrapingEndpoint();
 
