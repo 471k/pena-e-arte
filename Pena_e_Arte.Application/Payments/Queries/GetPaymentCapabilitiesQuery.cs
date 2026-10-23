@@ -51,6 +51,7 @@ public class GetPaymentCapabilitiesHandler(IPaymentProvider paymentProvider, IAp
         }
 
         return new PaymentCapabilitiesResponse(
-            CardPaymentsAvailable: true, PokEnvironment: paymentProvider.Capabilities.Environment, Currency: currency);
+            CardPaymentsAvailable: true, PokEnvironment: paymentProvider.Capabilities.Environment, Currency: currency,
+            SavedCardsAvailable: paymentProvider.Capabilities.SavedCardsEnabled);
     }
 }

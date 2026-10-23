@@ -164,6 +164,8 @@ services:
       # Card-deposit kill switch (C-13). On for the local stack (POK staging); production and
       # staging leave it off until card deposits are approved there.
       Payments__CardDepositsEnabled: ${PAYMENTS_CARD_DEPOSITS_ENABLED:-true}
+      # Saved cards, backlog C-9; off everywhere until the tokenisation calls are fixed.
+      Payments__SavedCardsEnabled: ${PAYMENTS_SAVED_CARDS_ENABLED:-false}
       CloudflareR2__AccountId: ${R2_ACCOUNT_ID:-}
       CloudflareR2__AccessKeyId: ${R2_ACCESS_KEY_ID:-}
       CloudflareR2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}

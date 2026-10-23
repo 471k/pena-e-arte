@@ -82,6 +82,9 @@ export function SavedPaymentMethodsPage() {
 
   const pokEnvironment = capabilities?.pokEnvironment;
   const cardsAvailable = capabilities?.cardPaymentsAvailable === true && !!pokEnvironment;
+  // Saving cards is switched off platform-wide until C-9 (Payments:SavedCardsEnabled). The list and
+  // its Remove buttons stay, so a client can always delete a card saved earlier.
+  const savingOff = !isLoadingCapabilities && capabilities?.savedCardsAvailable !== true;
 
   if (!hasStudio) {
     return (
@@ -170,7 +173,7 @@ export function SavedPaymentMethodsPage() {
             </div>
           )}
 
-          {!isLoading && !isError && methods?.length === 0 && (
+          {!isLoading && !isError && methods?.length === 0 && !savingOff && (
             <p className="text-sm text-muted-foreground text-center py-4">
               No saved cards yet — add one below to speed up checkout next time.
             </p>
@@ -181,45 +184,51 @@ export function SavedPaymentMethodsPage() {
           ))}
         </div>
 
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold">Add a card</h2>
+        {savingOff ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Saving cards isn&apos;t available yet. You can pay with a card or in cash when you book.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold">Add a card</h2>
 
-          {isLoadingCapabilities && (
-            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Preparing form…</span>
-            </div>
-          )}
+            {isLoadingCapabilities && (
+              <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Preparing form…</span>
+              </div>
+            )}
 
-          {!isLoadingCapabilities && !cardsAvailable && (
-            <p className="text-sm text-destructive-text py-4 text-center">
-              Card payments are temporarily unavailable — try again later.
-            </p>
-          )}
-
-          {!isLoadingCapabilities && cardsAvailable && (
-            <div className="space-y-2">
-              {isAdding ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Saving card…</span>
-                </div>
-              ) : (
-                <AddCardForm
-                  key={formKey}
-                  buttonTitle="Save card"
-                  onSuccess={(data) => void handleAddCardSuccess(data)}
-                  onError={handleAddCardError}
-                  options={{ env: pokEnvironment as "staging" | "production", locale: "en", countrySelect: "modal" }}
-                />
-              )}
-              <p className="text-xs text-center text-muted-foreground">
-                Your card details are handled entirely by our payment processor — we never see
-                or store your card number.
+            {!isLoadingCapabilities && !cardsAvailable && (
+              <p className="text-sm text-destructive-text py-4 text-center">
+                Card payments are temporarily unavailable — try again later.
               </p>
-            </div>
-          )}
-        </div>
+            )}
+
+            {!isLoadingCapabilities && cardsAvailable && (
+              <div className="space-y-2">
+                {isAdding ? (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Saving card…</span>
+                  </div>
+                ) : (
+                  <AddCardForm
+                    key={formKey}
+                    buttonTitle="Save card"
+                    onSuccess={(data) => void handleAddCardSuccess(data)}
+                    onError={handleAddCardError}
+                    options={{ env: pokEnvironment as "staging" | "production", locale: "en", countrySelect: "modal" }}
+                  />
+                )}
+                <p className="text-xs text-center text-muted-foreground">
+                  Your card details are handled entirely by our payment processor — we never see
+                  or store your card number.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

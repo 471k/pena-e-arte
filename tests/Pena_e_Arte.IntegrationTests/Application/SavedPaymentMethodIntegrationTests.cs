@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.SavedPaymentMethods.Commands;
 using Pena_e_Arte.Application.SavedPaymentMethods.Queries;
 using Pena_e_Arte.Contracts.Requests;
@@ -79,17 +80,65 @@ public class SavedPaymentMethodIntegrationTests(DatabaseFixture fixture)
         tenant.SetTenant(studioId);
         ICurrentUser user = Substitute.For<ICurrentUser>();
         user.UserId.Returns(userId);
-        AddSavedPaymentMethodHandler handler = new(db, tenant, user, cardTokens);
+        AddSavedPaymentMethodHandler handler = new(db, tenant, user, cardTokens, SavedCardsProvider(enabled: true));
 
-        AddSavedPaymentMethodRequest req = new(
-            "jwe-value", "123", "Jamie", "Client", "jamie@test.com", "AL", "Tirana", "Tirana",
-            "Rr. Myslym Shyri 10", "1001", "+355691234567");
-        SavedPaymentMethodResponse result = await handler.Handle(new AddSavedPaymentMethodCommand(req), default);
+        SavedPaymentMethodResponse result = await handler.Handle(new AddSavedPaymentMethodCommand(AddRequest), default);
 
         await using AppDbContext verify = fixture.CreateDbContext(studioId);
         SavedPaymentMethod? saved = await verify.SavedPaymentMethods.FindAsync(result.Id);
         saved!.StudioId.Should().Be(studioId);
         saved.ProviderCardTokenId.Should().Be("card-real-db");
+    }
+
+    // ── Payments:SavedCardsEnabled off (C-9): adding is refused, listing and removing still work. ──
+
+    [Fact]
+    public async Task SavedCardsSwitchedOff_AddIsRefused_ListAndDeleteStillWork()
+    {
+        Guid userId = Guid.NewGuid();
+        Guid studioId = Guid.NewGuid();
+        Guid clientId = await SeedClient(studioId, userId);
+        Guid existingId = await SeedSavedMethod(studioId, clientId, "card-from-before");
+
+        IPokCardTokenService cardTokens = Substitute.For<IPokCardTokenService>();
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(studioId);
+        ICurrentUser user = Substitute.For<ICurrentUser>();
+        user.UserId.Returns(userId);
+
+        await using (AppDbContext db = fixture.CreateDbContext(studioId))
+        {
+            AddSavedPaymentMethodHandler add = new(db, tenant, user, cardTokens, SavedCardsProvider(enabled: false));
+            Func<Task> act = () => add.Handle(new AddSavedPaymentMethodCommand(AddRequest), default);
+            await act.Should().ThrowAsync<BusinessRuleViolationException>()
+                .WithMessage(SavedCardGuard.SavedCardsSwitchedOffMessage);
+        }
+        cardTokens.ReceivedCalls().Should().BeEmpty();
+
+        await using (AppDbContext db = fixture.CreateDbContext(studioId))
+        {
+            List<SavedPaymentMethodResponse> listed = await new GetSavedPaymentMethodsHandler(db, user)
+                .Handle(new GetSavedPaymentMethodsQuery(), default);
+            listed.Should().ContainSingle(m => m.Id == existingId);
+
+            await new DeleteSavedPaymentMethodHandler(db, user).Handle(new DeleteSavedPaymentMethodCommand(existingId), default);
+        }
+
+        await using AppDbContext verify = fixture.CreateDbContext(studioId);
+        (await verify.SavedPaymentMethods.AnyAsync(m => m.ClientId == clientId)).Should().BeFalse();
+    }
+
+    private static readonly AddSavedPaymentMethodRequest AddRequest = new(
+        "jwe-value", "123", "Jamie", "Client", "jamie@test.com", "AL", "Tirana", "Tirana",
+        "Rr. Myslym Shyri 10", "1001", "+355691234567");
+
+    private static IPaymentProvider SavedCardsProvider(bool enabled)
+    {
+        IPaymentProvider provider = Substitute.For<IPaymentProvider>();
+        provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"],
+            SavedCardsEnabled: enabled));
+        return provider;
     }
 
     // ── Seed helpers ─────────────────────────────────────────────────────────────

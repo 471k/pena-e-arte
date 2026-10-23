@@ -26,9 +26,11 @@ interface HelpMenuProps {
   onBeforeTourStep?: (step: TourStep) => void;
   /** Called when the tour is completed or skipped (the layout makes its nav drawer modal again). */
   onTourEnd?: () => void;
+  /** Client only: include the tour's "Payment Methods" step (shown only while saved cards are on, C-9). */
+  showPaymentMethodsTourStep?: boolean;
 }
 
-export function HelpMenu({ onBeforeTourStep, onTourEnd }: HelpMenuProps) {
+export function HelpMenu({ onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep = false }: HelpMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
@@ -37,7 +39,9 @@ export function HelpMenu({ onBeforeTourStep, onTourEnd }: HelpMenuProps) {
   const navigate = useNavigate();
   const [logHelpSearch] = useLogHelpSearchMutation();
   const loggedQueriesRef = useRef<Set<string>>(new Set());
-  const { tourElement, restartTour } = useOnboardingTour(role as Role | null, onBeforeTourStep, onTourEnd);
+  const { tourElement, restartTour } = useOnboardingTour(
+    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep,
+  );
 
   const scopedArticles = useMemo(() => {
     if (!role) return [];

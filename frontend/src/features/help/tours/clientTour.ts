@@ -1,6 +1,8 @@
 import type { TourStep } from "@/shared/components/OnboardingTour";
 
-export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
+/** `showPaymentMethods` follows the capabilities response's `savedCardsAvailable`: the "Payment
+ * Methods" nav entry (and so this step's target) only exists while saved cards are on (C-9). */
+export function getClientTourSteps(hasMultipleStudios: boolean, showPaymentMethods: boolean): TourStep[] {
   const steps: TourStep[] = [
     {
       targetSelector: '[data-tour="client-book-nav"]',
@@ -33,17 +35,21 @@ export function getClientTourSteps(hasMultipleStudios: boolean): TourStep[] {
       title: "Your designs",
       body: "Once your artist uploads a design draft, you'll review and approve it here.",
     },
-    {
+  );
+
+  if (showPaymentMethods) {
+    steps.push({
       targetSelector: '[data-tour="client-payment-methods-nav"]',
       title: "Save a payment method",
       body: "Save a card here to pay a deposit in one tap next time, without re-entering your card details.",
-    },
-    {
-      targetSelector: '[data-tour="client-help-button"]',
-      title: "Need help?",
-      body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",
-    },
-  );
+    });
+  }
+
+  steps.push({
+    targetSelector: '[data-tour="client-help-button"]',
+    title: "Need help?",
+    body: "Open this any time for searchable guides and FAQ — or press Shift+? from anywhere.",
+  });
 
   return steps;
 }

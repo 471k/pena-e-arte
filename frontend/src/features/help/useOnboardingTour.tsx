@@ -8,17 +8,21 @@ import { ownerTourSteps } from "./tours/ownerTour";
 import { adminTourSteps } from "./tours/adminTour";
 import { Role } from "@/shared/types/roles";
 
-function getStepsForRole(role: Role, hasMultipleStudios: boolean): TourStep[] {
+function getStepsForRole(role: Role, hasMultipleStudios: boolean, showPaymentMethods: boolean): TourStep[] {
   switch (role) {
-    case Role.Client: return getClientTourSteps(hasMultipleStudios);
+    case Role.Client: return getClientTourSteps(hasMultipleStudios, showPaymentMethods);
     case Role.Artist: return artistTourSteps;
     case Role.Owner:  return ownerTourSteps;
     case Role.Admin: return adminTourSteps;
   }
 }
 
+/** `showPaymentMethods`: whether the client nav has its "Payment Methods" entry (saved cards on,
+ * C-9). ClientLayout knows from its capabilities query and passes it down through HelpMenu, so the
+ * tour never points at an entry that isn't there. */
 export function useOnboardingTour(
   role: Role | null, onBeforeStep?: (step: TourStep) => void, onTourEnd?: () => void,
+  showPaymentMethods = false,
 ) {
   const [forceActive, setForceActive] = useState(false);
   // Hides the tour immediately on skip/complete without waiting for the
@@ -45,7 +49,9 @@ export function useOnboardingTour(
     setForceActive(true);
   }
 
-  const steps = role ? getStepsForRole(role, (studios?.length ?? 0) > 1) : [];
+  const steps = role
+    ? getStepsForRole(role, (studios?.length ?? 0) > 1, showPaymentMethods)
+    : [];
 
   const tourElement = shouldShow && role
     ? <OnboardingTour steps={steps} onComplete={finish} onSkip={finish} onBeforeStep={onBeforeStep} />

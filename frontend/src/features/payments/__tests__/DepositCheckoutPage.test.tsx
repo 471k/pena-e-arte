@@ -34,6 +34,7 @@ const SECRET_RESP: ClientTokenResponse = {
 
 const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = {
   cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "EUR", cardUnavailableReason: null,
+  savedCardsAvailable: false,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

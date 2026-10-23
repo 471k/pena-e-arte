@@ -21,7 +21,11 @@ public sealed record PaymentProviderCapabilities(
     /// provider_disabled and CardCurrencyGuard refuse every new card payment; capturing, refunding
     /// or releasing payments already taken keeps working. Defaults to true so providers and test
     /// doubles that don't read the switch are unaffected.</summary>
-    bool CardPaymentsEnabled = true);
+    bool CardPaymentsEnabled = true,
+    /// <summary>Saved cards (<c>Payments:SavedCardsEnabled</c>, backlog C-9): adding a card and paying
+    /// a deposit with one. Defaults to false, unlike CardPaymentsEnabled, so a provider or test double
+    /// that doesn't set it never offers saved cards.</summary>
+    bool SavedCardsEnabled = false);
 
 /// <summary>
 /// Everything a provider needs to open a hold. A request object, not a growing positional

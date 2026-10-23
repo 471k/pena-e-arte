@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -28,7 +29,8 @@ public class PayDepositWithSavedCardHandlerTests
         _currentUser.UserId.Returns(_clientUserId);
         _currentUser.Role.Returns("client");
         _provider.Capabilities.Returns(new PaymentProviderCapabilities(
-            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"],
+            SavedCardsEnabled: true));
         _provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
                .Returns(("order-new", "order-new"));
         _cardTokens.SetupTokenizedThreeDsAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -40,6 +42,27 @@ public class PayDepositWithSavedCardHandlerTests
     }
 
     private PayDepositWithSavedCardHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _cardTokens, _jobs);
+
+    [Fact]
+    public async Task Handle_SavedCardsSwitchedOff_RefusesBeforeAnyHoldOrPokCall()
+    {
+        // C-9: with Payments:SavedCardsEnabled off nothing is created, resumed or sent to POK.
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"],
+            SavedCardsEnabled: false));
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId, depositAmount: 80m);
+        Guid methodId = await SeedSavedMethod(clientId, "card-abc");
+
+        Func<Task> act = () => CreateSut()
+            .Handle(new PayDepositWithSavedCardCommand(new PayWithSavedCardRequest(appointmentId, methodId)), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage(SavedCardGuard.SavedCardsSwitchedOffMessage);
+        _db.Payments.Should().BeEmpty();
+        await _provider.DidNotReceive().CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>());
+        _cardTokens.ReceivedCalls().Should().BeEmpty();
+    }
 
     [Fact]
     public async Task Handle_HappyPath_MintsHoldThenSetsUpThreeDs()

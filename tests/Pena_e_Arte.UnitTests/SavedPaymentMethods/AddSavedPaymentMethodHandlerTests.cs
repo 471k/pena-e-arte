@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.SavedPaymentMethods.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -16,11 +17,35 @@ public class AddSavedPaymentMethodHandlerTests
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _user = Substitute.For<ICurrentUser>();
     private readonly IPokCardTokenService _cardTokens = Substitute.For<IPokCardTokenService>();
+    private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    public AddSavedPaymentMethodHandlerTests() => _tenant.StudioId.Returns(_studioId);
+    public AddSavedPaymentMethodHandlerTests()
+    {
+        _tenant.StudioId.Returns(_studioId);
+        _provider.Capabilities.Returns(SavedCardsSwitch(enabled: true));
+    }
 
-    private AddSavedPaymentMethodHandler CreateSut() => new(_db, _tenant, _user, _cardTokens);
+    private static PaymentProviderCapabilities SavedCardsSwitch(bool enabled) => new(
+        SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"],
+        SavedCardsEnabled: enabled);
+
+    private AddSavedPaymentMethodHandler CreateSut() => new(_db, _tenant, _user, _cardTokens, _provider);
+
+    [Fact]
+    public async Task Handle_SavedCardsSwitchedOff_RefusesWithoutTokenizingOrSaving()
+    {
+        // C-9: with Payments:SavedCardsEnabled off nothing reaches POK's tokenisation.
+        _provider.Capabilities.Returns(SavedCardsSwitch(enabled: false));
+        SeedClient();
+
+        Func<Task> act = () => CreateSut().Handle(new AddSavedPaymentMethodCommand(Request), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>()
+            .WithMessage(SavedCardGuard.SavedCardsSwitchedOffMessage);
+        _cardTokens.ReceivedCalls().Should().BeEmpty();
+        _db.SavedPaymentMethods.Should().BeEmpty();
+    }
 
     private static readonly AddSavedPaymentMethodRequest Request = new(
         "jwe-value", "123", "Jamie", "Client", "jamie@test.com", "AL", "Tirana", "Tirana",

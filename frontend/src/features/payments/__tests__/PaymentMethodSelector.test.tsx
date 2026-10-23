@@ -78,6 +78,7 @@ const CASH_PAYMENT: PaymentResponse = {
 
 const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = {
   cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "EUR", cardUnavailableReason: null,
+  savedCardsAvailable: false,
 };
 
 const SAVED_METHOD = {
@@ -387,9 +388,31 @@ describe("PaymentMethodSelector", () => {
     expect(depositRequested).toBe(false);
   });
 
+  it("with saved cards switched off, shows no Saved card tab and never fetches saved cards, even if some exist", async () => {
+    // C-9: Payments:SavedCardsEnabled off (the default) — CAPABILITIES_AVAILABLE has savedCardsAvailable: false.
+    let savedMethodsRequested = false;
+    server.use(
+      http.get("http://localhost/api/v1/saved-payment-methods", () => {
+        savedMethodsRequested = true;
+        return HttpResponse.json([SAVED_METHOD]);
+      }),
+    );
+
+    renderSelector();
+
+    expect(await screen.findByTestId("pok-checkout-form")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^card$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /saved card/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /new card/i })).not.toBeInTheDocument();
+    expect(savedMethodsRequested).toBe(false);
+  });
+
   describe("saved card tab", () => {
     beforeEach(() => {
       server.use(
+        http.get("http://localhost/api/v1/payments/capabilities", () =>
+          HttpResponse.json({ ...CAPABILITIES_AVAILABLE, savedCardsAvailable: true }),
+        ),
         http.get("http://localhost/api/v1/saved-payment-methods", () => HttpResponse.json([SAVED_METHOD])),
       );
     });

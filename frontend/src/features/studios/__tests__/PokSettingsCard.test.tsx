@@ -15,9 +15,11 @@ const NOT_CONNECTED: PokConnectionStatusResponse = { connected: false, merchantI
 const CONNECTED: PokConnectionStatusResponse = { connected: true, merchantId: "merchant-abc" };
 const CAPS_NOT_CONNECTED: PaymentCapabilitiesResponse = {
   cardPaymentsAvailable: false, pokEnvironment: null, currency: "ALL", cardUnavailableReason: "provider_not_connected",
+  savedCardsAvailable: false,
 };
 const CAPS_SWITCHED_OFF: PaymentCapabilitiesResponse = {
   cardPaymentsAvailable: false, pokEnvironment: null, currency: "ALL", cardUnavailableReason: "provider_disabled",
+  savedCardsAvailable: false,
 };
 
 const server = setupServer(

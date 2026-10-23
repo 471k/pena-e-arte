@@ -58,7 +58,9 @@ public sealed class PokPaymentProvider(
         // from its own build mode, which can drift out of sync with this backend's actual host.
         Environment: authClient.Environment,
         // Go-live kill switch (C-13): off unless Payments:CardDepositsEnabled is true.
-        CardPaymentsEnabled: cardDeposits.Value.CardDepositsEnabled);
+        CardPaymentsEnabled: cardDeposits.Value.CardDepositsEnabled,
+        // Saved cards (C-9): off unless Payments:SavedCardsEnabled is true, and never without card deposits.
+        SavedCardsEnabled: cardDeposits.Value.CardDepositsEnabled && cardDeposits.Value.SavedCardsEnabled);
 
     public async Task<(string ProviderReferenceId, string ClientToken)> CreatePaymentHoldAsync(
         PaymentHoldRequest request, CancellationToken ct)

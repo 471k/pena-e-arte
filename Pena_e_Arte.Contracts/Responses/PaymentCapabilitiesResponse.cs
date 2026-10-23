@@ -8,12 +8,16 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// Currency is always populated (the studio's currency) so the frontend never has to ask twice.
 /// CardUnavailableReason is one of <see cref="CardUnavailableReasons"/> whenever
 /// CardPaymentsAvailable is false, so the UI can show the right explanation instead of a generic
-/// "unavailable" message.</summary>
+/// "unavailable" message.
+///
+/// SavedCardsAvailable is true only when CardPaymentsAvailable is true and the platform's saved-card
+/// switch (<c>Payments:SavedCardsEnabled</c>, backlog C-9) is on.</summary>
 public record PaymentCapabilitiesResponse(
     bool CardPaymentsAvailable,
     string? PokEnvironment = null,
     string? Currency = null,
-    string? CardUnavailableReason = null);
+    string? CardUnavailableReason = null,
+    bool SavedCardsAvailable = false);
 
 /// <summary>String constants for <see cref="PaymentCapabilitiesResponse.CardUnavailableReason"/> —
 /// a closed set the frontend switches on, not a free-text message (copy stays a frontend

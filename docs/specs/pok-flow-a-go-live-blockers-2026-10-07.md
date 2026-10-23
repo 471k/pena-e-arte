@@ -19,7 +19,7 @@ for go-live.** The blocking items below must be decided or built first.
 | C-6 Questions to POK | Phi | Partly (answers feed C-4, C-12, Help) | Open — items 2, 7, 11 and the refund part of 10 answered by our own staging probe on 2026-10-16 (see C-6); email not sent yet | Send in writing; the answered items become "please confirm" |
 | C-7 Check POK keys at connect | Engineering | No | **Done**: keys checked (PR #263) — connect logs in to POK once before saving; refused → 422, POK unreachable → 503, nothing saved; staging answers wrong/unknown keys with 400 "Your credentials are incorrect". **Merchant ID checked** (PR #267, ed0dc58b, live 2026-10-21): one read of a random order under the entered merchant id — staging answers 404 "Order not found" for the keys' own merchant and 403 "Access Forbidden!" for any other → 422 "this Merchant ID doesn't belong to them", nothing saved | None |
 | C-8 Vault resilience | Phi (infra) + Engineering | **Yes** | **Done** (PR #249; real alert test passed 2026-10-16): 503 vs 422 split, connect-POK 503, 5-minute Vault health probe + `vault-unavailable` alert, runbook. **Reopened and resolved 2026-10-21:** the app's own Vault token had expired and its policy was read-only — the probe now checks, renews and permission-checks the token (PR #274), and Phi issued a new token with the write policy | Phi: keep the unseal key shares reachable |
-| C-9 Saved-card tokenisation | Engineering | No (Saved card tab must stay unused) | Open, not tested by the gate | Separate prompt |
+| C-9 Saved-card tokenisation | Engineering | No (switched off behind `Payments:SavedCardsEnabled`, 2026-10-23) | Open: calls don't match POK's documented API; feature off everywhere | Separate prompt; restore Help/manual/tour when fixed (C-9 section) |
 | C-10 "Stripe PI" labels | Engineering | No | **Done** (PR #266, 6e626082, live 2026-10-21): the payment page labels the id "POK order"; Help + manual say where to look it up in POK Business | None |
 | C-11 Production first-transaction protocol | Phi | **Yes** | Not started; the minimum test list is in `docs/infra/pok-go-live-runbook.md` (step 2) | Run right after card deposits are switched on |
 | C-12 Fees and settlement | Finance | No (reporting accuracy) | Fee rules measured on staging (2.5 % + 20 ALL per capture; release free; a partial refund returns the 2.5 % share; a full refund, or partial refunds adding up to the full amount, return the whole fee; display rounding half-up per line) — Help + manual now explain them to owners and clients (2026-10-16) | Finance decides how reports and refund screens show POK fees; confirm production pricing with POK |
@@ -224,6 +224,17 @@ become frequent.
 
 ## C-9 — Saved-card tokenisation
 Unchanged; the gate never used the Saved card tab.
+
+**Switched off 2026-10-23** (branch `fix/saved-cards-switch-2026-10-23`): the tokenisation calls don't match
+POK's documented API (`PokCardTokenService` posts to `/merchants/{id}/credit-debit-cards` and reads
+`brand`/`maskedPan`; POK's endpoint is `POST /credit-debit-cards/tokenize-guest-card` and returns
+`creditDebitCard { id, holderFirstName, holderLastName, hiddenNumber, billingInfo }`). Saved cards are now behind
+`Payments:SavedCardsEnabled`, off in production, staging and the local stack: no "Payment Methods" nav entry, no
+"Saved card" checkout tab, no add-card form, and adding a card or paying with one is refused server-side (listing
+and removing still work). Fixing C-9 must also **restore**, from that PR's diff: the Help article
+`client-saved-payment-methods`, the saved-card steps, keyword and related link in `client-deposit-pay`, the manual
+section `#client-saved-payment-methods` with its nav link and cross-links, and the client tour step (pass
+`showPaymentMethods`). Then set the switch on in the overlays as its own reviewed change.
 
 ## C-10 — Cosmetic labels
 **Done 2026-10-21 (PR #266):** "Stripe PI" → "POK order".

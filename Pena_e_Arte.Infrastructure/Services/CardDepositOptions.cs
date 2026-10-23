@@ -11,4 +11,9 @@ public sealed class CardDepositOptions
     public const string Section = "Payments";
 
     public bool CardDepositsEnabled { get; init; }
+
+    /// <summary><c>Payments:SavedCardsEnabled</c> — saved cards (add a card, pay with a saved card).
+    /// Off unless configured: the tokenisation calls don't match POK's documented API yet (go-live
+    /// backlog C-9). Only meaningful while card deposits are on.</summary>
+    public bool SavedCardsEnabled { get; init; }
 }

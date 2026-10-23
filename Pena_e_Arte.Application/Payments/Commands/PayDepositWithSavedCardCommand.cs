@@ -28,6 +28,9 @@ public class PayDepositWithSavedCardHandler(
 {
     public async Task<PayWithSavedCardSetupResponse> Handle(PayDepositWithSavedCardCommand command, CancellationToken ct)
     {
+        // Before anything else, so no hold is created or resumed while saved cards are off (C-9).
+        SavedCardGuard.EnsureSavedCardsEnabled(paymentProvider);
+
         PayWithSavedCardRequest req = command.Request;
 
         Appointment appointment = await CreateDepositPaymentHandler.ResolveOwnAppointmentAsync(

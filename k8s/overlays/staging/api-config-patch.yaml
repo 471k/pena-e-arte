@@ -33,3 +33,5 @@ data:
   Pok__BaseUrl: "https://api-staging.pokpay.io"
   Pok__WebhookCallbackBaseUrl: "https://staging.tattooos.co"
   Payments__CardDepositsEnabled: "false"
+  # Saved cards (backlog C-9): off until the tokenisation calls match POK's documented API.
+  Payments__SavedCardsEnabled: "false"
