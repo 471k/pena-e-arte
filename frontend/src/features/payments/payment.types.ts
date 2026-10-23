@@ -96,6 +96,10 @@ export interface PaymentCapabilitiesResponse {
   /** One of `CardUnavailableReasons` whenever `cardPaymentsAvailable` is false, so the UI can
    * show the right explanation instead of a generic "unavailable" message. */
   cardUnavailableReason: string | null;
+  /** True only when `cardPaymentsAvailable` is true and the platform's saved-card switch
+   * (`Payments:SavedCardsEnabled`, backlog C-9) is on. Gates the "Saved card" tab, the
+   * Payment Methods page's add-card form, its nav entry and its tour step. */
+  savedCardsAvailable: boolean;
 }
 
 export interface ConnectPokAccountRequest {

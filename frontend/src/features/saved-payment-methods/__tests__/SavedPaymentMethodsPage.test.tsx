@@ -59,9 +59,14 @@ const METHOD_2: SavedPaymentMethodResponse = {
   expiryMonth: "6", expiryYear: "2028", isDefault: false, createdAt: "2024-02-01T00:00:00Z",
 };
 
+// Saved cards switched on (Payments:SavedCardsEnabled) — the page as it will be once C-9 is fixed.
 const CAPABILITIES_AVAILABLE: PaymentCapabilitiesResponse = {
   cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "EUR", cardUnavailableReason: null,
+  savedCardsAvailable: true,
 };
+
+// The default today (C-9): card payments on, saving cards off.
+const CAPABILITIES_SAVED_CARDS_OFF: PaymentCapabilitiesResponse = { ...CAPABILITIES_AVAILABLE, savedCardsAvailable: false };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
@@ -136,15 +141,63 @@ describe("SavedPaymentMethodsPage", () => {
     expect(await screen.findByTestId("add-card-form")).toBeInTheDocument();
   });
 
-  it("shows 'temporarily unavailable' instead of the form when capabilities say cards are unavailable", async () => {
+  it("shows 'saving cards isn't available yet' instead of the form when capabilities say cards are unavailable", async () => {
     server.use(
       http.get("http://localhost/api/v1/payments/capabilities", () =>
         HttpResponse.json({ cardPaymentsAvailable: false, pokEnvironment: null }),
       ),
     );
     renderPage();
-    expect(await screen.findByText(/temporarily unavailable/i)).toBeInTheDocument();
+    expect(await screen.findByText(/saving cards isn't available yet/i)).toBeInTheDocument();
     expect(screen.queryByTestId("add-card-form")).not.toBeInTheDocument();
+  });
+
+  describe("with saved cards switched off (C-9)", () => {
+    function switchOff() {
+      server.use(
+        http.get("http://localhost/api/v1/payments/capabilities", () => HttpResponse.json(CAPABILITIES_SAVED_CARDS_OFF)),
+      );
+    }
+
+    it("shows the 'isn't available yet' line instead of the Add a card section", async () => {
+      switchOff();
+      renderPage();
+
+      expect(await screen.findByText(/saving cards isn't available yet/i)).toBeInTheDocument();
+      expect(screen.queryByText("Add a card")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("add-card-form")).not.toBeInTheDocument();
+    });
+
+    it("still lists and removes a card saved earlier", async () => {
+      const user = userEvent.setup();
+      switchOff();
+      renderPage();
+
+      await screen.findByText(/visa.*4242/i);
+      await user.click(screen.getAllByRole("button", { name: /remove/i })[0]);
+
+      expect(await screen.findByText("Card removed.")).toBeInTheDocument();
+    });
+
+    it("with no saved cards shows only the one line, not the 'add one below' empty state", async () => {
+      switchOff();
+      server.use(http.get("http://localhost/api/v1/saved-payment-methods", () => HttpResponse.json([])));
+      renderPage();
+
+      expect(await screen.findByText(/saving cards isn't available yet/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no saved cards yet/i)).not.toBeInTheDocument();
+    });
+
+    it("keeps the loading and error states of the list", async () => {
+      switchOff();
+      server.use(
+        http.get("http://localhost/api/v1/saved-payment-methods", () => new HttpResponse(null, { status: 500 })),
+      );
+      renderPage();
+
+      expect(screen.getByLabelText("Loading saved payment methods")).toBeInTheDocument();
+      expect(await screen.findByText("Failed to load saved payment methods.")).toBeInTheDocument();
+    });
   });
 
   it("saving a card calls addSavedPaymentMethod with the widget's payload and shows a success toast", async () => {

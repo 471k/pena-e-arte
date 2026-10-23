@@ -14,6 +14,7 @@ import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
 import { messagingApi } from "@/features/messaging/messagingApi";
+import { paymentsApi } from "@/features/payments/paymentsApi";
 import { ClientLayout } from "@/layouts/ClientLayout";
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -32,7 +33,22 @@ const server = setupServer(
   http.get("http://localhost/api/v1/conversations/unread-count", () =>
     HttpResponse.json(0),
   ),
+  // Saved cards off by default (Payments:SavedCardsEnabled, C-9): no "Payment Methods" entry.
+  http.get("http://localhost/api/v1/payments/capabilities", () =>
+    HttpResponse.json(capabilities(false)),
+  ),
 );
+
+function capabilities(savedCardsAvailable: boolean) {
+  return {
+    cardPaymentsAvailable: true, pokEnvironment: "staging", currency: "ALL",
+    cardUnavailableReason: null, savedCardsAvailable,
+  };
+}
+
+function savedCardsOn() {
+  server.use(http.get("http://localhost/api/v1/payments/capabilities", () => HttpResponse.json(capabilities(true))));
+}
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterAll(() => server.close());
@@ -57,9 +73,11 @@ function makeStore(overrides: StoreOverrides = {}) {
       [authApi.reducerPath]:           authApi.reducer,
       [onboardingApi.reducerPath]:     onboardingApi.reducer,
       [messagingApi.reducerPath]:      messagingApi.reducer,
+      [paymentsApi.reducerPath]:       paymentsApi.reducer,
     },
     middleware: (gd) => gd().concat(
       notificationsApi.middleware, authApi.middleware, onboardingApi.middleware, messagingApi.middleware,
+      paymentsApi.middleware,
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,7 +143,15 @@ describe("ClientLayout", () => {
     expect(screen.queryByRole("link", { name: /my profile/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /my account/i }));
     expect(screen.getByRole("link", { name: /my profile/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /payment methods/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /payment methods/i })).not.toBeInTheDocument();
+  });
+
+  it("shows Payment Methods in the Account group only while saved cards are switched on", async () => {
+    const user = userEvent.setup();
+    savedCardsOn();
+    renderLayout();
+    await user.click(screen.getByRole("button", { name: /my account/i }));
+    expect(await screen.findByRole("link", { name: /payment methods/i })).toBeInTheDocument();
   });
 
   it("renders the UserChip with the logged-in user's identifier", () => {
@@ -204,10 +230,11 @@ describe("ClientLayout", () => {
     expect(designsLink.className).not.toMatch(/bg-primary/);
   });
 
-  it("opens the Account group around the active route, and only highlights My Profile on its own page", () => {
+  it("opens the Account group around the active route, and only highlights My Profile on its own page", async () => {
+    savedCardsOn();
     renderLayout({}, "/clients/me/payment-methods");
+    expect((await screen.findByRole("link", { name: /payment methods/i })).className).toMatch(/bg-primary/);
     expect(screen.getByRole("button", { name: /my account/i })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("link", { name: /payment methods/i }).className).toMatch(/bg-primary/);
     expect(screen.getByRole("link", { name: /my profile/i }).className).not.toMatch(/bg-primary/);
   });
 

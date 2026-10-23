@@ -444,9 +444,17 @@ export function PaymentMethodSelector({
   onSuccess,
   onError,
 }: PaymentMethodSelectorProps) {
-  const { data: savedMethods } = useGetSavedPaymentMethodsQuery();
   const { data: capabilities } = useGetPaymentCapabilitiesQuery();
-  const hasSavedMethods = (savedMethods?.length ?? 0) > 0;
+  // Saved cards are switched off platform-wide until C-9 (Payments:SavedCardsEnabled); while off,
+  // the saved-card list isn't even fetched and the card tab is just "Card".
+  const savedCardsAvailable = capabilities?.savedCardsAvailable === true;
+  const { data: savedMethods, isError: isSavedMethodsError } =
+    useGetSavedPaymentMethodsQuery(undefined, { skip: !savedCardsAvailable });
+  const hasSavedMethods = savedCardsAvailable && (savedMethods?.length ?? 0) > 0;
+  // The saved-card list is only fetched once capabilities say saved cards are on, so it arrives
+  // later than before. Until it does, open no tab by default: the Card tab creates a deposit order
+  // as soon as it mounts, and the Saved card tab may be the one the client lands on.
+  const choosingDefaultTab = savedCardsAvailable && savedMethods === undefined && !isSavedMethodsError;
   // A currency the connected provider can't take at all is a studio-level fact, unlike the
   // generic "not connected"/"disabled" reasons — card (new or saved) is never coming back for
   // this appointment, so both card tabs are hidden rather than shown-then-erroring.
@@ -496,11 +504,18 @@ export function PaymentMethodSelector({
         </div>
       )}
 
-      {effectiveTab === "saved" && (
+      {effectiveTab === "saved" && hasSavedMethods && (
         <SavedCardTab appointmentId={appointmentId} onSuccess={onSuccess} onError={onError} />
       )}
 
-      {effectiveTab === "card" && (
+      {effectiveTab === "card" && tab === null && choosingDefaultTab && (
+        <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Preparing payment form…</span>
+        </div>
+      )}
+
+      {effectiveTab === "card" && !(tab === null && choosingDefaultTab) && (
         <CardTab appointmentId={appointmentId} onSuccess={onSuccess} onError={onError} />
       )}
 

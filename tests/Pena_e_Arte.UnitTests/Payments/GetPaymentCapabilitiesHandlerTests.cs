@@ -143,6 +143,65 @@ public class GetPaymentCapabilitiesHandlerTests
         result.Currency.Should().Be("EUR");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_StudioConnected_ReportsTheProvidersSavedCardSwitch(bool savedCardsEnabled)
+    {
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true,
+            SupportedCurrencies: ["ALL"], Environment: "staging", SavedCardsEnabled: savedCardsEnabled));
+        await SeedConnectedStudioAsync(currency: "ALL");
+
+        PaymentCapabilitiesResponse result = await CreateSut().Handle(new GetPaymentCapabilitiesQuery(), default);
+
+        result.CardPaymentsAvailable.Should().BeTrue();
+        result.SavedCardsAvailable.Should().Be(savedCardsEnabled);
+    }
+
+    [Fact]
+    public async Task Handle_CardPaymentsSwitchedOff_NoSavedCardsEvenIfTheProviderReportsThemOn()
+    {
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL"],
+            Environment: "staging", CardPaymentsEnabled: false, SavedCardsEnabled: true));
+        await SeedConnectedStudioAsync(currency: "ALL");
+
+        PaymentCapabilitiesResponse result = await CreateSut().Handle(new GetPaymentCapabilitiesQuery(), default);
+
+        result.CardUnavailableReason.Should().Be(CardUnavailableReasons.ProviderDisabled);
+        result.SavedCardsAvailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_UnsupportedCurrency_NoSavedCardsEvenIfTheProviderReportsThemOn()
+    {
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL"],
+            Environment: "staging", SavedCardsEnabled: true));
+        await SeedConnectedStudioAsync(currency: "JPY");
+
+        PaymentCapabilitiesResponse result = await CreateSut().Handle(new GetPaymentCapabilitiesQuery(), default);
+
+        result.CardUnavailableReason.Should().Be(CardUnavailableReasons.ProviderUnsupportedCurrency);
+        result.SavedCardsAvailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_StudioNotConnected_NoSavedCardsEvenIfTheProviderReportsThemOn()
+    {
+        _provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL"],
+            Environment: "staging", SavedCardsEnabled: true));
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "T", Slug = "t", CountryCode = "AL", Currency = "ALL", PokMerchantId = null });
+        await _db.SaveChangesAsync();
+
+        PaymentCapabilitiesResponse result = await CreateSut().Handle(new GetPaymentCapabilitiesQuery(), default);
+
+        result.CardUnavailableReason.Should().Be(CardUnavailableReasons.ProviderNotConnected);
+        result.SavedCardsAvailable.Should().BeFalse();
+    }
+
     private async Task SeedConnectedStudioAsync(string currency)
     {
         _db.Studios.Add(new Studio { Id = _studioId, Name = "T", Slug = "t", CountryCode = "AL", Currency = currency, PokMerchantId = "merchant-1" });

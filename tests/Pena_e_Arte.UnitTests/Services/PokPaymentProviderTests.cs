@@ -47,7 +47,7 @@ public class PokPaymentProviderTests
     }
 
     private PokPaymentProvider CreateSut(FakeHttpMessageHandler handler, PokOptions? options = null, bool cardDepositsEnabled = true,
-        string appBaseUrl = "https://app.example.test")
+        string appBaseUrl = "https://app.example.test", bool savedCardsEnabled = false)
     {
         IAppSettings appSettings = Substitute.For<IAppSettings>();
         appSettings.BaseUrl.Returns(appBaseUrl);
@@ -64,7 +64,7 @@ public class PokPaymentProviderTests
 
         return new PokPaymentProvider(
             authClient,
-            Options.Create(new CardDepositOptions { CardDepositsEnabled = cardDepositsEnabled }),
+            Options.Create(new CardDepositOptions { CardDepositsEnabled = cardDepositsEnabled, SavedCardsEnabled = savedCardsEnabled }),
             appSettings,
             NullLogger<PokPaymentProvider>.Instance);
     }
@@ -246,6 +246,20 @@ public class PokPaymentProviderTests
 
         CreateSut(handler, cardDepositsEnabled: true).Capabilities.CardPaymentsEnabled.Should().BeTrue();
         CreateSut(handler, cardDepositsEnabled: false).Capabilities.CardPaymentsEnabled.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, false)]
+    public void Capabilities_SavedCardsOnlyWhenBothSwitchesAreOn(bool cardDeposits, bool savedCards, bool expected)
+    {
+        // C-9: saved cards need their own switch AND card deposits; never one without the other.
+        FakeHttpMessageHandler handler = new(_ => throw new InvalidOperationException("Should not call POK."));
+
+        CreateSut(handler, cardDepositsEnabled: cardDeposits, savedCardsEnabled: savedCards)
+            .Capabilities.SavedCardsEnabled.Should().Be(expected);
     }
 
     [Fact]

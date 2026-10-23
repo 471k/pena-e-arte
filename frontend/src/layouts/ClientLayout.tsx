@@ -18,6 +18,7 @@ import { useSignalR } from "@/shared/hooks/useSignalR";
 import { NotificationBell } from "@/features/notifications";
 import { HelpMenu } from "@/features/help";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
+import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
 
 const ICON = "h-4 w-4";
 
@@ -61,6 +62,7 @@ const NAV_SECTIONS: NavSection[] = [
         children: [
           // `end` so "My Profile" doesn't also light up on /clients/me/payment-methods.
           { label: "My Profile",      href: "/clients/me",                 icon: <User className={ICON} />, end: true },
+          // Shown only while saved cards are on — see NAV_SECTIONS_WITHOUT_SAVED_CARDS below.
           { label: "Payment Methods", href: "/clients/me/payment-methods", icon: <CreditCard className={ICON} />, tourId: "client-payment-methods-nav" },
         ],
       },
@@ -68,10 +70,26 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+const PAYMENT_METHODS_HREF = "/clients/me/payment-methods";
+
+/** NAV_SECTIONS without "Payment Methods" — the menu while saved cards are switched off
+ * (Payments:SavedCardsEnabled, backlog C-9) and while that is still loading. */
+const NAV_SECTIONS_WITHOUT_SAVED_CARDS: NavSection[] = NAV_SECTIONS.map((section) => ({
+  ...section,
+  entries: section.entries.map((entry) =>
+    "children" in entry
+      ? { ...entry, children: entry.children.filter((child) => child.href !== PAYMENT_METHODS_HREF) }
+      : entry,
+  ),
+}));
+
 export function ClientLayout() {
   const dispatch  = useAppDispatch();
   const navigate  = useNavigate();
   const tenantId  = useAppSelector((s) => s.auth.tenantId);
+  const { data: capabilities } = useGetPaymentCapabilitiesQuery(undefined, { skip: !tenantId });
+  const savedCardsAvailable = capabilities?.savedCardsAvailable === true;
+  const sections = savedCardsAvailable ? NAV_SECTIONS : NAV_SECTIONS_WITHOUT_SAVED_CARDS;
   useSignalR(tenantId);
   useChatHub();
   const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
@@ -91,10 +109,14 @@ export function ClientLayout() {
         <PenLine className="h-5 w-5" />
         <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
 
-        <NavDrawer sections={NAV_SECTIONS} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
+        <NavDrawer sections={sections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
+          <HelpMenu
+            onBeforeTourStep={onBeforeTourStep}
+            onTourEnd={onTourEnd}
+            showPaymentMethodsTourStep={savedCardsAvailable}
+          />
           <MessagesNavBadge />
           <NotificationBell />
           <UserMenu onLogout={handleLogout} />
@@ -102,7 +124,7 @@ export function ClientLayout() {
       </header>
 
       <div className="flex flex-1 min-h-0">
-        <AppSidebar sections={NAV_SECTIONS} revealTourId={revealTourId} />
+        <AppSidebar sections={sections} revealTourId={revealTourId} />
         <div className="flex-1 min-w-0">
           <Outlet />
         </div>

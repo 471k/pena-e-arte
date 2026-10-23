@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Application.Payments;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -15,11 +16,16 @@ namespace Pena_e_Arte.Application.SavedPaymentMethods.Commands;
 /// PokCardTokenService.TokenizeCardAsync returns.</summary>
 public record AddSavedPaymentMethodCommand(AddSavedPaymentMethodRequest Request) : IRequest<SavedPaymentMethodResponse>;
 
-public class AddSavedPaymentMethodHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, IPokCardTokenService cardTokens)
+public class AddSavedPaymentMethodHandler(
+    IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, IPokCardTokenService cardTokens,
+    IPaymentProvider paymentProvider)
     : IRequestHandler<AddSavedPaymentMethodCommand, SavedPaymentMethodResponse>
 {
     public async Task<SavedPaymentMethodResponse> Handle(AddSavedPaymentMethodCommand command, CancellationToken ct)
     {
+        // Before anything else, so nothing reaches POK's tokenisation while saved cards are off (C-9).
+        SavedCardGuard.EnsureSavedCardsEnabled(paymentProvider);
+
         AddSavedPaymentMethodRequest req = command.Request;
 
         Client client = await db.FindClientForUserAsync(currentUser, ct)
