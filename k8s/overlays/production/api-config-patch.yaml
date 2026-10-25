@@ -24,6 +24,6 @@ data:
   Pok__BaseUrl: "https://api-staging.pokpay.io"
   Pok__WebhookCallbackBaseUrl: ""
   Payments__CardDepositsEnabled: "false"
-  # Saved cards (backlog C-9): off until the tokenisation calls match POK's documented API. Not part of
-  # the go-live switch above; turning it on is its own reviewed change, after C-9 is fixed.
-  Payments__SavedCardsEnabled: "false"
+  # Saved cards (backlog C-9): fixed and checked on POK staging (2026-10-25); on once POK confirmed production
+  # keys may tokenise cards. Only takes effect while card deposits are on (PokPaymentProvider ANDs the two).
+  Payments__SavedCardsEnabled: "true"
