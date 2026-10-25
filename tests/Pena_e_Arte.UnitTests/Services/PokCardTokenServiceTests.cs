@@ -17,10 +17,8 @@ namespace Pena_e_Arte.UnitTests.Services;
 
 /// <summary>
 /// Covers PokCardTokenService against a fake HTTP handler and a fake Redis — never a real POK
-/// sandbox call. See IPokCardTokenService's own doc comment for exactly which parts of the wire
-/// shapes this exercises are confirmed against POK's real docs versus inferred from REST
-/// convention; these tests lock in the *inferred* shape so a future change to it is deliberate,
-/// not accidental — they are not proof the shape is correct against the real API.
+/// call. The paths and shapes are POK's documented Card Tokenization API (see
+/// IPokCardTokenService's doc comment); these tests lock them in so a change is deliberate.
 /// </summary>
 public class PokCardTokenServiceTests
 {
@@ -60,7 +58,7 @@ public class PokCardTokenServiceTests
             Options.Create(new PokOptions { BaseUrl = "https://api-staging.pokpay.io" }),
             factory, redis, NullLogger<PokAuthClient>.Instance);
 
-        return new PokCardTokenService(authClient);
+        return new PokCardTokenService(authClient, NullLogger<PokCardTokenService>.Instance);
     }
 
     private async Task SeedConnectedStudioAsync()
@@ -91,15 +89,17 @@ public class PokCardTokenServiceTests
     }
 
     [Fact]
-    public async Task TokenizeCardAsync_HappyPath_ReturnsCardTokenAndSendsJweAndBillingInfo()
+    public async Task TokenizeCardAsync_HappyPath_PostsToTokenizeGuestCardAndReadsBrandFromCardInformation()
     {
         await SeedConnectedStudioAsync();
         FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
         {
             "/auth/sdk/login" => JsonResponse(
                 """{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
-            var p when p.EndsWith("/credit-debit-cards") => JsonResponse(
-                """{"data":{"creditDebitCard":{"id":"card-abc","brand":"Visa","maskedPan":"**** 4242","expiryMonth":"12","expiryYear":"2030"}}}"""),
+            "/credit-debit-cards/tokenize-guest-card" => JsonResponse(
+                """{"data":{"creditDebitCard":{"id":"card-abc","holderFirstName":"Jamie","holderLastName":"Client","hiddenNumber":"411111******0023","billingInfo":{"email":"jamie@test.com"}}}}"""),
+            "/credit-debit-cards/get-guest-cards-information" => JsonResponse(
+                """{"data":{"cards":[{"type":"credit","brand":"visa","number":"**** **** **** 0023","label":"Visa","billingInfo":{"firstName":"Jamie"}}]}}"""),
             _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
         });
         PokCardTokenService sut = CreateSut(handler);
@@ -108,14 +108,20 @@ public class PokCardTokenServiceTests
 
         result.CardTokenId.Should().Be("card-abc");
         result.Brand.Should().Be("Visa");
-        result.MaskedPan.Should().Be("**** 4242");
-        result.ExpiryMonth.Should().Be("12");
-        result.ExpiryYear.Should().Be("2030");
+        result.MaskedPan.Should().Be("**** 0023");
+        result.ExpiryMonth.Should().BeNull();
+        result.ExpiryYear.Should().BeNull();
 
-        CapturedRequest tokenizeReq = handler.Requests.Single(r => r.Path.EndsWith("/credit-debit-cards"));
-        tokenizeReq.Path.Should().Be($"/merchants/{MerchantId}/credit-debit-cards");
-        tokenizeReq.Body.Should().Contain("\"jwe\":\"jwe-value\"");
+        CapturedRequest tokenizeReq = handler.Requests.Single(r => r.Path == "/credit-debit-cards/tokenize-guest-card");
+        tokenizeReq.Method.Should().Be(HttpMethod.Post);
+        tokenizeReq.BearerToken.Should().Be("tok-123");
+        tokenizeReq.Body.Should().Contain("\"csFlexCard\":{\"jwe\":\"jwe-value\"}");
+        tokenizeReq.Body.Should().Contain("\"securityCode\":\"123\"");
         tokenizeReq.Body.Should().Contain("\"email\":\"jamie@test.com\"");
+
+        CapturedRequest infoReq = handler.Requests.Single(r => r.Path == "/credit-debit-cards/get-guest-cards-information");
+        infoReq.Body.Should().Be("""{"cardIds":["card-abc"]}""");
+        infoReq.BearerToken.Should().Be("tok-123");
     }
 
     [Fact]
@@ -133,17 +139,57 @@ public class PokCardTokenServiceTests
         Func<Task> act = () => sut.TokenizeCardAsync(_studioId, "jwe-value", "123", Billing, default);
 
         await act.Should().ThrowAsync<ServiceUnavailableException>();
+        handler.Requests.Should().NotContain(r => r.Path.EndsWith("/get-guest-cards-information"));
     }
 
     [Fact]
-    public async Task TokenizeCardAsync_ThinResponseWithNoCardMetadata_DegradesToNullFieldsNotAFailure()
+    public async Task TokenizeCardAsync_TokenizeRefused_ThrowsServiceUnavailable()
     {
         await SeedConnectedStudioAsync();
         FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
         {
             "/auth/sdk/login" => JsonResponse(
                 """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
-            _ => JsonResponse("""{"data":{"creditDebitCard":{"id":"card-thin"}}}"""),
+            _ => new HttpResponseMessage(HttpStatusCode.BadRequest),
+        });
+        PokCardTokenService sut = CreateSut(handler);
+
+        Func<Task> act = () => sut.TokenizeCardAsync(_studioId, "jwe-value", "123", Billing, default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+    }
+
+    [Fact]
+    public async Task TokenizeCardAsync_CardInformationFails_StillSavesWithHiddenNumberAndNoBrand()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            "/credit-debit-cards/tokenize-guest-card" => JsonResponse(
+                """{"data":{"creditDebitCard":{"id":"card-1","hiddenNumber":"************1111"}}}"""),
+            _ => new HttpResponseMessage(HttpStatusCode.InternalServerError),
+        });
+        PokCardTokenService sut = CreateSut(handler);
+
+        PokTokenizedCard result = await sut.TokenizeCardAsync(_studioId, "jwe-value", "123", Billing, default);
+
+        result.CardTokenId.Should().Be("card-1");
+        result.Brand.Should().BeNull();
+        result.MaskedPan.Should().Be("**** 1111");
+    }
+
+    [Fact]
+    public async Task TokenizeCardAsync_ThinResponses_DegradeToNullFieldsNotAFailure()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            "/credit-debit-cards/tokenize-guest-card" => JsonResponse("""{"data":{"creditDebitCard":{"id":"card-thin"}}}"""),
+            _ => JsonResponse("""{"data":{"cards":[]}}"""),
         });
         PokCardTokenService sut = CreateSut(handler);
 
@@ -153,6 +199,27 @@ public class PokCardTokenServiceTests
         result.Brand.Should().BeNull();
         result.MaskedPan.Should().BeNull();
     }
+
+    [Theory]
+    [InlineData("**** **** **** 0023", "**** 0023")]
+    [InlineData("411111******0023", "**** 0023")]
+    [InlineData(" ************1111 ", "**** 1111")]
+    [InlineData("0023", "**** 0023")]
+    [InlineData("**** ****", null)]
+    [InlineData("123", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void FormatMaskedNumber_KeepsOnlyTheLastFourDigits(string? input, string? expected) =>
+        PokCardTokenService.FormatMaskedNumber(input).Should().Be(expected);
+
+    [Theory]
+    [InlineData("visa", "Visa")]
+    [InlineData("mastercard", "Mastercard")]
+    [InlineData("MasterCard", "MasterCard")]
+    [InlineData(" ", null)]
+    [InlineData(null, null)]
+    public void FormatBrand_TitleCasesLowercaseNames(string? input, string? expected) =>
+        PokCardTokenService.FormatBrand(input).Should().Be(expected);
 
     [Fact]
     public async Task SetupTokenizedThreeDsAsync_HappyPath_ReturnsPayerAuthSetup()
@@ -175,7 +242,7 @@ public class PokCardTokenServiceTests
         result.DeviceDataCollection!.Url.Should().Be("https://ddc.example.com");
         result.DeviceDataCollection.AccessToken.Should().Be("ddc-token");
 
-        // Confirmed from POK's docs: root-level path, NOT under /merchants/{merchantId}/.
+        // Root-level path, NOT under /merchants/{merchantId}/.
         CapturedRequest setupReq = handler.Requests.Single(r => r.Path.EndsWith("/setup-tokenized-3ds"));
         setupReq.Path.Should().Be("/credit-debit-cards/card-abc/setup-tokenized-3ds");
         setupReq.Body.Should().Contain("\"id\":\"order-1\"");

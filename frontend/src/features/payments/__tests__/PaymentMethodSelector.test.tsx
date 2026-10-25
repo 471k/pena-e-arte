@@ -19,15 +19,19 @@ import type {
 
 // ── POK widget mock ──────────────────────────────────────────────────────────
 // GuestCheckoutForm mounts a real card form against POK's servers — mock the whole module.
-// usePOK is a hook SavedCardTab always calls (rules of hooks) even when there's nothing to pay
-// with yet. This mock captures the latest onSuccess/onError/payByCardToken so tests can drive
-// the saved-card 3DS-challenge flow by hand (simulating what POK's real step-up modal would do).
+// usePOK is mocked like the real SDK 2.0.1 hook: it records the order id it was called with and
+// returns `order` (null until "loaded"), and captures onSuccess/onError/payByCardToken so tests can
+// drive the saved-card 3DS flow by hand (simulating what POK's real step-up modal would do).
+
+const LOADED_ORDER = { finalAmount: 75, currencyCode: "EUR" };
 
 const pokHookState: {
   onSuccess?: () => void;
   onError?: (e: { message?: string }) => void;
   payByCardToken: ReturnType<typeof vi.fn>;
-} = { payByCardToken: vi.fn() };
+  order: { finalAmount?: number; currencyCode?: string } | null;
+  orderIds: string[];
+} = { payByCardToken: vi.fn(), order: LOADED_ORDER, orderIds: [] };
 
 vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
   GuestCheckoutForm: (props: { orderId: string; onSuccess?: () => void; onError?: (e: { message?: string }) => void }) => (
@@ -39,13 +43,14 @@ vi.mock("@nebula-ltd/pok-payments-js/react", () => ({
     </div>
   ),
   usePOK: (
-    _orderId: string,
+    orderId: string,
     onSuccess?: () => void,
     onError?: (e: { message?: string }) => void,
   ) => {
+    pokHookState.orderIds.push(orderId);
     pokHookState.onSuccess = onSuccess;
     pokHookState.onError = onError;
-    return { payByCardToken: pokHookState.payByCardToken, fetching: false, loading: false };
+    return { order: pokHookState.order, payByCardToken: pokHookState.payByCardToken, fetching: false, loading: false };
   },
 }));
 
@@ -119,6 +124,8 @@ afterEach(() => {
   pokHookState.payByCardToken.mockClear();
   pokHookState.onSuccess = undefined;
   pokHookState.onError = undefined;
+  pokHookState.order = LOADED_ORDER;
+  pokHookState.orderIds = [];
 });
 afterAll(() => server.close());
 
@@ -145,7 +152,7 @@ function renderSelector(
   onError   = vi.fn(),
 ) {
   const store = makeStore();
-  render(
+  const tree = () => (
     <Provider store={store}>
       <PaymentMethodSelector
         appointmentId={APPOINTMENT_ID}
@@ -153,8 +160,10 @@ function renderSelector(
         onSuccess={onSuccess}
         onError={onError}
       />
-    </Provider>,
+    </Provider>
   );
+  const utils = render(tree());
+  return { rerender: () => utils.rerender(tree()) };
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -459,6 +468,46 @@ describe("PaymentMethodSelector", () => {
         expect(onSuccess).toHaveBeenCalledExactlyOnceWith("card");
       });
       expect(depositCalls).toBe(1);
+    });
+
+    it("mounts usePOK only with the real order id, never an empty one", async () => {
+      const user = userEvent.setup();
+      server.use(
+        http.post("http://localhost/api/v1/payments/deposit/pay-with-saved-card", () =>
+          HttpResponse.json(SETUP_PENDING),
+        ),
+      );
+
+      renderSelector();
+      await screen.findByText(/visa.*4242/i);
+      expect(pokHookState.orderIds).toEqual([]);
+
+      await user.click(screen.getByRole("button", { name: /pay with this card/i }));
+
+      await vi.waitFor(() => expect(pokHookState.payByCardToken).toHaveBeenCalledOnce());
+      expect(new Set(pokHookState.orderIds)).toEqual(new Set(["order-saved-abc"]));
+    });
+
+    it("waits for POK to load the order before starting the 3DS check", async () => {
+      const user = userEvent.setup();
+      pokHookState.order = null;
+      server.use(
+        http.post("http://localhost/api/v1/payments/deposit/pay-with-saved-card", () =>
+          HttpResponse.json(SETUP_PENDING),
+        ),
+      );
+
+      const { rerender } = renderSelector();
+      await screen.findByText(/visa.*4242/i);
+      await user.click(screen.getByRole("button", { name: /pay with this card/i }));
+
+      expect(await screen.findByText(/verifying your card/i)).toBeInTheDocument();
+      expect(pokHookState.payByCardToken).not.toHaveBeenCalled();
+
+      pokHookState.order = LOADED_ORDER;
+      rerender();
+
+      await vi.waitFor(() => expect(pokHookState.payByCardToken).toHaveBeenCalledOnce());
     });
 
     it("already-settled response skips the 3DS setup and reports success directly", async () => {

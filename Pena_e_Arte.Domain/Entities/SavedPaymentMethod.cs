@@ -18,9 +18,10 @@ public class SavedPaymentMethod : TenantEntity
     /// <summary>POK's own tokenized-card id (credit-debit-cards resource id).</summary>
     public string ProviderCardTokenId { get; set; } = string.Empty;
 
-    /// <summary>Null when POK's tokenize-card response doesn't return it (unconfirmed against a
-    /// real sandbox — see IPokCardTokenService's doc comment). Display degrades to a generic
-    /// "Card on file" label rather than blocking the save.</summary>
+    /// <summary>Display only, from POK's card information ("Visa", "**** 1234"). Null when POK
+    /// doesn't return them; display degrades to a generic "Card on file" label rather than
+    /// blocking the save. POK keeps no expiry date, so ExpiryMonth/ExpiryYear stay null for new
+    /// cards.</summary>
     public string? CardBrand { get; set; }
     public string? MaskedPan { get; set; }
     public string? ExpiryMonth { get; set; }

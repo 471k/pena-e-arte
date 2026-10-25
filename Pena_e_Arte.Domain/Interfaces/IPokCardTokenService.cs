@@ -6,24 +6,15 @@ namespace Pena_e_Arte.Domain.Interfaces;
 /// Stripe/other-provider equivalent to stay neutral against, and IPaymentProvider is meant to
 /// stay a provider-neutral Flow A abstraction (hold/capture/cancel/status/refund only).
 ///
-/// <b>Wire shapes here are the least-verified code in this codebase</b> — more so even than
-/// PokPaymentProvider's own flagged AmountInCentsToPok/MapStatus assumptions. POK's public docs
-/// (docs/payments/pok-assessment.md) never give a full request/response schema for the
-/// "Tokenize Card API" — only that it exists and exchanges AddCardForm's csFlexCard.jwe payload
-/// for a permanent cardId. What IS confirmed, verbatim, from POK's docs:
-/// - AddCardForm's onSuccess payload is `{ csFlexCard: { jwe }, billingInfo: {...} }`.
-/// - `POST https://api.pokpay.io/credit-debit-cards/{cardId}/setup-tokenized-3ds` (root-level,
-///   NOT under /merchants/{merchantId}/ like sdk-orders) returns data containing
-///   `payerAuthSetupReferenceId` — confirmed field name, quoted directly from POK's Flutter SDK
-///   docs.
-/// - "usePOK charges a previously tokenized card... your backend must create a new SDK order"
-///   — so SetupTokenizedThreeDsAsync's caller must already have a fresh order (the exact same
-///   IPaymentProvider.CreatePaymentHoldAsync/sdk-orders flow used for a new-card checkout).
-/// Everything else — the exact tokenize-card endpoint path/request/response field names beyond
-/// cardId, and setup-tokenized-3ds's exact request body — is inferred from REST convention, not
-/// confirmed. Verify all of it against a real POK sandbox transaction before trusting this for
-/// production card traffic (same posture, and same user-approved "build now, verify later"
-/// tradeoff, as PokPaymentProvider's own unverified assumptions).
+/// Endpoints, from POK's documented Card Tokenization API (C-9):
+/// - `POST /credit-debit-cards/tokenize-guest-card` exchanges AddCardForm's
+///   `{ csFlexCard: { jwe }, billingInfo, securityCode }` for `creditDebitCard { id, hiddenNumber, ... }`.
+/// - `POST /credit-debit-cards/get-guest-cards-information` returns the card's `brand` and masked
+///   `number` (display only).
+/// - `POST /credit-debit-cards/{id}/setup-tokenized-3ds` with `{ sdkOrder: { id } }` returns the
+///   `payerAuthentication` the frontend SDK's `payByCardToken` needs. The caller must already have
+///   a fresh order (IPaymentProvider.CreatePaymentHoldAsync, same as a new-card checkout).
+/// All three are root-level, not under /merchants/{merchantId}/ like sdk-orders.
 /// </summary>
 public interface IPokCardTokenService
 {
@@ -42,17 +33,16 @@ public interface IPokCardTokenService
 
 /// <summary>Billing details AddCardForm collects alongside the encrypted card payload (the
 /// widget's own AddCardData.billingInfo shape — every field it returns, forwarded as-is) —
-/// passed through to POK's tokenize-card call, never persisted locally beyond what
-/// TokenizeCardAsync's own PokTokenizedCard result carries back.</summary>
+/// passed through to POK's tokenize-card call, never persisted locally.</summary>
 public sealed record PokCardBillingInfo(
     string FirstName, string LastName, string Email, string CountryCode,
     string? AdministrativeArea, string? Locality, string? Address1,
     string? PostalCode, string? PhoneNumber);
 
-/// <summary>Card metadata safe to persist and display — never a PAN, never the JWE. Brand/
-/// MaskedPan/ExpiryMonth/ExpiryYear are null if POK's tokenize-card response doesn't return them
-/// (unconfirmed — see IPokCardTokenService's own doc comment); a SavedPaymentMethod must degrade
-/// to those being null rather than block the save.</summary>
+/// <summary>Card metadata safe to persist and display — never a PAN, never the JWE, never the
+/// cardholder's name. MaskedPan is "**** 1234". Brand/MaskedPan are null when POK doesn't return
+/// them (a SavedPaymentMethod then shows "Card on file"). ExpiryMonth/ExpiryYear are always null
+/// with POK, which keeps no expiry date for a tokenized card.</summary>
 public sealed record PokTokenizedCard(
     string CardTokenId, string? Brand, string? MaskedPan, string? ExpiryMonth, string? ExpiryYear);
 

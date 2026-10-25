@@ -243,11 +243,43 @@ function SavedCardOption({
   );
 }
 
-// This tab's 3DS-challenge flow is the least-verified part of this codebase's POK integration
-// (see IPokCardTokenService's own doc comment, backend) — usePOK is a hook, so it must be
-// called unconditionally on every render (React's rules of hooks); it's bound to setup?.orderId
-// (empty string until a setup response arrives) and payByCardToken is only actually invoked
-// once that setup is ready, via the effect below.
+// usePOK (POK SDK 2.0.1) loads its order once, on mount, and payByCardToken sends that order's
+// amount and currency to POK's check-3ds-enrollment. Mounted with an empty order id it never
+// loads the real order and POK answers 400, so this component only mounts once the setup (and its
+// order id) exists, and starts the 3DS flow only after the order has loaded.
+function SavedCardVerification({
+  setup,
+  pokEnvironment,
+  onSuccess,
+  onError,
+}: {
+  setup: PayWithSavedCardSetupResponse & { orderId: string; cardTokenId: string; payerAuthSetupReferenceId: string };
+  pokEnvironment: "staging" | "production";
+  onSuccess: () => void;
+  onError: (err: PaymentErrorResponse) => void;
+}) {
+  const { order, payByCardToken } = usePOK(setup.orderId, onSuccess, onError, pokEnvironment, "en");
+  const started = useRef(false);
+
+  // POK's SDK renders its own step-up modal globally; there's no container to mount here.
+  useEffect(() => {
+    if (started.current || !order?.currencyCode) return;
+    started.current = true;
+    payByCardToken({
+      creditDebitCard: { id: setup.cardTokenId },
+      payerAuthSetupReferenceId: setup.payerAuthSetupReferenceId,
+      deviceDataCollection: setup.deviceDataCollection ?? undefined,
+    });
+  }, [order, payByCardToken, setup]);
+
+  return (
+    <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      <span className="text-sm">Verifying your card — check for a confirmation prompt…</span>
+    </div>
+  );
+}
+
 function SavedCardTab({
   appointmentId,
   onSuccess,
@@ -294,28 +326,6 @@ function SavedCardTab({
     setSetup(null);
   }
 
-  const { payByCardToken } = usePOK(
-    setup?.orderId ?? "",
-    () => void handlePaySuccess(),
-    handlePokError,
-    pokEnvironment,
-    "en",
-  );
-
-  // Once a setup response with everything payByCardToken needs has arrived, trigger the 3DS
-  // challenge — POK's SDK renders its own step-up modal globally; there's no container to mount
-  // here (usePOK takes no containerId, unlike AddCardForm/GuestCheckoutForm).
-  useEffect(() => {
-    if (!setup?.payerAuthSetupReferenceId || !setup.cardTokenId) return;
-    payByCardToken({
-      creditDebitCard: { id: setup.cardTokenId },
-      payerAuthSetupReferenceId: setup.payerAuthSetupReferenceId,
-      deviceDataCollection: setup.deviceDataCollection ?? undefined,
-    });
-    // Only re-run when a genuinely new setup arrives, not on every payByCardToken identity change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setup]);
-
   async function handlePayClick() {
     if (!effectiveMethodId) return;
     const result = await payWithSavedCard({ appointmentId, savedPaymentMethodId: effectiveMethodId });
@@ -327,12 +337,16 @@ function SavedCardTab({
       onSuccess("card");
       return;
     }
-    if (!result.data.payerAuthSetupReferenceId || !result.data.cardTokenId) {
+    if (!result.data.payerAuthSetupReferenceId || !result.data.cardTokenId || !result.data.orderId) {
       onError("Could not start the payment verification step. Please try again.");
       return;
     }
     setSetup(result.data);
   }
+
+  const readySetup = setup?.orderId && setup.cardTokenId && setup.payerAuthSetupReferenceId
+    ? { ...setup, orderId: setup.orderId, cardTokenId: setup.cardTokenId, payerAuthSetupReferenceId: setup.payerAuthSetupReferenceId }
+    : null;
 
   if (isLoadingMethods) {
     return (
@@ -343,14 +357,24 @@ function SavedCardTab({
     );
   }
 
-  if (confirming || (setup && !confirming)) {
+  if (confirming) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">
-          {confirming ? "Confirming payment…" : "Verifying your card — check for a confirmation prompt…"}
-        </span>
+        <span className="text-sm">Confirming payment…</span>
       </div>
+    );
+  }
+
+  if (readySetup) {
+    return (
+      <SavedCardVerification
+        key={readySetup.orderId}
+        setup={readySetup}
+        pokEnvironment={pokEnvironment}
+        onSuccess={() => void handlePaySuccess()}
+        onError={handlePokError}
+      />
     );
   }
 

@@ -1,28 +1,29 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Services.Pok;
 
 /// <summary>
-/// IPokCardTokenService implementation. See that interface's doc comment for exactly which
-/// pieces of this are confirmed against POK's real docs versus inferred from REST convention —
-/// don't trust the inferred parts against production card traffic without a real sandbox
-/// transaction first.
+/// IPokCardTokenService implementation, built against POK's documented Card Tokenization API
+/// (payments.doc.pokpay.io; endpoint list and shapes in the shared POK reference doc, Part 1 §4).
+/// See that interface's doc comment for what a real staging run confirmed.
 /// </summary>
-public sealed class PokCardTokenService(PokAuthClient authClient) : IPokCardTokenService
+public sealed class PokCardTokenService(PokAuthClient authClient, ILogger<PokCardTokenService> logger) : IPokCardTokenService
 {
     public async Task<PokTokenizedCard> TokenizeCardAsync(
         Guid studioId, string jwe, string? securityCode, PokCardBillingInfo billingInfo, CancellationToken ct)
     {
-        (string merchantId, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
+        (_, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
 
-        // UNVERIFIED: neither this path nor this request shape is confirmed against POK's docs
-        // (see IPokCardTokenService's doc comment) — inferred from sdk-orders' own
-        // /merchants/{merchantId}/... convention, since a tokenized card is scoped to the
-        // merchant that will charge it, same as an order is. Every field forwarded here is one
-        // AddCardData (the widget's own onSuccess payload) actually returns — nothing invented.
+        // Root-level, not under /merchants/{merchantId}/. POK's docs also list csFlexCard's
+        // expirationMonth/expirationYear/numericCardType as required, but AddCardForm never hands
+        // them to the host (its onSuccess payload is exactly { csFlexCard: { jwe }, billingInfo,
+        // securityCode }), and POK's own GuestCheckoutForm sends csFlexCard with the jwe alone to
+        // /credit-debit-cards/guest — the jwe carries the whole encrypted card.
         var body = new TokenizeCardRequestBody
         {
             CsFlexCard = new CsFlexCardBody { Jwe = jwe },
@@ -41,17 +42,27 @@ public sealed class PokCardTokenService(PokAuthClient authClient) : IPokCardToke
             }
         };
 
-        using HttpRequestMessage req = new(HttpMethod.Post, $"{authClient.BaseUrl}/merchants/{merchantId}/credit-debit-cards");
+        using HttpRequestMessage req = new(HttpMethod.Post, $"{authClient.BaseUrl}/credit-debit-cards/tokenize-guest-card");
         req.Headers.Authorization = new("Bearer", token);
         req.Content = JsonContent.Create(body);
 
+        // The response also carries holderFirstName/holderLastName/billingInfo; those are left out
+        // of the DTO on purpose, so the cardholder's name and address are never kept or logged.
         TokenizeCardResponse result = await authClient.SendAsync<TokenizeCardResponse>(http, req, studioId, ct);
-        CreditDebitCardDto card = result.Data?.CreditDebitCard
+        string cardId = result.Data?.CreditDebitCard?.Id
             ?? throw new ServiceUnavailableException("POK did not return a tokenized card id.");
 
+        // The tokenize response has no brand; get-guest-cards-information has the brand and the
+        // masked number. Display only, so a failure here falls back to hiddenNumber, never fails the save.
+        GuestCardDto? info = await TryGetCardInformationAsync(http, token, studioId, cardId, ct);
+
+        // POK keeps no expiry date for a tokenized card (neither response has one).
         return new PokTokenizedCard(
-            card.Id ?? throw new ServiceUnavailableException("POK did not return a tokenized card id."),
-            card.Brand, card.MaskedPan, card.ExpiryMonth, card.ExpiryYear);
+            cardId,
+            FormatBrand(info?.Brand),
+            FormatMaskedNumber(info?.Number ?? result.Data!.CreditDebitCard!.HiddenNumber),
+            ExpiryMonth: null,
+            ExpiryYear: null);
     }
 
     public async Task<PokPayerAuthSetup> SetupTokenizedThreeDsAsync(
@@ -59,11 +70,8 @@ public sealed class PokCardTokenService(PokAuthClient authClient) : IPokCardToke
     {
         (_, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
 
-        // CONFIRMED path (quoted directly from POK's Flutter SDK docs, docs/payments/pok-
-        // assessment.md's WebFetch trail): root-level, NOT under /merchants/{merchantId}/ like
-        // every other call in this codebase's POK integration. Request body shape (sdkOrder.id)
-        // is inferred, not confirmed — "your backend must create a new SDK order" is the only
-        // documented hint that this call needs to reference one.
+        // Path and body ({ sdkOrder: { id } }) as documented. The SDK's payByCardToken then runs
+        // device data collection, check-3ds-enrollment and guest-confirm in the browser.
         using HttpRequestMessage req = new(
             HttpMethod.Post, $"{authClient.BaseUrl}/credit-debit-cards/{cardTokenId}/setup-tokenized-3ds");
         req.Headers.Authorization = new("Bearer", token);
@@ -86,7 +94,50 @@ public sealed class PokCardTokenService(PokAuthClient authClient) : IPokCardToke
         return new PokPayerAuthSetup(auth.PayerAuthSetupReferenceId, ddc);
     }
 
-    // --- Wire DTOs (see class doc comment — most of this shape is inferred, not confirmed) ---
+    private async Task<GuestCardDto?> TryGetCardInformationAsync(
+        HttpClient http, string token, Guid studioId, string cardId, CancellationToken ct)
+    {
+        using HttpRequestMessage req = new(
+            HttpMethod.Post, $"{authClient.BaseUrl}/credit-debit-cards/get-guest-cards-information");
+        req.Headers.Authorization = new("Bearer", token);
+        req.Content = JsonContent.Create(new GuestCardsInformationRequestBody { CardIds = [cardId] });
+
+        try
+        {
+            GuestCardsInformationResponse result =
+                await authClient.SendAsync<GuestCardsInformationResponse>(http, req, studioId, ct);
+            return result.Data?.Cards?.FirstOrDefault();
+        }
+        catch (ServiceUnavailableException)
+        {
+            // SendAsync has already logged the status code; nothing about the card is logged.
+            logger.LogWarning("POK card information unavailable for studio {StudioId}; saving the card without its brand.", studioId);
+            return null;
+        }
+    }
+
+    /// <summary>"visa" → "Visa"; null or blank stays null so the UI shows "Card on file".</summary>
+    internal static string? FormatBrand(string? brand)
+    {
+        if (string.IsNullOrWhiteSpace(brand))
+            return null;
+        string trimmed = brand.Trim();
+        return trimmed.Any(char.IsUpper) ? trimmed : CultureInfo.InvariantCulture.TextInfo.ToTitleCase(trimmed);
+    }
+
+    /// <summary>"**** **** **** 0023" or "411111******0023" → "**** 0023". Anything without four
+    /// trailing digits is dropped rather than shown as-is, so a full number can never be displayed.</summary>
+    internal static string? FormatMaskedNumber(string? number)
+    {
+        if (string.IsNullOrWhiteSpace(number))
+            return null;
+        string trimmed = number.Trim();
+        if (trimmed.Length < 4 || !trimmed[^4..].All(char.IsAsciiDigit))
+            return null;
+        return $"**** {trimmed[^4..]}";
+    }
+
+    // --- Wire DTOs ---
 
     private sealed class TokenizeCardRequestBody
     {
@@ -126,14 +177,29 @@ public sealed class PokCardTokenService(PokAuthClient authClient) : IPokCardToke
     private sealed class CreditDebitCardDto
     {
         [JsonPropertyName("id")] public string? Id { get; init; }
+        [JsonPropertyName("hiddenNumber")] public string? HiddenNumber { get; init; }
+    }
+
+    private sealed class GuestCardsInformationRequestBody
+    {
+        [JsonPropertyName("cardIds")] public string[] CardIds { get; init; } = [];
+    }
+
+    private sealed class GuestCardsInformationResponse
+    {
+        [JsonPropertyName("data")] public GuestCardsInformationResponseData? Data { get; init; }
+    }
+
+    private sealed class GuestCardsInformationResponseData
+    {
+        [JsonPropertyName("cards")] public List<GuestCardDto>? Cards { get; init; }
+    }
+
+    // billingInfo (name, address, email, phone) is left out on purpose, as in CreditDebitCardDto.
+    private sealed class GuestCardDto
+    {
         [JsonPropertyName("brand")] public string? Brand { get; init; }
-        // Field name guessed as "maskedPan" — POK's docs never show this response body at all;
-        // if the real field is named differently (or absent), this simply stays null (see
-        // PokTokenizedCard's own doc comment: a SavedPaymentMethod degrades gracefully to a null
-        // display field rather than failing the save).
-        [JsonPropertyName("maskedPan")] public string? MaskedPan { get; init; }
-        [JsonPropertyName("expiryMonth")] public string? ExpiryMonth { get; init; }
-        [JsonPropertyName("expiryYear")] public string? ExpiryYear { get; init; }
+        [JsonPropertyName("number")] public string? Number { get; init; }
     }
 
     private sealed class SetupTokenizedThreeDsRequestBody
@@ -158,7 +224,6 @@ public sealed class PokCardTokenService(PokAuthClient authClient) : IPokCardToke
 
     private sealed class PayerAuthenticationDto
     {
-        // Confirmed field name (quoted verbatim from POK's Flutter SDK docs).
         [JsonPropertyName("payerAuthSetupReferenceId")] public string? PayerAuthSetupReferenceId { get; init; }
         [JsonPropertyName("deviceDataCollection")] public DeviceDataCollectionDto? DeviceDataCollection { get; init; }
     }
