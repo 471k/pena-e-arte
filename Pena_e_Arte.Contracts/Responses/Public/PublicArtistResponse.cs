@@ -16,4 +16,7 @@ public record PublicArtistResponse(
     bool ShowBookingCta,
     bool IsOwnProfile,
     IReadOnlyList<PublicSocialLinkResponse> SocialLinks,
-    string Currency);
+    string Currency,
+    // The studio's ISO country code: with Currency it tells the page whether to show lek next to
+    // euro prices (Albanian EUR studios only).
+    string CountryCode = "");

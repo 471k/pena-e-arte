@@ -127,6 +127,28 @@ first `Payment`, `GiftCard`, `PackagePurchase`, or `BoothRentCharge` row exists 
 
 ---
 
+## Lek Reference Columns and Exchange Rates (2026-10-26)
+
+For Albanian studios that price in EUR, clients see the lek amount next to every euro amount
+(`docs/specs/spec-eur-with-lek-display-2026-10-26.md`). Two pieces of schema carry it:
+
+- **`exchange_rates`** (`ExchangeRate`) — **global, not a `TenantEntity`**: a public central-bank
+  rate belongs to no studio, so there is no query filter and no `IgnoreQueryFilters()` is needed.
+  One row per (BaseCurrency, QuoteCurrency, RateDate, Source), unique index
+  `ix_exchange_rates_pair_date_source`; `Rate` is `decimal(18,6)` (lek per euro). Written only by
+  `BankOfAlbaniaRateFetcher` (via `ExchangeRateFetchJob`), read by `ExchangeRateProvider`.
+- **Five nullable reference columns** on `payments`, `gift_cards`, `package_purchases`
+  (`IHasReferenceAmount`, configured once in `ReferenceAmountColumns`): `ReferenceCurrency`
+  (`varchar(3)`), `ReferenceRate` (`decimal(18,6)`), `ReferenceRateDate` (`date`),
+  `ReferenceRateSource` (`varchar(20)`), `ReferenceAmount` (`decimal(18,4)`, whole lek). Set by
+  `IReferenceAmountSnapshotter` when the client pays and **never changed after** — only
+  `ReferenceAmount.Freeze`/`Clear` write them, so capture, refund and reconciliation can't. Null
+  means no reference (other studios, records from before 2026-10-26, or no rate stored yet).
+- Both migrations (`AddExchangeRates`, `AddMoneyReferenceSnapshot`) are additive: a new table and
+  nullable columns, no backfill.
+
+---
+
 ## Entity Configuration Pattern
 
 Never put EF attributes on domain entities. Use `IEntityTypeConfiguration`.

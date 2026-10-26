@@ -93,6 +93,26 @@ public class DepositHoldLostNotificationJobTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_FrozenLekReference_ShowsItToTheOwnerToo()
+    {
+        // Spec Q3, decided 2026-10-26: staff see the lek next to euro amounts as well.
+        (Payment payment, _) = await SeedData();
+        payment.Amount = 100m;
+        payment.Currency = "EUR";
+        payment.ReferenceCurrency = "ALL";
+        payment.ReferenceRate = 90.74m;
+        payment.ReferenceRateDate = new DateOnly(2026, 10, 23);
+        payment.ReferenceRateSource = "BoA-Fix";
+        payment.ReferenceAmount = 9074m;
+        await _db.SaveChangesAsync();
+
+        await CreateSut().ExecuteAsync(payment.Id);
+
+        _emailRenderer.Received(1).RenderDepositHoldLost(
+            "Ana Silva", "100.00 EUR (9,074 ALL)", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_RendersStudioLocalTimeAmountAndPaymentLink()
     {
         (Payment payment, _) = await SeedData();

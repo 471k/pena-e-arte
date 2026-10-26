@@ -12,6 +12,11 @@ public record PackagePurchaseResponse(
     int SessionsRemaining,
     DateTime CreatedAt,
     decimal Amount,
-    string Currency);
+    string Currency,
+    // Lek reference frozen at purchase (Albanian EUR studios only; all null otherwise).
+    decimal? ReferenceAmount = null,
+    string? ReferenceCurrency = null,
+    decimal? ReferenceRate = null,
+    DateOnly? ReferenceRateDate = null);
 
 public record PurchasePackageResponse(Guid PackagePurchaseId, string? ClientToken);

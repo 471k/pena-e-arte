@@ -13,6 +13,7 @@ using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.ExchangeRates;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
 
 namespace Pena_e_Arte.IntegrationTests.Application;
@@ -47,7 +48,7 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
         clientUser.UserId.Returns(userId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        PurchasePackageHandler handler = new(db, TenantFor(tenantId), clientUser, provider);
+        PurchasePackageHandler handler = new(db, TenantFor(tenantId), clientUser, provider, Substitute.For<IReferenceAmountSnapshotter>());
 
         PurchasePackageResponse result = await handler.Handle(
             new PurchasePackageCommand(new PurchasePackageRequest(packageId)), default);
@@ -99,6 +100,40 @@ public class PackageHandlerIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(tenantId);
         PackagePurchase purchase = await verify.PackagePurchases.FirstAsync(p => p.Id == purchaseId);
         purchase.SessionsRemaining.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task PurchasePackage_AlbanianEuroStudio_PersistsTheFrozenLekReference()
+    {
+        Guid tenantId = Guid.NewGuid();
+        Guid userId = Guid.NewGuid();
+        (_, Guid packageId) = await SeedClientAndPackage(tenantId, userId, sessionCount: 3);
+        IPaymentProvider provider = Substitute.For<IPaymentProvider>();
+        provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
+        provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
+            .Returns(("pi_pkg_ref", "secret_pkg_ref"));
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+        IExchangeRateProvider rates = Substitute.For<IExchangeRateProvider>();
+        rates.GetLatestAsync("EUR", "ALL", Arg.Any<CancellationToken>())
+            .Returns(new ExchangeRateSnapshot(90.74m, new DateOnly(2026, 10, 23), "BoA-Fix", false));
+
+        Guid purchaseId;
+        await using (AppDbContext db = fixture.CreateDbContext(tenantId))
+        {
+            PurchasePackageHandler handler = new(db, TenantFor(tenantId), clientUser, provider,
+                new ReferenceAmountSnapshotter(rates, NullLogger<ReferenceAmountSnapshotter>.Instance));
+            purchaseId = (await handler.Handle(
+                new PurchasePackageCommand(new PurchasePackageRequest(packageId)), default)).PackagePurchaseId;
+        }
+
+        await using AppDbContext check = fixture.CreateDbContext(tenantId);
+        PackagePurchase stored = await check.PackagePurchases.SingleAsync(p => p.Id == purchaseId);
+        stored.ReferenceAmount.Should().Be(27222m); // 300 EUR x 90.74
+        stored.ReferenceRate.Should().Be(90.740000m);
+        stored.ReferenceRateDate.Should().Be(new DateOnly(2026, 10, 23));
     }
 
     private async Task<(Guid ClientId, Guid PackageId)> SeedClientAndPackage(Guid tenantId, Guid userId, int sessionCount)

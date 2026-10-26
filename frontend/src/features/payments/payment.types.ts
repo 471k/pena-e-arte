@@ -32,6 +32,13 @@ export interface PaymentResponse {
   refundedAmount?:       number | null;
   /** The appointment's status when the API loaded it ("Cancelled" = late-cancel outcome). */
   appointmentStatus?:    string | null;
+  /** Lek reference frozen when the client paid (Albanian EUR studios only; null otherwise).
+   * A refund's lek is refundedAmount x referenceRate, never a later rate. */
+  referenceAmount?:      number | null;
+  referenceCurrency?:    string | null;
+  referenceRate?:        number | null;
+  /** "yyyy-MM-dd" — the date the Bank of Albania states for referenceRate. */
+  referenceRateDate?:    string | null;
 }
 
 export interface PaymentIntentResponse {
@@ -74,6 +81,11 @@ export interface ClientTokenResponse {
   clientToken: string;
   amount:      number;
   currency:    string;
+  /** The lek frozen on this payment when its order was created (Albanian EUR studios; null otherwise). */
+  referenceAmount?:   number | null;
+  referenceCurrency?: string | null;
+  /** The payment's studio country (with currency: lek + the "charged in euros" line for AL + EUR). */
+  studioCountryCode?: string | null;
 }
 
 /** A closed set to switch on for `PaymentCapabilitiesResponse.cardUnavailableReason` — mirrors

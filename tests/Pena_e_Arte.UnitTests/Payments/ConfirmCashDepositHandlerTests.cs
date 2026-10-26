@@ -14,6 +14,7 @@ namespace Pena_e_Arte.UnitTests.Payments;
 public class ConfirmCashDepositHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IReferenceAmountSnapshotter _referenceAmounts = Substitute.For<IReferenceAmountSnapshotter>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly ISender _sender = Substitute.For<ISender>();
     private readonly Guid _studioId = Guid.NewGuid();
@@ -24,7 +25,7 @@ public class ConfirmCashDepositHandlerTests
         _currentUser.UserId.Returns(Guid.NewGuid());
     }
 
-    private ConfirmCashDepositHandler CreateSut() => new(_db, _currentUser, _sender);
+    private ConfirmCashDepositHandler CreateSut() => new(_db, _currentUser, _sender, _referenceAmounts);
 
     [Fact]
     public async Task Handle_CashPendingPayment_ReturnsPaidStatus()
@@ -91,20 +92,54 @@ public class ConfirmCashDepositHandlerTests
         command.AuditTargetId.Should().Be(paymentId);
     }
 
-    private async Task SeedStudio()
+    [Fact]
+    public async Task Handle_AlbanianEuroStudio_FreezesTheLekReferenceAtConfirmation()
+    {
+        await SeedStudio(countryCode: "AL", currency: "EUR");
+        Guid paymentId = await SeedCashPayment(currency: "EUR");
+        ConfirmCashDepositHandler sut = new(_db, _currentUser, _sender, ReferenceSnapshots.With(90.74m));
+
+        PaymentResponse result = await sut.Handle(new ConfirmCashDepositCommand(paymentId), default);
+
+        Payment stored = _db.Payments.Single(p => p.Id == paymentId);
+        stored.ReferenceAmount.Should().Be(9074m); // 100 EUR x 90.74
+        stored.ReferenceRateDate.Should().Be(ReferenceSnapshots.RateDate);
+        result.ReferenceAmount.Should().Be(9074m);
+        result.ReferenceCurrency.Should().Be("ALL");
+        result.ReferenceRate.Should().Be(90.74m);
+        result.ReferenceRateDate.Should().Be(ReferenceSnapshots.RateDate);
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianLekStudio_StoresNoReference()
+    {
+        await SeedStudio(countryCode: "AL", currency: "ALL");
+        Guid paymentId = await SeedCashPayment(currency: "ALL");
+        ConfirmCashDepositHandler sut = new(_db, _currentUser, _sender, ReferenceSnapshots.With(90.74m));
+
+        PaymentResponse result = await sut.Handle(new ConfirmCashDepositCommand(paymentId), default);
+
+        result.ReferenceAmount.Should().BeNull();
+        _db.Payments.Single(p => p.Id == paymentId).ReferenceAmount.Should().BeNull();
+    }
+
+    private async Task SeedStudio(string countryCode = "AL", string currency = "ALL")
     {
         _db.Studios.Add(new Studio
         {
             Id = _studioId,
             Name = "Test",
-            Slug = "test"
+            Slug = "test",
+            CountryCode = countryCode,
+            Currency = currency,
         });
         await _db.SaveChangesAsync();
     }
 
-    private async Task<Guid> SeedCashPayment() => await SeedPayment(ClientPaymentMethod.Cash, PaymentStatus.CashPending);
+    private async Task<Guid> SeedCashPayment(string currency = "ALL") =>
+        await SeedPayment(ClientPaymentMethod.Cash, PaymentStatus.CashPending, currency);
 
-    private async Task<Guid> SeedPayment(ClientPaymentMethod method, PaymentStatus status)
+    private async Task<Guid> SeedPayment(ClientPaymentMethod method, PaymentStatus status, string currency = "ALL")
     {
         Client client = new()
         {
@@ -122,6 +157,7 @@ public class ConfirmCashDepositHandlerTests
             AppointmentId = Guid.NewGuid(),
             ClientId = client.Id,
             Amount = 100m,
+            Currency = currency,
             Status = status,
             Method = method
         };

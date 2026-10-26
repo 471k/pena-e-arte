@@ -5,6 +5,9 @@
   <h2 style="margin-bottom:4px">Deposit received</h2>
   <p style="color:#555;margin-top:0">Hi {{client_first_name}},</p>
   <p>Your deposit of <strong>{{amount_formatted}}</strong> has been received.</p>
+  {{#if has_exchange_rate}}
+  <p style="color:#555;font-size:13px">Exchange rate: {{exchange_rate_line}}.</p>
+  {{/if}}
   {{#if awaiting_confirmation}}
   <p>The studio will confirm your appointment on <strong>{{appointment_date}}</strong> soon. If it can't,
      you get your deposit back in full.</p>

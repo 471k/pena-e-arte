@@ -4,7 +4,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { Money } from "@/shared/components/Money";
+import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
 import { useGetPackagesQuery, usePurchasePackageMutation } from "../packagesApi";
 
@@ -17,6 +18,8 @@ export function PurchasePackagePage() {
   const { data: capabilities } = useGetPaymentCapabilitiesQuery();
   const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
   const currency = capabilities?.currency;
+  // With the currency, the studio's country decides whether lek is shown next to euro (AL + EUR).
+  const { countryCode } = useStudioCurrency();
   const [purchase, { isLoading: isPurchasing }] = usePurchasePackageMutation();
 
   const activePackages = packages?.filter((p) => p.isActive) ?? [];
@@ -64,7 +67,9 @@ export function PurchasePackagePage() {
             <CardContent className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{pkg.sessionCount} sessions</p>
               <div className="flex items-center gap-3">
-                <span className="font-semibold">{currency ? formatCurrency(pkg.price, currency) : pkg.price}</span>
+                <span className="font-semibold">
+                  {currency ? <Money amount={pkg.price} currency={currency} studio={{ countryCode, currency }} /> : pkg.price}
+                </span>
                 <Button size="sm" disabled={isPurchasing} onClick={() => handlePurchase(pkg.id)} className="gap-1.5">
                   {isPurchasing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Buy

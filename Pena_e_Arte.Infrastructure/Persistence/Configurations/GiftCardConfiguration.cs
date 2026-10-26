@@ -22,6 +22,7 @@ public class GiftCardConfiguration : TenantEntityConfiguration<GiftCard>
         builder.Property(g => g.ClientToken).HasMaxLength(500);
         builder.Property(g => g.Provider).HasMaxLength(32).IsRequired();
         builder.Property(g => g.Currency).HasMaxLength(3).IsRequired();
+        builder.ConfigureReferenceAmount();
 
         // Codes are looked up per studio; not globally unique (studio-scoped balances).
         builder.HasIndex(g => new { g.StudioId, g.Code }).IsUnique().HasDatabaseName("ux_gift_cards_studio_code");

@@ -6,18 +6,22 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useUpdateSessionSplitsMutation } from "../paymentsApi";
 import type { SessionSplitItem, SessionSplitResponse } from "../payment.types";
+import { Money } from "@/shared/components/Money";
+import type { FrozenReference } from "@/shared/hooks/useEurAllRate";
 
 interface SessionSplitsEditorProps {
   paymentId:     string;
   paymentAmount: number;
   currency:      string;
+  /** The payment's frozen lek rate (Albanian EUR studios): each split shows its lek at it. */
+  frozen?:       FrozenReference | null;
   currentSplits: SessionSplitResponse[];
 }
 
-export function SessionSplitsEditor({ paymentId, paymentAmount, currency, currentSplits }: SessionSplitsEditorProps) {
+export function SessionSplitsEditor({ paymentId, paymentAmount, currency, currentSplits, frozen }: SessionSplitsEditorProps) {
   const [editing, setEditing] = useState(false);
   const [splits, setSplits]   = useState<SessionSplitItem[]>([]);
   const [splitsError, setSplitsError] = useState<string | null>(null);
@@ -91,7 +95,7 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currency, curren
                 <CardContent className="p-3 flex items-center justify-between gap-3">
                   <span className="text-sm">{split.label}</span>
                   <div className="text-right shrink-0">
-                    <span className="text-sm font-medium">{formatCurrency(split.amount, currency)}</span>
+                    <Money amount={split.amount} currency={currency} frozen={frozen} className="text-sm font-medium" />
                     {split.paidAt && (
                       <p className="text-xs text-green-600">Paid</p>
                     )}
@@ -172,12 +176,12 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currency, curren
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">Total</span>
         <span className={totalMatches ? "font-medium" : "font-medium text-destructive-text"}>
-          {formatCurrency(runningTotal, currency)} / {formatCurrency(paymentAmount, currency)}
+          <Money amount={runningTotal} currency={currency} frozen={frozen} /> / <Money amount={paymentAmount} currency={currency} frozen={frozen} />
         </span>
       </div>
       {!totalMatches && (
         <p role="alert" className="text-xs text-destructive-text">
-          Splits must add up to {formatCurrency(paymentAmount, currency)}.
+          Splits must add up to <Money amount={paymentAmount} currency={currency} frozen={frozen} />.
         </p>
       )}
       {splitsError && (

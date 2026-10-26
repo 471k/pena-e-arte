@@ -6,6 +6,9 @@
   <p style="color:#555;margin-top:0">Hi {{client_first_name}},</p>
   <p>A refund of <strong>{{amount_formatted}}</strong> has been processed to your original
      payment method. Please allow 3&#8211;5 business days for the funds to appear.</p>
+  {{#if has_exchange_rate}}
+  <p style="color:#555;font-size:13px">Exchange rate: {{exchange_rate_line}} (the rate on the day you paid).</p>
+  {{/if}}
   <p style="color:#555;font-size:13px">If you have any questions, please contact the studio directly.</p>
   {{#if show_branding}}
   <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0">

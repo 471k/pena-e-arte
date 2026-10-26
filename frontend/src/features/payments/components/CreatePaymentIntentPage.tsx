@@ -21,7 +21,6 @@ import { Input }                           from "@/shared/components/ui/input";
 import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Badge }                           from "@/shared/components/ui/badge";
 import { cn }                              from "@/shared/utils/cn";
-import { formatCurrency }                  from "@/shared/utils/formatCurrency";
 import { useStudioCurrency }               from "@/shared/hooks/useStudioCurrency";
 import { useGetAppointmentsQuery }         from "@/features/appointments/appointmentsApi";
 import { useGetClientsQuery }              from "@/features/clients/clientsApi";
@@ -33,6 +32,7 @@ import {
 import type { PaymentIntentResponse, PaymentResponse } from "../payment.types";
 import { SessionSplitsEditor }             from "./SessionSplitsEditor";
 import type { AppointmentResponse }        from "@/features/appointments/appointment.types";
+import { Money } from "@/shared/components/Money";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -265,7 +265,7 @@ function AppointmentPicker({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Badge variant="outline" className="text-xs font-semibold">
-                  {currency ? formatCurrency(appt.depositAmount, currency) : appt.depositAmount}
+                  {currency ? <Money amount={appt.depositAmount} currency={currency} /> : appt.depositAmount}
                 </Badge>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -472,12 +472,12 @@ function ConfirmPanel({
         ) : effectiveMethod === "card" ? (
           <>
             <CreditCard className="h-4 w-4" />
-            Create card payment{amount && currency ? ` · ${formatCurrency(amount, currency)}` : ""}
+            Create card payment{amount && currency ? <> · <Money amount={amount} currency={currency} /></> : null}
           </>
         ) : (
           <>
             <Banknote className="h-4 w-4" />
-            Record cash payment{amount && currency ? ` · ${formatCurrency(amount, currency)}` : ""}
+            Record cash payment{amount && currency ? <> · <Money amount={amount} currency={currency} /></> : null}
           </>
         )}
       </Button>

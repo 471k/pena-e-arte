@@ -116,6 +116,9 @@ public class AppDbContext(
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
 
+    // --- Public reference data (no tenant filter — a central-bank rate belongs to no studio) ---
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         base.ConfigureConventions(configurationBuilder);

@@ -319,6 +319,31 @@ public class RefundPaymentHandlerTests
         return (payment.Id, appointment.Id);
     }
 
+    [Fact]
+    public async Task Handle_PartialRefund_LeavesTheFrozenLekReferenceUntouched()
+    {
+        // Spec D5: a refund's lek figure is the refunded euros x the ORIGINAL rate, computed at display
+        // time; the stored reference itself never changes after payment.
+        await SeedStudio();
+        Guid paymentId = await SeedPayment(200m, PaymentStatus.Paid, "pi_test");
+        Payment seeded = _db.Payments.Single(p => p.Id == paymentId);
+        seeded.ReferenceCurrency = "ALL";
+        seeded.ReferenceRate = 90.74m;
+        seeded.ReferenceRateDate = new DateOnly(2026, 10, 23);
+        seeded.ReferenceRateSource = "BoA-Fix";
+        seeded.ReferenceAmount = 18148m;
+        await _db.SaveChangesAsync();
+
+        PaymentResponse result = await CreateSut().Handle(new RefundPaymentCommand(paymentId, 50m), default);
+
+        Payment stored = _db.Payments.Single(p => p.Id == paymentId);
+        stored.ReferenceRate.Should().Be(90.74m);
+        stored.ReferenceAmount.Should().Be(18148m);
+        stored.ReferenceRateDate.Should().Be(new DateOnly(2026, 10, 23));
+        result.ReferenceRate.Should().Be(90.74m);
+        result.RefundedAmount.Should().Be(50m);
+    }
+
     private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio

@@ -20,6 +20,8 @@ import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 
@@ -33,6 +35,8 @@ export function ArtistLayout() {
   const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
 
   const { data: myArtist } = useGetMyArtistQuery();
+  const { data: studio } = useGetMyStudioQuery();
+  const moneyStudio = studio ? { countryCode: studio.countryCode, currency: studio.currency } : null;
   const { data: openConductReports } = useGetMyConductReportsAsArtistQuery();
   const openConductReportCount = (openConductReports ?? []).filter((r) => r.status === "Open").length;
   const navSections: NavSection[] = withNavBadges(
@@ -85,7 +89,10 @@ export function ArtistLayout() {
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
         <div className="flex-1 min-w-0">
-          <Outlet />
+          {/* Staff screens show lek next to euro for Albanian EUR studios (spec Q3, 2026-10-26). */}
+          <MoneyStudioContext.Provider value={moneyStudio}>
+            <Outlet />
+          </MoneyStudioContext.Provider>
         </div>
       </div>
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />

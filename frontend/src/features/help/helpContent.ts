@@ -48,6 +48,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "Your booking is a request, not a confirmed slot — the studio replies within 24 hours.",
+      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
       "Images upload as soon as you pick them — wait for each thumbnail to finish before submitting.",
       "If you let the studio choose, you won't know your artist until the studio assigns one — you'll get an email when they do.",
       "Booking without an account? See \"After you book as a guest\" for what happens next.",
@@ -142,6 +143,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Gift card balances never expire.",
       "You can apply a gift card for less than its full balance — the remaining balance stays on the card for later.",
+      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
     ],
     relatedArticleIds: ["owner-gift-cards"],
   },
@@ -157,7 +159,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check your email to complete payment once your purchase is confirmed.",
       "When booking, toggle \"Use a package\" and pick one with sessions remaining — no deposit is needed for that booking.",
     ],
-    tips: ["Packages are non-refundable once purchased, and don't expire — unused sessions stay available until you use them."],
+    tips: [
+      "Packages are non-refundable once purchased, and don't expire — unused sessions stay available until you use them.",
+      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
+    ],
     relatedArticleIds: ["owner-packages", "client-book-appointment"],
   },
   {
@@ -343,7 +348,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Pay a deposit (card or cash)",
     route: "/pay/:paymentId",
-    keywords: ["pay deposit", "checkout", "card payment", "3-D Secure", "bank code", "cancel payment"],
+    keywords: ["pay deposit", "checkout", "card payment", "3-D Secure", "bank code", "cancel payment", "lek", "exchange rate", "euro"],
     summary: "Securely authorize a deposit payment by card for your appointment.",
     steps: [
       "Use the \"Card\" tab, review the deposit amount, and enter your email, card details, name on card and country in the payment box.",
@@ -351,7 +356,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "Your card is charged as soon as you pay. If you cancel, the studio's cancellation policy decides how much comes back: all of it with enough notice, part or none if you cancel late. Payment is by card, or by cash arranged with the studio.",
-      "You pay the deposit in the studio's currency — exactly the amount shown. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
+      "You pay the deposit in the studio's currency — exactly the amount shown. At studios in Albania that price in euros, the amount in lek is shown next to it, converted at the Bank of Albania's official rate. Your receipt shows the rate used on the day you paid. Your card is charged in euros; if your card is in lek, your bank converts it at its own rate, which can differ slightly. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
       "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
       "You pay exactly the deposit shown — there's no card surcharge. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut.",
       "If the studio refunds you, the refund goes back to the card you paid with.",
@@ -1297,7 +1302,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "ALL and EUR are the two currencies POK takes card deposits in, so both work for card and cash. A studio set up earlier in another currency keeps it until it switches (it can only switch to ALL or EUR); until then its clients pay in cash.",
-      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout.",
+      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout. If your studio is in Albania and prices in EUR, clients also see the lek amount next to each euro price, at the Bank of Albania's official rate; the rate on the day they pay is saved with the payment and printed on their receipt. Your own screens (payments, refunds, gift cards, services and other prices) show the lek too; report totals stay in EUR only, because they add up payments made at different rates.",
       "Switching currency doesn't convert existing numbers — a price of \"50\" stays \"50\", just read in the new currency. Review your services, deposit rules, packages, and gift-card amounts afterward.",
     ],
     relatedArticleIds: ["owner-studio-profile", "owner-connect-pok", "owner-payments"],
@@ -2036,7 +2041,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-cash-vs-card",
     roles: [Owner, Client],
     question: "What's the difference between paying by card and paying by cash?",
-    answer: "A card deposit is charged when the client pays it at booking. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method. You pay the deposit in the studio's currency — exactly the amount shown. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
+    answer: "A card deposit is charged when the client pays it at booking. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method. You pay the deposit in the studio's currency — exactly the amount shown. At studios in Albania that price in euros, the lek amount is shown next to it at the Bank of Albania's official rate, and your receipt shows the rate used on the day you paid; the card is still charged in euros. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
     relatedArticleIds: ["client-deposit-pay", "owner-payment-create"],
   },
   {

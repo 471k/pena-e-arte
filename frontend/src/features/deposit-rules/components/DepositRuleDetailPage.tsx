@@ -20,7 +20,7 @@ import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from 
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { formatNoticeWindow } from "@/shared/utils/noticeWindow";
 import { usePermission } from "@/shared/hooks/usePermission";
@@ -32,6 +32,8 @@ import {
   useDeleteDepositRuleMutation,
 } from "../depositRulesApi";
 import type { UpdateDepositRuleRequest } from "../depositRule.types";
+import { Money } from "@/shared/components/Money";
+import type { ReactNode } from "react";
 
 const editSchema = z
   .object({
@@ -56,9 +58,9 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatAmount(amountFixed: number | null, amountPercent: number | null, currency: string | undefined): string {
+function formatAmount(amountFixed: number | null, amountPercent: number | null, currency: string | undefined): ReactNode {
   if (amountFixed !== null) {
-    return currency ? formatCurrency(amountFixed, currency) : String(amountFixed);
+    return currency ? <Money amount={amountFixed} currency={currency} /> : String(amountFixed);
   }
   return `${amountPercent}%`;
 }

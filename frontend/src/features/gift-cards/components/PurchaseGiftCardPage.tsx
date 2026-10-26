@@ -7,7 +7,8 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
+import { Money } from "@/shared/components/Money";
 import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { useAppSelector } from "@/app/hooks";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
@@ -34,7 +35,9 @@ export function PurchaseGiftCardPage() {
   const cardPaymentsAvailable = !isAuthenticated || capabilities?.cardPaymentsAvailable !== false;
   // Guests have no ambient tenant scope for /payments/capabilities (401 for anonymous callers) —
   // fall back to the public studio response's currency, same source GuestBookAppointmentForm uses.
-  const { data: publicStudio } = useGetPublicStudioQuery(slug ?? "", { skip: !slug || isAuthenticated });
+  // Loaded for signed-in buyers too: its country (with the currency) decides whether lek is shown
+  // next to euro amounts (Albanian EUR studios), and it is a cached public read.
+  const { data: publicStudio } = useGetPublicStudioQuery(slug ?? "", { skip: !slug });
   const currency = capabilities?.currency ?? publicStudio?.currency;
 
   const [amount, setAmount] = useState<number>(50);
@@ -89,7 +92,10 @@ export function PurchaseGiftCardPage() {
                       variant={amount === preset ? "default" : "outline"}
                       onClick={() => { setAmount(preset); setAmountError(null); }}
                     >
-                      {currency ? formatCurrency(preset, currency) : preset}
+                      {currency
+                      ? <Money amount={preset} currency={currency}
+                          studio={{ countryCode: publicStudio?.countryCode, currency }} />
+                      : preset}
                     </Button>
                   ))}
                 </div>

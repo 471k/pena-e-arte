@@ -18,6 +18,7 @@ public class PackagePurchaseConfiguration : TenantEntityConfiguration<PackagePur
         builder.Property(p => p.Provider).HasMaxLength(32).IsRequired();
         builder.Property(p => p.Amount).HasColumnType("decimal(18,4)").IsRequired();
         builder.Property(p => p.Currency).HasMaxLength(3).IsRequired();
+        builder.ConfigureReferenceAmount();
 
         builder.HasIndex(p => new { p.StudioId, p.ClientId });
         builder.HasIndex(p => p.ConfirmedAt);

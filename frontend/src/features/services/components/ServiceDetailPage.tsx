@@ -20,7 +20,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
@@ -30,6 +30,7 @@ import {
   useDeleteServiceMutation,
 } from "../servicesApi";
 import type { UpdateServiceRequest } from "../service.types";
+import { Money } from "@/shared/components/Money";
 
 const editSchema = z.object({
   name:            z.string().min(1, "Name is required").max(100, "Max 100 characters"),
@@ -218,12 +219,12 @@ export function ServiceDetailPage() {
                 <div className="text-xs text-muted-foreground pt-1 border-t space-y-1">
                   <p>
                     Price: {service.price !== null
-                      ? `from ${currency ? formatCurrency(service.price, currency) : service.price}`
+                      ? <>from {currency ? <Money amount={service.price} currency={currency} /> : service.price}</>
                       : "not shown"}
                   </p>
                   <p>
                     Deposit: {service.depositAmount !== null
-                      ? `${currency ? formatCurrency(service.depositAmount, currency) : service.depositAmount} (overrides the studio's deposit rule)`
+                      ? <>{currency ? <Money amount={service.depositAmount} currency={currency} /> : service.depositAmount} (overrides the studio's deposit rule)</>
                       : "uses the studio's deposit rule"}
                   </p>
                 </div>

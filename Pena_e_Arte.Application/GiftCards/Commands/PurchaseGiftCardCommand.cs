@@ -24,7 +24,8 @@ namespace Pena_e_Arte.Application.GiftCards.Commands;
 /// </summary>
 public record PurchaseGiftCardCommand(PurchaseGiftCardRequest Request) : IRequest<PurchaseGiftCardResponse>;
 
-public class PurchaseGiftCardHandler(IAppDbContext db, IPaymentProvider paymentProvider)
+public class PurchaseGiftCardHandler(
+    IAppDbContext db, IPaymentProvider paymentProvider, IReferenceAmountSnapshotter referenceAmounts)
     : IRequestHandler<PurchaseGiftCardCommand, PurchaseGiftCardResponse>
 {
     public async Task<PurchaseGiftCardResponse> Handle(PurchaseGiftCardCommand command, CancellationToken ct)
@@ -60,6 +61,7 @@ public class PurchaseGiftCardHandler(IAppDbContext db, IPaymentProvider paymentP
             ClientToken = clientToken,
             Provider = "pok",
         };
+        await referenceAmounts.FreezeAsync(giftCard, studio.CountryCode, studio.Currency, amount, ct);
 
         db.GiftCards.Add(giftCard);
         await db.SaveChangesAsync(ct);

@@ -1,8 +1,9 @@
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Domain.Entities;
 
-public class Payment : TenantEntity
+public class Payment : TenantEntity, IHasReferenceAmount
 {
     public Guid AppointmentId { get; set; }
     public Guid ClientId { get; set; }
@@ -44,6 +45,20 @@ public class Payment : TenantEntity
     /// treating any Refunded payment as contributing zero.
     /// </summary>
     public decimal? RefundedAmount { get; set; }
+
+    // Lek reference (Albanian EUR studios only): frozen when the provider order is created, or when the
+    // studio confirms cash, and never changed after — not by capture, refund or reconciliation. A refund's
+    // lek figure is the refunded euros x ReferenceRate, computed at display time. Null when none applies.
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceCurrency"/>
+    public string? ReferenceCurrency { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRate"/>
+    public decimal? ReferenceRate { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRateDate"/>
+    public DateOnly? ReferenceRateDate { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRateSource"/>
+    public string? ReferenceRateSource { get; set; }
+    /// <summary><see cref="Amount"/> in whole lek at <see cref="ReferenceRate"/>.</summary>
+    public decimal? ReferenceAmount { get; set; }
 
     public Appointment Appointment { get; set; } = null!;
     public Client Client { get; set; } = null!;

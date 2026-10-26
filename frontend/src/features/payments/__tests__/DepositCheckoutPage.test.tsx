@@ -237,3 +237,46 @@ describe("DepositCheckoutPage", () => {
     expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
   });
 });
+
+describe("DepositCheckoutPage — lek next to euro (Albanian EUR studios)", () => {
+  function clientToken(overrides: Partial<ClientTokenResponse>) {
+    server.use(
+      http.get("http://localhost/api/v1/payments/:id/client-token", () =>
+        HttpResponse.json({ ...SECRET_RESP, ...overrides })),
+    );
+  }
+
+  it("shows the frozen lek next to the euro amount and the 'charged in euros' line", async () => {
+    // 100.50 EUR x 90.74 = 9,119.37 -> frozen as 9,119 ALL when the order was created.
+    clientToken({ studioCountryCode: "AL", referenceAmount: 9119, referenceCurrency: "ALL" });
+    renderPage("pay-001");
+    await screen.findByTestId("pok-checkout-form");
+
+    // Intl puts a no-break space between "ALL" and the number; \s matches it.
+    expect(screen.getByText(/^€100\.50 \(ALL\s9,119\)$/)).toBeInTheDocument();
+    expect(screen.getByText(/your card is charged in euros\. if your card is in lek, your bank converts it/i))
+      .toBeInTheDocument();
+  });
+
+  it("shows no lek and no 'charged in euros' line for a studio in Albania that prices in lek", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments/capabilities", () =>
+        HttpResponse.json({ ...CAPABILITIES_AVAILABLE, currency: "ALL" })),
+    );
+    clientToken({ amount: 5000, currency: "ALL", studioCountryCode: "AL" });
+    renderPage("pay-001");
+    await screen.findByTestId("pok-checkout-form");
+
+    expect(screen.getByText(/^ALL\s5,000$/)).toBeInTheDocument();
+    expect(screen.queryByText(/charged in euros/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no 'charged in euros' line for a euro studio outside Albania", async () => {
+    clientToken({ studioCountryCode: "XK" });
+    renderPage("pay-001");
+    await screen.findByTestId("pok-checkout-form");
+
+    expect(screen.getByText("€100.50")).toBeInTheDocument();
+    expect(screen.queryByText(/charged in euros/i)).not.toBeInTheDocument();
+  });
+});

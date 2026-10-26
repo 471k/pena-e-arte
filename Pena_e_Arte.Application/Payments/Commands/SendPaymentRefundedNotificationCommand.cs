@@ -49,8 +49,15 @@ public class SendPaymentRefundedNotificationHandler(
             return Unit.Value;
         }
 
-        string amountFormatted = MoneyText.Format(
-            command.RefundAmount ?? payment.RefundedAmount ?? payment.Amount, payment.Currency);
+        decimal refunded = command.RefundAmount ?? payment.RefundedAmount ?? payment.Amount;
+        // Albanian EUR studios: the refund's lek is the refunded euros at the rate frozen when the client
+        // paid, never today's rate (spec D5).
+        decimal? refundedLek = payment.ReferenceRate is decimal rate ? ReferenceAmount.ToWholeLek(refunded, rate) : null;
+        string amountFormatted = MoneyText.FormatWithReference(
+            refunded, payment.Currency, refundedLek, payment.ReferenceCurrency, approximate: false);
+        string? exchangeRateLine = payment is { ReferenceRate: decimal frozenRate, ReferenceRateDate: DateOnly rateDate }
+            ? MoneyText.BankOfAlbaniaRateLine(frozenRate, rateDate)
+            : null;
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.PaymentRefunded, NotificationChannel.Email, ct);
@@ -62,7 +69,8 @@ public class SendPaymentRefundedNotificationHandler(
         string emailBody = emailRenderer.RenderPaymentRefunded(
             payment.Client.FirstName,
             amountFormatted,
-            studio.ShowPlatformBranding);
+            studio.ShowPlatformBranding,
+            exchangeRateLine);
 
         NotificationLog? emailLog = null;
         if (emailEnabled)

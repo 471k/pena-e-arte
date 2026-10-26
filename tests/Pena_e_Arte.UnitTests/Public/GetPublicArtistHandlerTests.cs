@@ -54,6 +54,20 @@ public class GetPublicArtistHandlerTests
     }
 
     [Fact]
+    public async Task Returns_the_studio_country_with_its_currency()
+    {
+        (_, Studio studio) = await SeedArtistWithStudioAsync();
+        studio.CountryCode = "AL";
+        await _db.SaveChangesAsync();
+
+        PublicArtistResponse? result = await CreateSut().Handle(
+            new GetPublicArtistQuery("maria-silva", null), CancellationToken.None);
+
+        result!.Currency.Should().Be("EUR");
+        result.CountryCode.Should().Be("AL");
+    }
+
+    [Fact]
     public async Task Returns_null_when_slug_does_not_exist()
     {
         PublicArtistResponse? result = await CreateSut().Handle(

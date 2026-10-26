@@ -543,7 +543,7 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
         tenant.SetTenant(tenantId);
-        CreatePaymentIntentHandler handler = new(db, tenant, _stripe, _realtime);
+        CreatePaymentIntentHandler handler = new(db, tenant, _stripe, _realtime, Substitute.For<IReferenceAmountSnapshotter>());
         return await handler.Handle(
             new CreatePaymentIntentCommand(new CreatePaymentIntentRequest(appointmentId, clientId, amount)),
             default);
