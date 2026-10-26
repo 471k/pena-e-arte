@@ -103,5 +103,8 @@ public interface IAppDbContext
     DbSet<TrafficEvent> TrafficEvents { get; }
     DbSet<TrafficDailyAggregate> TrafficDailyAggregates { get; }
 
+    // Public reference data — no tenant filter (a central-bank rate belongs to no studio)
+    DbSet<ExchangeRate> ExchangeRates { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

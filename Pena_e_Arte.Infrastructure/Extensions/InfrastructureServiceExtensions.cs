@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Pena_e_Arte.Application.Persistence;
@@ -13,6 +14,7 @@ using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.ExchangeRates;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
 using Pena_e_Arte.Infrastructure.Services.Pok;
 using Pena_e_Arte.Infrastructure.Services.Marketing;
@@ -252,6 +254,13 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient(VaultHealthCheckJob.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5))
             .RemoveAllLoggers();
         services.AddTransient<SendCampaignJob>();
+
+        // Bank of Albania EUR/ALL rate for the lek shown next to euro amounts (Albanian EUR studios).
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddHttpClient(BankOfAlbaniaRateFetcher.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddTransient<BankOfAlbaniaRateFetcher>();
+        services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
+        services.AddTransient<ExchangeRateFetchJob>();
 
         // Webhooks — reuses the Instagram token encryptor above (see ITokenEncryptor's own
         // "generalise this" note) rather than a second encryption key just for this.

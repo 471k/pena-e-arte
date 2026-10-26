@@ -33,6 +33,7 @@ public static class PublicEndpoints
         group.MapGet("/countries/{countryCode}/default-currency", GetCountryDefaultCurrency)
              .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/geo/visitor", GetVisitorGeo).AllowAnonymous().RequireRateLimiting("public-read");
+        group.MapGet("/exchange-rates/eur-all", GetLatestEurAllRate).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}", GetPublicStudio).AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/artists/{slug}", GetPublicArtist).AllowAnonymous().RequireRateLimiting("public-read");
         // Crawler-facing HTML shell for link-preview bots and crawlers that read only the raw HTML
@@ -115,6 +116,19 @@ public static class PublicEndpoints
         http.Response.Headers.CacheControl = "private, no-store";
         VisitorGeoResponse result = await mediator.Send(
             new GetVisitorGeoQuery(http.Connection.RemoteIpAddress), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetLatestEurAllRate(
+        HttpContext http,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ExchangeRateResponse? result = await mediator.Send(new GetLatestEurAllRateQuery(), ct);
+        if (result is null) return Results.NotFound();
+
+        // The same public central-bank rate for everyone, published at most once per business day.
+        http.Response.Headers.CacheControl = "public, max-age=600";
         return Results.Ok(result);
     }
 
