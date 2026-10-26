@@ -225,7 +225,8 @@ public class EmailRenderer : IEmailRenderer
         string amountFormatted,
         string appointmentDate,
         bool awaitingStudioConfirmation,
-        bool showBranding)
+        bool showBranding,
+        string? exchangeRateLine = null)
     {
         Dictionary<string, string> vars = new()
         {
@@ -235,6 +236,8 @@ public class EmailRenderer : IEmailRenderer
             ["awaiting_confirmation"] = awaitingStudioConfirmation.ToString().ToLowerInvariant(),
             ["confirmed"] = (!awaitingStudioConfirmation).ToString().ToLowerInvariant(),
             ["show_branding"] = showBranding.ToString().ToLowerInvariant(),
+            ["has_exchange_rate"] = (exchangeRateLine is not null).ToString().ToLowerInvariant(),
+            ["exchange_rate_line"] = exchangeRateLine ?? string.Empty,
         };
 
         return TemplateRenderer.Render(_depositCapturedTemplate, vars);
@@ -243,13 +246,16 @@ public class EmailRenderer : IEmailRenderer
     public string RenderPaymentRefunded(
         string clientFirstName,
         string amountFormatted,
-        bool showBranding)
+        bool showBranding,
+        string? exchangeRateLine = null)
     {
         Dictionary<string, string> vars = new()
         {
             ["client_first_name"] = clientFirstName,
             ["amount_formatted"] = amountFormatted,
             ["show_branding"] = showBranding.ToString().ToLowerInvariant(),
+            ["has_exchange_rate"] = (exchangeRateLine is not null).ToString().ToLowerInvariant(),
+            ["exchange_rate_line"] = exchangeRateLine ?? string.Empty,
         };
 
         return TemplateRenderer.Render(_paymentRefundedTemplate, vars);

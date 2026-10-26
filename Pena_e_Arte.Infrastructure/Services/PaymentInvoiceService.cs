@@ -15,6 +15,11 @@ public class PaymentInvoiceService : IPaymentInvoiceService
 
     public byte[] Generate(PaymentInvoiceData d)
     {
+        // Albanian EUR studios: each amount also shows its own lek at the frozen rate (never a sum of
+        // converted lines), so the amount columns need more room.
+        bool hasReference = d.ReferenceRate is not null && d.ReferenceCurrency is not null;
+        float amountWidth = hasReference ? 170 : 100;
+
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -88,7 +93,7 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                         table.ColumnsDefinition(cols =>
                         {
                             cols.RelativeColumn();
-                            cols.ConstantColumn(100);
+                            cols.ConstantColumn(amountWidth);
                         });
 
                         // Header
@@ -103,7 +108,7 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                             table.Cell().BorderBottom(0.5f).BorderColor("#eeeeee").Padding(6)
                                 .Text(line.Label);
                             table.Cell().BorderBottom(0.5f).BorderColor("#eeeeee").Padding(6)
-                                .Text(FormatCurrency(line.Amount, d.Currency)).AlignRight();
+                                .Text(FormatAmount(line.Amount, d)).AlignRight();
                         }
                     });
 
@@ -113,13 +118,13 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                         table.ColumnsDefinition(cols =>
                         {
                             cols.ConstantColumn(80);
-                            cols.ConstantColumn(100);
+                            cols.ConstantColumn(amountWidth);
                         });
 
                         table.Cell().Background("#111111").Padding(8)
                             .Text("TOTAL").Bold().FontSize(10).FontColor("#ffffff");
                         table.Cell().Background("#111111").Padding(8)
-                            .Text(FormatCurrency(d.TotalAmount, d.Currency)).Bold().FontSize(10)
+                            .Text(FormatAmount(d.TotalAmount, d)).Bold().FontSize(10)
                             .FontColor("#ffffff").AlignRight();
                     });
 
@@ -149,6 +154,8 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                             Row("Stripe PI", d.ProviderReferenceId);
                         if (d.CashNote is not null)
                             Row("Note", d.CashNote);
+                        if (ExchangeRateRowText(d) is string rateRow)
+                            Row("Exchange rate", rateRow);
                     });
 
                     // ── Footer ──────────────────────────────────────────────
@@ -160,6 +167,16 @@ public class PaymentInvoiceService : IPaymentInvoiceService
         }).GeneratePdf();
     }
 
-    private static string FormatCurrency(decimal amount, string currency)
-        => MoneyText.Format(amount, currency);
+    // The receipt's text decisions, kept out of the QuestPDF layout so tests can check them (the repo has
+    // no PDF text-extraction library, and no new package may be added for one).
+    internal static string FormatAmount(decimal amount, PaymentInvoiceData d)
+        => d.ReferenceRate is decimal rate
+            ? MoneyText.FormatWithReference(amount, d.Currency, ReferenceAmount.ToWholeLek(amount, rate),
+                d.ReferenceCurrency, approximate: false)
+            : MoneyText.Format(amount, d.Currency);
+
+    internal static string? ExchangeRateRowText(PaymentInvoiceData d)
+        => d is { ReferenceRate: decimal rate, ReferenceRateDate: DateOnly rateDate }
+            ? MoneyText.BankOfAlbaniaRateLine(rate, rateDate)
+            : null;
 }

@@ -213,6 +213,43 @@ public class SendPaymentRefundedNotificationHandlerTests
         await _realtime.Received(1)
             .NotifyStudioAsync(studio.Id, "NotificationReceived", Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
+
+    private async Task FreezeReferenceAsync(Guid paymentId)
+    {
+        Payment payment = await _db.Payments.SingleAsync(p => p.Id == paymentId);
+        payment.ReferenceCurrency = "ALL";
+        payment.ReferenceRate = 90.74m;
+        payment.ReferenceRateDate = new DateOnly(2026, 10, 23);
+        payment.ReferenceRateSource = "BoA-Fix";
+        payment.ReferenceAmount = 9074m;
+        await _db.SaveChangesAsync();
+    }
+
+    // ── Lek reference (Albanian EUR studios, spec D5/D7) ─────────────────────
+
+    [Fact]
+    public async Task Handle_PartialRefundWithFrozenReference_LekUsesTheOriginalRate()
+    {
+        (Guid paymentId, _, Client client) = await SeedData(phone: "+355690000000");
+        await FreezeReferenceAsync(paymentId);
+
+        await CreateSut().Handle(new SendPaymentRefundedNotificationCommand(paymentId, RefundAmount: 30m), default);
+
+        // 30 EUR x the rate frozen at payment (90.74) = 2,722.2 -> 2,722 lek, whatever today's rate is.
+        _emailRenderer.Received(1).RenderPaymentRefunded(
+            Arg.Any<string>(), "30.00 EUR (2,722 ALL)", Arg.Any<bool>(),
+            "1 EUR = 90.74 ALL, Bank of Albania official rate of 23 Oct 2026");
+        await _notifications.Received(1).SendSmsAsync(
+            client.Phone!, Arg.Is<string>(s => s.Contains("30.00 EUR (2,722 ALL)")), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RefundWithoutReference_TextIsExactlyAsBefore()
+    {
+        (Guid paymentId, _, _) = await SeedData();
+
+        await CreateSut().Handle(new SendPaymentRefundedNotificationCommand(paymentId, RefundAmount: 30m), default);
+
+        _emailRenderer.Received(1).RenderPaymentRefunded(Arg.Any<string>(), "30.00 EUR", Arg.Any<bool>(), null);
+    }
 }
-
-

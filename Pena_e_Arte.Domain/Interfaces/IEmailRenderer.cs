@@ -63,17 +63,22 @@ public interface IEmailRenderer
     /// <param name="awaitingStudioConfirmation">The appointment is still a request the studio hasn't
     /// confirmed (deposits are paid at booking since C-4): the email says the studio will confirm
     /// instead of "secured".</param>
+    /// <param name="exchangeRateLine">For Albanian EUR studios, the frozen rate (MoneyText.BankOfAlbaniaRateLine),
+    /// shown as its own line; null shows nothing, as before.</param>
     string RenderDepositCaptured(
         string clientFirstName,
         string amountFormatted,
         string appointmentDate,
         bool awaitingStudioConfirmation,
-        bool showBranding);
+        bool showBranding,
+        string? exchangeRateLine = null);
 
+    /// <param name="exchangeRateLine">As for RenderDepositCaptured: the rate frozen when the client paid.</param>
     string RenderPaymentRefunded(
         string clientFirstName,
         string amountFormatted,
-        bool showBranding);
+        bool showBranding,
+        string? exchangeRateLine = null);
 
     /// <summary>To the studio owner: a held card deposit can no longer be charged (C-15).</summary>
     string RenderDepositHoldLost(

@@ -1,8 +1,10 @@
 using FluentAssertions;
+using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Appointments;
@@ -10,6 +12,7 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 public class GetAppointmentIcsHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IExchangeRateProvider _rates = Substitute.For<IExchangeRateProvider>();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public GetAppointmentIcsHandlerTests()
@@ -18,7 +21,11 @@ public class GetAppointmentIcsHandlerTests
         _db.SaveChanges();
     }
 
-    private GetAppointmentIcsHandler CreateSut() => new(_db);
+    private GetAppointmentIcsHandler CreateSut() => new(_db, _rates);
+
+    private void LatestRate(decimal rate) =>
+        _rates.GetLatestAsync("EUR", "ALL", Arg.Any<CancellationToken>())
+              .Returns(new ExchangeRateSnapshot(rate, new DateOnly(2026, 10, 23), "BoA-Fix", false));
 
     private Guid SeedAppointment(bool includeArtist = true)
     {
@@ -113,6 +120,57 @@ public class GetAppointmentIcsHandlerTests
         string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(appt.Id), default);
 
         ics.Should().Contain("DESCRIPTION:Deposit: 3,000 JPY");
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianEuroStudio_NotPaidYet_ShowsApproximateLekAtTheLatestRate()
+    {
+        LatestRate(90.74m);
+        Guid apptId = SeedAppointment();
+
+        string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
+
+        ics.Should().Contain("DESCRIPTION:Deposit: 50.00 EUR (≈ 4,537 ALL)");
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianEuroStudio_Paid_ShowsTheFrozenLekNotTheLatestRate()
+    {
+        LatestRate(95m);
+        Guid apptId = SeedAppointment();
+        _db.Payments.Add(new Payment
+        {
+            StudioId = _studioId,
+            AppointmentId = apptId,
+            ClientId = Guid.NewGuid(),
+            Amount = 50m,
+            Currency = "EUR",
+            Status = PaymentStatus.Paid,
+            ReferenceCurrency = "ALL",
+            ReferenceRate = 90.74m,
+            ReferenceRateDate = new DateOnly(2026, 10, 23),
+            ReferenceRateSource = "BoA-Fix",
+            ReferenceAmount = 4537m,
+        });
+        _db.SaveChanges();
+
+        string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
+
+        ics.Should().Contain("DESCRIPTION:Deposit: 50.00 EUR (4,537 ALL)");
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianLekStudio_IsUnchangedAndNeverReadsTheRate()
+    {
+        _db.Studios.Single(s => s.Id == _studioId).Currency = "ALL";
+        _db.SaveChanges();
+        LatestRate(90.74m);
+        Guid apptId = SeedAppointment();
+
+        string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
+
+        ics.Should().Contain("DESCRIPTION:Deposit: 50.00 ALL").And.NotContain("50.00 ALL (").And.NotContain("≈");
+        await _rates.DidNotReceiveWithAnyArgs().GetLatestAsync(default!, default!, default);
     }
 
     [Fact]

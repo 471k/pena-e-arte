@@ -343,7 +343,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Pay a deposit (card or cash)",
     route: "/pay/:paymentId",
-    keywords: ["pay deposit", "checkout", "card payment", "3-D Secure", "bank code", "cancel payment"],
+    keywords: ["pay deposit", "checkout", "card payment", "3-D Secure", "bank code", "cancel payment", "lek", "exchange rate", "euro"],
     summary: "Securely authorize a deposit payment by card for your appointment.",
     steps: [
       "Use the \"Card\" tab, review the deposit amount, and enter your email, card details, name on card and country in the payment box.",
@@ -351,7 +351,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "Your card is charged as soon as you pay. If you cancel, the studio's cancellation policy decides how much comes back: all of it with enough notice, part or none if you cancel late. Payment is by card, or by cash arranged with the studio.",
-      "You pay the deposit in the studio's currency — exactly the amount shown. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
+      "You pay the deposit in the studio's currency — exactly the amount shown. At studios in Albania that price in euros, the amount in lek is shown next to it, converted at the Bank of Albania's official rate. Your receipt shows the rate used on the day you paid. Your card is charged in euros; if your card is in lek, your bank converts it at its own rate, which can differ slightly. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
       "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
       "You pay exactly the deposit shown — there's no card surcharge. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut.",
       "If the studio refunds you, the refund goes back to the card you paid with.",
@@ -2036,7 +2036,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-cash-vs-card",
     roles: [Owner, Client],
     question: "What's the difference between paying by card and paying by cash?",
-    answer: "A card deposit is charged when the client pays it at booking. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method. You pay the deposit in the studio's currency — exactly the amount shown. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
+    answer: "A card deposit is charged when the client pays it at booking. Cash payments are declared by the client at booking, then the studio or artist confirms it in the app once the cash is physically received. There is no PayPal or other payment method. You pay the deposit in the studio's currency — exactly the amount shown. At studios in Albania that price in euros, the lek amount is shown next to it at the Bank of Albania's official rate, and your receipt shows the rate used on the day you paid; the card is still charged in euros. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
     relatedArticleIds: ["client-deposit-pay", "owner-payment-create"],
   },
   {
