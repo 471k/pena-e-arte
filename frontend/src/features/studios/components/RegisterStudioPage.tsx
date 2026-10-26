@@ -283,8 +283,8 @@ export function RegisterStudioPage() {
     if (!currencyManuallyEdited.current && countryDefaultCurrency?.currency) {
       setValue("currency", countryDefaultCurrency.currency, { shouldValidate: true });
     }
-    // A country whose default currency couldn't be resolved (unknown to RegionInfo) leaves the
-    // field empty and required — never silently falls back to a guessed currency.
+    // The server always answers ALL or EUR (ALL when the country's own currency isn't one of
+    // them); until it answers, the field stays empty and required.
   }, [countryDefaultCurrency, setValue]);
 
   // Studio path: the country starts as Albania, moves to where the visitor's IP is when that
@@ -597,7 +597,6 @@ export function RegisterStudioPage() {
                           <CurrencySelect
                             id="solo-currency"
                             value={watchSolo("currency") || null}
-                            countryDefault={soloCountryDefault?.currency ?? null}
                             onChange={(code) => {
                               // Radix's hidden native-<select> autofill shim can fire a spurious
                               // onValueChange("") the first time `value` goes from unset to a real
@@ -760,7 +759,6 @@ export function RegisterStudioPage() {
                         <CurrencySelect
                           id="currency"
                           value={currencyValue || null}
-                          countryDefault={countryDefaultCurrency?.currency ?? null}
                           onChange={(code) => {
                             // Radix's hidden native-<select> autofill shim can fire a spurious
                             // onValueChange("") the first time `value` goes from unset to a real

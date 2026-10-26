@@ -2930,7 +2930,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Merchant ID checked too:</strong> TattooOS also checks that the Merchant ID belongs to those keys. If it doesn't, nothing is saved and you're asked to copy the Merchant ID from the same API key window as the two keys.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> POK Business may open in Albanian: E-payments is "Pagesat Online", and you can switch the language at the bottom of the left menu.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> treat the Key Secret like a password: don't take a screenshot of the window that shows it or send it to anyone. If it was shared, create a new key and delete the old one. TattooOS stores it in its secrets vault and never shows it again.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> to switch to a different POK account, click <span class="step-title">Reconnect / change account</span> and enter the new values — this replaces the old ones. POK takes card deposits in ALL and EUR; with any other studio currency, clients see Cash only.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> to switch to a different POK account, click <span class="step-title">Reconnect / change account</span> and enter the new values — this replaces the old ones. POK takes card deposits in ALL and EUR, the two currencies a studio can choose; a studio set up earlier in another currency shows Cash only until it switches.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> use your POK production credentials, not the staging/sandbox pair — sandbox keys will not process real payments.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> POK only opens merchant accounts for businesses registered in Albania. If your studio isn't registered there, you won't be able to get POK credentials — use Cash for deposits instead.</div>
 <div class="callout callout-tip"><strong>Fees:</strong> TattooOS never takes a commission or fee from a client's deposit. POK charges you its own card fee — see <a href="#owner-card-money-flow">Where card deposit money goes</a>.</div>
@@ -3114,7 +3114,7 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="184" font-size="8" fill-opacity="0.6">Location (map picker) · Country</text>
 <rect x="280" y="190" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <rect x="260" y="300" width="240" height="34" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="272" y="316" font-size="9" font-weight="700">Currency</text><text x="272" y="328" font-size="8" fill-opacity="0.6">Euro (EUR) · Save</text>
+<text x="272" y="316" font-size="9" font-weight="700">Currency</text><text x="272" y="328" font-size="8" fill-opacity="0.6">Albanian Lek (ALL) · Save</text>
 <rect x="260" y="344" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="360" font-size="8">Branding</text>
 <rect x="260" y="374" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="390" font-size="8">QR code · Embed code · Referral</text>
 </svg>
@@ -3137,13 +3137,13 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Your studio's currency</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>Every studio prices, takes deposits, and gets paid in exactly one currency, set on the Currency card in Studio Settings (<code>/studios/me</code>). It defaults to your country's currency when you register, and you can change it until the first payment, gift card, package sale, or booth-rent charge is actually recorded — after that it's locked.</p>
+<p>Every studio prices, takes deposits, and gets paid in exactly one currency — Albanian Lek (ALL) or Euro (EUR) — set on the Currency card in Studio Settings (<code>/studios/me</code>). It defaults to ALL when you register (EUR if your country uses the euro), and you can change it until the first payment, gift card, package sale, or booth-rent charge is actually recorded — after that it's locked.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 200" role="img" aria-label="Currency card wireframe">
 <rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="20" font-size="10" font-weight="700">Currency</text>
 <rect x="16" y="44" width="320" height="60" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="28" y="64" font-size="9" fill-opacity="0.6">Currency</text><rect x="28" y="70" width="280" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="36" y="84" font-size="8">Euro (EUR)</text>
+<text x="28" y="64" font-size="9" fill-opacity="0.6">Currency</text><rect x="28" y="70" width="280" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="36" y="84" font-size="8">Albanian Lek (ALL)</text>
 <rect x="16" y="116" width="130" height="26" rx="4" fill="#7c3aed"/><text x="40" y="133" font-size="9" fill="#fff">Save</text>
 </svg>
 </figure>
@@ -3151,11 +3151,11 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Go to Studio Settings and find the <span class="step-title">Currency</span> card.</li>
-<li>Pick the currency your studio prices and charges in from the dropdown, then click <span class="step-title">Save</span>. A confirmation dialog asks you to confirm — existing prices aren't converted, only relabelled in the new currency.</li>
+<li>Pick the currency your studio prices and charges in from the dropdown — Albanian Lek (ALL), the default, or Euro (EUR) — then click <span class="step-title">Save</span>. A confirmation dialog asks you to confirm — existing prices aren't converted, only relabelled in the new currency.</li>
 <li>Once your first payment, gift card, package sale, or booth-rent charge is recorded, the card shows a lock icon and the currency becomes read-only — contact support if it genuinely needs to change.</li>
 <li>From then on, every price, deposit, invoice, receipt, and report in your studio uses this currency.</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> card deposits are available only in currencies your card provider supports — POK supports ALL and EUR; cash always works, in any currency. Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> ALL and EUR are the two currencies POK takes card deposits in, so both work for card and cash. A studio set up earlier in another currency keeps it until it switches (it can only switch to ALL or EUR); until then its clients pay in cash. Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> switching currency doesn't convert existing numbers — a price of "50" stays "50", just read in the new currency. Review your services, deposit rules, packages, and gift-card amounts afterward.</div>
 <div class="crosslinks">See also: <a href="#owner-studio-profile">Studio profile</a>, <a href="#owner-connect-pok">Connect POK</a>, <a href="#owner-payments">Payment list</a></div>
 </section>
