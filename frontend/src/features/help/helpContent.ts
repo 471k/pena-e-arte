@@ -1546,7 +1546,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Artist, Owner],
     title: "My Earnings",
     route: "/earnings",
-    keywords: ["earnings", "payout", "commission", "how much did I make", "revenue", "session split", "my cut"],
+    keywords: ["earnings", "payout", "commission", "how much did I make", "revenue", "session split", "my cut", "lek", "euro"],
     summary: "See your own earnings trend over the last 12 months and a payment-by-payment breakdown of what you were paid.",
     steps: [
       "Go to My Earnings to see your earnings trend chart for the last 12 months.",
@@ -1557,6 +1557,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Only fully paid or partially-refunded-and-retained deposits count — the same rule the studio's own revenue report uses.",
       "An owner who has also enabled their own artist profile gets this same page for their own bookings.",
       "Totals are in your studio's currency. Payments recorded in any other currency are never mixed into a total — the report tells you how many were left out.",
+      "At studios in Albania that price in euros, booth-rent amounts on this page (and your hourly rate on your artist profile) also show the amount in lek, at the Bank of Albania's official rate. Earnings totals stay in euros, because they add up payments made at different rates.",
     ],
     relatedArticleIds: ["owner-reports", "owner-become-artist"],
   },
