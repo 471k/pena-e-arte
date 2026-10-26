@@ -16,12 +16,13 @@ data:
   # (docs/infra/pok-go-live-runbook.md), each only on Phi's explicit go:
   #   step 1 (2026-10-26): Pok__BaseUrl "https://api.pokpay.io" + Pok__WebhookCallbackBaseUrl
   #                        "https://app.tattooos.co"; card deposits still off
-  #   step 2:              Payments__CardDepositsEnabled "true", together with the "Connect POK" tour step
+  #   step 2 (2026-10-26): Payments__CardDepositsEnabled "true", together with the "Connect POK" tour step
   # POK keys are per environment: studios connected against POK staging must reconnect with production
-  # keys. Never point Pok__BaseUrl back at staging from here on; turn card deposits off instead.
+  # keys. Never point Pok__BaseUrl back at staging from here on; to stop card deposits in an emergency,
+  # set Payments__CardDepositsEnabled back to "false" (runbook "Emergency: turn card deposits off").
   Pok__BaseUrl: "https://api.pokpay.io"
   Pok__WebhookCallbackBaseUrl: "https://app.tattooos.co"
-  Payments__CardDepositsEnabled: "false"
+  Payments__CardDepositsEnabled: "true"
   # Saved cards (backlog C-9): off until the tokenisation calls match POK's documented API. Not part of
   # the go-live switch above; turning it on is its own reviewed change, after C-9 is fixed.
   Payments__SavedCardsEnabled: "false"
