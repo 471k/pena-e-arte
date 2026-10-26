@@ -2,17 +2,18 @@ import { Link } from "react-router-dom";
 import { ChevronRight, DollarSign, Percent } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import type { DepositRuleResponse } from "../depositRule.types";
+import { Money } from "@/shared/components/Money";
+import type { ReactNode } from "react";
 
 interface DepositRuleCardProps {
   rule: DepositRuleResponse;
 }
 
-function formatAmount(rule: DepositRuleResponse, currency: string | undefined): string {
+function formatAmount(rule: DepositRuleResponse, currency: string | undefined): ReactNode {
   if (rule.amountFixed !== null) {
-    return currency ? formatCurrency(rule.amountFixed, currency) : String(rule.amountFixed);
+    return currency ? <Money amount={rule.amountFixed} currency={currency} /> : String(rule.amountFixed);
   }
   return `${rule.amountPercent}%`;
 }

@@ -63,7 +63,9 @@ public class DepositHoldLostNotificationJob(
         DateTime localDate = TimezoneUtils.ToStudioLocal(payment.Appointment.Date, studio.Timezone);
         string body = emailRenderer.RenderDepositHoldLost(
             $"{payment.Client.FirstName} {payment.Client.LastName}",
-            MoneyText.Format(payment.Amount, payment.Currency),
+            // Albanian EUR studios: the lek frozen on the payment (staff see it too, spec Q3 decided 2026-10-26).
+            MoneyText.FormatWithReference(
+                payment.Amount, payment.Currency, payment.ReferenceAmount, payment.ReferenceCurrency, approximate: false),
             localDate.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture),
             $"{appSettings.BaseUrl}/payments/{payment.AppointmentId}",
             studio.ShowPlatformBranding);

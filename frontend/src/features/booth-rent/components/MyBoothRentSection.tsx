@@ -1,8 +1,8 @@
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetBoothRentSchedulesQuery, useGetBoothRentChargesQuery } from "../boothRentApi";
+import { Money } from "@/shared/components/Money";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -25,14 +25,14 @@ export function MyBoothRentSection() {
       <h2 className="text-sm font-semibold text-muted-foreground">Booth Rent</h2>
       {schedules.map((s) => (
         <p key={s.id} className="text-sm text-muted-foreground">
-          {currency ? formatCurrency(s.amountFixed, currency) : s.amountFixed} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
+          {currency ? <Money amount={s.amountFixed} currency={currency} /> : s.amountFixed} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
         </p>
       ))}
       {charges && charges.length > 0 && (
         <div className="space-y-1.5">
           {charges.map((c) => (
             <div key={c.id} className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-sm">{formatCurrency(c.amount, c.currency)} — {formatDate(c.chargedDate)}</span>
+              <span className="text-sm"><Money amount={c.amount} currency={c.currency} /> — {formatDate(c.chargedDate)}</span>
               <Badge
                 variant="outline"
                 className={c.isSettled

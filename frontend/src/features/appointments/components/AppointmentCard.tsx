@@ -8,7 +8,6 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
@@ -21,6 +20,7 @@ import {
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
 } from "../appointmentsApi";
+import { Money } from "@/shared/components/Money";
 
 interface AppointmentCardProps {
   appointment: AppointmentResponse;
@@ -125,7 +125,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1.5">
             <span>
-              Deposit: {studio ? formatCurrency(appointment.depositAmount, studio.currency) : appointment.depositAmount}
+              Deposit: {studio ? <Money amount={appointment.depositAmount} currency={studio.currency} /> : appointment.depositAmount}
             </span>
             <DepositStatusBadge status={appointment.depositStatus} />
           </div>

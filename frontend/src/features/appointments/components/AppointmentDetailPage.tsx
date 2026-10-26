@@ -22,7 +22,6 @@ import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
@@ -39,6 +38,7 @@ import {
   useMarkNoShowMutation,
   useAssignAppointmentArtistMutation,
 } from "../appointmentsApi";
+import { Money } from "@/shared/components/Money";
 
 function formatDateTime(dateStr: string, studioTimezone: string | undefined): string {
   return new Date(dateStr).toLocaleString("en-GB", withStudioTimeZone({
@@ -309,7 +309,7 @@ export function AppointmentDetailPage() {
                   label="Deposit"
                   value={
                     <span className="flex items-center gap-1.5">
-                      {studio ? formatCurrency(appt.depositAmount, studio.currency) : appt.depositAmount}
+                      {studio ? <Money amount={appt.depositAmount} currency={studio.currency} /> : appt.depositAmount}
                       <DepositStatusBadge status={appt.depositStatus} />
                     </span>
                   }

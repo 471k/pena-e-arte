@@ -1,4 +1,4 @@
-import { formatCurrency, formatWithReference, toWholeLek } from "@/shared/utils/formatCurrency";
+import { formatAtFrozenRate } from "@/shared/hooks/useEurAllRate";
 import { PaymentMethod, PaymentStatus, type PaymentResponse } from "./payment.types";
 
 /**
@@ -28,15 +28,11 @@ type DepositFields = Pick<PaymentResponse,
   | "referenceRate" | "referenceCurrency">;
 
 export function describeDeposit(p: DepositFields): DepositOutcome {
-  const money = (n: number) => formatCurrency(n, p.currency);
-  // Client strings only (owner strings stay in the studio's currency, spec Q3): for Albanian EUR
-  // studios each amount also shows its lek at the rate frozen when the client paid — never a later
-  // rate, also for refunds (spec D5).
-  const clientMoney = (n: number) =>
-    p.referenceRate != null && p.referenceCurrency
-      ? formatWithReference(n, p.currency,
-          { amount: toWholeLek(n, p.referenceRate), currency: p.referenceCurrency, approximate: false })
-      : money(n);
+  // Albanian EUR studios: owner and client strings alike show each amount's lek at the rate frozen
+  // when the client paid — never a later rate, also for refunds (spec D5; Q3 decided 2026-10-26:
+  // staff screens show lek too). Every other payment: exactly formatCurrency, as before.
+  const money = (n: number) => formatAtFrozenRate(n, p.currency, p);
+  const clientMoney = money;
   const isCash = p.method === PaymentMethod.Cash;
   const cancelled = p.appointmentStatus === "Cancelled";
 

@@ -1302,7 +1302,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "ALL and EUR are the two currencies POK takes card deposits in, so both work for card and cash. A studio set up earlier in another currency keeps it until it switches (it can only switch to ALL or EUR); until then its clients pay in cash.",
-      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout. If your studio is in Albania and prices in EUR, clients also see the lek amount next to each euro price, at the Bank of Albania's official rate; the rate on the day they pay is saved with the payment and printed on their receipt. Your own payment screens and reports stay in EUR.",
+      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout. If your studio is in Albania and prices in EUR, clients also see the lek amount next to each euro price, at the Bank of Albania's official rate; the rate on the day they pay is saved with the payment and printed on their receipt. Your own screens (payments, refunds, gift cards, services and other prices) show the lek too; report totals stay in EUR only, because they add up payments made at different rates.",
       "Switching currency doesn't convert existing numbers — a price of \"50\" stays \"50\", just read in the new currency. Review your services, deposit rules, packages, and gift-card amounts afterward.",
     ],
     relatedArticleIds: ["owner-studio-profile", "owner-connect-pok", "owner-payments"],

@@ -20,7 +20,7 @@ import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from 
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import {
   useGetPromoCodeByIdQuery,
@@ -28,6 +28,8 @@ import {
   useDeletePromoCodeMutation,
 } from "../promoCodesApi";
 import type { UpdatePromoCodeRequest } from "../promoCode.types";
+import { Money } from "@/shared/components/Money";
+import type { ReactNode } from "react";
 
 const editSchema = z
   .object({
@@ -52,9 +54,9 @@ function formatDate(iso: string): string {
   });
 }
 
-function formatAmount(amountFixed: number | null, amountPercent: number | null, currency: string | undefined): string {
+function formatAmount(amountFixed: number | null, amountPercent: number | null, currency: string | undefined): ReactNode {
   if (amountFixed !== null) {
-    return currency ? formatCurrency(amountFixed, currency) : String(amountFixed);
+    return currency ? <Money amount={amountFixed} currency={currency} /> : String(amountFixed);
   }
   return `${amountPercent}%`;
 }

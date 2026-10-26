@@ -103,5 +103,6 @@ public class RedeemGiftCardHandler(IAppDbContext db, ICurrentTenant tenant, ICur
 
     internal static GiftCardResponse Map(GiftCard g) => new(
         g.Id, g.StudioId, g.Code, g.InitialBalance, g.RemainingBalance,
-        g.PurchaserEmail, g.RecipientEmail, g.Status.ToString(), g.CreatedAt, g.Currency);
+        g.PurchaserEmail, g.RecipientEmail, g.Status.ToString(), g.CreatedAt, g.Currency,
+        g.ReferenceAmount, g.ReferenceCurrency, g.ReferenceRate, g.ReferenceRateDate);
 }

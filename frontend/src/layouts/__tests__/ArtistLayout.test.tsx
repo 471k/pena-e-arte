@@ -17,6 +17,7 @@ import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
 import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 import { messagingApi } from "@/features/messaging/messagingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
@@ -57,6 +58,10 @@ const server = setupServer(
   http.get("http://localhost/api/v1/conversations/unread-count", () =>
     HttpResponse.json(0),
   ),
+  // The layout loads the artist's studio (country + currency) so staff screens can show lek.
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "t1", countryCode: "AL", currency: "ALL" }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -84,10 +89,11 @@ function makeStore(overrides: StoreOverrides = {}) {
       [authApi.reducerPath]:           authApi.reducer,
       [conductReportsApi.reducerPath]: conductReportsApi.reducer,
       [messagingApi.reducerPath]:      messagingApi.reducer,
+      [studiosApi.reducerPath]:        studiosApi.reducer,
     },
     middleware: (gd) => gd().concat(
       notificationsApi.middleware, artistsApi.middleware, onboardingApi.middleware,
-      authApi.middleware, conductReportsApi.middleware, messagingApi.middleware,
+      authApi.middleware, conductReportsApi.middleware, messagingApi.middleware, studiosApi.middleware,
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

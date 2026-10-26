@@ -7,6 +7,7 @@ import { setupServer } from "msw/node";
 
 import { publicApi, type ExchangeRateResponse } from "@/features/public/publicApi";
 import { Money } from "@/shared/components/Money";
+import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 
 const RATE: ExchangeRateResponse = { rate: 90.74, rateDate: "2026-10-23", source: "BoA-Fix", isStale: false };
 
@@ -81,6 +82,31 @@ describe("<Money>", () => {
     renderMoney(<Money amount={50} currency="EUR" studio={{ countryCode: "XK", currency: "EUR" }} />);
     expect(screen.getByText("€50")).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 50));
+    expect(rateRequests).toBe(0);
+  });
+
+  it("on staff screens takes the studio from MoneyStudioContext (Q3)", async () => {
+    renderMoney(
+      <MoneyStudioContext.Provider value={AL_EUR}>
+        <Money amount={50} currency="EUR" />
+      </MoneyStudioContext.Provider>,
+    );
+    expect(await screen.findByText(/^€50 \(≈ ALL\s4,537\)$/)).toBeInTheDocument();
+  });
+
+  it("without a studio prop or context shows the plain amount and fetches nothing", async () => {
+    renderMoney(<Money amount={50} currency="EUR" />);
+    expect(screen.getByText("€50")).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(rateRequests).toBe(0);
+  });
+
+  it("converts any amount on a paid record at its frozen rate (refunds, balances)", () => {
+    renderMoney(
+      <Money amount={30} currency="EUR" studio={AL_EUR}
+        frozen={{ referenceAmount: 9074, referenceCurrency: "ALL", referenceRate: 90.74 }} />,
+    );
+    expect(screen.getByText(/^€30 \(ALL\s2,722\)$/)).toBeInTheDocument();
     expect(rateRequests).toBe(0);
   });
 

@@ -1,4 +1,6 @@
+import { useContext } from "react";
 import { formatCurrency, formatWithReference, lekReferenceApplies } from "@/shared/utils/formatCurrency";
+import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import {
   frozenReference,
   referenceAtLatestRate,
@@ -10,7 +12,8 @@ import {
 interface MoneyProps {
   amount:     number;
   currency:   string;
-  /** The studio the amount belongs to; lek is shown only for Albanian EUR studios. */
+  /** The studio the amount belongs to; lek is shown only for Albanian EUR studios. Defaults to the
+   * signed-in staff member's studio (MoneyStudioContext) on staff screens. */
   studio?:    MoneyStudio | null;
   /** The lek frozen on the payment or purchase, once the client has paid. */
   frozen?:    FrozenReference | null;
@@ -25,12 +28,14 @@ interface MoneyProps {
  * the latest BoA rate (the only case that fetches it); else the plain amount, exactly as before.
  */
 export function Money({ amount, currency, studio, frozen, className }: MoneyProps) {
-  const frozenLek = frozenReference(frozen);
+  const contextStudio = useContext(MoneyStudioContext);
+  const owner = studio ?? contextStudio;
+  const frozenLek = frozenReference(frozen, amount);
   if (frozenLek) {
-    return <span className={className}>{formatWithReference(amount, currency, frozenLek)}</span>;
+    return <MoneyText text={formatWithReference(amount, currency, frozenLek)} className={className} />;
   }
-  if (!lekReferenceApplies(studio?.countryCode, currency)) {
-    return <span className={className}>{formatCurrency(amount, currency)}</span>;
+  if (!lekReferenceApplies(owner?.countryCode, currency)) {
+    return <MoneyText text={formatCurrency(amount, currency)} className={className} />;
   }
   return <MoneyAtLatestRate amount={amount} currency={currency} className={className} />;
 }
@@ -40,5 +45,11 @@ function MoneyAtLatestRate({ amount, currency, className }: { amount: number; cu
   // shows alone — never a bare number and no error for the client.
   const { data: rate } = useEurAllRate();
   const reference = rate ? referenceAtLatestRate(amount, rate) : null;
-  return <span className={className}>{formatWithReference(amount, currency, reference)}</span>;
+  return <MoneyText text={formatWithReference(amount, currency, reference)} className={className} />;
+}
+
+// Bare text unless styled: the amount then reads as part of the sentence around it, and for every studio
+// that shows no lek the DOM is exactly what formatCurrency produced before (spec §10).
+function MoneyText({ text, className }: { text: string; className?: string }) {
+  return className ? <span className={className}>{text}</span> : <>{text}</>;
 }

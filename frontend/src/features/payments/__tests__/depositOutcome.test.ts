@@ -147,9 +147,9 @@ describe("describeDeposit — lek at the rate frozen when the client paid (Alban
       "€40 (ALL 3,630) kept under the studio's cancellation policy, €60 (ALL 5,444) refunded to your card");
   });
 
-  it("owner strings stay in the studio's currency only (Q3)", () => {
+  it("owner strings show the lek at the original rate too (Q3, decided 2026-10-26)", () => {
     const o = plainOutcome(euroPaid({ status: PaymentStatus.Refunded, refundedAmount: 30 }));
-    expect(o.ownerDetail).toBe("€70 kept · €30 refunded");
+    expect(o.ownerDetail).toBe("€70 (ALL 6,352) kept · €30 (ALL 2,722) refunded");
   });
 
   it("without a frozen reference the client text is exactly as before", () => {

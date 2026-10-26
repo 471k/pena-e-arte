@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import { ChevronRight, Clock, ListChecks } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import type { ServiceResponse } from "../service.types";
+import { Money } from "@/shared/components/Money";
 
 interface ServiceCardProps {
   service: ServiceResponse;
@@ -28,8 +28,8 @@ export function ServiceCard({ service }: ServiceCardProps) {
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {service.durationMinutes} min
-              {service.price !== null && currency && ` · from ${formatCurrency(service.price, currency)}`}
-              {service.depositAmount !== null && currency && ` · ${formatCurrency(service.depositAmount, currency)} deposit`}
+              {service.price !== null && currency && <> · from <Money amount={service.price} currency={currency} /></>}
+              {service.depositAmount !== null && currency && <> · <Money amount={service.depositAmount} currency={currency} /> deposit</>}
             </p>
           </div>
 

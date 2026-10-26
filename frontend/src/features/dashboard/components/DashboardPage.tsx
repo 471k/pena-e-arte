@@ -10,7 +10,6 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
 import { DepositStatus } from "@/features/appointments/appointment.types";
@@ -23,6 +22,7 @@ import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { SetupChecklist } from "./SetupChecklist";
+import { Money } from "@/shared/components/Money";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -268,7 +268,7 @@ function CashPendingSection() {
                 <div className="text-sm">
                   <span className="font-medium">{p.clientName}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
-                    {formatCurrency(p.amount, p.currency)}
+                    <Money amount={p.amount} currency={p.currency} frozen={p} />
                   </span>
                 </div>
                 <CashDepositConfirmButton
