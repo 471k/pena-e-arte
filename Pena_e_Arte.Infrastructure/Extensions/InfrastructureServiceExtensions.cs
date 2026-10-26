@@ -260,6 +260,7 @@ public static class InfrastructureServiceExtensions
         services.AddHttpClient(BankOfAlbaniaRateFetcher.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
         services.AddTransient<BankOfAlbaniaRateFetcher>();
         services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
+        services.AddScoped<IReferenceAmountSnapshotter, ReferenceAmountSnapshotter>();
         services.AddTransient<ExchangeRateFetchJob>();
 
         // Webhooks — reuses the Instagram token encryptor above (see ITokenEncryptor's own

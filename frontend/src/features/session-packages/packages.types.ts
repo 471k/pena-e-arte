@@ -32,6 +32,12 @@ export interface PackagePurchaseResponse {
   createdAt:         string;
   amount:            number;
   currency:          string;
+  /** Lek reference frozen at purchase (Albanian EUR studios only; null otherwise). */
+  referenceAmount?:   number | null;
+  referenceCurrency?: string | null;
+  referenceRate?:     number | null;
+  /** "yyyy-MM-dd" */
+  referenceRateDate?: string | null;
 }
 
 export interface PurchasePackageRequest {

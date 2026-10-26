@@ -19,7 +19,9 @@ namespace Pena_e_Arte.Application.Packages.Commands;
 /// </summary>
 public record PurchasePackageCommand(PurchasePackageRequest Request) : IRequest<PurchasePackageResponse>;
 
-public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, IPaymentProvider paymentProvider)
+public class PurchasePackageHandler(
+    IAppDbContext db, ICurrentTenant tenant, ICurrentUser currentUser, IPaymentProvider paymentProvider,
+    IReferenceAmountSnapshotter referenceAmounts)
     : IRequestHandler<PurchasePackageCommand, PurchasePackageResponse>
 {
     public async Task<PurchasePackageResponse> Handle(PurchasePackageCommand command, CancellationToken ct)
@@ -31,10 +33,11 @@ public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICu
             .FirstOrDefaultAsync(p => p.Id == command.Request.PackageId && p.IsActive, ct)
             ?? throw new NotFoundException(nameof(Package), command.Request.PackageId);
 
-        string currency = await db.Studios
+        var studio = await db.Studios
             .Where(s => s.Id == tenant.StudioId)
-            .Select(s => s.Currency)
+            .Select(s => new { s.CountryCode, s.Currency })
             .SingleAsync(ct);
+        string currency = studio.Currency;
         CardCurrencyGuard.EnsureSupported(paymentProvider, currency);
 
         Guid purchaseId = Guid.NewGuid();
@@ -55,6 +58,7 @@ public class PurchasePackageHandler(IAppDbContext db, ICurrentTenant tenant, ICu
             ClientToken = clientToken,
             Provider = "pok",
         };
+        await referenceAmounts.FreezeAsync(purchase, studio.CountryCode, currency, purchase.Amount, ct);
 
         db.PackagePurchases.Add(purchase);
         await db.SaveChangesAsync(ct);

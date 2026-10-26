@@ -20,7 +20,8 @@ public record ConfirmCashDepositCommand(Guid PaymentId)
     public Guid AuditTargetId => PaymentId;
 }
 
-public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUser, ISender sender)
+public class ConfirmCashDepositHandler(
+    IAppDbContext db, ICurrentUser currentUser, ISender sender, IReferenceAmountSnapshotter referenceAmounts)
     : IRequestHandler<ConfirmCashDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(ConfirmCashDepositCommand command, CancellationToken ct)
@@ -50,6 +51,14 @@ public class ConfirmCashDepositHandler(IAppDbContext db, ICurrentUser currentUse
         payment.PaidAt = DateTime.UtcNow;
         payment.CashConfirmedByUserId = currentUser.UserId;
         payment.UpdatedAt = DateTime.UtcNow;
+
+        // For cash, "when the client pays" is the studio confirming it was received (spec D3). A display
+        // feature must never block the confirmation, so a missing studio row just means no reference.
+        string? studioCountryCode = await db.Studios
+            .Where(s => s.Id == payment.StudioId)
+            .Select(s => s.CountryCode)
+            .FirstOrDefaultAsync(ct);
+        await referenceAmounts.FreezeAsync(payment, studioCountryCode ?? string.Empty, payment.Currency, payment.Amount, ct);
 
         if (appt is not null)
         {

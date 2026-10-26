@@ -31,4 +31,26 @@ public static class ReferenceAmount
     public static bool AppliesTo(string? countryCode, string? currency)
         => string.Equals(countryCode, "AL", StringComparison.OrdinalIgnoreCase)
            && string.Equals(currency, BaseCurrency, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Freezes the lek reference for <paramref name="eurAmount"/> at <paramref name="rate"/> onto
+    /// <paramref name="record"/> (spec D5). Overwrites any earlier reference on the same record, which
+    /// only happens when a fresh provider order replaces an old one.</summary>
+    public static void Freeze(IHasReferenceAmount record, decimal eurAmount, decimal rate, DateOnly rateDate, string source)
+    {
+        record.ReferenceCurrency = ReferenceCurrency;
+        record.ReferenceRate = rate;
+        record.ReferenceRateDate = rateDate;
+        record.ReferenceRateSource = source;
+        record.ReferenceAmount = ToWholeLek(eurAmount, rate);
+    }
+
+    /// <summary>Removes any lek reference: the record shows EUR only, as before this feature.</summary>
+    public static void Clear(IHasReferenceAmount record)
+    {
+        record.ReferenceCurrency = null;
+        record.ReferenceRate = null;
+        record.ReferenceRateDate = null;
+        record.ReferenceRateSource = null;
+        record.ReferenceAmount = null;
+    }
 }

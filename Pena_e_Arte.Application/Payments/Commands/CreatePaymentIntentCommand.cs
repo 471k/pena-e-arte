@@ -17,7 +17,8 @@ public class CreatePaymentIntentHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     IPaymentProvider paymentProvider,
-    IRealtimeNotifier realtime)
+    IRealtimeNotifier realtime,
+    IReferenceAmountSnapshotter referenceAmounts)
     : IRequestHandler<CreatePaymentIntentCommand, PaymentIntentResponse>
 {
     public async Task<PaymentIntentResponse> Handle(CreatePaymentIntentCommand command, CancellationToken ct)
@@ -36,10 +37,11 @@ public class CreatePaymentIntentHandler(
         if (existing is not null && existing.Status != PaymentStatus.Failed)
             throw new BusinessRuleViolationException("A payment already exists for this appointment.");
 
-        string currency = await db.Studios
+        var studio = await db.Studios
             .Where(s => s.Id == tenant.StudioId)
-            .Select(s => s.Currency)
+            .Select(s => new { s.CountryCode, s.Currency })
             .SingleAsync(ct);
+        string currency = studio.Currency;
         CardCurrencyGuard.EnsureSupported(paymentProvider, currency);
 
         if (!CurrencyCatalog.HasAtMostMinorUnits(req.Amount, currency))
@@ -91,6 +93,9 @@ public class CreatePaymentIntentHandler(
             payment.HoldExpiresAt = holdExpiresAt;
             payment.UpdatedAt = DateTime.UtcNow;
         }
+
+        // The client pays this order through the link: freeze the lek reference now (spec D3).
+        await referenceAmounts.FreezeAsync(payment, studio.CountryCode, currency, amount, ct);
 
         await db.SaveChangesAsync(ct);
 

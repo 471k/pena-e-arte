@@ -24,7 +24,8 @@ public class GetMyPackagePurchasesHandler(IAppDbContext db, ICurrentUser current
             .OrderByDescending(p => p.CreatedAt)
             .Select(p => new PackagePurchaseResponse(
                 p.Id, p.StudioId, p.PackageId, p.Package.Name, p.ClientId, p.SessionsRemaining, p.CreatedAt,
-                p.Amount, p.Currency))
+                p.Amount, p.Currency,
+                p.ReferenceAmount, p.ReferenceCurrency, p.ReferenceRate, p.ReferenceRateDate))
             .ToListAsync(ct);
     }
 }

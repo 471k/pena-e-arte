@@ -15,6 +15,7 @@ namespace Pena_e_Arte.UnitTests.Payments;
 public class PayDepositWithSavedCardHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IReferenceAmountSnapshotter _referenceAmounts = Substitute.For<IReferenceAmountSnapshotter>();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
@@ -41,7 +42,7 @@ public class PayDepositWithSavedCardHandlerTests
         _db.ChangeTracker.Clear();
     }
 
-    private PayDepositWithSavedCardHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _cardTokens, _jobs);
+    private PayDepositWithSavedCardHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _cardTokens, _jobs, _referenceAmounts);
 
     [Fact]
     public async Task Handle_SavedCardsSwitchedOff_RefusesBeforeAnyHoldOrPokCall()

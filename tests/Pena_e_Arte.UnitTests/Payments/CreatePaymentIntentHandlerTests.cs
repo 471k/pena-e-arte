@@ -14,6 +14,7 @@ namespace Pena_e_Arte.UnitTests.Payments;
 public class CreatePaymentIntentHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IReferenceAmountSnapshotter _referenceAmounts = Substitute.For<IReferenceAmountSnapshotter>();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly IPaymentProvider _stripe = Substitute.For<IPaymentProvider>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
@@ -33,7 +34,7 @@ public class CreatePaymentIntentHandlerTests
     }
 
     private CreatePaymentIntentHandler CreateSut() =>
-        new(_db, _tenant, _stripe, _realtime);
+        new(_db, _tenant, _stripe, _realtime, _referenceAmounts);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsClientToken()
@@ -153,6 +154,32 @@ public class CreatePaymentIntentHandlerTests
             .Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
 
         await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianEuroStudio_FreezesTheLekReference()
+    {
+        await SeedStudioAndAppointment();
+        CreatePaymentIntentHandler sut = new(_db, _tenant, _stripe, _realtime, ReferenceSnapshots.With(90.74m));
+
+        await sut.Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
+
+        Payment stored = _db.Payments.Single();
+        stored.ReferenceAmount.Should().Be(18148m); // 200 EUR x 90.74
+        stored.ReferenceRate.Should().Be(90.74m);
+        stored.ReferenceRateDate.Should().Be(ReferenceSnapshots.RateDate);
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianEuroStudio_NoRateYet_StillCreatesThePayment()
+    {
+        await SeedStudioAndAppointment();
+        CreatePaymentIntentHandler sut = new(_db, _tenant, _stripe, _realtime, ReferenceSnapshots.With(null));
+
+        PaymentIntentResponse result = await sut.Handle(new CreatePaymentIntentCommand(ValidRequest()), default);
+
+        result.ClientToken.Should().Be("pi_test_123_secret");
+        _db.Payments.Single().ReferenceAmount.Should().BeNull();
     }
 
     private async Task SeedStudio()

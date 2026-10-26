@@ -1835,6 +1835,23 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("varchar(320)");
 
+                    b.Property<decimal?>("ReferenceAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ReferenceCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<decimal?>("ReferenceRate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateOnly?>("ReferenceRateDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReferenceRateSource")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<decimal>("RemainingBalance")
                         .HasColumnType("decimal(18,4)");
 
@@ -2390,6 +2407,23 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<decimal?>("ReferenceAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ReferenceCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<decimal?>("ReferenceRate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateOnly?>("ReferenceRateDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReferenceRateSource")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
                     b.Property<int>("SessionsRemaining")
                         .HasColumnType("int");
 
@@ -2472,6 +2506,23 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<string>("ProviderReferenceId")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
+
+                    b.Property<decimal?>("ReferenceAmount")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ReferenceCurrency")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<decimal?>("ReferenceRate")
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<DateOnly?>("ReferenceRateDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReferenceRateSource")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
 
                     b.Property<decimal?>("RefundedAmount")
                         .HasColumnType("decimal(18,4)");

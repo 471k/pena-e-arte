@@ -23,5 +23,9 @@ internal static class PaymentExtensions
             new SessionSplitResponse(s.Id, s.PaymentId, s.Label, s.Amount, s.PaidAt)).ToList(),
         p.Currency,
         p.RefundedAmount,
-        p.Appointment?.Status.ToString()); // null when the navigation wasn't loaded
+        p.Appointment?.Status.ToString(), // null when the navigation wasn't loaded
+        p.ReferenceAmount,
+        p.ReferenceCurrency,
+        p.ReferenceRate,
+        p.ReferenceRateDate);
 }

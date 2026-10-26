@@ -147,7 +147,7 @@ public class CashPaymentIntegrationTests
         ICurrentUser currentUser = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns(artistUserId);
         currentUser.Role.Returns("artist");
-        ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
+        ConfirmCashDepositHandler handler = new(db, currentUser, _sender, Substitute.For<IReferenceAmountSnapshotter>());
 
         PaymentResponse result = await handler.Handle(new ConfirmCashDepositCommand(paymentId), default);
 
@@ -166,7 +166,7 @@ public class CashPaymentIntegrationTests
         ICurrentUser currentUser = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns(Guid.NewGuid());
         currentUser.Role.Returns("artist");
-        ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
+        ConfirmCashDepositHandler handler = new(db, currentUser, _sender, Substitute.For<IReferenceAmountSnapshotter>());
 
         Func<Task> act = () => handler.Handle(new ConfirmCashDepositCommand(paymentId), default);
 
@@ -409,7 +409,7 @@ public class CashPaymentIntegrationTests
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         ICurrentUser currentUser = Substitute.For<ICurrentUser>();
         currentUser.UserId.Returns(confirmerUserId);
-        ConfirmCashDepositHandler handler = new(db, currentUser, _sender);
+        ConfirmCashDepositHandler handler = new(db, currentUser, _sender, Substitute.For<IReferenceAmountSnapshotter>());
         return await handler.Handle(new ConfirmCashDepositCommand(paymentId), default);
     }
 
