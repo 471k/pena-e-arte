@@ -123,3 +123,37 @@ describe("describeDeposit (G-13)", () => {
     expect(o.charged).toBe(false);
   });
 });
+
+describe("describeDeposit — lek at the rate frozen when the client paid (Albanian EUR studios)", () => {
+  const euroPaid = (overrides: Partial<Fields>): Fields =>
+    payment({ amount: 100, currency: "EUR", referenceRate: 90.74, referenceCurrency: "ALL", ...overrides });
+
+  it("a full refund shows the refunded euros with their lek at the original rate", () => {
+    const o = plainOutcome(euroPaid({ status: PaymentStatus.Refunded, refundedAmount: 100 }));
+    expect(o.clientDetail).toBe("€100 (ALL 9,074) refunded to your card");
+  });
+
+  it("a partial refund converts only the refunded part, at the original rate (D5)", () => {
+    // 30 EUR x 90.74 = 2,722.2 -> 2,722, whatever today's rate is.
+    const o = plainOutcome(euroPaid({ status: PaymentStatus.Refunded, refundedAmount: 30 }));
+    expect(o.clientDetail).toBe("€30 (ALL 2,722) refunded to your card");
+  });
+
+  it("a late-cancel partial keep converts each part on its own", () => {
+    const o = plainOutcome(euroPaid({
+      status: PaymentStatus.Refunded, refundedAmount: 60, appointmentStatus: "Cancelled",
+    }));
+    expect(o.clientDetail).toBe(
+      "€40 (ALL 3,630) kept under the studio's cancellation policy, €60 (ALL 5,444) refunded to your card");
+  });
+
+  it("owner strings stay in the studio's currency only (Q3)", () => {
+    const o = plainOutcome(euroPaid({ status: PaymentStatus.Refunded, refundedAmount: 30 }));
+    expect(o.ownerDetail).toBe("€70 kept · €30 refunded");
+  });
+
+  it("without a frozen reference the client text is exactly as before", () => {
+    const o = plainOutcome(payment({ amount: 100, currency: "EUR", status: PaymentStatus.Refunded, refundedAmount: 30 }));
+    expect(o.clientDetail).toBe("€30 refunded to your card");
+  });
+});

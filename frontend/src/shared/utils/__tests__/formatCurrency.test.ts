@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, currencyLabel, currencyMinorUnits } from "@/shared/utils/formatCurrency";
+import {
+  formatCurrency, currencyLabel, currencyMinorUnits, formatWithReference, lekReferenceApplies, toWholeLek,
+} from "@/shared/utils/formatCurrency";
 
 describe("formatCurrency", () => {
   it("formats a whole EUR amount with no decimals", () => {
@@ -48,5 +50,46 @@ describe("formatCurrency", () => {
     expect(currencyMinorUnits("EUR")).toBe(2);
     expect(currencyMinorUnits("JPY")).toBe(0);
     expect(currencyMinorUnits("KWD")).toBe(3);
+  });
+});
+
+describe("lek next to euro (Albanian EUR studios)", () => {
+  // Intl puts a no-break space between "ALL" and the number; compare as plain text.
+  const plain = (s: string) => s.replaceAll(String.fromCharCode(160), " ");
+
+  it("toWholeLek converts then rounds once, half away from zero", () => {
+    expect(toWholeLek(50, 90.74)).toBe(4537);
+    expect(toWholeLek(0.5, 90.74)).toBe(45);   // 45.37
+    expect(toWholeLek(1, 90.5)).toBe(91);      // a .5 midpoint rounds up
+    expect(toWholeLek(-1, 90.5)).toBe(-91);    // and away from zero for negatives
+  });
+
+  it("lekReferenceApplies only to studios in Albania that price in euros", () => {
+    expect(lekReferenceApplies("AL", "EUR")).toBe(true);
+    expect(lekReferenceApplies("al", "eur")).toBe(true);
+    expect(lekReferenceApplies("AL", "ALL")).toBe(false);
+    expect(lekReferenceApplies("XK", "EUR")).toBe(false);
+    expect(lekReferenceApplies(undefined, "EUR")).toBe(false);
+  });
+
+  it("formatWithReference marks a pre-payment lek amount approximate", () => {
+    expect(plain(formatWithReference(50, "EUR", { amount: 4537, currency: "ALL", approximate: true })))
+      .toBe("€50 (≈ ALL 4,537)");
+  });
+
+  it("formatWithReference shows a frozen lek amount without the ≈", () => {
+    expect(plain(formatWithReference(50, "EUR", { amount: 4537, currency: "ALL", approximate: false })))
+      .toBe("€50 (ALL 4,537)");
+  });
+
+  it("formatWithReference names the day of a stale rate", () => {
+    expect(plain(formatWithReference(50, "EUR",
+      { amount: 4537, currency: "ALL", approximate: true, staleRateDate: "2026-10-23" })))
+      .toBe("€50 (≈ ALL 4,537 at the 23 Oct rate)");
+  });
+
+  it("formatWithReference with no reference is exactly formatCurrency", () => {
+    expect(formatWithReference(98.6, "EUR", null)).toBe(formatCurrency(98.6, "EUR"));
+    expect(formatWithReference(5000, "ALL", null)).toBe(formatCurrency(5000, "ALL"));
   });
 });

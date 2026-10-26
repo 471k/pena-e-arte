@@ -9,7 +9,8 @@ import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetPaymentByAppointmentQuery } from "@/features/payments/paymentsApi";
 import { describeDeposit } from "@/features/payments/depositOutcome";
 import { useGetDepositRuleDefaultsQuery, useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { Money } from "@/shared/components/Money";
+import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { formatNoticeWindow } from "@/shared/utils/noticeWindow";
 import { cn } from "@/shared/utils/cn";
@@ -182,10 +183,12 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
   const { data: payment, isLoading } = useGetPaymentByAppointmentQuery(appt.id, {
     skip: appt.depositAmount <= 0,
   });
-  const { currency: studioCurrency } = useStudioCurrency();
+  const { currency: studioCurrency, countryCode: studioCountry } = useStudioCurrency();
   // The payment row carries its own currency; "my studio" can still be loading right after a studio
   // switch (G-2), so never fall back to the bare number.
   const depositCurrency = payment?.currency ?? studioCurrency;
+  // Albanian EUR studios: lek next to the euro deposit — frozen once a card order exists, else approximate.
+  const moneyStudio: MoneyStudio = { countryCode: studioCountry, currency: depositCurrency };
 
   if (appt.depositAmount <= 0) return null;
 
@@ -239,6 +242,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
         <PaymentMethodSelector
           appointmentId={appt.id}
           amount={appt.depositAmount}
+          countryCode={studioCountry}
           onSuccess={(method) => {
             setPaying(false);
             toast.success(
@@ -266,7 +270,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Banknote className="h-3.5 w-3.5" />
-          Paying {formatCurrency(appt.depositAmount, payment.currency)} in cash at the studio
+          Paying <Money amount={appt.depositAmount} currency={payment.currency} studio={moneyStudio} /> in cash at the studio
         </p>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
           onClick={() => setPaying(true)}>
@@ -284,7 +288,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
       {payment?.status === "Pending"
         ? "Finish deposit payment"
         : depositCurrency
-          ? `Pay deposit — ${formatCurrency(appt.depositAmount, depositCurrency)}`
+          ? <>Pay deposit — <Money amount={appt.depositAmount} currency={depositCurrency} studio={moneyStudio} frozen={payment} /></>
           : "Pay deposit"}
     </Button>
   );

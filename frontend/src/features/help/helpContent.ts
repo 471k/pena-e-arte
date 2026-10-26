@@ -48,6 +48,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "Your booking is a request, not a confirmed slot — the studio replies within 24 hours.",
+      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
       "Images upload as soon as you pick them — wait for each thumbnail to finish before submitting.",
       "If you let the studio choose, you won't know your artist until the studio assigns one — you'll get an email when they do.",
       "Booking without an account? See \"After you book as a guest\" for what happens next.",
@@ -142,6 +143,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Gift card balances never expire.",
       "You can apply a gift card for less than its full balance — the remaining balance stays on the card for later.",
+      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
     ],
     relatedArticleIds: ["owner-gift-cards"],
   },
@@ -157,7 +159,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check your email to complete payment once your purchase is confirmed.",
       "When booking, toggle \"Use a package\" and pick one with sessions remaining — no deposit is needed for that booking.",
     ],
-    tips: ["Packages are non-refundable once purchased, and don't expire — unused sessions stay available until you use them."],
+    tips: [
+      "Packages are non-refundable once purchased, and don't expire — unused sessions stay available until you use them.",
+      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
+    ],
     relatedArticleIds: ["owner-packages", "client-book-appointment"],
   },
   {
@@ -1297,7 +1302,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "ALL and EUR are the two currencies POK takes card deposits in, so both work for card and cash. A studio set up earlier in another currency keeps it until it switches (it can only switch to ALL or EUR); until then its clients pay in cash.",
-      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout.",
+      "Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout. If your studio is in Albania and prices in EUR, clients also see the lek amount next to each euro price, at the Bank of Albania's official rate; the rate on the day they pay is saved with the payment and printed on their receipt. Your own payment screens and reports stay in EUR.",
       "Switching currency doesn't convert existing numbers — a price of \"50\" stays \"50\", just read in the new currency. Review your services, deposit rules, packages, and gift-card amounts afterward.",
     ],
     relatedArticleIds: ["owner-studio-profile", "owner-connect-pok", "owner-payments"],

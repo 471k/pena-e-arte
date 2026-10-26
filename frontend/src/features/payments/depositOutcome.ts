@@ -1,4 +1,4 @@
-import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { formatCurrency, formatWithReference, toWholeLek } from "@/shared/utils/formatCurrency";
 import { PaymentMethod, PaymentStatus, type PaymentResponse } from "./payment.types";
 
 /**
@@ -24,10 +24,19 @@ export interface DepositOutcome {
 }
 
 type DepositFields = Pick<PaymentResponse,
-  "amount" | "status" | "method" | "paidAt" | "currency" | "refundedAmount" | "appointmentStatus">;
+  "amount" | "status" | "method" | "paidAt" | "currency" | "refundedAmount" | "appointmentStatus"
+  | "referenceRate" | "referenceCurrency">;
 
 export function describeDeposit(p: DepositFields): DepositOutcome {
   const money = (n: number) => formatCurrency(n, p.currency);
+  // Client strings only (owner strings stay in the studio's currency, spec Q3): for Albanian EUR
+  // studios each amount also shows its lek at the rate frozen when the client paid — never a later
+  // rate, also for refunds (spec D5).
+  const clientMoney = (n: number) =>
+    p.referenceRate != null && p.referenceCurrency
+      ? formatWithReference(n, p.currency,
+          { amount: toWholeLek(n, p.referenceRate), currency: p.referenceCurrency, approximate: false })
+      : money(n);
   const isCash = p.method === PaymentMethod.Cash;
   const cancelled = p.appointmentStatus === "Cancelled";
 
@@ -67,7 +76,7 @@ export function describeDeposit(p: DepositFields): DepositOutcome {
       }
       if (kept <= 0) {
         return { kind: "refunded", ownerLabel: "Refunded", ownerDetail: `${money(givenBack)} refunded to the client`,
-          clientLabel: "Deposit refunded", clientDetail: `${money(givenBack)} refunded to your card`, charged: true };
+          clientLabel: "Deposit refunded", clientDetail: `${clientMoney(givenBack)} refunded to your card`, charged: true };
       }
       if (cancelled) {
         // Card deposits are charged when the client pays (C-4, 2026-10-22), so the part the policy
@@ -76,12 +85,12 @@ export function describeDeposit(p: DepositFields): DepositOutcome {
         return { kind: "partlyKept", ownerLabel: "Partly kept",
           ownerDetail: `${money(kept)} kept · ${money(givenBack)} refunded (cancellation policy)`,
           clientLabel: "Partly refunded",
-          clientDetail: `${money(kept)} kept under the studio's cancellation policy, ${money(givenBack)} refunded to your card`,
+          clientDetail: `${clientMoney(kept)} kept under the studio's cancellation policy, ${clientMoney(givenBack)} refunded to your card`,
           charged: true };
       }
       return { kind: "partlyRefunded", ownerLabel: "Partly refunded",
         ownerDetail: `${money(kept)} kept · ${money(givenBack)} refunded`,
-        clientLabel: "Partly refunded", clientDetail: `${money(givenBack)} refunded to your card`, charged: true };
+        clientLabel: "Partly refunded", clientDetail: `${clientMoney(givenBack)} refunded to your card`, charged: true };
     }
   }
 }

@@ -91,6 +91,37 @@ public class GetPaymentClientTokenHandlerTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    [Fact]
+    public async Task Handle_ReturnsTheFrozenLekAndTheStudioCountry()
+    {
+        _db.Studios.Add(new Studio { Id = _studioId, Name = "S", Slug = "s", CountryCode = "AL", Currency = "EUR" });
+        Guid paymentId = await SeedPayment("order_ref");
+        Payment payment = _db.Payments.Single(p => p.Id == paymentId);
+        payment.Currency = "EUR";
+        payment.ReferenceAmount = 4537m;
+        payment.ReferenceCurrency = "ALL";
+        await _db.SaveChangesAsync();
+        _user.Role.Returns("owner");
+
+        PaymentClientTokenResponse result = await CreateSut().Handle(new GetPaymentClientTokenQuery(paymentId), default);
+
+        result.ReferenceAmount.Should().Be(4537m);
+        result.ReferenceCurrency.Should().Be("ALL");
+        result.StudioCountryCode.Should().Be("AL");
+    }
+
+    [Fact]
+    public async Task Handle_NoReference_LeavesTheLekFieldsNull()
+    {
+        Guid paymentId = await SeedPayment("order_plain");
+        _user.Role.Returns("owner");
+
+        PaymentClientTokenResponse result = await CreateSut().Handle(new GetPaymentClientTokenQuery(paymentId), default);
+
+        result.ReferenceAmount.Should().BeNull();
+        result.ReferenceCurrency.Should().BeNull();
+    }
+
     private async Task<Guid> SeedPayment(string? token)
     {
         Payment payment = new()

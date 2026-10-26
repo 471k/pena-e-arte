@@ -81,6 +81,11 @@ export interface ClientTokenResponse {
   clientToken: string;
   amount:      number;
   currency:    string;
+  /** The lek frozen on this payment when its order was created (Albanian EUR studios; null otherwise). */
+  referenceAmount?:   number | null;
+  referenceCurrency?: string | null;
+  /** The payment's studio country (with currency: lek + the "charged in euros" line for AL + EUR). */
+  studioCountryCode?: string | null;
 }
 
 /** A closed set to switch on for `PaymentCapabilitiesResponse.cardUnavailableReason` — mirrors

@@ -6,13 +6,19 @@ import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { lekReferenceApplies } from "@/shared/utils/formatCurrency";
+import { Money } from "@/shared/components/Money";
+import type { FrozenReference, MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import {
   useGetPaymentClientTokenQuery,
   useGetPaymentCapabilitiesQuery,
   useConfirmCardPaymentMutation,
 } from "../paymentsApi";
 import { PaymentStatus } from "../payment.types";
+
+// Spec D6: POK's own card page shows euros only; this is the line our page adds right before paying.
+export const CARD_CHARGED_IN_EUR_TEXT =
+  "Your card is charged in euros. If your card is in lek, your bank converts it at its own rate, which can differ slightly.";
 
 // Card deposits are charged when the client pays (go-live decision C-4, 2026-10-22).
 const DEPOSIT_PAID_TEXT =
@@ -24,9 +30,11 @@ function CheckoutForm({
   pokEnvironment,
   amount,
   currency,
+  studio,
+  frozen,
 }: {
   paymentId: string; orderId: string; pokEnvironment: "staging" | "production";
-  amount: number; currency: string;
+  amount: number; currency: string; studio: MoneyStudio; frozen: FrozenReference;
 }) {
   const navigate = useNavigate();
   const [confirmCardPayment] = useConfirmCardPaymentMutation();
@@ -88,9 +96,13 @@ function CheckoutForm({
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
         You are paying a deposit of{" "}
-        <span className="font-semibold text-foreground">{formatCurrency(amount, currency)}</span>.
+        <Money amount={amount} currency={currency} studio={studio} frozen={frozen}
+          className="font-semibold text-foreground" />.
         Your card is charged now. If you cancel, the studio's cancellation policy decides how much is refunded.
       </p>
+      {(lekReferenceApplies(studio.countryCode, currency) || frozen.referenceAmount != null) && (
+        <p className="text-sm text-muted-foreground">{CARD_CHARGED_IN_EUR_TEXT}</p>
+      )}
       <GuestCheckoutForm
         orderId={orderId}
         onSuccess={() => void handleSuccess()}
@@ -195,6 +207,8 @@ export function DepositCheckoutPage() {
                 pokEnvironment={pokEnvironment as "staging" | "production"}
                 amount={data.amount}
                 currency={data.currency}
+                studio={{ countryCode: data.studioCountryCode, currency: data.currency }}
+                frozen={{ referenceAmount: data.referenceAmount, referenceCurrency: data.referenceCurrency }}
               />
             )}
           </CardContent>

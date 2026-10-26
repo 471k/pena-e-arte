@@ -215,7 +215,9 @@ describe("ArtistPortfolioPage", () => {
 
   it("renders hourly rate when hourlyRate is not null", () => {
     renderPage();
-    expect(screen.getByText(/€120\/hr/i)).toBeInTheDocument();
+    // The amount is its own element (<Money>), so match the wrapping element's whole text.
+    expect(screen.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "€120/hr"))
+      .toBeInTheDocument();
   });
 
   it("does not render hourly rate when hourlyRate is null", () => {

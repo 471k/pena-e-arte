@@ -4,7 +4,7 @@ import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { AlertCircle, Banknote, CheckCircle2, CreditCard, Loader2, Star } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { Money } from "@/shared/components/Money";
 import {
   useCreateDepositPaymentMutation,
   useDeclareCashDepositMutation,
@@ -22,6 +22,8 @@ type Tab = "card" | "cash" | "saved";
 interface PaymentMethodSelectorProps {
   appointmentId: string;
   amount:        number;
+  /** The studio's country: with its currency it decides whether lek is shown next to euro (AL + EUR). */
+  countryCode?:  string | null;
   onSuccess:     (method: "card" | "cash") => void;
   onError:       (message: string) => void;
 }
@@ -413,9 +415,10 @@ function SavedCardTab({
 function CashInfoPanel({
   appointmentId,
   amount,
+  countryCode,
   onSuccess,
   onError,
-}: Pick<PaymentMethodSelectorProps, "appointmentId" | "amount" | "onSuccess" | "onError">) {
+}: Pick<PaymentMethodSelectorProps, "appointmentId" | "amount" | "countryCode" | "onSuccess" | "onError">) {
   const [declareCash, { isLoading }] = useDeclareCashDepositMutation();
   const { data: capabilities } = useGetPaymentCapabilitiesQuery();
 
@@ -437,7 +440,8 @@ function CashInfoPanel({
             <>
               Your deposit of{" "}
               <span className="font-medium text-foreground">
-                {formatCurrency(amount, capabilities.currency)}
+                <Money amount={amount} currency={capabilities.currency}
+                  studio={{ countryCode, currency: capabilities.currency }} />
               </span>{" "}
               will be collected in cash when you arrive.
             </>
@@ -465,6 +469,7 @@ function CashInfoPanel({
 export function PaymentMethodSelector({
   appointmentId,
   amount,
+  countryCode,
   onSuccess,
   onError,
 }: PaymentMethodSelectorProps) {
@@ -547,6 +552,7 @@ export function PaymentMethodSelector({
         <CashInfoPanel
           appointmentId={appointmentId}
           amount={amount}
+          countryCode={countryCode}
           onSuccess={onSuccess}
           onError={onError}
         />
