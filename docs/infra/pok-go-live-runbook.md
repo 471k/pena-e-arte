@@ -30,7 +30,7 @@ All of these must be true. Tick them in the blockers doc, not here.
   charges card deposits when the client pays must be live before go-live; the C-11 tests confirm it with real money.
 - [ ] **Legal sign-off for EUR deposits**, only if any studio will take deposits in EUR.
 - [ ] **POK's written answers**, at least on production pricing, refund timing and privacy (email
-      questions Q1, Q3, Q5, Q8), or Phi decides to go without them. The hold limit (Q4) no longer
+      questions Q1, Q2, Q6), or Phi decides to go without them. The hold limit (Q4) no longer
       blocks: deposits are charged at booking.
 - [ ] **Production POK merchant account ready:** Phi has the production key ID, key secret and
       merchant ID for our own test studio (kept in KeePass, never in chat or the repo).
