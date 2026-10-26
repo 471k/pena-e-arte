@@ -32,8 +32,8 @@ public class RegisterSoloArtistValidator : AbstractValidator<RegisterSoloArtistC
             .WithMessage("Country must be a known ISO 3166-1 alpha-2 code.")
             .When(x => !string.IsNullOrWhiteSpace(x.Request.CountryCode));
         RuleFor(x => x.Request.Currency)
-            .Must(c => CurrencyCatalog.IsSupported(c!))
-            .WithMessage("Currency must be a known ISO 4217 code.")
+            .Must(StudioCurrencies.IsOffered)
+            .WithMessage("Currency must be ALL (Albanian lek) or EUR (euro).")
             .When(x => x.Request.Currency is not null);
         RuleFor(x => x.Request.Timezone)
             .Must(tz => TimeZoneInfo.TryFindSystemTimeZoneById(tz!.Trim(), out _))
@@ -67,8 +67,8 @@ public class RegisterSoloArtistHandler(
         // than fail (logged below once studio.Id exists).
         string countryCode = req.CountryCode?.Trim().ToUpperInvariant() ?? "AL";
         string currency = req.CountryCode is null
-            ? "ALL"
-            : (req.Currency ?? CountryCurrency.DefaultCurrencyFor(countryCode))!.ToUpperInvariant();
+            ? StudioCurrencies.Primary
+            : req.Currency?.ToUpperInvariant() ?? StudioCurrencies.DefaultFor(countryCode);
 
         Studio studio = new()
         {

@@ -80,7 +80,7 @@ public class UpdateStudioCurrencyValidator : AbstractValidator<UpdateStudioCurre
         RuleFor(x => x.Currency)
             .NotEmpty()
             .Length(3)
-            .Must(c => CurrencyCatalog.IsSupported(c))
-            .WithMessage("Currency must be a known ISO 4217 code.");
+            .Must(StudioCurrencies.IsOffered)
+            .WithMessage("Currency must be ALL (Albanian lek) or EUR (euro).");
     }
 }

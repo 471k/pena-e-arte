@@ -181,6 +181,28 @@ describe("CurrencySettingsCard", () => {
     expect(await screen.findByText(/card provider does not support this currency/i)).toBeInTheDocument();
   });
 
+  it("offers only Albanian Lek (ALL) then Euro (EUR)", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await screen.findByText("€ — EUR");
+
+    await user.click(screen.getByRole("combobox"));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["Albanian Lek (ALL)", "Euro (EUR)"]);
+  });
+
+  it("an older studio in another currency still sees it, listed after ALL and EUR", async () => {
+    server.use(http.get("http://localhost/api/v1/studios/me", () =>
+      HttpResponse.json({ ...UNLOCKED_STUDIO, currency: "USD" })));
+    const user = userEvent.setup();
+    renderCard();
+    await screen.findByText(/— USD/);
+
+    await user.click(screen.getByRole("combobox"));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["Albanian Lek (ALL)", "Euro (EUR)", "US Dollar (USD)"]);
+  });
+
   it("shows a locked, read-only currency with a support link and no picker", async () => {
     server.use(http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(LOCKED_STUDIO)));
     renderCard();

@@ -277,13 +277,24 @@ public class RegisterStudioHandlerTests
     }
 
     [Fact]
-    public async Task Handle_JapanCountry_DefaultsToJpy()
+    public async Task Handle_KosovoCountry_DefaultsToEur()
     {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "XK", Currency = null };
+
+        StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
+
+        result.Currency.Should().Be("EUR");
+    }
+
+    [Fact]
+    public async Task Handle_CountryWhoseCurrencyIsNotOffered_DefaultsToAll()
+    {
+        // Studios may only use ALL or EUR (2026-10-26); Japan's own JPY isn't one of them.
         RegisterStudioRequest req = ValidRequest() with { CountryCode = "JP", Currency = null };
 
         StudioResponse result = await CreateSut().Handle(new RegisterStudioCommand(req), default);
 
-        result.Currency.Should().Be("JPY");
+        result.Currency.Should().Be("ALL");
     }
 
     [Fact]
@@ -327,6 +338,35 @@ public class RegisterStudioHandlerTests
         RegisterStudioRequest req = ValidRequest() with { CountryCode = "AL", Currency = "EURO" };
         new RegisterStudioValidator()
             .ShouldFailOn(new RegisterStudioCommand(req), "Request.Currency");
+    }
+
+    [Theory]
+    [InlineData("USD")]
+    [InlineData("GBP")]
+    [InlineData("JPY")]
+    public void Validator_RealCurrencyThatIsNotOffered_Fails(string currency)
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "AL", Currency = currency };
+        new RegisterStudioValidator()
+            .ShouldFailOn(new RegisterStudioCommand(req), "Request.Currency");
+    }
+
+    [Theory]
+    [InlineData("ALL")]
+    [InlineData("EUR")]
+    [InlineData("eur")]
+    public void Validator_OfferedCurrency_IsValid(string currency)
+    {
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "AL", Currency = currency };
+        new RegisterStudioValidator().ShouldBeValid(new RegisterStudioCommand(req));
+    }
+
+    [Fact]
+    public void Validator_NoCurrencyForCountryWhoseCurrencyIsNotOffered_IsValid()
+    {
+        // The handler falls back to ALL, so a missing currency is never an error.
+        RegisterStudioRequest req = ValidRequest() with { CountryCode = "JP", Currency = null };
+        new RegisterStudioValidator().ShouldBeValid(new RegisterStudioCommand(req));
     }
 
 }

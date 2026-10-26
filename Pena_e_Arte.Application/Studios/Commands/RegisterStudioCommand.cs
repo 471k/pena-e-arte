@@ -63,7 +63,7 @@ public class RegisterStudioHandler(
         DateTime graceEnd = trialEnd.AddDays(7);
 
         string countryCode = req.CountryCode!.Trim().ToUpperInvariant();
-        string currency = (req.Currency ?? CountryCurrency.DefaultCurrencyFor(countryCode))!.ToUpperInvariant();
+        string currency = req.Currency?.ToUpperInvariant() ?? StudioCurrencies.DefaultFor(countryCode);
 
         Studio studio = new()
         {
