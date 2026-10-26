@@ -71,6 +71,12 @@ export const ownerTourSteps: TourStep[] = [
     route: "/studios/me",
   },
   {
+    targetSelector: '[data-tour="owner-pok-card"]',
+    title: "Take card deposits with POK",
+    body: "Connect your studio's own POK merchant account to let clients pay deposits by card. Copy the key ID, key secret and merchant ID from POK Business → API Keys — we check them with POK before saving. Without it, clients pay deposits in cash.",
+    route: "/studios/me",
+  },
+  {
     targetSelector: '[data-tour="owner-billing-nav"]',
     title: "Billing & subscription",
     body: "Check your trial status, plan usage, and manage your subscription here.",
