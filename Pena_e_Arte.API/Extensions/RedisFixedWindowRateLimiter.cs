@@ -55,7 +55,7 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
         }
         catch (Exception ex) when (IsRedisException(ex))
         {
-            _logger.LogWarning("Redis rate limiter unavailable — failing open");
+            LogFailOpen(ex);
             return SuccessfulLease.Instance;
         }
     }
@@ -76,7 +76,7 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
         }
         catch (Exception ex) when (IsRedisException(ex))
         {
-            _logger.LogWarning("Redis rate limiter unavailable — failing open");
+            LogFailOpen(ex);
             return SuccessfulLease.Instance;
         }
     }
@@ -113,6 +113,24 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
         return count <= _permitLimit
             ? SuccessfulLease.Instance
             : new FailedLease(TimeSpan.FromSeconds(Math.Max(ttl, 1)));
+    }
+
+    // Logs only the exception types and the Redis failure kind, never the exception itself:
+    // StackExchange.Redis messages can include the key, and the key holds the client IP.
+    private void LogFailOpen(Exception ex)
+    {
+        string? failure = ex switch
+        {
+            RedisConnectionException connection => connection.FailureType.ToString(),
+            RedisTimeoutException timeout => timeout.Commandstatus.ToString(),
+            _ => null,
+        };
+
+        _logger.LogWarning(
+            "Redis rate limiter unavailable — failing open ({RedisExceptionType}, failure {RedisFailure}, inner {RedisInnerExceptionType})",
+            ex.GetType().Name,
+            failure,
+            ex.InnerException?.GetType().Name);
     }
 
     private static bool IsRedisException(Exception ex) =>

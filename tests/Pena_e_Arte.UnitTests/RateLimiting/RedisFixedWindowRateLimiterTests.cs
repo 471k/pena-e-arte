@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.API.Extensions;
+using Pena_e_Arte.UnitTests.ConsentForms;
 using StackExchange.Redis;
 using System.Threading.RateLimiting;
 
@@ -131,6 +133,50 @@ public class RedisFixedWindowRateLimiterTests
         RateLimitLease lease = await limiter.AcquireAsync(1);
 
         Assert.True(lease.IsAcquired, "Should fail open on Redis timeout");
+    }
+
+    [Fact]
+    public async Task AcquireAsync_RedisTimeout_LogsExceptionTypeAndStatus_NotTheKey()
+    {
+        IDatabase db = Substitute.For<IDatabase>();
+        db.ScriptEvaluateAsync(
+                Arg.Any<string>(),
+                Arg.Any<RedisKey[]>(),
+                Arg.Any<RedisValue[]>(),
+                Arg.Any<CommandFlags>())
+            .Returns<Task<RedisResult>>(_ => throw new RedisTimeoutException("Timeout key=rl:test:127.0.0.1", CommandStatus.Sent));
+        CapturingLogger<RedisFixedWindowRateLimiterTests> logger = new();
+        RedisFixedWindowRateLimiter limiter = new(db, "rl:test:127.0.0.1", Limit, Window, logger);
+
+        await limiter.AcquireAsync(1);
+
+        (LogLevel level, string message) = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Warning, level);
+        Assert.Contains("RedisTimeoutException", message);
+        Assert.Contains("Sent", message);
+        Assert.DoesNotContain("127.0.0.1", message);
+    }
+
+    [Fact]
+    public void AttemptAcquire_RedisUnavailable_LogsFailureType()
+    {
+        IDatabase db = Substitute.For<IDatabase>();
+        db.ScriptEvaluate(
+                Arg.Any<string>(),
+                Arg.Any<RedisKey[]>(),
+                Arg.Any<RedisValue[]>(),
+                Arg.Any<CommandFlags>())
+            .Returns(_ => throw new RedisConnectionException(
+                ConnectionFailureType.SocketFailure, "test", new IOException("reset")));
+        CapturingLogger<RedisFixedWindowRateLimiterTests> logger = new();
+        RedisFixedWindowRateLimiter limiter = new(db, "rl:test:127.0.0.1", Limit, Window, logger);
+
+        limiter.AttemptAcquire(1);
+
+        (_, string message) = Assert.Single(logger.Entries);
+        Assert.Contains("RedisConnectionException", message);
+        Assert.Contains("SocketFailure", message);
+        Assert.Contains("IOException", message);
     }
 
     [Fact]
