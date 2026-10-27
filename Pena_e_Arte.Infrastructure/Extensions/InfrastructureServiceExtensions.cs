@@ -67,6 +67,7 @@ public static class InfrastructureServiceExtensions
         // email-confirmation links (both use the "Default" provider). A user whose
         // verification link expires can request a new one via /auth/resend-verification.
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));
+        services.AddSharedDataProtection();
 
         var redisConnectionString = configuration["Redis:ConnectionString"]!;
         services.AddStackExchangeRedisCache(options =>
