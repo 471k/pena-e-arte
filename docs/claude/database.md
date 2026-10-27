@@ -149,6 +149,22 @@ For Albanian studios that price in EUR, clients see the lek amount next to every
 
 ---
 
+## Data Protection Keys (2026-10-27)
+
+- **`DataProtectionKeys`** (`Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey`,
+  migration `AddDataProtectionKeys`) — **global, not a `TenantEntity`**: ASP.NET Core's key ring,
+  shared by every API replica (`AddSharedDataProtection`, application name `TattooOS`). It signs
+  Identity's password-reset, set-password and email-confirmation tokens.
+- **Why it's in the database:** before this, each pod kept its own in-memory keys. A link only
+  worked on the pod that issued it, and every deploy invalidated all outstanding links (production,
+  27 Oct 2026). `Program.cs` refuses to start if the key repository isn't this table
+  (`EnsureSharedKeyRepository`).
+- **Operations:** never truncate the table and never change the application name; either one
+  invalidates every outstanding link. The rows hold the key XML unencrypted at rest, so database
+  access is the security boundary.
+
+---
+
 ## Entity Configuration Pattern
 
 Never put EF attributes on domain entities. Use `IEntityTypeConfiguration`.

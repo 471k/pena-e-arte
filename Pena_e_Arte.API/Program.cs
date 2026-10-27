@@ -61,6 +61,9 @@ try
 
     WebApplication app = builder.Build();
 
+    // Refuses to start with per-pod Data Protection keys (see DataProtectionExtensions).
+    DataProtectionExtensions.EnsureSharedKeyRepository(app.Services);
+
     // Gated behind Migrations:ApplyOnStartup (default true, so local dotnet run / docker
     // compose behavior is unchanged) — with 2+ K8s replicas rolling out simultaneously,
     // every pod running MigrateAsync() unguarded races on the same migration history table.
