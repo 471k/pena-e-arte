@@ -8,5 +8,6 @@ public class CancelAppointmentValidator : AbstractValidator<CancelAppointmentCom
     public CancelAppointmentValidator()
     {
         RuleFor(x => x.AppointmentId).NotEmpty();
+        RuleFor(x => x.Reason).IsInEnum();
     }
 }

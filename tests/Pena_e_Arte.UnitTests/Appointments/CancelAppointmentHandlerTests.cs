@@ -98,6 +98,34 @@ public class CancelAppointmentHandlerTests
             .NotifyStudioAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 
+    // ── Declining a booking request (28 Oct 2026) ──────────────────────────────
+
+    [Fact]
+    public async Task Handle_StaffDeclinesARequest_CancelsItWithTheDeclinedReason()
+    {
+        Guid id = await SeedAppointment(AppointmentStatus.Pending);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id, CancellationReason.StudioDeclined), default);
+
+        Appointment appointment = _db.Appointments.Single(a => a.Id == id);
+        appointment.Status.Should().Be(AppointmentStatus.Cancelled);
+        appointment.CancellationReason.Should().Be(CancellationReason.StudioDeclined);
+        await _sender.Received(1).Send(
+            Arg.Is<SendAppointmentCancellationCommand>(c => c.AppointmentId == id), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_StaffDeclinesAConfirmedAppointment_Throws()
+    {
+        // A booking the studio already accepted is cancelled, not declined.
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
+
+        Func<Task> act = () => CreateSut().Handle(new CancelAppointmentCommand(id, CancellationReason.StudioDeclined), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        _db.Appointments.Single(a => a.Id == id).Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
     [Fact]
     public async Task Handle_ValidCancel_DispatchesCancellationEmail()
     {

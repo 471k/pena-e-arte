@@ -992,6 +992,20 @@ describe("MyBookingsSection", () => {
 
   // ── Client self-cancel ─────────────────────────────────────────────────────
 
+  // 28 Oct 2026: a request the studio declined reads as declined, not just "cancelled".
+  it.each([
+    ["StudioDeclined", "The studio couldn't take this request."],
+    ["StudioCancelled", "This appointment was cancelled."],
+  ])("explains a %s booking in plain words", async (reason, text) => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, status: "Cancelled", cancellationReason: reason }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByText(text, { exact: false })).toBeInTheDocument();
+  });
+
   it("shows a 'Cancel appointment' link for a Pending upcoming booking", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),

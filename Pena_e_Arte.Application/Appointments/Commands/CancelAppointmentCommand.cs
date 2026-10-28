@@ -73,6 +73,13 @@ public class CancelAppointmentHandler(
         {
             throw new BusinessRuleViolationException("Completed appointments cannot be cancelled.");
         }
+        else if (command.Reason == CancellationReason.StudioDeclined
+                 && appointment.Status != AppointmentStatus.Pending)
+        {
+            // Declining answers a request; a booking the studio already confirmed is cancelled.
+            throw new BusinessRuleViolationException(
+                "Only a booking request can be declined; cancel a confirmed appointment instead.");
+        }
 
         appointment.Status = AppointmentStatus.Cancelled;
         appointment.CancellationReason = isClient ? CancellationReason.ClientCancelled : command.Reason;

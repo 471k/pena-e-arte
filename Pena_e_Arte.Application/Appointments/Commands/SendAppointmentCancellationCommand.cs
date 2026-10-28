@@ -26,6 +26,7 @@ public class SendAppointmentCancellationHandler(
     INotificationService notifications,
     INotificationPreferenceService prefs,
     IRealtimeNotifier realtime,
+    IAppSettings appSettings,
     ILogger<SendAppointmentCancellationHandler> logger)
     : IRequestHandler<SendAppointmentCancellationCommand, Unit>
 {
@@ -43,18 +44,22 @@ public class SendAppointmentCancellationHandler(
         }
 
         // appointment.Date is UTC; the client reads the studio's wall-clock time.
-        string? timezone = await db.Studios
-            .Where(s => s.Id == appointment.StudioId)
-            .Select(s => s.Timezone)
-            .FirstOrDefaultAsync(ct);
-        DateTime localDate = TimezoneUtils.ToStudioLocalForRules(appointment.Date, timezone);
+        Studio? studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == appointment.StudioId, ct);
+        DateTime localDate = TimezoneUtils.ToStudioLocalForRules(appointment.Date, studio?.Timezone);
+        string dateText = localDate.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
+        string studioName = studio?.Name ?? "the studio";
+        bool declined = appointment.CancellationReason == CancellationReason.StudioDeclined;
 
-        string subject = $"Appointment Cancelled — {localDate.ToString("ddd, dd MMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}";
+        string subject = declined
+            ? $"Booking request declined — {studioName}"
+            : $"Appointment cancelled — {studioName}, {localDate.ToString("ddd, dd MMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}";
         string? depositLine = await DescribeDepositAsync(appointment, command, ct);
-        string body = BuildEmailBody(appointment, localDate, depositLine);
+        string body = BuildEmailBody(appointment, studio, dateText, depositLine);
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             appointment.StudioId, NotificationType.AppointmentCancelled, NotificationChannel.Email, ct);
+        bool smsEnabled = await prefs.IsEnabledAsync(
+            appointment.StudioId, NotificationType.AppointmentCancelled, NotificationChannel.Sms, ct);
 
         NotificationLog? log = null;
         if (emailEnabled)
@@ -62,7 +67,9 @@ public class SendAppointmentCancellationHandler(
             bool success = false;
             try
             {
-                await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
+                // Replies reach the studio owner, so "reply to this email" in the body works.
+                string? replyTo = string.IsNullOrWhiteSpace(studio?.OwnerEmail) ? null : studio.OwnerEmail;
+                await notifications.SendEmailAsync(appointment.Client.Email, subject, body, replyTo, ct);
                 success = true;
                 logger.LogInformation(
                     "Cancellation email sent for appointment {@AppointmentId}",
@@ -87,6 +94,48 @@ public class SendAppointmentCancellationHandler(
                 IsSuccess = success,
             };
             db.NotificationLogs.Add(log);
+            await db.SaveChangesAsync(ct);
+        }
+
+        // SMS like the other booking messages (received, confirmed): the settings page always
+        // offered an "Appointment cancelled" SMS switch, but nothing was sent (28 Oct 2026). Any
+        // refund goes out separately as the "refund processed" SMS, so this one stays short.
+        if (smsEnabled && appointment.Client.Phone is not null)
+        {
+            string smsBody = appointment.CancellationReason switch
+            {
+                CancellationReason.StudioDeclined =>
+                    $"Hi {appointment.Client.FirstName}, sorry, {studioName} can't take your booking request for {dateText}.",
+                CancellationReason.ClientCancelled =>
+                    $"Hi {appointment.Client.FirstName}, your cancellation is confirmed: your appointment at {studioName} on {dateText} has been cancelled.",
+                _ =>
+                    $"Hi {appointment.Client.FirstName}, your appointment at {studioName} on {dateText} has been cancelled.",
+            };
+
+            bool smsSent = true;
+            try
+            {
+                await notifications.SendSmsAsync(appointment.Client.Phone, smsBody, ct);
+            }
+            catch (Exception ex)
+            {
+                smsSent = false;
+                logger.LogWarning(ex,
+                    "Failed to send cancellation SMS for appointment {@AppointmentId}",
+                    appointment.Id);
+            }
+
+            db.NotificationLogs.Add(new NotificationLog
+            {
+                StudioId = appointment.StudioId,
+                RecipientId = appointment.ClientId,
+                RecipientType = NotificationRecipientType.Client,
+                Channel = NotificationChannel.Sms,
+                Subject = null,
+                Body = smsBody,
+                SentAt = DateTime.UtcNow,
+                IsSuccess = smsSent,
+            });
             await db.SaveChangesAsync(ct);
         }
 
@@ -137,21 +186,49 @@ public class SendAppointmentCancellationHandler(
             : null;
     }
 
-    private static string BuildEmailBody(Appointment appointment, DateTime localDate, string? depositLine) =>
-        $"""
-        <!DOCTYPE html>
-        <html>
-        <body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
-          <h2 style="color:#c0392b">Appointment Cancelled</h2>
-          <p>Hi {System.Net.WebUtility.HtmlEncode(appointment.Client.FirstName)},</p>
-          <p>Your tattoo appointment scheduled for:</p>
-          <p style="font-size:1.1em;font-weight:bold">{localDate.ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture)}</p>
-          <p>has been cancelled.</p>
-          {(depositLine is null ? "" : $"<p>{WebUtility.HtmlEncode(depositLine)}</p>")}
-          <p>If you have any questions or would like to rebook, please contact us.</p>
-          <hr/>
-          <p style="font-size:0.85em;color:#666">TattooOS &mdash; Your Tattoo Studio</p>
-        </body>
-        </html>
-        """;
+    // Names the studio and how to reach it (it used to sign off "TattooOS — Your Tattoo Studio" and
+    // say "please contact us" with no contact at all), and links to booking another time.
+    private string BuildEmailBody(Appointment appointment, Studio? studio, string dateText, string? depositLine)
+    {
+        string Encode(string value) => WebUtility.HtmlEncode(value);
+        string studioName = Encode(studio?.Name ?? "the studio");
+        string date = Encode(dateText);
+
+        (string heading, string message) = appointment.CancellationReason switch
+        {
+            CancellationReason.StudioDeclined => (
+                "About your booking request",
+                $"Sorry, <strong>{studioName}</strong> can't take your booking request for <strong>{date}</strong>."),
+            CancellationReason.ClientCancelled => (
+                "Cancellation confirmed",
+                $"Your appointment at <strong>{studioName}</strong> on <strong>{date}</strong> has been cancelled, as you asked."),
+            _ => (
+                "Appointment cancelled",
+                $"Your appointment at <strong>{studioName}</strong> on <strong>{date}</strong> has been cancelled by the studio."),
+        };
+
+        string contact = string.IsNullOrWhiteSpace(studio?.PhoneNumber)
+            ? $"Questions? Reply to this email to reach {studioName}."
+            : $"Questions? Reply to this email to reach {studioName}, or call {Encode(studio.PhoneNumber)}.";
+        string rebook = studio is null || string.IsNullOrWhiteSpace(studio.Slug)
+            ? ""
+            : $"""<p><a href="{Encode($"{appSettings.BaseUrl}/s/{studio.Slug}")}" target="_top" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none">Book another time</a></p>""";
+        string footer = studio?.ShowPlatformBranding == false ? studioName : $"{studioName} &middot; Powered by TattooOS";
+
+        return $"""
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
+              <h2 style="color:#c0392b">{heading}</h2>
+              <p>Hi {Encode(appointment.Client.FirstName)},</p>
+              <p>{message}</p>
+              {(depositLine is null ? "" : $"<p>{Encode(depositLine)}</p>")}
+              {rebook}
+              <p>{contact}</p>
+              <hr/>
+              <p style="font-size:0.85em;color:#666">{footer}</p>
+            </body>
+            </html>
+            """;
+    }
 }

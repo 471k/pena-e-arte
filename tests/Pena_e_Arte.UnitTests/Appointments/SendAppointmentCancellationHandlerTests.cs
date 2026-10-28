@@ -18,9 +18,12 @@ public class SendAppointmentCancellationHandlerTests
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly INotificationPreferenceService _prefs = new AlwaysEnabledNotificationPreferences();
+    private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
+
+    public SendAppointmentCancellationHandlerTests() => _appSettings.BaseUrl.Returns("https://app.example.test");
 
     private SendAppointmentCancellationHandler CreateSut() =>
-        new(_db, _notifications, _prefs, _realtime,
+        new(_db, _notifications, _prefs, _realtime, _appSettings,
             NullLogger<SendAppointmentCancellationHandler>.Instance);
 
     private async Task<(Guid appointmentId, Guid studioId)> SeedData()
@@ -64,7 +67,7 @@ public class SendAppointmentCancellationHandlerTests
 
         await _notifications.Received(1)
             .SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<CancellationToken>());
+                Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -74,7 +77,7 @@ public class SendAppointmentCancellationHandlerTests
 
         await _notifications.DidNotReceive()
             .SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<CancellationToken>());
+                Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -84,7 +87,7 @@ public class SendAppointmentCancellationHandlerTests
 
         _notifications
             .SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP error"));
 
         Func<Task> act = () =>
@@ -115,7 +118,7 @@ public class SendAppointmentCancellationHandlerTests
 
         _notifications
             .SendEmailAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("SMTP error"));
 
         await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
@@ -135,8 +138,9 @@ public class SendAppointmentCancellationHandlerTests
 
         await _notifications.Received(1).SendEmailAsync(
             Arg.Any<string>(),
-            Arg.Is<string>(s => s.Contains("Cancelled")),
+            Arg.Is<string>(s => s.StartsWith("Appointment cancelled")),
             Arg.Any<string>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -177,8 +181,9 @@ public class SendAppointmentCancellationHandlerTests
 
         await _notifications.Received(1).SendEmailAsync(
             Arg.Any<string>(),
-            "Appointment Cancelled — Fri, 23 Oct 2026 at 16:00",
+            "Appointment cancelled — S, Fri, 23 Oct 2026 at 16:00",
             Arg.Is<string>(b => b.Contains("Friday, 23 October 2026 at 16:00") && !b.Contains("14:00")),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -255,5 +260,101 @@ public class SendAppointmentCancellationHandlerTests
         await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
 
         SentBody().Should().NotContain("deposit");
+    }
+
+    // ── Who to contact, SMS, and declined requests (28 Oct 2026) ─────────────────
+
+    private async Task<(Guid AppointmentId, Studio Studio)> SeedWithStudio(
+        CancellationReason reason, string? phone = "+355690000000", bool branding = true, string? studioPhone = "+355 69 111 2222")
+    {
+        (Guid appointmentId, Guid studioId) = await SeedData();
+        Studio studio = new()
+        {
+            Id = studioId,
+            Name = "Ink & Iron",
+            Slug = "ink-iron",
+            OwnerEmail = "owner@example.test",
+            Timezone = "Europe/Tirane",
+            PhoneNumber = studioPhone,
+        };
+        if (!branding) studio.UpdateBranding(false);
+        _db.Studios.Add(studio);
+        Appointment appointment = await _db.Appointments.Include(a => a.Client).FirstAsync(a => a.Id == appointmentId);
+        appointment.CancellationReason = reason;
+        appointment.Date = new DateTime(2026, 11, 5, 10, 0, 0, DateTimeKind.Utc); // 11:00 in Tirana
+        appointment.Client.Phone = phone;
+        await _db.SaveChangesAsync();
+        return (appointmentId, studio);
+    }
+
+    [Fact]
+    public async Task Handle_EmailNamesTheStudioHowToReachItAndHowToRebook()
+    {
+        (Guid appointmentId, _) = await SeedWithStudio(CancellationReason.StudioCancelled);
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        string body = SentBody();
+        body.Should().Contain("Your appointment at <strong>Ink &amp; Iron</strong>");
+        body.Should().Contain("has been cancelled by the studio.");
+        body.Should().Contain("Reply to this email to reach Ink &amp; Iron, or call +355 69 111 2222.");
+        body.Should().Contain("href=\"https://app.example.test/s/ink-iron\"");
+        body.Should().Contain("Ink &amp; Iron &middot; Powered by TattooOS");
+        body.Should().NotContain("Your Tattoo Studio").And.NotContain("please contact us");
+        // Replies go to the studio owner.
+        await _notifications.Received(1).SendEmailAsync(
+            "ana@example.com", Arg.Any<string>(), Arg.Any<string>(), "owner@example.test", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_StudioWithoutPhoneOrBranding_OmitsThem()
+    {
+        (Guid appointmentId, _) = await SeedWithStudio(CancellationReason.StudioCancelled, branding: false, studioPhone: null);
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        string body = SentBody();
+        body.Should().Contain("Reply to this email to reach Ink &amp; Iron.");
+        body.Should().NotContain("or call").And.NotContain("Powered by TattooOS");
+    }
+
+    [Fact]
+    public async Task Handle_DeclinedRequest_UsesTheDeclineWording()
+    {
+        (Guid appointmentId, _) = await SeedWithStudio(CancellationReason.StudioDeclined);
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        await _notifications.Received(1).SendEmailAsync(
+            Arg.Any<string>(), "Booking request declined — Ink & Iron", Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        SentBody().Should().Contain("can't take your booking request for <strong>Thursday, 05 November 2026 at 11:00</strong>");
+    }
+
+    [Theory]
+    [InlineData(CancellationReason.StudioCancelled,
+        "Hi Ana, your appointment at Ink & Iron on Thursday, 05 November 2026 at 11:00 has been cancelled.")]
+    [InlineData(CancellationReason.ClientCancelled,
+        "Hi Ana, your cancellation is confirmed: your appointment at Ink & Iron on Thursday, 05 November 2026 at 11:00 has been cancelled.")]
+    [InlineData(CancellationReason.StudioDeclined,
+        "Hi Ana, sorry, Ink & Iron can't take your booking request for Thursday, 05 November 2026 at 11:00.")]
+    public async Task Handle_ClientWithPhone_GetsACancellationSms(CancellationReason reason, string expected)
+    {
+        // The settings page always offered an "Appointment cancelled" SMS switch, but none was sent.
+        (Guid appointmentId, _) = await SeedWithStudio(reason);
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        await _notifications.Received(1).SendSmsAsync("+355690000000", expected, Arg.Any<CancellationToken>());
+        (await _db.NotificationLogs.CountAsync(n => n.Channel == NotificationChannel.Sms && n.IsSuccess)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_ClientWithoutPhone_SendsNoSms()
+    {
+        (Guid appointmentId, _) = await SeedWithStudio(CancellationReason.StudioCancelled, phone: null);
+
+        await CreateSut().Handle(new SendAppointmentCancellationCommand(appointmentId), default);
+
+        await _notifications.DidNotReceive().SendSmsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

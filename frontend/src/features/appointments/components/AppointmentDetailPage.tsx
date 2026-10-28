@@ -33,6 +33,7 @@ import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import {
   useGetAppointmentQuery,
   useCancelAppointmentMutation,
+  useDeclineAppointmentMutation,
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
@@ -137,6 +138,7 @@ export function AppointmentDetailPage() {
   const { data: artists } = useGetArtistsQuery(undefined, { skip: !canOwner });
 
   const [cancel,   { isLoading: cancelling   }] = useCancelAppointmentMutation();
+  const [decline,  { isLoading: declining    }] = useDeclineAppointmentMutation();
   const [confirm,  { isLoading: confirming   }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing   }] = useCompleteAppointmentMutation();
   const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
@@ -172,16 +174,19 @@ export function AppointmentDetailPage() {
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
   const isConfirmed = appt?.status === AppointmentStatus.Confirmed;
-  const anyLoading  = cancelling || confirming || completing || markingNoShow;
+  const anyLoading  = cancelling || declining || confirming || completing || markingNoShow;
+  const removing    = cancelling || declining;
 
+  // A request (Pending) is declined, so the client hears "the studio can't take your request";
+  // an accepted booking is cancelled.
   async function handleCancelConfirmed() {
-    const result = await cancel(appt!.id);
+    const result = isPending ? await decline(appt!.id) : await cancel(appt!.id);
     setCancelDialogOpen(false);
     if ("data" in result) {
-      toast.success("Appointment cancelled.");
+      toast.success(isPending ? "Request declined." : "Appointment cancelled.");
       goBack();
     } else {
-      toast.error("Failed to cancel appointment.");
+      toast.error(isPending ? "Failed to decline the request." : "Failed to cancel appointment.");
     }
   }
 
@@ -502,7 +507,7 @@ export function AppointmentDetailPage() {
                   onClick={() => setCancelDialogOpen(true)}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Cancel appointment
+                  {isPending ? "Decline request" : "Cancel appointment"}
                 </Button>
               </div>
             )}
@@ -514,9 +519,11 @@ export function AppointmentDetailPage() {
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel appointment</DialogTitle>
+            <DialogTitle>{isPending ? "Decline this request?" : "Cancel appointment"}</DialogTitle>
             <DialogDescription>
-              This will cancel the appointment. This action cannot be undone.
+              {isPending
+                ? "The client is told by email (and text message, if they gave a number) that you can't take this booking request, and any deposit they paid is refunded in full. This can't be undone."
+                : "This will cancel the appointment. The client is told by email (and text message, if they gave a number), and any deposit they paid is refunded in full. This can't be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -525,10 +532,10 @@ export function AppointmentDetailPage() {
             </Button>
             <Button
               variant="destructive"
-              disabled={cancelling}
+              disabled={removing}
               onClick={handleCancelConfirmed}
             >
-              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel appointment"}
+              {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : isPending ? "Decline request" : "Cancel appointment"}
             </Button>
           </DialogFooter>
         </DialogContent>

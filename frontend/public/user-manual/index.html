@@ -993,7 +993,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Request Appointment</span> (disabled while any image is still uploading).</li>
 <li>If you're already signed in and a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
 <li>Your existing bookings are listed below the form (once signed in).</li>
-<li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>. The cancellation email then says what happened to your deposit, and if money comes back to your card you'll also get a "Refund processed" email and text message with the amount.</li>
+<li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>. The cancellation email (and a text message, if you gave a phone number) then confirms it and says what happened to your deposit, and if money comes back to your card you'll also get a "Refund processed" email and text message with the amount. If the studio can't take a booking request, My Bookings shows "The studio couldn't take this request."</li>
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first (or, if you're not signed in, takes you straight to that studio's guest checkout form).</div>
@@ -1565,7 +1565,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card. A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet. Owners get this button after switching to the Artist view.</p>
+<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card (on a Requested booking the trash icon declines the request instead). A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet. Owners get this button after switching to the Artist view.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Weekly schedule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1619,7 +1619,7 @@ ol.steps li { margin: 6px 0; }
 <li>Review client, time, duration, status, and deposit.</li>
 <li>If the client attached reference images when booking, click any thumbnail to open the full-size photo in a new tab.</li>
 <li>Download the <span class="step-title">.ics calendar file</span> if you want it in your own calendar app.</li>
-<li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>.</li>
+<li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>. A Requested booking shows <span class="step-title">Decline request</span> instead of Cancel: the client is told you can't take the request. Either way the client gets an email naming your studio, your phone number and a "Book another time" link (replies reach your studio email), plus a text message if they gave a phone number, and any deposit is refunded in full.</li>
 <li>Click <span class="step-title">Send Reminder</span> to text the client now or schedule it for later — separate from the studio's automatic 48h/24h reminders. The dialog's history shows each reminder's status; a <span class="step-title">Failed</span> one says why (the client opted out of SMS, the studio reached its monthly notification limit, or the SMS provider couldn't deliver it), and the list updates on its own when a scheduled reminder goes out.</li>
 <li>Click <span class="step-title">Message [client name]</span> to start or continue a real-time chat thread with the client, if they have a linked login.</li>
 </ol>

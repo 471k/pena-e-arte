@@ -291,14 +291,47 @@ describe("SchedulePage", () => {
     expect(await screen.findByRole("button", { name: /complete/i })).toBeInTheDocument();
   });
 
-  it("artist sees cancel button (trash icon) for non-terminal appointments", async () => {
+  it("artist sees cancel button (trash icon) for a confirmed appointment", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([{ ...APPT_TODAY, status: "Confirmed" }]),
+      ),
+    );
+    renderPage(Role.Artist);
+    expect(await screen.findByRole("button", { name: /cancel appointment/i })).toBeInTheDocument();
+  });
+
+  // A booking request is declined, not cancelled (28 Oct 2026).
+  it("the trash button on a booking request declines it", async () => {
+    let declined = false;
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([APPT_TODAY]),
+      ),
+      http.patch("http://localhost/api/v1/appointments/:id/decline", () => {
+        declined = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /decline request/i }));
+    expect(screen.getByText("Decline?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /yes/i }));
+    await waitFor(() => expect(declined).toBe(true));
+  });
+
+  // 28 Oct 2026: a no-deposit booking read "Deposit: ALL 0 · Pending" and offered "Charge".
+  it("shows no deposit line and no Charge button when the booking has no deposit", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments", () =>
         HttpResponse.json([APPT_TODAY]),
       ),
     );
-    renderPage(Role.Artist);
-    expect(await screen.findByRole("button", { name: /cancel appointment/i })).toBeInTheDocument();
+    renderPage(Role.Owner);
+    await screen.findByRole("button", { name: /decline request/i });
+    expect(screen.queryByText(/deposit:/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /charge/i })).not.toBeInTheDocument();
   });
 
   it("client does NOT see action buttons on the schedule (no artist access)", async () => {
@@ -312,6 +345,7 @@ describe("SchedulePage", () => {
     // APPT_TODAY is for today but client has no action buttons
     expect(screen.queryByRole("button", { name: /confirm/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /cancel appointment/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /decline request/i })).not.toBeInTheDocument();
   });
 
   it("clicking an appointment card navigates to the detail page", async () => {
@@ -322,7 +356,7 @@ describe("SchedulePage", () => {
     );
     const user = userEvent.setup();
     renderPage(Role.Artist);
-    const card = await screen.findByRole("button", { name: /cancel appointment/i });
+    const card = await screen.findByRole("button", { name: /decline request/i });
     // Click the card itself (not the action buttons inside it)
     const cardEl = card.closest('[class*="card"]') as HTMLElement;
     if (cardEl) await user.click(cardEl);
@@ -347,7 +381,7 @@ describe("SchedulePage", () => {
   it("cancel button shows inline confirmation", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments", () =>
-        HttpResponse.json([APPT_TODAY]),
+        HttpResponse.json([{ ...APPT_TODAY, status: "Confirmed" }]),
       ),
     );
     const user = userEvent.setup();
@@ -356,19 +390,19 @@ describe("SchedulePage", () => {
     await user.click(cancelBtn);
     expect(screen.getByText("Cancel?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /yes/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /no/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^no$/i })).toBeInTheDocument();
   });
 
   it("'No' on cancel inline confirmation dismisses it", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments", () =>
-        HttpResponse.json([APPT_TODAY]),
+        HttpResponse.json([{ ...APPT_TODAY, status: "Confirmed" }]),
       ),
     );
     const user = userEvent.setup();
     renderPage(Role.Artist);
     await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
-    await user.click(screen.getByRole("button", { name: /no/i }));
+    await user.click(screen.getByRole("button", { name: /^no$/i }));
     expect(screen.queryByText("Cancel?")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /cancel appointment/i })).toBeInTheDocument();
   });
