@@ -123,7 +123,7 @@ public class PaymentReconciliationJobTests
 
         await CreateSut().RunAsync();
 
-        await _stripe.Received(1).RefundAsync(_studioId, "pi_paid_after_cancel", null, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_paid_after_cancel", 50m, Arg.Any<string>(), Arg.Any<CancellationToken>());
         Payment updated = _db.Payments.Find(payment.Id)!;
         updated.Status.Should().Be(PaymentStatus.Refunded);
         updated.RefundedAmount.Should().Be(updated.Amount);
@@ -140,7 +140,7 @@ public class PaymentReconciliationJobTests
         Payment payment = await SeedPayment(PaymentStatus.Pending, "pi_refund_down", appointmentId);
         _stripe.GetStatusAsync(_studioId, "pi_refund_down", Arg.Any<CancellationToken>())
                .Returns(PaymentProviderStatus.Captured);
-        _stripe.RefundAsync(_studioId, "pi_refund_down", null, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _stripe.RefundAsync(_studioId, "pi_refund_down", 50m, Arg.Any<string>(), Arg.Any<CancellationToken>())
                .Returns<Task<string>>(_ => throw new ServiceUnavailableException("POK unavailable"));
 
         await CreateSut().RunAsync();

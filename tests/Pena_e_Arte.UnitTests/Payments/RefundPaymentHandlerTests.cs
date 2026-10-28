@@ -22,7 +22,7 @@ public class RefundPaymentHandlerTests
     public RefundPaymentHandlerTests()
     {
         _stripe.RefundAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("re_test_123");
     }
 
@@ -238,7 +238,7 @@ public class RefundPaymentHandlerTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*left to refund*");
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Single(p => p.Id == paymentId).RefundedAmount.Should().Be(234m);
     }
 
@@ -264,7 +264,7 @@ public class RefundPaymentHandlerTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

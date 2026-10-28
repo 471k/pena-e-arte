@@ -203,8 +203,11 @@ public sealed class PokPaymentProvider(
         return mapped;
     }
 
-    public async Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal? amount, string currency, CancellationToken ct)
+    public async Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal amount, string currency, CancellationToken ct)
     {
+        if (amount <= 0m)
+            throw new BusinessRuleViolationException("Refund amount must be greater than zero.");
+
         (string merchantId, string token, HttpClient http) = await authClient.PrepareRequestAsync(studioId, ct);
 
         using HttpRequestMessage req = new(
@@ -213,7 +216,8 @@ public sealed class PokPaymentProvider(
         req.Content = JsonContent.Create(new
         {
             refundReason = "Refunded by studio",
-            refundAmount = amount.HasValue ? ToPokAmount(amount.Value, currency) : (decimal?)null
+            // Always sent: POK production answers 400 to "refundAmount": null (28 Oct 2026).
+            refundAmount = ToPokAmount(amount, currency)
         });
 
         await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct);

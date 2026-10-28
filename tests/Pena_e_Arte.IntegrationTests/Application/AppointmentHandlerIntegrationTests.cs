@@ -269,7 +269,7 @@ public class AppointmentHandlerIntegrationTests
 
         await _stripe.Received(1).CancelAsync(tenantId, Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
 
         await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
         Payment payment = await verify.Payments.IgnoreQueryFilters().SingleAsync(p => p.Id == paymentId);

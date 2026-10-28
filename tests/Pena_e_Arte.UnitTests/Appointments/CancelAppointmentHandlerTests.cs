@@ -128,7 +128,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundAsync(_studioId, "pi_123", null, "EUR", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_123", 50m, "EUR", Arg.Any<CancellationToken>());
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
     }
@@ -145,7 +145,7 @@ public class CancelAppointmentHandlerTests
 
         await _stripe.Received(1).CancelAsync(_studioId, "pi_456", Arg.Any<CancellationToken>());
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         Payment payment = _db.Payments.Single(p => p.AppointmentId == id);
         payment.Status.Should().Be(PaymentStatus.Refunded);
         payment.RefundedAmount.Should().Be(payment.Amount);
@@ -201,7 +201,7 @@ public class CancelAppointmentHandlerTests
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Pending);
     }
 
@@ -214,7 +214,7 @@ public class CancelAppointmentHandlerTests
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Refunded);
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
     }
@@ -322,7 +322,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundAsync(_studioId, "pi_client_1", null, "EUR", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_client_1", 50m, "EUR", Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
     }
 
@@ -337,7 +337,7 @@ public class CancelAppointmentHandlerTests
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Forfeited);
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Paid);
     }
@@ -421,7 +421,7 @@ public class CancelAppointmentHandlerTests
 
         await CreateSut().Handle(new CancelAppointmentCommand(id), default);
 
-        await _stripe.Received(1).RefundAsync(_studioId, "pi_staff_1", null, "EUR", Arg.Any<CancellationToken>());
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_staff_1", 50m, "EUR", Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
         _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(50m);
     }
@@ -483,7 +483,7 @@ public class CancelAppointmentHandlerTests
 
         await _stripe.Received(1).CaptureAsync(_studioId, "pi_held_half", 25m, "EUR", Arg.Any<CancellationToken>());
         await _stripe.DidNotReceive().RefundAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         Payment payment = _db.Payments.Single(p => p.AppointmentId == id);
         payment.Status.Should().Be(PaymentStatus.Refunded);
         payment.RefundedAmount.Should().Be(25m);

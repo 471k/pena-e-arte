@@ -38,7 +38,7 @@ public class PaymentHandlerIntegrationTests
             .Returns(($"pi_{Guid.NewGuid():N}", $"pi_{Guid.NewGuid():N}_secret"));
 
         _stripe.RefundAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns($"re_{Guid.NewGuid():N}");
 
         _stripe.CaptureAsync(
