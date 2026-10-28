@@ -40,6 +40,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If the studio offers a Service (e.g. \"New Tattoo Session\", \"Touch-Up\"), pick one — its duration is set automatically and can't be changed, and if it has its own deposit, that replaces the studio's regular deposit. Pick \"Custom\" instead to choose your own duration, same as before.",
       "Or toggle \"Let the studio choose my artist\" if you don't have a preference — the studio will assign one before confirming.",
       "Have a promo code from the studio? Enter it in the \"Promo code\" field — it's applied to your deposit automatically when you submit.",
+      "If the studio takes a deposit, you can pay it right after you submit. On the Card tab, the \"Amount to pay\" is shown above the payment box. You can also pay later with \"Pay deposit\" on the booking under My Bookings.",
       "Describe what you're looking to get done, optionally pick a Style (or leave it unset for \"artist's choice\"), and optionally pick how you heard about the studio and add any safety notes (medical conditions, allergies, medications, skin concerns).",
       "Use the body map to mark your desired placement.",
       "Attach an \"Area photo\" (a photo of the body area) and \"Reference images\" (style/inspiration photos) — up to 6 each, JPEG, PNG, or WebP. Both are required if you're booking without an account; optional if you're already signed in.",
@@ -352,7 +353,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["pay deposit", "checkout", "card payment", "3-D Secure", "bank code", "cancel payment", "lek", "exchange rate", "euro"],
     summary: "Securely authorize a deposit payment by card for your appointment.",
     steps: [
-      "Use the \"Card\" tab, review the deposit amount, and enter your email, card details, name on card and country in the payment box.",
+      "Use the \"Card\" tab, check the deposit amount shown above the payment box, and enter your email, card details, name on card and country in the payment box.",
       "Click \"Pay\". If your bank asks you to confirm the payment (3-D Secure), finish that step in the window that opens.",
     ],
     tips: [

@@ -49,6 +49,9 @@ public class CreateDepositPaymentHandlerTests
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
         result.ClientToken.Should().Be("secret_new");
+        // The card form shows what it will charge (C-11, 28 Oct 2026).
+        result.Amount.Should().Be(80m);
+        result.Currency.Should().Be("ALL");
         Payment stored = _db.Payments.Single(p => p.AppointmentId == appointmentId);
         stored.Method.Should().Be(ClientPaymentMethod.Card);
         stored.Status.Should().Be(PaymentStatus.Pending);

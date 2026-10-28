@@ -185,6 +185,26 @@ describe("PaymentMethodSelector", () => {
     expect(screen.getByText(/your card is charged now/i)).toBeInTheDocument();
   });
 
+  // C-11 production test (28 Oct 2026): POK's card form doesn't show what it will charge.
+  it("card tab shows the amount the server will charge, above the card form", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/payments/deposit", () =>
+        HttpResponse.json({ ...INTENT_RESP, amount: 100, currency: "ALL" })),
+    );
+    renderSelector();
+
+    await screen.findByTestId("pok-checkout-form");
+    const row = screen.getByText("Amount to pay").parentElement!;
+    expect(row).toHaveTextContent(/100/);
+    expect(row).toHaveTextContent(/ALL|L/);
+  });
+
+  it("card tab shows no amount line when the server sends none", async () => {
+    renderSelector();
+    await screen.findByTestId("pok-checkout-form");
+    expect(screen.queryByText("Amount to pay")).not.toBeInTheDocument();
+  });
+
   it("card tab shows loading state before the intent is ready", () => {
     server.use(
       http.post(
