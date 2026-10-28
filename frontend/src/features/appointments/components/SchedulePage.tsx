@@ -109,35 +109,38 @@ export function SchedulePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+      {/* Wraps on phones: at 390 px the one-row header pushed "Next week", Today and Export 244 px off-screen. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 py-3 border-b bg-background sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <PenLine className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Schedule</span>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setWeekStart((w) => addDays(w, -7))}
-            aria-label="Previous week"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+        <div className="flex flex-wrap items-center gap-1">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setWeekStart((w) => addDays(w, -7))}
+              aria-label="Previous week"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
 
-          <div className="flex items-center gap-1.5 text-sm px-2 min-w-[230px] justify-center">
-            <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>{weekLabel}</span>
+            <div className="flex items-center gap-1.5 text-sm px-2 sm:min-w-[230px] justify-center">
+              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span>{weekLabel}</span>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setWeekStart((w) => addDays(w, 7))}
+              aria-label="Next week"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setWeekStart((w) => addDays(w, 7))}
-            aria-label="Next week"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
 
           <Button
             variant="outline"
