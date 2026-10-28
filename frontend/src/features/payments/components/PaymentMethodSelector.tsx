@@ -4,6 +4,8 @@ import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { AlertCircle, Banknote, CheckCircle2, CreditCard, Loader2, Star } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/utils/cn";
+import { lekReferenceApplies } from "@/shared/utils/formatCurrency";
+import { CARD_CHARGED_IN_EUR_TEXT } from "@/features/payments/components/DepositCheckoutPage";
 import { Money } from "@/shared/components/Money";
 import {
   useCreateDepositPaymentMutation,
@@ -132,9 +134,10 @@ function CardCheckoutForm({
 
 function CardTab({
   appointmentId,
+  countryCode,
   onSuccess,
   onError,
-}: Pick<PaymentMethodSelectorProps, "appointmentId" | "onSuccess" | "onError">) {
+}: Pick<PaymentMethodSelectorProps, "appointmentId" | "countryCode" | "onSuccess" | "onError">) {
   const [createDeposit, { data, isLoading, isError, error }] = useCreateDepositPaymentMutation();
   const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPaymentCapabilitiesQuery();
   const requested = useRef(false);
@@ -207,13 +210,30 @@ function CardTab({
   }
 
   return (
-    <CardCheckoutForm
-      appointmentId={appointmentId}
-      orderId={data.clientToken}
-      pokEnvironment={pokEnvironment as "staging" | "production"}
-      onSuccess={onSuccess}
-      onError={onError}
-    />
+    <div className="space-y-3">
+      {/* POK's card form doesn't show what it will charge, so say it right above it (C-11
+          production test, 28 Oct 2026). The amount is the server's deposit row, after any
+          gift card. */}
+      {data.amount != null && data.currency && (
+        <div className="flex items-center justify-between rounded-md bg-muted/40 border border-border/30 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Amount to pay</span>
+          <span className="text-sm font-semibold tabular-nums">
+            <Money amount={data.amount} currency={data.currency}
+              studio={{ countryCode, currency: data.currency }} />
+          </span>
+        </div>
+      )}
+      {lekReferenceApplies(countryCode, data.currency) && (
+        <p className="text-xs text-muted-foreground">{CARD_CHARGED_IN_EUR_TEXT}</p>
+      )}
+      <CardCheckoutForm
+        appointmentId={appointmentId}
+        orderId={data.clientToken}
+        pokEnvironment={pokEnvironment as "staging" | "production"}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
+    </div>
   );
 }
 
@@ -545,7 +565,7 @@ export function PaymentMethodSelector({
       )}
 
       {effectiveTab === "card" && !(tab === null && choosingDefaultTab) && (
-        <CardTab appointmentId={appointmentId} onSuccess={onSuccess} onError={onError} />
+        <CardTab appointmentId={appointmentId} countryCode={countryCode} onSuccess={onSuccess} onError={onError} />
       )}
 
       {effectiveTab === "cash" && (

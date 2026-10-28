@@ -23,6 +23,7 @@ public class NotificationService(
             From = $"{configuration["Resend:FromName"] ?? "TattooOS"} <{configuration["Resend:FromAddress"]}>",
             Subject = subject,
             HtmlBody = body,
+            TextBody = EmailPlainText.FromHtml(body),
         };
         message.To.Add(to);
         if (!string.IsNullOrWhiteSpace(replyTo))
@@ -30,7 +31,9 @@ public class NotificationService(
 
         ResendResponse<Guid> response = await resend.EmailSendAsync(message, ct);
 
-        logger.LogInformation("Email sent subject {@Subject} id {@EmailId}", subject, response.Content);
+        // No subject here: subjects can carry personal data ("New booking request from <client>"),
+        // and logs must never hold PII (CLAUDE.md rule 3). The Resend id finds the email if needed.
+        logger.LogInformation("Email sent id {@EmailId}", response.Content);
     }
 
     public async Task SendSmsAsync(string to, string body, CancellationToken ct = default)

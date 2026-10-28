@@ -15,7 +15,11 @@ data:
   App__BaseUrl: "https://app.tattooos.co"
   Cors__AllowedOrigins__0: "https://app.tattooos.co"
   Migrations__ApplyOnStartup: "false"
-  Redis__ConnectionString: "tattooos-redis:6379,connectTimeout=500,syncTimeout=500,abortConnect=false"
+  # syncTimeout/asyncTimeout 1500 ms (was 500, 28 Oct 2026): Redis answers in microseconds (empty
+  # SLOWLOG apart from connects), but the 500 ms limit was hit while the API pod was CPU-throttled,
+  # so the rate limiter failed open with RedisTimeoutException (status Sent). A real outage still
+  # fails open at once with a connection error; this only absorbs short stalls.
+  Redis__ConnectionString: "tattooos-redis:6379,connectTimeout=500,syncTimeout=1500,asyncTimeout=1500,abortConnect=false"
   Resend__FromName: "TattooOS"
   OpenTelemetry__OtlpEndpoint: "http://tattooos-tempo.monitoring.svc.cluster.local:4317"
   # Real-client-IP chain: Cloudflare edge -> Traefik -> frontend nginx -> API adds three

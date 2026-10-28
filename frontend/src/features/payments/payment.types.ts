@@ -45,6 +45,9 @@ export interface PaymentIntentResponse {
   paymentId:    string;
   clientToken: string;
   status:       string;
+  /** What the card will be charged (client deposit flow); absent on other intents. */
+  amount?:      number | null;
+  currency?:    string | null;
 }
 
 export interface CreatePaymentIntentRequest {
