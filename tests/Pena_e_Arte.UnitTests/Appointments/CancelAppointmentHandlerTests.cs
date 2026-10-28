@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -324,6 +325,16 @@ public class CancelAppointmentHandlerTests
 
         await _stripe.Received(1).RefundAsync(_studioId, "pi_client_1", 50m, "EUR", Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Refunded);
+
+        // The client is told about the money: in the cancellation email and with the
+        // "Refund processed" email + SMS an owner refund sends (C-11, 28 Oct 2026).
+        Guid paymentId = _db.Payments.Single(p => p.AppointmentId == id).Id;
+        await _sender.Received(1).Send(
+            Arg.Is<SendAppointmentCancellationCommand>(c => c.AppointmentId == id && c.RefundedAmount == 50m && !c.DepositForfeited),
+            Arg.Any<CancellationToken>());
+        await _sender.Received(1).Send(
+            Arg.Is<SendPaymentRefundedNotificationCommand>(c => c.PaymentId == paymentId && c.RefundAmount == 50m),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -340,6 +351,12 @@ public class CancelAppointmentHandlerTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         _db.Appointments.Single(a => a.Id == id).DepositStatus.Should().Be(DepositStatus.Forfeited);
         _db.Payments.Single(p => p.AppointmentId == id).Status.Should().Be(PaymentStatus.Paid);
+
+        await _sender.Received(1).Send(
+            Arg.Is<SendAppointmentCancellationCommand>(c => c.AppointmentId == id && c.RefundedAmount == null && c.DepositForfeited),
+            Arg.Any<CancellationToken>());
+        await _sender.DidNotReceive().Send(
+            Arg.Any<SendPaymentRefundedNotificationCommand>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -397,6 +414,13 @@ public class CancelAppointmentHandlerTests
         // Regression: revenue reporting distinguishes a partial refund from a full one via
         // RefundedAmount — 50% of a 50 deposit retains 25 for the studio, not 0.
         _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(25m);
+
+        await _sender.Received(1).Send(
+            Arg.Is<SendAppointmentCancellationCommand>(c => c.AppointmentId == id && c.RefundedAmount == 25m),
+            Arg.Any<CancellationToken>());
+        await _sender.Received(1).Send(
+            Arg.Is<SendPaymentRefundedNotificationCommand>(c => c.RefundAmount == 25m),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

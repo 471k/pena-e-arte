@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Application.Payments.Commands;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
@@ -95,6 +96,10 @@ public class CancelAppointmentHandler(
         Domain.Entities.Payment? payment = await db.Payments
             .FirstOrDefaultAsync(p => p.AppointmentId == appointment.Id, ct);
 
+        // What this cancellation did with the client's money, for the client's messages below.
+        decimal? refundedNow = null;
+        bool depositForfeited = false;
+
         if (payment is not null)
         {
             if (payment.Method == ClientPaymentMethod.Card
@@ -116,6 +121,7 @@ public class CancelAppointmentHandler(
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;
+                    refundedNow = payment.Amount;
                 }
                 else if (refundPercent > 0)
                 {
@@ -125,12 +131,14 @@ public class CancelAppointmentHandler(
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = refundAmount;
                     appointment.DepositStatus = DepositStatus.Refunded;
+                    refundedNow = refundAmount;
                 }
                 else
                 {
                     // Late cancellation, 0% refund — the deposit was already captured (Paid), so the
                     // studio keeps it with no provider call.
                     appointment.DepositStatus = DepositStatus.Forfeited;
+                    depositForfeited = true;
                 }
 
                 payment.UpdatedAt = DateTime.UtcNow;
@@ -160,7 +168,12 @@ public class CancelAppointmentHandler(
         await realtime.NotifyStudioAsync(
             tenant.StudioId, "AppointmentCancelled", new { command.AppointmentId }, ct);
 
-        await sender.Send(new SendAppointmentCancellationCommand(appointment.Id), ct);
+        await sender.Send(new SendAppointmentCancellationCommand(appointment.Id, refundedNow, depositForfeited), ct);
+
+        // Same "Refund processed" email + SMS an owner-issued refund sends, so a cancel-refund is
+        // never silent about the money (C-11 production test, 28 Oct 2026).
+        if (refundedNow is decimal refunded && payment is not null)
+            await sender.Send(new SendPaymentRefundedNotificationCommand(payment.Id, refunded), ct);
         jobs.EnqueueWebhookDelivery(tenant.StudioId, "appointment.cancelled", appointment.Id);
 
         if (waitlistMatchId is Guid matchId)
