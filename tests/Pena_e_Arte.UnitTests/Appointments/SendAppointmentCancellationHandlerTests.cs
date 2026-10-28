@@ -270,8 +270,12 @@ public class SendAppointmentCancellationHandlerTests
         (Guid appointmentId, Guid studioId) = await SeedData();
         Studio studio = new()
         {
-            Id = studioId, Name = "Ink & Iron", Slug = "ink-iron", OwnerEmail = "owner@example.test",
-            Timezone = "Europe/Tirane", PhoneNumber = studioPhone,
+            Id = studioId,
+            Name = "Ink & Iron",
+            Slug = "ink-iron",
+            OwnerEmail = "owner@example.test",
+            Timezone = "Europe/Tirane",
+            PhoneNumber = studioPhone,
         };
         if (!branding) studio.UpdateBranding(false);
         _db.Studios.Add(studio);
