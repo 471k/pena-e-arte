@@ -312,6 +312,16 @@ jobs:
           kubectl rollout status deployment/tattooos-api -n tattooos --timeout=180s
           kubectl rollout status deployment/tattooos-frontend -n tattooos --timeout=180s
 
+      # Browser photo uploads go straight to R2, so the bucket's CORS policy must allow the app's
+      # origins. Production's bucket had none until 27 Oct 2026 and every upload failed (guest
+      # booking blocked). The policy lives in the Cloudflare dashboard, not in this repo, so check it
+      # on every deploy. tattooos.co serves the same app (QR links use it).
+      - name: Check browser uploads to R2 are allowed (CORS)
+        run: >-
+          bash tools/deploy-checks/check-r2-cors.sh
+          "${{ secrets.R2_ACCOUNT_ID }}" "${{ secrets.R2_BUCKET_NAME }}"
+          https://app.tattooos.co https://tattooos.co
+
       # Grafana reads its provisioned files (alerting rules and contact points, datasources,
       # dashboards) only at startup, and mounting a ConfigMap does not restart the pod. Found
       # 2026-10-01: the alert recipient was changed in the repo and the ConfigMap, but the
@@ -489,3 +499,10 @@ jobs:
         run: |
           kubectl rollout status deployment/tattooos-api -n tattooos-staging --timeout=180s
           kubectl rollout status deployment/tattooos-frontend -n tattooos-staging --timeout=180s
+
+      # Same check as production's "Check browser uploads to R2 are allowed (CORS)".
+      - name: Check browser uploads to R2 are allowed (CORS, staging)
+        run: >-
+          bash tools/deploy-checks/check-r2-cors.sh
+          "${{ secrets.STAGING_R2_ACCOUNT_ID }}" "${{ secrets.STAGING_R2_BUCKET_NAME }}"
+          https://staging.tattooos.co
