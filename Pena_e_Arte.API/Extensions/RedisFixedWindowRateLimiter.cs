@@ -115,8 +115,10 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
             : new FailedLease(TimeSpan.FromSeconds(Math.Max(ttl, 1)));
     }
 
-    // Logs only the exception types and the Redis failure kind, never the exception itself:
-    // StackExchange.Redis messages can include the key, and the key holds the client IP.
+    // Logs only the exception types, the Redis failure kind and, for timeouts, an allow-list of
+    // counters (RedisTimeoutDetail) — never the exception or its message: StackExchange.Redis
+    // messages can include the key, and the key holds the client IP. The pod's own thread-pool
+    // numbers go alongside so a starved pool can be told apart from a slow Redis.
     private void LogFailOpen(Exception ex)
     {
         string? failure = ex switch
@@ -125,12 +127,18 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
             RedisTimeoutException timeout => timeout.Commandstatus.ToString(),
             _ => null,
         };
+        string? timeoutDetail = ex is RedisTimeoutException ? RedisTimeoutDetail.From(ex.Message) : null;
+        ThreadPool.GetMinThreads(out int minWorkerThreads, out _);
 
         _logger.LogWarning(
-            "Redis rate limiter unavailable — failing open ({RedisExceptionType}, failure {RedisFailure}, inner {RedisInnerExceptionType})",
+            "Redis rate limiter unavailable — failing open ({RedisExceptionType}, failure {RedisFailure}, inner {RedisInnerExceptionType}, timeout detail {RedisTimeoutDetail}, thread pool {ThreadPoolThreads} threads / {ThreadPoolPending} queued / min {ThreadPoolMinWorkers})",
             ex.GetType().Name,
             failure,
-            ex.InnerException?.GetType().Name);
+            ex.InnerException?.GetType().Name,
+            timeoutDetail,
+            ThreadPool.ThreadCount,
+            ThreadPool.PendingWorkItemCount,
+            minWorkerThreads);
     }
 
     private static bool IsRedisException(Exception ex) =>
