@@ -325,7 +325,9 @@ function BookingRow({
       )}
       {appt.status === "Cancelled" && (
         <p className="text-xs text-muted-foreground">
-          This appointment was cancelled.{" "}
+          {appt.cancellationReason === "StudioDeclined"
+            ? "The studio couldn't take this request."
+            : "This appointment was cancelled."}{" "}
           <button
             type="button"
             className="underline hover:text-foreground"

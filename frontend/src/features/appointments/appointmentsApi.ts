@@ -57,6 +57,20 @@ export const appointmentsApi = createApi({
       },
       invalidatesTags: ["Appointment"],
     }),
+    // Staff answer to a booking request: the client is told the studio can't take it (and any
+    // deposit is refunded), unlike a cancellation of an accepted booking.
+    declineAppointment: builder.mutation<void, string>({
+      query: (id) => ({ url: `appointments/${id}/decline`, method: "PATCH" }),
+      async onQueryStarted(_id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(paymentsApi.util.invalidateTags(["Payment"]));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
+      invalidatesTags: ["Appointment"],
+    }),
     confirmAppointment: builder.mutation<AppointmentResponse, string>({
       query: (id) => ({ url: `appointments/${id}/confirm`, method: "PATCH" }),
       invalidatesTags: ["Appointment"],
@@ -107,6 +121,7 @@ export const {
   useGetMyAppointmentsQuery,
   useCreateAppointmentMutation,
   useCancelAppointmentMutation,
+  useDeclineAppointmentMutation,
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,

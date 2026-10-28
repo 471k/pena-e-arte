@@ -92,6 +92,9 @@ const server = setupServer(
   http.delete("http://localhost/api/v1/appointments/:id", () =>
     new HttpResponse(null, { status: 204 }),
   ),
+  http.patch("http://localhost/api/v1/appointments/:id/decline", () =>
+    new HttpResponse(null, { status: 204 }),
+  ),
   http.patch("http://localhost/api/v1/appointments/:id/confirm", ({ params }) =>
     HttpResponse.json({ ...APPT_PENDING, id: params.id as string, status: "Confirmed" }),
   ),
@@ -308,9 +311,41 @@ describe("AppointmentDetailPage", () => {
     expect(await screen.findByRole("button", { name: /mark no-show/i })).toBeInTheDocument();
   });
 
-  it("artist sees 'Cancel appointment' button for a non-terminal appointment", async () => {
-    renderPage("appt-001", Role.Artist);
+  it("artist sees 'Cancel appointment' button for a confirmed appointment", async () => {
+    renderPage("appt-002", Role.Artist);
     expect(await screen.findByRole("button", { name: /cancel appointment/i })).toBeInTheDocument();
+  });
+
+  // A booking request is declined, not cancelled: the client is told the studio can't take it.
+  it("artist sees 'Decline request' instead of 'Cancel appointment' for a booking request", async () => {
+    renderPage("appt-001", Role.Artist);
+    expect(await screen.findByRole("button", { name: /decline request/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /cancel appointment/i })).not.toBeInTheDocument();
+  });
+
+  it("declining a request calls the decline endpoint, not cancel, and navigates back", async () => {
+    let declined = false;
+    let cancelled = false;
+    server.use(
+      http.patch("http://localhost/api/v1/appointments/:id/decline", () => {
+        declined = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.delete("http://localhost/api/v1/appointments/:id", () => {
+        cancelled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage("appt-001", Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /decline request/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/decline this request\?/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/can't take this booking request/i)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: /^decline request$/i }));
+    expect(await screen.findByTestId("back-page")).toBeInTheDocument();
+    expect(declined).toBe(true);
+    expect(cancelled).toBe(false);
   });
 
   it("artist does NOT see action buttons for a Completed appointment", async () => {
@@ -344,15 +379,15 @@ describe("AppointmentDetailPage", () => {
 
   it("clicking 'Cancel appointment' opens a confirmation dialog", async () => {
     const user = userEvent.setup();
-    renderPage("appt-001", Role.Artist);
+    renderPage("appt-002", Role.Artist);
     await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText(/this action cannot be undone/i)).toBeInTheDocument();
+    expect(screen.getByText(/can't be undone/i)).toBeInTheDocument();
   });
 
   it("dialog 'Keep' button closes the dialog", async () => {
     const user = userEvent.setup();
-    renderPage("appt-001", Role.Artist);
+    renderPage("appt-002", Role.Artist);
     await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
     const dialog = screen.getByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /keep/i }));
@@ -361,7 +396,7 @@ describe("AppointmentDetailPage", () => {
 
   it("dialog destructive 'Cancel appointment' button calls the cancel mutation and navigates back", async () => {
     const user = userEvent.setup();
-    renderPage("appt-001", Role.Artist);
+    renderPage("appt-002", Role.Artist);
     await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
     const dialog = screen.getByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /^cancel appointment$/i }));
@@ -583,7 +618,7 @@ describe("AppointmentDetailPage opened directly", () => {
 
   it("after cancelling, goes to the schedule instead of leaving the app", async () => {
     const user = userEvent.setup();
-    renderPageDirect("appt-001", Role.Artist);
+    renderPageDirect("appt-002", Role.Artist);
     await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
     const dialog = screen.getByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /^cancel appointment$/i }));
