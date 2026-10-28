@@ -75,13 +75,7 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 
-        // Hangfire.MySqlStorage's dashboard (the Recurring Jobs page) uses a MySQL user variable
-        // (@rownum); MySqlConnector rejects that unless the connection string allows it, so the page
-        // returned a 500. Only Hangfire's own connection gets the flag, never EF Core's.
-        string hangfireConnectionString = new MySqlConnectionStringBuilder(connectionString)
-        {
-            AllowUserVariables = true
-        }.ConnectionString;
+        string hangfireConnectionString = BuildHangfireConnectionString(connectionString);
 
         services.AddHangfire((serviceProvider, config) => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -298,6 +292,23 @@ public static class InfrastructureServiceExtensions
 
         return services;
     }
+
+    // Hangfire's own connection only, never EF Core's:
+    // - AllowUserVariables: Hangfire.MySqlStorage's dashboard (the Recurring Jobs page) uses a MySQL
+    //   user variable (@rownum); MySqlConnector rejects that unless allowed, so the page returned 500.
+    // - UseXaTransactions = false: Hangfire.MySqlStorage writes inside a TransactionScope, which
+    //   MySqlConnector runs as an XA transaction by default. An XA transaction whose client goes away
+    //   at the wrong moment stays on the server with its locks until an admin rolls it back by XID —
+    //   which DigitalOcean's doadmin can't even list (no XA_RECOVER_ADMIN). Found 2026-10-28: one left
+    //   by the 15 Oct migration Job held staging's hangfire_Set for 13 days, so every new recurring
+    //   job and scheduled job insert there timed out. A plain transaction is rolled back by the server
+    //   when its connection drops; Hangfire uses one connection per scope, so it needs nothing more.
+    internal static string BuildHangfireConnectionString(string connectionString) =>
+        new MySqlConnectionStringBuilder(connectionString)
+        {
+            AllowUserVariables = true,
+            UseXaTransactions = false,
+        }.ConnectionString;
 
     // AWSSDK.S3 4.x defaults both checksum settings to WHEN_SUPPORTED, which sends uploads as
     // STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER. Cloudflare R2 does not implement that and

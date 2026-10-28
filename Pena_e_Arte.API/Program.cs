@@ -323,6 +323,9 @@ try
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application startup failed");
+    // Non-zero, or the migration Job "completes" after a failed setup and CD carries on: on staging
+    // the recurring-job registration timed out on every deploy from 26 to 28 Oct while CD stayed green.
+    Environment.ExitCode = 1;
 }
 finally
 {
