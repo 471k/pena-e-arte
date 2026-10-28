@@ -18,8 +18,18 @@ spec:
       labels:
         app: tattooos-api
     spec:
+      # The preStop pause (10 s) plus .NET's own graceful shutdown must fit inside this.
+      terminationGracePeriodSeconds: 45
       containers:
         - name: api
+          # Keep serving for 10 s after Kubernetes starts removing the pod from the Service, so
+          # the frontend's nginx and kube-proxy stop sending it requests before Kestrel stops
+          # listening. Without it each rollout dropped a request (28 Oct 2026, 22:09:10Z: nginx
+          # "connect() failed (111: Connection refused)" -> 502, plus a 15 s client timeout).
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 10
           # Tag pinned by CD (kustomize edit set image) to the built github.sha — the
           # base manifest's own tag is a placeholder never applied directly.
           image: ghcr.io/471k/tattooos-api:latest
