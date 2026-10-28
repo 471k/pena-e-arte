@@ -219,20 +219,20 @@ public class RedisFixedWindowRateLimiterTests
     }
 
     [Fact]
-    public void AttemptAcquire_RedisUnavailable_LogsFailureType()
+    public async Task AcquireAsync_RedisUnavailable_LogsFailureType()
     {
         IDatabase db = Substitute.For<IDatabase>();
-        db.ScriptEvaluate(
+        db.ScriptEvaluateAsync(
                 Arg.Any<string>(),
                 Arg.Any<RedisKey[]>(),
                 Arg.Any<RedisValue[]>(),
                 Arg.Any<CommandFlags>())
-            .Returns(_ => throw new RedisConnectionException(
+            .Returns<Task<RedisResult>>(_ => throw new RedisConnectionException(
                 ConnectionFailureType.SocketFailure, "test", new IOException("reset")));
         CapturingLogger<RedisFixedWindowRateLimiterTests> logger = new();
         RedisFixedWindowRateLimiter limiter = new(db, "rl:test:127.0.0.1", Limit, Window, logger);
 
-        limiter.AttemptAcquire(1);
+        await limiter.AcquireAsync(1);
 
         (_, string message) = Assert.Single(logger.Entries);
         Assert.Contains("RedisConnectionException", message);
@@ -240,44 +240,19 @@ public class RedisFixedWindowRateLimiterTests
         Assert.Contains("IOException", message);
     }
 
+    // The middleware tries AttemptAcquire first; it must never block on Redis (thread-pool starvation,
+    // 28 Oct 2026). Declining with no RetryAfter makes the middleware await AcquireAsync instead.
     [Fact]
-    public void AttemptAcquire_UnderLimit_AcquiresLease()
+    public void AttemptAcquire_NeverCallsRedis_AndDefersToTheAsyncPath()
     {
         IDatabase db = MockRedis(count: 2, ttl: 55);
         RedisFixedWindowRateLimiter limiter = Create(db);
 
         RateLimitLease lease = limiter.AttemptAcquire(1);
 
-        Assert.True(lease.IsAcquired);
-    }
-
-    [Fact]
-    public void AttemptAcquire_OverLimit_RejectsLease()
-    {
-        IDatabase db = MockRedis(count: Limit + 3, ttl: 15);
-        RedisFixedWindowRateLimiter limiter = Create(db);
-
-        RateLimitLease lease = limiter.AttemptAcquire(1);
-
         Assert.False(lease.IsAcquired);
-    }
-
-    [Fact]
-    public void AttemptAcquire_RedisUnavailable_FailsOpen()
-    {
-        IDatabase db = Substitute.For<IDatabase>();
-        db.ScriptEvaluate(
-                Arg.Any<string>(),
-                Arg.Any<RedisKey[]>(),
-                Arg.Any<RedisValue[]>(),
-                Arg.Any<CommandFlags>())
-            .Returns(_ => throw new RedisConnectionException(ConnectionFailureType.UnableToConnect, "test"));
-
-        RedisFixedWindowRateLimiter limiter = Create(db);
-
-        RateLimitLease lease = limiter.AttemptAcquire(1);
-
-        Assert.True(lease.IsAcquired, "Should fail open on Redis error");
+        Assert.False(lease.TryGetMetadata(MetadataName.RetryAfter.Name, out _));
+        Assert.Empty(db.ReceivedCalls());
     }
 
     [Fact]

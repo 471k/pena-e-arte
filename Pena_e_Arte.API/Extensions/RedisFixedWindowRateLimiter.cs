@@ -42,28 +42,18 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
     // preventing unbounded memory growth with large numbers of unique client IPs.
     public override TimeSpan? IdleDuration => _window;
 
-    protected override RateLimitLease AttemptAcquireCore(int permitCount)
-    {
-        try
-        {
-            RedisResult result = _redis.ScriptEvaluate(
-                LuaScript,
-                new RedisKey[] { _key },
-                new RedisValue[] { _permitLimit, (long)_window.TotalSeconds });
-
-            return EvaluateResult(result);
-        }
-        catch (Exception ex) when (IsRedisException(ex))
-        {
-            LogFailOpen(ex);
-            return SuccessfulLease.Instance;
-        }
-    }
+    // Never touches Redis. ASP.NET Core's rate-limiting middleware tries this synchronous path first
+    // and, when the lease isn't acquired, awaits AcquireAsync — so declining here sends every request
+    // down the async path. Answering here meant a blocking Redis call holding a thread-pool thread
+    // while the reply could only be processed on another one; with the pod's 1-core limit
+    // (thread-pool minimum 1) that starved the pool and ~3.5 % of requests timed out and failed open
+    // (28 Oct 2026: SE.Redis counters cur-in=4, WORKER Min=1, POOL queued 14, async-ops 0).
+    protected override RateLimitLease AttemptAcquireCore(int permitCount) => DeferredLease.Instance;
 
     protected override async ValueTask<RateLimitLease> AcquireAsyncCore(
         int permitCount, CancellationToken cancellationToken)
     {
-        // Primary path used by ASP.NET Core rate-limiter middleware. No queuing —
+        // The only path that talks to Redis (see AttemptAcquireCore). No queuing —
         // acquire or reject immediately.
         try
         {
@@ -145,6 +135,21 @@ internal sealed class RedisFixedWindowRateLimiter : RateLimiter
         ex is RedisConnectionException
            or RedisTimeoutException
            or RedisException;
+
+    // "Not answered synchronously": not acquired and no RetryAfter, so the middleware moves on to
+    // AcquireAsync instead of rejecting the request.
+    private sealed class DeferredLease : RateLimitLease
+    {
+        public static readonly DeferredLease Instance = new();
+        public override bool IsAcquired => false;
+        public override IEnumerable<string> MetadataNames => [];
+        public override bool TryGetMetadata(string metadataName, out object? metadata)
+        {
+            metadata = null;
+            return false;
+        }
+        protected override void Dispose(bool disposing) { }
+    }
 
     private sealed class SuccessfulLease : RateLimitLease
     {
