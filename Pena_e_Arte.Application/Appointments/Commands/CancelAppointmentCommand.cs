@@ -111,7 +111,8 @@ public class CancelAppointmentHandler(
                 }
                 else if (refundPercent >= 100)
                 {
-                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, null, payment.Currency, ct);
+                    // Explicit amount even for a full refund: POK rejects a refund without one.
+                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, payment.Amount, payment.Currency, ct);
                     payment.Status = PaymentStatus.Refunded;
                     payment.RefundedAmount = payment.Amount;
                     appointment.DepositStatus = DepositStatus.Refunded;

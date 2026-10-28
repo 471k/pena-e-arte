@@ -317,6 +317,42 @@ public class PokPaymentProviderTests
         refundReq.Body.Should().Contain("\"refundAmount\":22.78");
     }
 
+    // POK production answered 400 to "refundAmount": null (client cancellation, 28 Oct 2026), so a
+    // full refund must name the amount too.
+    [Fact]
+    public async Task RefundAsync_FullRefund_SendsTheAmountNeverNull()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse(
+                """{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/refund") => JsonResponse("""{"data":{"sdkOrder":{"id":"order-abc"}}}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+        PokPaymentProvider sut = CreateSut(handler);
+
+        await sut.RefundAsync(_studioId, "order-abc", 100m, "ALL", default);
+
+        CapturedRequest refundReq = handler.Requests.Single(r => r.Path.EndsWith("/refund"));
+        refundReq.Body.Should().Contain("\"refundAmount\":100");
+        refundReq.Body.Should().NotContain("null");
+    }
+
+    [Fact]
+    public async Task RefundAsync_ZeroAmount_ThrowsWithoutCallingPok()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req =>
+            throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"));
+        PokPaymentProvider sut = CreateSut(handler);
+
+        Func<Task> act = () => sut.RefundAsync(_studioId, "order-abc", 0m, "ALL", default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
+        handler.Requests.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task CaptureAsync_PartialAmount_SendsWholeUnitAmount()
     {

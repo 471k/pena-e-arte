@@ -178,9 +178,10 @@ public class PaymentReconciliationJob(
                     await paymentProvider.CancelAsync(payment.StudioId, providerReferenceId, ct);
                 // Paid after (or racing) the cancellation: card deposits are charged when the client
                 // pays (C-4), so this is the charged twin of the authorised case above. Refund it in
-                // full, exactly as that case releases the hold in full.
+                // full, exactly as that case releases the hold in full. The amount is explicit: POK
+                // rejects a refund without one.
                 if (status == PaymentProviderStatus.Captured && appointmentCancelled)
-                    await paymentProvider.RefundAsync(payment.StudioId, providerReferenceId, null, payment.Currency, ct);
+                    await paymentProvider.RefundAsync(payment.StudioId, providerReferenceId, payment.Amount, payment.Currency, ct);
 
                 // Then re-read right before mutating: never apply this order's verdict to a newer order.
                 string? currentReference = await db.Payments
