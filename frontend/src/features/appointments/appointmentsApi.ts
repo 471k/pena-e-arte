@@ -1,5 +1,8 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
+// paymentsApi imports this slice too; the cycle is safe because each side only uses the other
+// inside callbacks that run after both modules have loaded.
+import { paymentsApi } from "@/features/payments/paymentsApi";
 import type {
   AppointmentResponse,
   AssignAppointmentArtistRequest,
@@ -41,6 +44,17 @@ export const appointmentsApi = createApi({
     }),
     cancelAppointment: builder.mutation<void, string>({
       query: (id) => ({ url: `appointments/${id}`, method: "DELETE" }),
+      // Cancelling can refund or forfeit the deposit server-side, but Payment lives in a
+      // separate RTK Query slice — without this, My bookings kept showing "Deposit paid" on a
+      // cancelled, refunded booking until a reload.
+      async onQueryStarted(_id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(paymentsApi.util.invalidateTags(["Payment"]));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
       invalidatesTags: ["Appointment"],
     }),
     confirmAppointment: builder.mutation<AppointmentResponse, string>({
