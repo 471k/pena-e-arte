@@ -157,6 +157,67 @@ public class RedisFixedWindowRateLimiterTests
         Assert.DoesNotContain("127.0.0.1", message);
     }
 
+    // Shape of a StackExchange.Redis 3.x timeout message; the key and endpoint in it must never
+    // reach the log, while the counters that tell a slow Redis from a starved pod must.
+    private const string RealisticTimeoutMessage =
+        "Timeout awaiting response (outbound=0KiB, inbound=0KiB, 1516ms elapsed, timeout is 1500ms), " +
+        "command=EVAL, next: EVAL rl:public-write:203.0.113.7, inst: 0, qu: 0, qs: 1, aw: False, " +
+        "bw: SpinningDown, rs: ReadAsync, ws: Idle, in: 12, in-pipe: 0, out-pipe: 0, last-in: 0, " +
+        "cur-in: 0, sync-ops: 2, async-ops: 1234, serverEndpoint: tattooos-redis:6379, conn-sec: 4932.6, " +
+        "aoc: 0, mc: 1/1/0, mgr: 10 of 10 available, clientName: tattooos-api-x(SE.Redis-v3.1.31), " +
+        "IOCP: (Busy=0,Free=1000,Min=1,Max=1000), WORKER: (Busy=1,Free=32766,Min=1,Max=32767), " +
+        "POOL: (Threads=6,QueuedItems=3,CompletedItems=12345,Timers=20), v: 3.1.31.37051";
+
+    [Fact]
+    public async Task AcquireAsync_RedisTimeout_LogsTimeoutCountersAndThreadPool_NotKeyOrEndpoint()
+    {
+        IDatabase db = Substitute.For<IDatabase>();
+        db.ScriptEvaluateAsync(
+                Arg.Any<string>(),
+                Arg.Any<RedisKey[]>(),
+                Arg.Any<RedisValue[]>(),
+                Arg.Any<CommandFlags>())
+            .Returns<Task<RedisResult>>(_ => throw new RedisTimeoutException(RealisticTimeoutMessage, CommandStatus.Sent));
+        CapturingLogger<RedisFixedWindowRateLimiterTests> logger = new();
+        RedisFixedWindowRateLimiter limiter = new(db, "rl:public-write:203.0.113.7", Limit, Window, logger);
+
+        await limiter.AcquireAsync(1);
+
+        (_, string message) = Assert.Single(logger.Entries);
+        Assert.Contains("elapsed=1516ms/1500ms", message);
+        Assert.Contains("in=12", message);
+        Assert.Contains("rs=ReadAsync", message);
+        Assert.Contains("WORKER=(Busy=1,Free=32766,Min=1,Max=32767)", message);
+        Assert.Contains("POOL=(Threads=6,QueuedItems=3,CompletedItems=12345,Timers=20)", message);
+        Assert.Contains("thread pool", message);
+        Assert.DoesNotContain("203.0.113.7", message);
+        Assert.DoesNotContain("rl:public-write", message);
+        Assert.DoesNotContain("tattooos-redis", message);
+        Assert.DoesNotContain("clientName", message);
+    }
+
+    [Fact]
+    public void RedisTimeoutDetail_KeepsOnlyAllowListedCounters()
+    {
+        string? detail = RedisTimeoutDetail.From(RealisticTimeoutMessage);
+
+        Assert.Equal(
+            "elapsed=1516ms/1500ms outbound=0KiB inbound=0KiB qu=0 qs=1 aw=False bw=SpinningDown rs=ReadAsync " +
+            "ws=Idle in=12 in-pipe=0 out-pipe=0 last-in=0 cur-in=0 sync-ops=2 async-ops=1234 " +
+            "IOCP=(Busy=0,Free=1000,Min=1,Max=1000) WORKER=(Busy=1,Free=32766,Min=1,Max=32767) " +
+            "POOL=(Threads=6,QueuedItems=3,CompletedItems=12345,Timers=20)",
+            detail);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Timeout key=rl:test:127.0.0.1")]
+    public void RedisTimeoutDetail_NoCounters_ReturnsNull(string? message)
+    {
+        Assert.Null(RedisTimeoutDetail.From(message));
+    }
+
     [Fact]
     public void AttemptAcquire_RedisUnavailable_LogsFailureType()
     {
