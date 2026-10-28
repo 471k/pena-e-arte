@@ -37,6 +37,16 @@ spec:
                 name: tattooos-api-config
             - secretRef:
                 name: tattooos-api-secrets
+          # The liveness probe only starts once this passes, so a slow start isn't killed half-way:
+          # on 28 Oct 2026 a new pod was still running its startup seeders ~32 s in, failed liveness
+          # three times (15 s delay + 3 x 10 s) and was restarted (exit 143). Allows up to 2 minutes.
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
           # 15s matches the Dockerfile's own HEALTHCHECK --start-period=15s.
           livenessProbe:
             httpGet:
@@ -60,5 +70,8 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: 500m
+              # 1000m (was 500m, 28 Oct 2026): at 500m the pod was CFS-throttled (168 throttled periods
+              # in its first ~25 min) while the node sat at ~9% CPU, stalling Redis replies past their
+              # timeout. Staging went 250m -> 750m for the same reason (staging resources-patch.yaml).
+              cpu: 1000m
               memory: 512Mi
