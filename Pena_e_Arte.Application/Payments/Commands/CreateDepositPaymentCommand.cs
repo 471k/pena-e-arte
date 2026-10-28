@@ -38,7 +38,8 @@ public class CreateDepositPaymentHandler(
         Appointment appointment = await ResolveOwnAppointmentAsync(db, currentUser, command.AppointmentId, ct);
         (Guid paymentId, string clientToken, PaymentStatus status) =
             await ResolveOrCreateHoldAsync(db, tenant, paymentProvider, jobs, referenceAmounts, appointment, ct);
-        return new PaymentIntentResponse(paymentId, clientToken, status.ToString());
+        Payment payment = await db.Payments.AsNoTracking().FirstAsync(p => p.Id == paymentId, ct);
+        return new PaymentIntentResponse(paymentId, clientToken, status.ToString(), payment.Amount, payment.Currency);
     }
 
     /// <summary>
