@@ -1222,6 +1222,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "To refund a card payment, open a Paid payment, click Refund, enter an amount for a partial refund (or leave it blank for the full amount) and click Confirm refund. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click \"Refund more\" — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see \"Where card deposit money goes\".",
       "If a client paid but closed the page before it confirmed, the payment updates by itself, usually within minutes and at the latest overnight. The client gets their \"deposit received\" email then.",
       "If an older deposit's hold ends before you charged it, the payment shows Failed and TattooOS emails you and adds a notification. To keep the deposit, open the payment and click \"New payment\" to send the client a new card payment link or to record that they'll pay in cash.",
+      "A payment's details name its appointment by client and date (in your studio's time zone). Click it to open the appointment.",
       "A card payment's details show its \"POK order\" ID — search for it in POK Business (E-payments → E-orders) to see the same payment, its fee and its refunds there.",
     ],
     relatedArticleIds: ["owner-card-money-flow", "owner-connect-pok", "owner-payment-create"],

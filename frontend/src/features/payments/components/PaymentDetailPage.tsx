@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Banknote,
@@ -17,6 +17,8 @@ import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -36,6 +38,13 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
+}
+
+// The booking's wall-clock time at the studio, e.g. "Wed, 4 Nov 2026, 11:00".
+function formatAppointmentDate(iso: string, studioTimezone: string | undefined): string {
+  return new Date(iso).toLocaleString("en-GB", withStudioTimeZone({
+    weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }, studioTimezone));
 }
 
 function StatusBadge({ kind, label }: { kind: DepositOutcomeKind; label: string }) {
@@ -161,6 +170,7 @@ export function PaymentDetailPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate          = useNavigate();
   const canOwner          = usePermission(Role.Owner);
+  const { data: studio }  = useGetMyStudioQuery();
 
   const { data: payment, isLoading, isError } =
     useGetPaymentByAppointmentQuery(appointmentId!);
@@ -386,7 +396,20 @@ export function PaymentDetailPage() {
         <Card>
           <CardContent className="p-4 space-y-2.5">
             <Row label="Method"      value={isCash ? "Cash" : "Card"} />
-            <Row label="Appointment" value={payment.appointmentId} mono />
+            {/* Names the booking and links to it, rather than showing its raw id (C-11, 28 Oct 2026). */}
+            <Row
+              label="Appointment"
+              value={
+                <Link
+                  to={`/appointments/${payment.appointmentId}`}
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  {payment.appointmentDate
+                    ? `${payment.clientName} · ${formatAppointmentDate(payment.appointmentDate, studio?.timezone)}`
+                    : payment.clientName}
+                </Link>
+              }
+            />
             {payment.paidAt && (
               <Row label="Paid at" value={formatDate(payment.paidAt)} />
             )}
@@ -426,7 +449,7 @@ function Row({
   mono = false,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   mono?: boolean;
 }) {
   return (

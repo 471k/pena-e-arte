@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { PaymentDetailPage } from "@/features/payments/components/PaymentDetailPage";
 import type { PaymentResponse } from "@/features/payments/payment.types";
 import { Role } from "@/shared/types/roles";
@@ -75,6 +76,7 @@ const PAYMENT_HOLD_LOST: PaymentResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/payments/appointment/:appointmentId", ({ params }) => {
     if (params.appointmentId === "appt-005") return HttpResponse.json(PAYMENT_HOLD_LOST);
     if (params.appointmentId === "appt-001") return HttpResponse.json(PAYMENT_CARD_CAPTURED);
@@ -109,8 +111,9 @@ function makeStore(role: Role = Role.Owner) {
       auth:                      authReducer,
       ui:                        uiReducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
+      [studiosApi.reducerPath]:  studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(paymentsApi.middleware),
+    middleware: (gd) => gd().concat(paymentsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -127,6 +130,7 @@ function renderPage(appointmentId: string, role: Role = Role.Owner) {
           <Route path="/payments/:appointmentId" element={<PaymentDetailPage />} />
           <Route path="/payments"                element={<div data-testid="list-page" />} />
           <Route path="/payments/new"            element={<div data-testid="new-page" />} />
+          <Route path="/appointments/:id"        element={<div data-testid="appointment-page" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -232,16 +236,22 @@ describe("PaymentDetailPage", () => {
     expect(screen.getByText("Bring on the day")).toBeInTheDocument();
   });
 
-  it("renders the appointment ID", async () => {
+  // C-11 production test (28 Oct 2026): the row showed the appointment's raw id.
+  it("names the appointment by client and studio-local date, linking to it", async () => {
+    const user = userEvent.setup();
     renderPage("appt-001");
-    await screen.findByRole("heading", { name: /100/ });
-    expect(screen.getByText("appt-001")).toBeInTheDocument();
+    // 14:00 UTC is 16:00 in Tirana (CEST) on 15 Jun 2026.
+    const link = await screen.findByRole("link", { name: "Maria Silva · Mon, 15 Jun 2026, 16:00" });
+    expect(screen.queryByText("appt-001")).not.toBeInTheDocument();
+
+    await user.click(link);
+    expect(await screen.findByTestId("appointment-page")).toBeInTheDocument();
   });
 
   it("renders paidAt date when present", async () => {
     renderPage("appt-002");
     await screen.findByRole("heading", { name: /100/ });
-    expect(screen.getByText(/15 Jun 2026/i)).toBeInTheDocument();
+    expect(screen.getByText("Paid at").parentElement).toHaveTextContent(/15 Jun 2026/i);
   });
 
   // ── Owner actions — card captured ────────────────────────────────────────────
