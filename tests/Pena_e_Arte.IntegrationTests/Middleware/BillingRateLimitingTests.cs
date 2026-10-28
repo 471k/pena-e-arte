@@ -154,8 +154,8 @@ public class BillingRateLimitingTests
         }
 
         IDatabase db = Substitute.For<IDatabase>();
-        // The rate-limiting middleware calls the synchronous acquire path
-        // (RedisFixedWindowRateLimiter.AttemptAcquireCore) when it can — both must be mocked.
+        // Only the async path reaches Redis (AttemptAcquireCore declines without calling it, see
+        // RateLimiterAsyncOnlyTests); the sync mock stays so a regression fails that test, not this one.
         db.ScriptEvaluate(
                 Arg.Any<string>(), Arg.Any<RedisKey[]>(), Arg.Any<RedisValue[]>(), Arg.Any<CommandFlags>())
             .Returns(Increment);
