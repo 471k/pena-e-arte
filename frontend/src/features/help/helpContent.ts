@@ -39,6 +39,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "In the \"Book an appointment\" card, choose an artist and a date.",
       "If the studio offers a Service (e.g. \"New Tattoo Session\", \"Touch-Up\"), pick one — its duration is set automatically and can't be changed, and if it has its own deposit, that replaces the studio's regular deposit. Pick \"Custom\" instead to choose your own duration, same as before.",
       "Or toggle \"Let the studio choose my artist\" if you don't have a preference — the studio will assign one before confirming.",
+      "If the studio takes deposits, the estimated amount is shown under \"Deposit\". There's nothing to choose: it comes from the studio's deposit policy. A percentage deposit appears once you pick an artist, since it depends on their hourly rate.",
       "Have a promo code from the studio? Enter it in the \"Promo code\" field — it's applied to your deposit automatically when you submit.",
       "Describe what you're looking to get done, optionally pick a Style (or leave it unset for \"artist's choice\"), and optionally pick how you heard about the studio and add any safety notes (medical conditions, allergies, medications, skin concerns).",
       "Use the body map to mark your desired placement.",
