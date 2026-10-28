@@ -7,7 +7,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel, lekReferenceApplies } from "@/shared/utils/formatCurrency";
 import { Money } from "@/shared/components/Money";
 import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { useAppSelector } from "@/app/hooks";
@@ -110,6 +110,14 @@ export function PurchaseGiftCardPage() {
                     type="number" min="1" step="1" value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
                   />
+                )}
+                {/* A typed amount gets its lek too, not just the preset buttons: every euro amount a client
+                    pays shows lek for Albanian EUR studios (docs/specs/spec-eur-with-lek-display-2026-10-26.md). */}
+                {currency && amount > 0 && lekReferenceApplies(publicStudio?.countryCode, currency) && (
+                  <p className="text-xs text-muted-foreground">
+                    You pay <Money amount={amount} currency={currency}
+                      studio={{ countryCode: publicStudio?.countryCode, currency }} />
+                  </p>
                 )}
                 {amountError && <p className="text-xs text-destructive-text">{amountError}</p>}
               </div>

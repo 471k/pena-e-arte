@@ -147,7 +147,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Gift card balances never expire.",
       "You can apply a gift card for less than its full balance — the remaining balance stays on the card for later.",
-      "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
+      "At studios in Albania that price in euros, every gift-card amount also shows the amount in lek (≈), at the Bank of Albania's latest official rate: the preset buttons, and an amount you type yourself (\"You pay …\" under the box). The lek amount is fixed when you pay.",
     ],
     relatedArticleIds: ["owner-gift-cards"],
   },
