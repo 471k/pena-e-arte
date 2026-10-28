@@ -1117,6 +1117,41 @@ describe("MyBookingsSection", () => {
     expect(screen.queryByText("Deposit paid")).not.toBeInTheDocument();
   });
 
+  // C-11 production test (28 Oct 2026): after a refunded self-cancel the card kept saying
+  // "Deposit paid" until a reload, because the payment lives in another RTK Query slice.
+  it("shows the refund right after a self-cancel, without a reload", async () => {
+    let cancelled = false;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{
+          ...APPT_UPCOMING, depositAmount: 50, depositStatus: cancelled ? "Refunded" : "Paid",
+          status: cancelled ? "Cancelled" : APPT_UPCOMING.status,
+        }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, method: "Card",
+          providerReferenceId: "pi_1", clientToken: null, cashNote: null,
+          paidAt: "2026-06-01T10:00:00Z", clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
+          status: cancelled ? "Refunded" : "Paid", refundedAmount: cancelled ? 50 : null,
+        }),
+      ),
+      http.delete("http://localhost/api/v1/appointments/:id", () => {
+        cancelled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    expect(await screen.findByText("Deposit paid")).toBeInTheDocument();
+
+    await user.click(await screen.findByText("Cancel appointment"));
+    await user.click(screen.getByRole("button", { name: "Yes, cancel" }));
+
+    expect(await screen.findByText("Deposit refunded")).toBeInTheDocument();
+    expect(screen.queryByText("Deposit paid")).not.toBeInTheDocument();
+  });
+
   it("'Keep booking' dismisses the confirmation without cancelling", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
