@@ -33,6 +33,31 @@ public class GetPaymentByAppointmentHandlerTests
         result.Amount.Should().Be(200m);
     }
 
+    // The owner's Payment page names the booking by client and date instead of its raw id.
+    [Fact]
+    public async Task Handle_ExistingAppointment_ReturnsItsDateAndStatus()
+    {
+        DateTime date = new(2026, 11, 4, 10, 0, 0, DateTimeKind.Utc);
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ClientId = Guid.NewGuid(),
+            Date = date,
+            EndDate = date.AddHours(1),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Confirmed,
+        };
+        _db.Appointments.Add(appointment);
+        await _db.SaveChangesAsync();
+        await SeedPayment(100m, appointment.Id);
+
+        PaymentResponse? result = await CreateSut()
+            .Handle(new GetPaymentByAppointmentQuery(appointment.Id), default);
+
+        result!.AppointmentDate.Should().Be(date);
+        result.AppointmentStatus.Should().Be("Confirmed");
+    }
+
     [Fact]
     public async Task Handle_NoPaymentForAppointment_ReturnsNull()
     {
