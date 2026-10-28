@@ -4,7 +4,6 @@ using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
-using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Payments.Queries;
@@ -35,10 +34,15 @@ public class GetPaymentByAppointmentHandler(IAppDbContext db, ICurrentUser curre
 
         // Looked up separately rather than Include()d: Include is an inner join on this required
         // link, which would drop the payment altogether if the appointment row were missing.
-        AppointmentStatus? appointmentStatus = await db.Appointments
-            .Where(a => a.Id == payment.AppointmentId)
-            .Select(a => (AppointmentStatus?)a.Status)
-            .FirstOrDefaultAsync(ct);
-        return payment.ToResponse() with { AppointmentStatus = appointmentStatus?.ToString() };
+        // The date lets the owner's Payment page name the booking ("client · date") instead of
+        // showing its raw id.
+        Appointment? appointment = await db.Appointments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+        return payment.ToResponse() with
+        {
+            AppointmentStatus = appointment?.Status.ToString(),
+            AppointmentDate = appointment?.Date,
+        };
     }
 }
