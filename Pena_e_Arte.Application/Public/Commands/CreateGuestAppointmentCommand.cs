@@ -24,6 +24,7 @@ public record CreateGuestAppointmentCommand(string StudioSlug, CreateGuestAppoin
 
 public class CreateGuestAppointmentHandler(
     IAppDbContext db,
+    ICurrentTenant tenant,
     IIdentityService identity,
     ISlotLocker slotLocker,
     IJobScheduler jobs,
@@ -48,6 +49,16 @@ public class CreateGuestAppointmentHandler(
         // guest-checkout handlers via PublicStudioLookupExtensions.
         Studio studio = await db.GetPublishedStudioBySlugAsync(command.StudioSlug, ct)
             ?? throw new NotFoundException(nameof(Studio), command.StudioSlug);
+
+        // Scope the rest of this request to the studio being booked. The request has no tenant
+        // JWT, so the global query filter would otherwise hide every tenant row from the
+        // downstream handlers that look the new appointment up by id. Without this,
+        // SendAppointmentCreatedNotificationHandler logged "Appointment … not found" and the
+        // owner, the artist and the client got no booking-request notification for any guest
+        // booking (found in the C-11 production test, 27 Oct 2026). Set unconditionally: the
+        // endpoint is anonymous, so any tenant from a caller's own JWT is not the studio this
+        // booking belongs to.
+        tenant.SetTenant(studio.Id);
 
         // The generic PlanLimitBehavior pipeline check (this command's own IQuotaCheckedCommand)
         // is a silent no-op here: it resolves the plan via ICurrentTenant.StudioId, which stays
@@ -200,7 +211,7 @@ public class CreateGuestAppointmentHandler(
                 $"{appSettings.BaseUrl}/verify-email?token={Uri.EscapeDataString(confirmToken)}&userId={userId}";
 
             string body = emailRenderer.RenderGuestBookingWelcome(studio.Name, setPasswordUrl, confirmEmailUrl);
-            await notifications.SendEmailAsync(req.Email, $"Your booking at {studio.Name} is confirmed", body, ct);
+            await notifications.SendEmailAsync(req.Email, $"Set your password to manage your booking at {studio.Name}", body, ct);
         }
         catch (Exception ex)
         {

@@ -65,14 +65,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["guest checkout", "no account", "set password", "password reset", "verify email", "manage booking", "forgot password", "guest booking"],
     summary: "What happens right after you book without an account, and how to set a password so you can manage the booking afterward.",
     steps: [
-      "Right after you submit a guest booking, check the email address you entered — you'll get one email with two links: one to set your password, one to confirm your email.",
+      "Right after you submit a guest booking, check the email address you entered. You'll get two emails: \"Booking request received\" with the date and length of your request (plus a text message if you gave a phone number), and \"Set your password to manage your booking\" with two links: one to set your password, one to confirm your email.",
       "Click the \"set your password\" link to finish setting up your account, then sign in.",
       "Once signed in, your booking appears under \"My Bookings\" on this page — from there you can cancel, reschedule, or message the studio like any other client.",
       "Didn't get the email, or lost it? Use \"Forgot password\" on the login page with the same email address any time — it works even if you never opened the original email.",
     ],
     tips: [
-      "If that email address already had an account on the platform, guest checkout is rejected instead of attaching the booking to it — sign in first and book from there.",
-      "The booking itself is confirmed as soon as you submit it — setting a password is only needed to manage it afterward, not to complete the request.",
+      "If that email address already has an account on the platform, no booking is made and it's never attached to that account. The page looks the same, but the email that arrives asks you to sign in and book from there.",
+      "Your request reaches the studio as soon as you submit it. It's a request until the studio confirms it, and you'll get an email when they do. Setting a password is only needed to manage the booking afterward, not to send the request.",
     ],
     relatedArticleIds: ["client-book-appointment"],
   },

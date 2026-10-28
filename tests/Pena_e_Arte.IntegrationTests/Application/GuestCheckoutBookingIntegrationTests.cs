@@ -2,14 +2,17 @@ using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
+using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Application.Public.Commands;
 using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
+using Pena_e_Arte.Infrastructure.Services;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
 
 namespace Pena_e_Arte.IntegrationTests.Application;
@@ -109,9 +112,10 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
                 artistId, Guid.Empty, slot, 60, "Anything else?", "A small rose",
                 DesiredPlacementLocations: ["forearm_left"]));
 
-        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        CurrentTenantService tenant = new();
+        await using AppDbContext db = fixture.CreateDbContext(tenant);
         CreateGuestAppointmentHandler handler = new(
-            db, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
+            db, tenant, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
             _emailRenderer, _notifications, _appSettings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
@@ -138,6 +142,58 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
         appointment.Intake.DesiredPlacement.Locations.Should().Equal("forearm_left");
     }
 
+    // Regression (C-11 production test, 27 Oct 2026): the created-notification handler runs in the
+    // same request, and with no tenant set it couldn't see the new appointment through the global
+    // query filter, so the owner never heard about a guest booking. The real notification handler
+    // is wired behind ISender here, sharing the request's DbContext and tenant as DI would.
+    [Fact]
+    public async Task CreateGuestAppointment_ValidRequest_SendsTheOwnerTheNewBookingRequestEmail()
+    {
+        (Studio studio, Guid artistId) = await SeedPublishedStudioWithArtist();
+        DateTime slot = NextMondayAt(10);
+        string email = $"guest-{Guid.NewGuid():N}@example.test";
+        Guid newUserId = Guid.NewGuid();
+
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "client", studio.Id, "Jamie")
+            .Returns((true, newUserId, Array.Empty<string>()));
+        _identity.GeneratePasswordResetTokenAsync(email).Returns((true, "reset-token", (string?)null));
+        _identity.GenerateEmailConfirmationTokenAsync(newUserId).Returns("confirm-token");
+        _appSettings.BaseUrl.Returns("https://tattooos.co");
+        _emailRenderer.RenderGuestBookingWelcome(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns("<html></html>");
+
+        INotificationPreferenceService prefs = Substitute.For<INotificationPreferenceService>();
+        prefs.IsEnabledAsync(Arg.Any<Guid>(), Arg.Any<NotificationType>(), Arg.Any<NotificationChannel>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        CurrentTenantService tenant = new();
+        await using AppDbContext db = fixture.CreateDbContext(tenant);
+        SendAppointmentCreatedNotificationHandler createdHandler = new(
+            db, _emailRenderer, _notifications, prefs, _realtime,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<SendAppointmentCreatedNotificationHandler>.Instance);
+        _sender.Send(Arg.Any<SendAppointmentCreatedNotificationCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ci => createdHandler.Handle(ci.Arg<SendAppointmentCreatedNotificationCommand>(), default));
+
+        CreateGuestAppointmentHandler handler = new(
+            db, tenant, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
+            _emailRenderer, _notifications, _appSettings,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
+
+        CreateGuestAppointmentRequest request = new(
+            "Jamie", "Guest", email, "+351912345678", MarketingOptIn: false,
+            Booking: new CreateAppointmentRequest(artistId, Guid.Empty, slot, 60, null, "A small rose"));
+
+        await handler.Handle(new CreateGuestAppointmentCommand(studio.Slug, request), default);
+
+        await _notifications.Received(1).SendEmailAsync(
+            studio.OwnerEmail, "New booking request from Jamie Guest", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _notifications.Received(1).SendEmailAsync(
+            email, $"Booking request received — {studio.Name}", Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _notifications.Received(1).SendEmailAsync(
+            email, $"Set your password to manage your booking at {studio.Name}", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     // Enumeration-resistance (2026-09-01, /code-review finding): a colliding email must return
     // the exact same ack as a real success and must not create a duplicate account/appointment
     // — disambiguation happens only via the (mocked) email sent, never via the HTTP response.
@@ -155,9 +211,10 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
             "Jamie", "Guest", email, "+351912345678", MarketingOptIn: false,
             Booking: new CreateAppointmentRequest(artistId, Guid.Empty, slot, 60, null, "A small rose"));
 
-        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        CurrentTenantService tenant = new();
+        await using AppDbContext db = fixture.CreateDbContext(tenant);
         CreateGuestAppointmentHandler handler = new(
-            db, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
+            db, tenant, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
             _emailRenderer, _notifications, _appSettings,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
@@ -182,6 +239,7 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
             Name = "Guest Checkout Studio",
             Slug = "guest-checkout-" + Guid.NewGuid().ToString("N")[..8],
             City = "Lisboa",
+            OwnerEmail = $"owner-{Guid.NewGuid():N}@example.test",
             IsActive = true,
             IsPublished = true,
         };

@@ -28,6 +28,13 @@ public sealed class DatabaseFixture : IAsyncLifetime
         CurrentTenantService tenant = new();
         if (tenantId != Guid.Empty) tenant.SetTenant(tenantId);
 
+        return CreateDbContext(tenant);
+    }
+
+    // For tests where a handler changes the tenant mid-request (as the anonymous guest-booking
+    // path does) and the caller needs that same scoped instance, like DI gives one request.
+    public AppDbContext CreateDbContext(CurrentTenantService tenant)
+    {
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
             .UseMySql(ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
             .Options;
