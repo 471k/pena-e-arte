@@ -421,35 +421,31 @@ describe("BookAppointmentForm", () => {
     expect(await screen.findByRole("combobox", { name: /client/i })).toBeInTheDocument();
   });
 
-  it("renders the Deposit rule selector when active rules exist", async () => {
+  // C-11 production test (28 Oct 2026): the form offered a "Deposit rule" picker preset to
+  // "No deposit", but the server always applies the studio's active rule, so clients were
+  // charged after seemingly choosing none. The deposit is now shown read-only.
+  it("shows the studio's active deposit as a read-only estimate, with no rule picker", async () => {
     renderForm();
-    expect(await screen.findByLabelText("Deposit rule")).toBeInTheDocument();
+    const row = (await screen.findByText("Estimated deposit")).parentElement!;
+    expect(row).toHaveTextContent("50");
+    expect(row).not.toHaveTextContent("100");
+    expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
+    expect(screen.queryByText("No deposit")).not.toBeInTheDocument();
   });
 
-  it("shows only active deposit rules in the selector", async () => {
-    const user = userEvent.setup();
-    renderForm();
-    await screen.findByLabelText("Deposit rule");
-    await user.click(screen.getByLabelText("Deposit rule"));
-    expect(await screen.findByRole("option", { name: "Standard (€50)" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Old rule" })).not.toBeInTheDocument();
+  it("shows staff the same read-only deposit estimate", async () => {
+    renderForm(Role.Owner);
+    expect(await screen.findByText("Estimated deposit")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
   });
 
-  it("shows 'No deposit' as the first option in the deposit rule selector", async () => {
-    const user = userEvent.setup();
-    renderForm();
-    await screen.findByLabelText("Deposit rule");
-    await user.click(screen.getByLabelText("Deposit rule"));
-    expect(await screen.findByRole("option", { name: "No deposit" })).toBeInTheDocument();
-  });
-
-  it("does NOT render Deposit rule selector when no rules exist", async () => {
+  it("does NOT show a deposit estimate when the studio has no active rule", async () => {
     server.use(
-      http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([])),
+      http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([INACTIVE_RULE])),
     );
     renderForm();
     await screen.findByText("Luna Artista");
-    expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
+    expect(screen.queryByText("Estimated deposit")).not.toBeInTheDocument();
   });
 
   it("artist dropdown includes a search input", async () => {

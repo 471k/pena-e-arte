@@ -105,7 +105,7 @@ async function mockBookingApis(page: Page) {
     });
   });
 
-  // Deposit rules — empty so the picker is hidden
+  // Deposit rules — empty so no deposit estimate is shown
   await page.route("**/api/v1/deposit-rules*", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
