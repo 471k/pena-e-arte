@@ -14,6 +14,7 @@ namespace Pena_e_Arte.UnitTests.Public;
 public class CreateGuestAppointmentHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
     private readonly ISlotLocker _slotLocker = Substitute.For<ISlotLocker>();
     private readonly IJobScheduler _jobs = Substitute.For<IJobScheduler>();
@@ -26,7 +27,7 @@ public class CreateGuestAppointmentHandlerTests
     private readonly ILogger<CreateGuestAppointmentHandler> _logger = Substitute.For<ILogger<CreateGuestAppointmentHandler>>();
 
     private CreateGuestAppointmentHandler CreateSut() => new(
-        _db, _identity, _slotLocker, _jobs, _realtime, _sender, _planLimits,
+        _db, _tenant, _identity, _slotLocker, _jobs, _realtime, _sender, _planLimits,
         _emailRenderer, _notifications, _appSettings, _logger);
 
     public CreateGuestAppointmentHandlerTests()
@@ -123,6 +124,43 @@ public class CreateGuestAppointmentHandlerTests
         result.Should().NotBeNull();
         capturedPassword.Should().NotBeNullOrEmpty();
         capturedPassword!.Length.Should().BeGreaterThanOrEqualTo(24);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_ScopesTheRequestToTheBookedStudio()
+    {
+        Studio studio = SeedStudioWithAvailableArtist();
+        string email = "jamie@example.com";
+
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "client", studio.Id, "Jamie")
+                 .Returns((true, Guid.NewGuid(), Array.Empty<string>()));
+        _identity.GeneratePasswordResetTokenAsync(email).Returns((true, "reset-token", (string?)null));
+        _identity.GenerateEmailConfirmationTokenAsync(Arg.Any<Guid>()).Returns("confirm-token");
+
+        await CreateSut().Handle(
+            new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
+
+        _tenant.Received(1).SetTenant(studio.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_AccountEmailSubjectDoesNotCallTheRequestConfirmed()
+    {
+        Studio studio = SeedStudioWithAvailableArtist();
+        string email = "jamie@example.com";
+
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "client", studio.Id, "Jamie")
+                 .Returns((true, Guid.NewGuid(), Array.Empty<string>()));
+        _identity.GeneratePasswordResetTokenAsync(email).Returns((true, "reset-token", (string?)null));
+        _identity.GenerateEmailConfirmationTokenAsync(Arg.Any<Guid>()).Returns("confirm-token");
+
+        await CreateSut().Handle(
+            new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
+
+        await _notifications.Received(1).SendEmailAsync(
+            email, "Set your password to manage your booking at Guest Studio", Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
