@@ -132,5 +132,6 @@ not only while it is quiet.
 live Loki: with their real windows both return no data (OK; the staging lock was gone). With the
 window widened to 14 days, so it covers the lock, each returns one series, `environment="staging"`,
 and `C = 1` (470 timed-out queries, 22 failed migrations); production returns nothing. Their email
-summaries use `{{ $$labels.environment }}`: Grafana's file provisioning expands `$name` as an
-environment variable, so a literal `$` in a provisioned template has to be written `$$`.
+summaries use `{{ $labels.environment }}`. The first version wrote it `$$labels` on the assumption that
+file provisioning expands `$name` as an environment variable; it doesn't for these alert annotations (Grafana
+13.1.1 kept `$$labels` literally, which would have broken the email text), so a plain `$` is right here.
