@@ -313,7 +313,7 @@ data:
             labels:
               severity: critical
             annotations:
-              summary: "{{ $$labels.environment }}: database queries timed out in the last 3 hours, most likely a lock (docs/infra/alerting-runbook.md, 'Database queries timing out')"
+              summary: "{{ $labels.environment }}: database queries timed out in the last 3 hours, most likely a lock (docs/infra/alerting-runbook.md, 'Database queries timing out')"
 
           # A deploy's migration Job (container "migrate") logs "Application startup failed" at
           # Fatal level when it can't migrate or seed; CD then stops before the API rollout, so
@@ -367,7 +367,7 @@ data:
             labels:
               severity: critical
             annotations:
-              summary: "{{ $$labels.environment }}: the database migration Job failed, so the last deploy stopped before the API (docs/infra/alerting-runbook.md, 'Deploy failed at the database migration')"
+              summary: "{{ $labels.environment }}: the database migration Job failed, so the last deploy stopped before the API (docs/infra/alerting-runbook.md, 'Deploy failed at the database migration')"
 
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from
