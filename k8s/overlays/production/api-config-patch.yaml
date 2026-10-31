@@ -23,6 +23,7 @@ data:
   Pok__BaseUrl: "https://api.pokpay.io"
   Pok__WebhookCallbackBaseUrl: "https://app.tattooos.co"
   Payments__CardDepositsEnabled: "true"
-  # Saved cards (backlog C-9): off until the tokenisation calls match POK's documented API. Not part of
-  # the go-live switch above; turning it on is its own reviewed change, after C-9 is fixed.
-  Payments__SavedCardsEnabled: "false"
+  # Saved cards (backlog C-9): on since 2026-10-31, after a real card was saved, charged with the saved card and
+  # refunded against POK production with an ordinary E-payments key. Only takes effect while card deposits are
+  # on (PokPaymentProvider ANDs the two); to turn saved cards off alone, set this back to "false".
+  Payments__SavedCardsEnabled: "true"

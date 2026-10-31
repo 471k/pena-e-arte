@@ -352,10 +352,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Pay a deposit (card or cash)",
     route: "/pay/:paymentId",
-    keywords: ["pay deposit", "checkout", "card payment", "3-D Secure", "bank code", "cancel payment", "lek", "exchange rate", "euro"],
+    keywords: ["pay deposit", "checkout", "card payment", "saved card", "3-D Secure", "bank code", "cancel payment", "lek", "exchange rate", "euro"],
     summary: "Securely authorize a deposit payment by card for your appointment.",
     steps: [
-      "Use the \"Card\" tab, check the deposit amount shown above the payment box, and enter your email, card details, name on card and country in the payment box.",
+      "If you have a saved card, the \"Saved card\" tab is selected automatically — pick a card and click \"Pay with this card\". You may be asked to confirm with your bank the first time.",
+      "Otherwise, use the \"Card\" tab (called \"New card\" if you have saved cards), check the deposit amount shown above the payment box, and enter your email, card details, name on card and country in the payment box.",
       "Click \"Pay\". If your bank asks you to confirm the payment (3-D Secure), finish that step in the window that opens.",
     ],
     tips: [
@@ -369,6 +370,25 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If a card payment doesn't go through — for example your bank couldn't verify the card — the payment box is replaced by a short message saying what to do next, and \"Nothing was charged to your card\". Click \"Try again\" for a fresh card form, use a different card, or pay in cash.",
       "To stop at the bank's confirmation step, scroll down inside the bank's window and click \"Cancel\". Nothing is charged — you'll see the same message with a \"Try again\" button, or you can pay in cash.",
     ],
+    relatedArticleIds: ["client-saved-payment-methods"],
+  },
+  {
+    id: "client-saved-payment-methods",
+    roles: [Client],
+    title: "Manage saved payment methods",
+    route: "/clients/me/payment-methods",
+    keywords: ["saved card", "payment method", "card on file", "remove card", "add card"],
+    summary: "Save a card so you can pay a deposit in one tap next time, without re-entering your card details.",
+    steps: [
+      "Go to Payment Methods to see your saved cards.",
+      "Fill in the card form and click \"Save card\" to add one — your card details are handled entirely by our payment processor; this app never sees or stores your card number.",
+      "Click \"Remove\" on a card to delete it.",
+    ],
+    tips: [
+      "A card saved at one studio can't be used at another — save a card again if you book with a different studio.",
+      "Paying with a saved card may still ask you to confirm with your bank, the same as a new card — this keeps your payment secure.",
+    ],
+    relatedArticleIds: ["client-deposit-pay"],
   },
   {
     id: "client-verify-email",
