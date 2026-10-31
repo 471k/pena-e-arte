@@ -17,6 +17,12 @@ export interface GiftCardResponse {
   status:          GiftCardStatus;
   createdAt:       string;
   currency:        string;
+  /** Lek reference frozen at purchase (Albanian EUR studios only; null otherwise). */
+  referenceAmount?:   number | null;
+  referenceCurrency?: string | null;
+  referenceRate?:     number | null;
+  /** "yyyy-MM-dd" */
+  referenceRateDate?: string | null;
 }
 
 /** Public lookup shape — no purchaser/recipient email. */

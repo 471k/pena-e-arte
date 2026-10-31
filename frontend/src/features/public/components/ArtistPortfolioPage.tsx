@@ -16,7 +16,8 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { StarRating }  from "@/shared/components/ui/StarRating";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { Money } from "@/shared/components/Money";
+import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useAppSelector } from "@/app/hooks";
 import {
   useGetPublicArtistQuery,
@@ -240,7 +241,9 @@ function ProfileStrengthNudge({
 
 // ── Flash catalog ────────────────────────────────────────────────────────────
 
-function FlashCatalogCard({ item, ctaUrl }: { item: DesignCatalogItemResponse; ctaUrl: string }) {
+function FlashCatalogCard({ item, ctaUrl, countryCode }: {
+  item: DesignCatalogItemResponse; ctaUrl: string; countryCode: string | undefined;
+}) {
   return (
     <div className="rounded-lg border overflow-hidden flex flex-col">
       {item.imageUrl ? (
@@ -259,7 +262,8 @@ function FlashCatalogCard({ item, ctaUrl }: { item: DesignCatalogItemResponse; c
         <p className="text-xs font-medium truncate">{item.title}</p>
         {item.price != null && (
           <p className="text-xs text-muted-foreground">
-            {formatCurrency(item.price, item.currency)}
+            <Money amount={item.price} currency={item.currency}
+              studio={{ countryCode, currency: item.currency } satisfies MoneyStudio} />
           </p>
         )}
         <Button asChild size="sm" variant="outline" className="w-full h-7 text-xs">
@@ -610,7 +614,8 @@ export function ArtistPortfolioPage() {
               <p className="text-sm text-muted-foreground">
                 From{" "}
                 <span className="font-semibold text-foreground">
-                  {formatCurrency(artist.hourlyRate, artist.currency)}/hr
+                  <Money amount={artist.hourlyRate} currency={artist.currency}
+                  studio={{ countryCode: artist.countryCode, currency: artist.currency }} />/hr
                 </span>
               </p>
             )}
@@ -742,7 +747,7 @@ export function ArtistPortfolioPage() {
                 </h2>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {flashCatalog.map((item) => (
-                    <FlashCatalogCard key={item.id} item={item} ctaUrl={ctaUrl} />
+                    <FlashCatalogCard key={item.id} item={item} ctaUrl={ctaUrl} countryCode={artist.countryCode} />
                   ))}
                 </div>
               </section>

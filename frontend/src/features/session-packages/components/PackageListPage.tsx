@@ -11,10 +11,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/shared/components/ui/dialog";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetPackagesQuery, useCreatePackageMutation, useUpdatePackageMutation } from "../packagesApi";
 import type { PackageResponse } from "../packages.types";
+import { Money } from "@/shared/components/Money";
 
 function NewPackageDialog() {
   const [createPackage, { isLoading }] = useCreatePackageMutation();
@@ -138,7 +139,7 @@ export function PackageListPage() {
             <div>
               <p className="text-sm font-medium">{pkg.name}</p>
               <p className="text-xs text-muted-foreground">
-                {pkg.sessionCount} sessions — {currency ? formatCurrency(pkg.price, currency) : pkg.price}
+                {pkg.sessionCount} sessions — {currency ? <Money amount={pkg.price} currency={currency} /> : pkg.price}
               </p>
             </div>
             <Badge

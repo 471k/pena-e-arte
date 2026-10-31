@@ -33,15 +33,11 @@ public class RegisterStudioValidator : AbstractValidator<RegisterStudioCommand>
             .NotEmpty().Length(2)
             .Must(CountryCurrency.IsKnownCountry)
             .WithMessage("Country must be a known ISO 3166-1 alpha-2 code.");
+        // No currency sent -> RegisterStudioHandler uses StudioCurrencies.DefaultFor, which is never null.
         RuleFor(x => x.Request.Currency)
-            .Must(c => CurrencyCatalog.IsSupported(c!))
-            .WithMessage("Currency must be a known ISO 4217 code.")
+            .Must(StudioCurrencies.IsOffered)
+            .WithMessage("Currency must be ALL (Albanian lek) or EUR (euro).")
             .When(x => x.Request.Currency is not null);
-        RuleFor(x => x.Request)
-            .Must(r => r.Currency is not null || CountryCurrency.DefaultCurrencyFor(r.CountryCode ?? "") is not null)
-            .WithMessage("Please choose your studio's currency.")
-            .WithName("Currency")
-            .When(x => x.Request.Currency is null && x.Request.CountryCode is not null);
         RuleFor(x => x.Request.Timezone)
             .Must(tz => TimeZoneInfo.TryFindSystemTimeZoneById(tz!.Trim(), out _))
             .WithMessage("Timezone must be a valid IANA time zone id.")

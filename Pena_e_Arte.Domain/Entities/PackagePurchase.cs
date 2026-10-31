@@ -1,3 +1,5 @@
+using Pena_e_Arte.Domain.Money;
+
 namespace Pena_e_Arte.Domain.Entities;
 
 /// <summary>
@@ -12,7 +14,7 @@ namespace Pena_e_Arte.Domain.Entities;
 /// ExpiresAt/refund tracking — packages never expire and are non-refundable once purchased
 /// (product decision, 2026-09-09).
 /// </summary>
-public class PackagePurchase : TenantEntity
+public class PackagePurchase : TenantEntity, IHasReferenceAmount
 {
     public Guid PackageId { get; set; }
     public Guid ClientId { get; set; }
@@ -30,6 +32,19 @@ public class PackagePurchase : TenantEntity
     public string? ClientToken { get; set; }
     public string Provider { get; set; } = string.Empty;
     public DateTime? ConfirmedAt { get; set; }
+
+    // Lek reference (Albanian EUR studios only): frozen when the purchase order is created and never
+    // changed after. Null when none applies.
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceCurrency"/>
+    public string? ReferenceCurrency { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRate"/>
+    public decimal? ReferenceRate { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRateDate"/>
+    public DateOnly? ReferenceRateDate { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRateSource"/>
+    public string? ReferenceRateSource { get; set; }
+    /// <summary><see cref="Amount"/> in whole lek at <see cref="ReferenceRate"/>.</summary>
+    public decimal? ReferenceAmount { get; set; }
 
     public Package Package { get; set; } = null!;
     public Client Client { get; set; } = null!;

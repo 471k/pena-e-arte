@@ -127,6 +127,44 @@ first `Payment`, `GiftCard`, `PackagePurchase`, or `BoothRentCharge` row exists 
 
 ---
 
+## Lek Reference Columns and Exchange Rates (2026-10-26)
+
+For Albanian studios that price in EUR, clients see the lek amount next to every euro amount
+(`docs/specs/spec-eur-with-lek-display-2026-10-26.md`). Two pieces of schema carry it:
+
+- **`exchange_rates`** (`ExchangeRate`) — **global, not a `TenantEntity`**: a public central-bank
+  rate belongs to no studio, so there is no query filter and no `IgnoreQueryFilters()` is needed.
+  One row per (BaseCurrency, QuoteCurrency, RateDate, Source), unique index
+  `ix_exchange_rates_pair_date_source`; `Rate` is `decimal(18,6)` (lek per euro). Written only by
+  `BankOfAlbaniaRateFetcher` (via `ExchangeRateFetchJob`), read by `ExchangeRateProvider`.
+- **Five nullable reference columns** on `payments`, `gift_cards`, `package_purchases`
+  (`IHasReferenceAmount`, configured once in `ReferenceAmountColumns`): `ReferenceCurrency`
+  (`varchar(3)`), `ReferenceRate` (`decimal(18,6)`), `ReferenceRateDate` (`date`),
+  `ReferenceRateSource` (`varchar(20)`), `ReferenceAmount` (`decimal(18,4)`, whole lek). Set by
+  `IReferenceAmountSnapshotter` when the client pays and **never changed after** — only
+  `ReferenceAmount.Freeze`/`Clear` write them, so capture, refund and reconciliation can't. Null
+  means no reference (other studios, records from before 2026-10-26, or no rate stored yet).
+- Both migrations (`AddExchangeRates`, `AddMoneyReferenceSnapshot`) are additive: a new table and
+  nullable columns, no backfill.
+
+---
+
+## Data Protection Keys (2026-10-27)
+
+- **`DataProtectionKeys`** (`Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey`,
+  migration `AddDataProtectionKeys`) — **global, not a `TenantEntity`**: ASP.NET Core's key ring,
+  shared by every API replica (`AddSharedDataProtection`, application name `TattooOS`). It signs
+  Identity's password-reset, set-password and email-confirmation tokens.
+- **Why it's in the database:** before this, each pod kept its own in-memory keys. A link only
+  worked on the pod that issued it, and every deploy invalidated all outstanding links (production,
+  27 Oct 2026). `Program.cs` refuses to start if the key repository isn't this table
+  (`EnsureSharedKeyRepository`).
+- **Operations:** never truncate the table and never change the application name; either one
+  invalidates every outstanding link. The rows hold the key XML unencrypted at rest, so database
+  access is the security boundary.
+
+---
+
 ## Entity Configuration Pattern
 
 Never put EF attributes on domain entities. Use `IEntityTypeConfiguration`.

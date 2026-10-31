@@ -2,8 +2,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Banknote, Check, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useConfirmCashDepositMutation } from "@/features/payments/paymentsApi";
+import { Money } from "@/shared/components/Money";
 
 interface CashDepositConfirmButtonProps {
   paymentId:  string;
@@ -38,7 +38,7 @@ export function CashDepositConfirmButton({
     return (
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">
-          Confirm {formatCurrency(amount, currency)} cash received from {clientName}?
+          Confirm <Money amount={amount} currency={currency} /> cash received from {clientName}?
         </span>
         <Button
           size="sm"

@@ -6,8 +6,8 @@ metadata:
 data:
   # Grafana's file-based Alerting provisioning format (apiVersion: 1) — same provisioning
   # mechanism grafana-configmap.yaml already uses for dashboards/datasources, extended with a
-  # third mounted file rather than a new mechanism. Four rules, all evaluated every 1m (the
-  # fourth, vault-unavailable, is described next to it below):
+  # third mounted file rather than a new mechanism. Six rules, all evaluated every 1m (the
+  # fourth to sixth are described next to them below):
   #
   # 1. api-pod-not-ready: reuses the exact `up{service="tattooos-api", environment=...}`
   #    series api-overview.json's "Scrape target up" panel already renders (no new metric).
@@ -257,6 +257,117 @@ data:
               severity: critical
             annotations:
               summary: "Vault is sealed or unreachable: POK card payments return 503 until it is unsealed (docs/infra/vault-self-hosted-runbook.md, 'After every Vault pod restart')"
+
+          # Same summed Loki pipeline, but over BOTH environments and summed per environment, so
+          # each one fires (and resolves) on its own and the email names it. Added 2026-10-29: an
+          # orphaned prepared XA transaction held locks on staging's hangfire_Set from 15 to 29
+          # Oct and nothing alerted. Its only trace in the logs was the queries it blocked:
+          # MySqlConnector's own "Command Timeout expired" (the command timeout ends the wait
+          # before MySQL's 50 s innodb_lock_wait_timeout does), 18-54 a day on staging, zero on
+          # both environments before 15 Oct and since the rollback. "Lock wait timeout exceeded"
+          # is the same symptom when MySQL's timeout wins. A 3 h window, because the blocked
+          # queries came ~1-2 an hour: a 15 m window would fire and resolve over and over.
+          - uid: db-query-timeouts
+            title: Database queries timing out
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 10800
+                  to: 0
+                datasourceUid: loki-uid
+                model:
+                  refId: A
+                  expr: >-
+                    sum by (environment) (count_over_time({namespace=~"tattooos|tattooos-staging", container=~"api|migrate"}
+                    |~ "Lock wait timeout exceeded|Command Timeout expired" [3h]))
+                  queryType: instant
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 10800
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 10800
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0]
+            for: 1m
+            noDataState: OK
+            execErrState: Alerting
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.environment }}: database queries timed out in the last 3 hours, most likely a lock (docs/infra/alerting-runbook.md, 'Database queries timing out')"
+
+          # A deploy's migration Job (container "migrate") logs "Application startup failed" at
+          # Fatal level when it can't migrate or seed; CD then stops before the API rollout, so
+          # the environment silently stays on the old version. On staging that is what the
+          # 15-29 Oct lock looked like from 26 Oct on (22 Fatal lines, no alert). The API
+          # container also logs Fatal lines at shutdown (Redis UNSUBSCRIBE timeouts during
+          # rollouts, until 28 Oct), which is why this rule looks at migrate only.
+          - uid: migration-failed
+            title: Deploy failed at the database migration
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: loki-uid
+                model:
+                  refId: A
+                  expr: >-
+                    sum by (environment) (count_over_time({namespace=~"tattooos|tattooos-staging", container="migrate"}
+                    |= `"@l":"Fatal"` [1h]))
+                  queryType: instant
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [0]
+            for: 0m
+            noDataState: OK
+            execErrState: Alerting
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.environment }}: the database migration Job failed, so the last deploy stopped before the API (docs/infra/alerting-runbook.md, 'Deploy failed at the database migration')"
 
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from

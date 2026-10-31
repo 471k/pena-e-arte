@@ -61,6 +61,9 @@ try
 
     WebApplication app = builder.Build();
 
+    // Refuses to start with per-pod Data Protection keys (see DataProtectionExtensions).
+    DataProtectionExtensions.EnsureSharedKeyRepository(app.Services);
+
     // Gated behind Migrations:ApplyOnStartup (default true, so local dotnet run / docker
     // compose behavior is unchanged) — with 2+ K8s replicas rolling out simultaneously,
     // every pod running MigrateAsync() unguarded races on the same migration history table.
@@ -197,6 +200,19 @@ try
             "package-purchase-reconciliation",
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 11, minute: 30)); // staggered after gift-card-reconciliation (11am)
+
+        // Bank of Albania EUR/ALL official rate: set from the 11:30-12:00 interbank window, published on
+        // business days only. Three weekday runs in Tirane time catch a late publication; a repeat run
+        // for a rate date already stored is a no-op.
+        RecurringJobOptions tiraneTime = new() { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Tirane") };
+        recurringJobs.AddOrUpdate<ExchangeRateFetchJob>(
+            "exchange-rate-fetch-1240", j => j.RunAsync(CancellationToken.None), "40 12 * * 1-5", tiraneTime);
+        recurringJobs.AddOrUpdate<ExchangeRateFetchJob>(
+            "exchange-rate-fetch-1400", j => j.RunAsync(CancellationToken.None), "0 14 * * 1-5", tiraneTime);
+        recurringJobs.AddOrUpdate<ExchangeRateFetchJob>(
+            "exchange-rate-fetch-1700", j => j.RunAsync(CancellationToken.None), "0 17 * * 1-5", tiraneTime);
+        recurringJobs.AddOrUpdate<ExchangeRateFetchJob>(
+            "exchange-rate-stale-check", j => j.CheckStaleAsync(CancellationToken.None), "0 9 * * *", tiraneTime);
     }
 
     // k8s/base/migration-job.yaml runs this exact image as a one-off Job (restartPolicy:
@@ -307,6 +323,9 @@ try
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application startup failed");
+    // Non-zero, or the migration Job "completes" after a failed setup and CD carries on: on staging
+    // the recurring-job registration timed out on every deploy from 26 to 28 Oct while CD stayed green.
+    Environment.ExitCode = 1;
 }
 finally
 {

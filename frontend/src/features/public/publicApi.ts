@@ -91,6 +91,18 @@ export interface PublicArtistResponse {
   isOwnProfile:    boolean;
   socialLinks:     PublicSocialLinkResponse[];
   currency:        string;
+  /** The studio's ISO country code (with currency: lek is shown next to euro for Albanian EUR studios). */
+  countryCode?:    string;
+}
+
+/** The newest Bank of Albania EUR/ALL official rate (lek per euro). */
+export interface ExchangeRateResponse {
+  rate:     number;
+  /** "yyyy-MM-dd" */
+  rateDate: string;
+  source:   string;
+  /** More than 7 days old (BoA publishes on business days only). */
+  isStale:  boolean;
 }
 
 export interface SharedDesignResponse {
@@ -325,6 +337,11 @@ export const publicApi = createApi({
     getVisitorGeo: builder.query<VisitorGeoResponse, void>({
       query: () => "geo/visitor",
     }),
+    // BoA publishes at most once per business day; the API also sends Cache-Control max-age=600.
+    getEurAllRate: builder.query<ExchangeRateResponse, void>({
+      query: () => "exchange-rates/eur-all",
+      keepUnusedDataFor: 600,
+    }),
     getPublicArtist: builder.query<PublicArtistResponse, string>({
       query: (slug) => `artists/${slug}`,
       providesTags: ["PublicArtist"],
@@ -472,6 +489,7 @@ export const {
   useGetPublicStudioQuery,
   useGetCountryDefaultCurrencyQuery,
   useGetVisitorGeoQuery,
+  useGetEurAllRateQuery,
   useGetPublicArtistQuery,
   useGetSharedDesignQuery,
   useGetNearbyStudiosQuery,

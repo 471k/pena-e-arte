@@ -970,7 +970,7 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="150" font-size="9" fill-opacity="0.6">Date &amp; time</text><rect x="280" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="385" y="150" font-size="9" fill-opacity="0.6">Session length</text><rect x="385" y="156" width="95" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="192" font-size="8" fill-opacity="0.6">✓ Slot available</text>
-<text x="280" y="212" font-size="9" fill-opacity="0.6">Deposit rule</text><rect x="280" y="218" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="280" y="212" font-size="9" fill-opacity="0.6">Deposit</text><rect x="280" y="218" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="250" font-size="9" fill-opacity="0.6">Promo code (optional)</text><rect x="280" y="256" width="200" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="288" font-size="9" fill-opacity="0.6">Notes</text><rect x="280" y="294" width="200" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <text x="280" y="338" font-size="9" fill-opacity="0.6">Area photo · Reference images</text><rect x="280" y="344" width="200" height="40" rx="4" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3"/><text x="330" y="368" font-size="8" fill-opacity="0.5">Click to add photos (up to 6 each)</text>
@@ -978,14 +978,14 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="450" font-size="11" font-weight="700">My Bookings</text>
 </svg>
 </figure>
-<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), service (when the studio offers one), date/time, duration, deposit rule, promo code, tattoo description, style, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
+<figcaption>Book — fields appear in this order: artist (or "let the studio choose"), service (when the studio offers one), date/time, duration, deposit (estimate), promo code, tattoo description, style, referral source, safety notes, desired placement (body map), area photo, reference images. A guest visitor (not signed in) also sees name/email/phone/marketing-opt-in fields first, and both image groups are required.</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li><strong>Guest checkout only</strong> — if you're not signed in, fill in your <span class="step-title">First name</span>, <span class="step-title">Last name</span>, <span class="step-title">Email</span>, and <span class="step-title">Phone</span> (the country code next to the field starts on the studio's own country; change it if your number is from elsewhere), and optionally toggle <span class="step-title">Sign up for news and updates</span>. An account is created for you as part of submitting the booking — see the callout below.</li>
 <li>Pick an <span class="step-title">Artist</span> (searchable dropdown), or toggle <span class="step-title">Let the studio choose my artist</span> to skip picking one — the artist selector hides and the studio assigns someone before confirming.</li>
 <li>If the studio offers a <span class="step-title">Service</span> (e.g. "New Tattoo Session", "Touch-Up"), pick one — its duration fills in automatically and can't be changed; pick "Custom" to choose your own duration instead.</li>
 <li>Choose a <span class="step-title">Date &amp; time</span> and, unless a service already set it, a <span class="step-title">Session length</span> — a live availability check appears once both are set.</li>
-<li>If the studio has an active deposit rule, an estimated deposit amount is shown (signed-in clients can also pick the rule) — unless the selected service has its own deposit, which replaces the deposit rule entirely.</li>
+<li>If the studio has an active deposit rule, the estimated deposit is shown under "Deposit". There's nothing to choose: the studio's active rule always applies. A selected service with its own deposit replaces the rule entirely, and a percentage deposit shows once an artist is picked (it depends on the artist's hourly rate).</li>
 <li>Have a <span class="step-title">Promo code</span> from the studio? Enter it — it's applied to your deposit automatically on submission. A code that's expired, exhausted, or not recognized doesn't block the booking; you'll just see a note that it wasn't applied.</li>
 <li>Describe <span class="step-title">What are you looking to get done?</span> (required), optionally pick a <span class="step-title">Style</span> (leave unset for "artist's choice" / unsure), optionally pick <span class="step-title">How did you hear about us?</span> (with a free-text field if you pick "Somewhere else"), and add any <span class="step-title">Safety notes</span> (medical conditions, allergies, medications, skin concerns).</li>
 <li>Use the <span class="step-title">Desired placement</span> body map to mark where you want the tattoo.</li>
@@ -994,12 +994,14 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Request Appointment</span> (disabled while any image is still uploading).</li>
 <li>If you're already signed in and a deposit is required, you're immediately offered <span class="step-title">Card</span> or <span class="step-title">Cash</span> to secure the slot (or you can defer it).</li>
 <li>Your existing bookings are listed below the form (once signed in).</li>
-<li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>.</li>
+<li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it — you'll see whether it's a full refund or a partial/forfeited one before confirming, then click <span class="step-title">Yes, cancel</span>. The cancellation email (and a text message, if you gave a phone number) then confirms it and says what happened to your deposit, and if money comes back to your card you'll also get a "Refund processed" email and text message with the amount. If the studio can't take a booking request, My Bookings shows "The studio couldn't take this request."</li>
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first (or, if you're not signed in, takes you straight to that studio's guest checkout form).</div>
-<div class="callout callout-tip"><strong>Guest checkout — what happens after you submit:</strong> you'll receive one email with a link to set your password and a link to confirm your email. Set your password, then sign in to see the booking under My Bookings and manage it. Lost the email or never got it? Use "Forgot password" on the login page with the same email address any time — no separate resend needed.</div>
-<div class="callout callout-warn"><strong>Guest checkout — one account per email:</strong> if the email you enter already has an account on the platform, the booking is rejected with a message to sign in first instead — it's never silently attached to someone else's existing account.</div>
+<div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.</div>
+<div class="callout callout-tip"><strong>Paying the deposit:</strong> if the studio takes a deposit, you can pay it right after you submit. On the Card tab, the <span class="step-title">Amount to pay</span> is shown above the payment box. You can also pay later with <span class="step-title">Pay deposit</span> on the booking under My Bookings.</div>
+<div class="callout callout-tip"><strong>Guest checkout — what happens after you submit:</strong> your request goes to the studio straight away, and you'll receive two emails: "Booking request received" with the date and length of your request (plus a text message if you gave a phone number), and "Set your password to manage your booking" with a link to set your password and a link to confirm your email. The booking stays a request until the studio confirms it. Set your password, then sign in to see the booking under My Bookings and manage it. Lost the email or never got it? Use "Forgot password" on the login page with the same email address any time — no separate resend needed.</div>
+<div class="callout callout-warn"><strong>Guest checkout — one account per email:</strong> if the email you enter already has an account on the platform, no booking is made and it's never attached to that account. The page looks the same, but the email that arrives asks you to sign in and book from there.</div>
 <div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
 <div class="callout callout-warn"><strong>Cancellation policy:</strong> cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled. A card deposit is charged when you pay it, so a refund goes back to your card; your bank may take a few days to show it. Afterwards, My Bookings says what happened to your deposit: "Deposit refunded" with the amount back on your card, "Partly refunded" with what the studio's policy kept and what came back, or "Deposit kept".</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
@@ -1091,6 +1093,7 @@ ol.steps li { margin: 6px 0; }
 <li>At the deposit/payment step of a later booking, enter the code in <span class="step-title">Gift card code</span> and click <span class="step-title">Apply</span>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> a partial redemption is fine — the remaining balance stays on the card.</div>
+<div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, every gift-card amount also shows the amount in lek (≈), at the Bank of Albania's latest official rate: the preset buttons, and an amount you type yourself (<span class="step-title">You pay …</span> under the box). The lek amount is fixed when you pay.</div>
 <div class="crosslinks">See also: <a href="#owner-gift-cards">Owner: Gift cards</a>, <a href="#client-deposit">Pay a deposit</a></div>
 </section>
 
@@ -1114,6 +1117,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Buy</span> and check your email to complete payment.</li>
 <li>When booking, toggle <span class="step-title">Use a package</span> and pick one with sessions remaining.</li>
 </ol>
+<div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.</div>
 <div class="crosslinks">See also: <a href="#owner-packages">Owner: Packages</a>, <a href="#client-book">Book an appointment</a></div>
 </section>
 
@@ -1371,7 +1375,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Pay a deposit</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓ (own link)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to pay a booking deposit. Your card is charged as soon as you pay; if you cancel, the studio's cancellation policy decides how much is refunded (all of it with enough notice). If you have a saved card, a "Saved card" tab is selected automatically so you can pay in one tap (still with a bank confirmation step the first time); otherwise use the "Card" tab (called "New card" when you have saved cards). If card payments are temporarily unavailable, the page shows a message instead — Cash always remains available at booking, or you can contact the studio directly.</p>
+<p>A checkout page at <code>/pay/&lt;paymentId&gt;</code> using an embedded card form to pay a booking deposit. Your card is charged as soon as you pay; if you cancel, the studio's cancellation policy decides how much is refunded (all of it with enough notice). If you have a saved card, a "Saved card" tab is selected automatically so you can pay in one tap (your bank may still ask you to confirm); otherwise use the "Card" tab (called "New card" when you have saved cards). If card payments are temporarily unavailable, the page shows a message instead — Cash always remains available at booking, or you can contact the studio directly.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Deposit checkout wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1395,6 +1399,7 @@ ol.steps li { margin: 6px 0; }
 <li>A "Deposit paid" screen appears once the payment goes through, and you get a "Deposit received" email — you can return to booking from there.</li>
 </ol>
 <div class="callout callout-tip"><strong>No platform fee, no surcharge:</strong> you pay exactly the deposit shown. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut, on card or cash payments, now or in the future.</div>
+<div class="callout callout-tip"><strong>Currency:</strong> you pay the deposit in the studio's currency — exactly the amount shown. At studios in Albania that price in euros, the amount in lek is shown next to it, converted at the Bank of Albania's official rate. Your receipt shows the rate used on the day you paid. Your card is charged in euros; if your card is in lek, your bank converts it at its own rate, which can differ slightly. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.</div>
 <div class="callout callout-tip"><strong>Refunds:</strong> if the studio refunds you, the refund goes back to the card you paid with.</div>
 <div class="callout callout-tip"><strong>Paying on POK's own page:</strong> if you pay on POK's payment page instead of inside TattooOS, POK shows its result and then brings you back to TattooOS (<code>/payment-result</code>): "Payment received", or "Payment not completed" — nothing was charged — with a <span class="step-title">Try again</span> button.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> if you come back to pay after a day, a fresh card form is prepared automatically — just pay again from the same page.</div>
@@ -1588,7 +1593,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card. A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet. Owners get this button after switching to the Artist view.</p>
+<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card (on a Requested booking the trash icon declines the request instead). A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet. Owners get this button after switching to the Artist view.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Weekly schedule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1642,7 +1647,7 @@ ol.steps li { margin: 6px 0; }
 <li>Review client, time, duration, status, and deposit.</li>
 <li>If the client attached reference images when booking, click any thumbnail to open the full-size photo in a new tab.</li>
 <li>Download the <span class="step-title">.ics calendar file</span> if you want it in your own calendar app.</li>
-<li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>.</li>
+<li>Depending on status: <span class="step-title">Confirm</span> (from Requested), <span class="step-title">Mark as complete</span> (from Confirmed), <span class="step-title">Charge deposit</span> (owner only, if pending), <span class="step-title">Mark no-show</span>, or <span class="step-title">Cancel</span>. A Requested booking shows <span class="step-title">Decline request</span> instead of Cancel: the client is told you can't take the request. Either way the client gets an email naming your studio, your phone number and a "Book another time" link (replies reach your studio email), plus a text message if they gave a phone number, and any deposit is refunded in full.</li>
 <li>Click <span class="step-title">Send Reminder</span> to text the client now or schedule it for later — separate from the studio's automatic 48h/24h reminders. The dialog's history shows each reminder's status; a <span class="step-title">Failed</span> one says why (the client opted out of SMS, the studio reached its monthly notification limit, or the SMS provider couldn't deliver it), and the list updates on its own when a scheduled reminder goes out.</li>
 <li>Click <span class="step-title">Message [client name]</span> to start or continue a real-time chat thread with the client, if they have a linked login.</li>
 </ol>
@@ -2055,6 +2060,7 @@ ol.steps li { margin: 6px 0; }
 <li>If a payment has a session split, its line items appear indented under that payment.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> only fully paid or partially-refunded-and-retained payments count — the same rule the studio's own revenue report uses.</div>
+<div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, booth-rent amounts on this page (and your hourly rate on your artist profile) also show the amount in lek (≈), at the Bank of Albania's official rate. Earnings totals stay in euros, because they add up payments made at different rates.</div>
 <div class="crosslinks">See also: <a href="#owner-reports">Owner: revenue reports</a>, <a href="#owner-become-artist">Owner: enable your own artist profile</a></div>
 </section>
 
@@ -2855,6 +2861,7 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> card deposits only work once your studio has connected its own POK merchant account — see <a href="#owner-connect-pok">Connect POK</a>. Until then, the Card option is unavailable at checkout and clients see Cash only.</div>
 <div class="callout callout-tip"><strong>Card deposit statuses:</strong> <em>Pending</em> — waiting for the client to pay. <em>Paid</em> — the client paid and the card was charged. <em>Partly refunded</em> — you refunded part of it; the payment shows how much you kept and how much went back. <em>Refunded</em> — the whole amount went back to the client. <em>Kept</em> / <em>Partly kept</em> — the client cancelled late and your cancellation policy kept all or part of it (any rest was refunded). <em>Failed</em> — the card payment didn't go through; nothing was charged, and you can ask for the deposit again. Card deposits are charged when the client pays, so there's nothing to capture; <em>On hold</em> and <em>Released</em> only appear on card deposits taken before 22 Oct 2026, and an older deposit on hold shows <span class="step-title">Capture deposit</span>. If a client pays after the appointment was already cancelled, TattooOS refunds that payment in full automatically. To refund a card payment, open a Paid payment, click <span class="step-title">Refund</span>, enter an amount for a partial refund (or leave it blank for the full amount) and click <span class="step-title">Confirm refund</span>. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click <span class="step-title">Refund more</span> — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see <a href="#owner-card-money-flow">Where card deposit money goes</a>.</div>
+<div class="callout callout-tip"><strong>Appointment link:</strong> a payment's details name its appointment by client and date (in your studio's time zone). Click it to open the appointment.</div>
 <div class="callout callout-tip"><strong>POK order ID:</strong> a card payment's details show its <span class="step-title">POK order</span> ID — search for it in POK Business (E-payments → E-orders) to see the same payment, its fee and its refunds there.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> if a client paid but closed the page before it confirmed, the payment updates by itself, usually within minutes and at the latest overnight; the client gets their "Deposit received" email then.</div>
 <div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a>, <a href="#owner-studio-profile">Studio profile</a></div>
@@ -2958,7 +2965,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Merchant ID checked too:</strong> TattooOS also checks that the Merchant ID belongs to those keys. If it doesn't, nothing is saved and you're asked to copy the Merchant ID from the same API key window as the two keys.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> POK Business may open in Albanian: E-payments is "Pagesat Online", and you can switch the language at the bottom of the left menu.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> treat the Key Secret like a password: don't take a screenshot of the window that shows it or send it to anyone. If it was shared, create a new key and delete the old one. TattooOS stores it in its secrets vault and never shows it again.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> to switch to a different POK account, click <span class="step-title">Reconnect / change account</span> and enter the new values — this replaces the old ones. POK takes card deposits in ALL and EUR; with any other studio currency, clients see Cash only.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> to switch to a different POK account, click <span class="step-title">Reconnect / change account</span> and enter the new values — this replaces the old ones. POK takes card deposits in ALL and EUR, the two currencies a studio can choose; a studio set up earlier in another currency shows Cash only until it switches.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> use your POK production credentials, not the staging/sandbox pair — sandbox keys will not process real payments.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> POK only opens merchant accounts for businesses registered in Albania. If your studio isn't registered there, you won't be able to get POK credentials — use Cash for deposits instead.</div>
 <div class="callout callout-tip"><strong>Fees:</strong> TattooOS never takes a commission or fee from a client's deposit. POK charges you its own card fee — see <a href="#owner-card-money-flow">Where card deposit money goes</a>.</div>
@@ -3142,7 +3149,7 @@ ol.steps li { margin: 6px 0; }
 <text x="280" y="184" font-size="8" fill-opacity="0.6">Location (map picker) · Country</text>
 <rect x="280" y="190" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <rect x="260" y="300" width="240" height="34" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="272" y="316" font-size="9" font-weight="700">Currency</text><text x="272" y="328" font-size="8" fill-opacity="0.6">Euro (EUR) · Save</text>
+<text x="272" y="316" font-size="9" font-weight="700">Currency</text><text x="272" y="328" font-size="8" fill-opacity="0.6">Albanian Lek (ALL) · Save</text>
 <rect x="260" y="344" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="360" font-size="8">Branding</text>
 <rect x="260" y="374" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="390" font-size="8">QR code · Embed code · Referral</text>
 </svg>
@@ -3165,13 +3172,13 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Your studio's currency</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>Every studio prices, takes deposits, and gets paid in exactly one currency, set on the Currency card in Studio Settings (<code>/studios/me</code>). It defaults to your country's currency when you register, and you can change it until the first payment, gift card, package sale, or booth-rent charge is actually recorded — after that it's locked.</p>
+<p>Every studio prices, takes deposits, and gets paid in exactly one currency — Albanian Lek (ALL) or Euro (EUR) — set on the Currency card in Studio Settings (<code>/studios/me</code>). It defaults to ALL when you register (EUR if your country uses the euro), and you can change it until the first payment, gift card, package sale, or booth-rent charge is actually recorded — after that it's locked.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 200" role="img" aria-label="Currency card wireframe">
 <rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="20" font-size="10" font-weight="700">Currency</text>
 <rect x="16" y="44" width="320" height="60" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="28" y="64" font-size="9" fill-opacity="0.6">Currency</text><rect x="28" y="70" width="280" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="36" y="84" font-size="8">Euro (EUR)</text>
+<text x="28" y="64" font-size="9" fill-opacity="0.6">Currency</text><rect x="28" y="70" width="280" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="36" y="84" font-size="8">Albanian Lek (ALL)</text>
 <rect x="16" y="116" width="130" height="26" rx="4" fill="#7c3aed"/><text x="40" y="133" font-size="9" fill="#fff">Save</text>
 </svg>
 </figure>
@@ -3179,11 +3186,11 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Go to Studio Settings and find the <span class="step-title">Currency</span> card.</li>
-<li>Pick the currency your studio prices and charges in from the dropdown, then click <span class="step-title">Save</span>. A confirmation dialog asks you to confirm — existing prices aren't converted, only relabelled in the new currency.</li>
+<li>Pick the currency your studio prices and charges in from the dropdown — Albanian Lek (ALL), the default, or Euro (EUR) — then click <span class="step-title">Save</span>. A confirmation dialog asks you to confirm — existing prices aren't converted, only relabelled in the new currency.</li>
 <li>Once your first payment, gift card, package sale, or booth-rent charge is recorded, the card shows a lock icon and the currency becomes read-only — contact support if it genuinely needs to change.</li>
 <li>From then on, every price, deposit, invoice, receipt, and report in your studio uses this currency.</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> card deposits are available only in currencies your card provider supports — POK supports ALL and EUR; cash always works, in any currency. Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> ALL and EUR are the two currencies POK takes card deposits in, so both work for card and cash. A studio set up earlier in another currency keeps it until it switches (it can only switch to ALL or EUR); until then its clients pay in cash. Clients always pay exactly the amount shown, in your studio's currency — there's no conversion at checkout. If your studio is in Albania and prices in EUR, clients also see the lek amount next to each euro price, at the Bank of Albania's official rate; the rate on the day they pay is saved with the payment and printed on their receipt. Your own screens (payments, refunds, gift cards, services and other prices) show the lek too; report totals stay in EUR only, because they add up payments made at different rates.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> switching currency doesn't convert existing numbers — a price of "50" stays "50", just read in the new currency. Review your services, deposit rules, packages, and gift-card amounts afterward.</div>
 <div class="crosslinks">See also: <a href="#owner-studio-profile">Studio profile</a>, <a href="#owner-connect-pok">Connect POK</a>, <a href="#owner-payments">Payment list</a></div>
 </section>

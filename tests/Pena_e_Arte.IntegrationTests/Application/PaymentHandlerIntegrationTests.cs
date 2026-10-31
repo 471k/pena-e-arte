@@ -38,7 +38,7 @@ public class PaymentHandlerIntegrationTests
             .Returns(($"pi_{Guid.NewGuid():N}", $"pi_{Guid.NewGuid():N}_secret"));
 
         _stripe.RefundAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns($"re_{Guid.NewGuid():N}");
 
         _stripe.CaptureAsync(
@@ -543,7 +543,7 @@ public class PaymentHandlerIntegrationTests
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
         tenant.SetTenant(tenantId);
-        CreatePaymentIntentHandler handler = new(db, tenant, _stripe, _realtime);
+        CreatePaymentIntentHandler handler = new(db, tenant, _stripe, _realtime, Substitute.For<IReferenceAmountSnapshotter>());
         return await handler.Handle(
             new CreatePaymentIntentCommand(new CreatePaymentIntentRequest(appointmentId, clientId, amount)),
             default);

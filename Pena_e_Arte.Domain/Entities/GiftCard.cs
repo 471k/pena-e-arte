@@ -1,4 +1,5 @@
 using Pena_e_Arte.Domain.Enums;
+using Pena_e_Arte.Domain.Money;
 
 namespace Pena_e_Arte.Domain.Entities;
 
@@ -9,7 +10,7 @@ namespace Pena_e_Arte.Domain.Entities;
 /// no appointment, and Payment.AppointmentId is non-nullable with a database-enforced
 /// one-payment-per-appointment unique index. See architecture.md Decisions Log.
 /// </summary>
-public class GiftCard : TenantEntity
+public class GiftCard : TenantEntity, IHasReferenceAmount
 {
     public string Code { get; set; } = string.Empty;
     public decimal InitialBalance { get; set; }
@@ -28,4 +29,17 @@ public class GiftCard : TenantEntity
 
     /// <summary>Which provider issued ProviderReferenceId (e.g. "pok"). Empty until confirmed.</summary>
     public string Provider { get; set; } = string.Empty;
+
+    // Lek reference (Albanian EUR studios only): frozen when the purchase order is created and never
+    // changed after. Null when none applies.
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceCurrency"/>
+    public string? ReferenceCurrency { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRate"/>
+    public decimal? ReferenceRate { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRateDate"/>
+    public DateOnly? ReferenceRateDate { get; set; }
+    /// <inheritdoc cref="IHasReferenceAmount.ReferenceRateSource"/>
+    public string? ReferenceRateSource { get; set; }
+    /// <summary><see cref="InitialBalance"/> in whole lek at <see cref="ReferenceRate"/>.</summary>
+    public decimal? ReferenceAmount { get; set; }
 }

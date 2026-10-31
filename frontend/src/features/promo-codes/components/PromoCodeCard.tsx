@@ -2,17 +2,18 @@ import { Link } from "react-router-dom";
 import { ChevronRight, DollarSign, Percent } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import type { PromoCodeResponse } from "../promoCode.types";
+import { Money } from "@/shared/components/Money";
+import type { ReactNode } from "react";
 
 interface PromoCodeCardProps {
   promoCode: PromoCodeResponse;
 }
 
-function formatAmount(code: PromoCodeResponse, currency: string | undefined): string {
+function formatAmount(code: PromoCodeResponse, currency: string | undefined): ReactNode {
   if (code.amountFixed !== null) {
-    return currency ? formatCurrency(code.amountFixed, currency) : String(code.amountFixed);
+    return currency ? <Money amount={code.amountFixed} currency={currency} /> : String(code.amountFixed);
   }
   return `${code.amountPercent}%`;
 }

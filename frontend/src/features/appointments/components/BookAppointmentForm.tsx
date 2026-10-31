@@ -22,7 +22,8 @@ import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { useCategorizedImageUpload, ACCEPTED_IMAGE_TYPES } from "@/shared/hooks/useCategorizedImageUpload";
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import { cn }              from "@/shared/utils/cn";
-import { formatCurrency }  from "@/shared/utils/formatCurrency";
+import { Money }           from "@/shared/components/Money";
+import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { generateUuid }    from "@/shared/utils/uuid";
 import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
@@ -91,7 +92,6 @@ const schema = z.object({
   // entirely once a service is picked).
   durationMinutes: z.number().int().positive("Select a valid appointment duration"),
   serviceId:       z.string().nullable().optional(),
-  depositRuleId:   z.string().nullable().optional(),
   promoCode:       z.string().optional(),
   notes:           z.string().optional(),
 }).refine(
@@ -171,21 +171,18 @@ function ArtistSelectItem({ artist }: { artist: ArtistResponse }) {
 }
 
 function DepositPreview({
-  ruleId,
+  rule,
   durationMinutes,
-  activeRules,
   hourlyRate,
   currency,
+  studio,
 }: {
-  ruleId:          string;
+  rule:            DepositRuleResponse;
   durationMinutes: number;
-  activeRules:     DepositRuleResponse[];
   hourlyRate:      number | null;
   currency:        string | undefined;
+  studio:          MoneyStudio;
 }) {
-  const rule = activeRules.find((r) => r.id === ruleId);
-  if (!rule) return null;
-
   let estimated: number | null = null;
   if (rule.amountFixed !== null) {
     estimated = rule.amountFixed;
@@ -194,14 +191,15 @@ function DepositPreview({
     estimated = (sessionHours * hourlyRate * rule.amountPercent) / 100;
   }
 
-  if (estimated === null) return null;
-
   return (
     <div className="flex items-center justify-between rounded-md
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Estimated deposit</span>
       <span className="text-sm font-semibold tabular-nums">
-        {currency ? formatCurrency(estimated, currency) : "…"}
+        {estimated === null
+          // A percentage rule needs the artist's hourly rate, unknown until one is picked.
+          ? <span className="text-xs font-normal text-muted-foreground">Set once an artist is picked</span>
+          : currency ? <Money amount={estimated} currency={currency} studio={studio} /> : "…"}
       </span>
     </div>
   );
@@ -210,7 +208,9 @@ function DepositPreview({
 // Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
 // for a booking that picks this service (see CreateAppointmentCommand.cs) — this preview
 // mirrors that, not DepositPreview's rule-based estimate.
-function ServiceDepositPreview({ service, currency }: { service: ServiceResponse; currency: string | undefined }) {
+function ServiceDepositPreview({ service, currency, studio }: {
+  service: ServiceResponse; currency: string | undefined; studio: MoneyStudio;
+}) {
   if (service.depositAmount === null) return null;
 
   return (
@@ -218,7 +218,7 @@ function ServiceDepositPreview({ service, currency }: { service: ServiceResponse
                     bg-muted/40 border border-border/30 px-3 py-2">
       <span className="text-xs text-muted-foreground">Deposit for this service</span>
       <span className="text-sm font-semibold tabular-nums">
-        {currency ? formatCurrency(service.depositAmount, currency) : "…"}
+        {currency ? <Money amount={service.depositAmount} currency={currency} studio={studio} /> : "…"}
       </span>
     </div>
   );
@@ -229,7 +229,7 @@ function ServiceDepositPreview({ service, currency }: { service: ServiceResponse
 export function BookAppointmentForm() {
   const user = useCurrentUser();
   const role = useAppSelector((s) => s.auth.role);
-  const { currency: studioCurrency } = useStudioCurrency();
+  const { currency: studioCurrency, countryCode: studioCountry } = useStudioCurrency();
 
   const isClientRole = role === Role.Client;
   const isStaffRole  = role === Role.Artist || role === Role.Owner || role === Role.Admin;
@@ -258,6 +258,11 @@ export function BookAppointmentForm() {
   // the session switches to that studio, so right after arriving via ?studio=<slug> it can still be
   // empty, which used to show the deposit as a bare number ("1234.", G-2).
   const bookingCurrency = targetStudio?.currency ?? studioCurrency;
+  // With the currency, the studio's country decides whether lek is shown next to euro (AL + EUR only).
+  const bookingStudio: MoneyStudio = {
+    countryCode: targetStudio?.countryCode ?? studioCountry,
+    currency:    bookingCurrency,
+  };
 
   const { isSwitching, error: switchError, ensure } = useEnsureActiveStudio();
   const [switchAttempted, setSwitchAttempted] = useState(false);
@@ -359,7 +364,6 @@ export function BookAppointmentForm() {
       durationMinutes: 60,
       clientId:        isClientRole ? (user?.id ?? "") : "",
       serviceId:       null,
-      depositRuleId:   null,
     },
   });
 
@@ -368,7 +372,6 @@ export function BookAppointmentForm() {
   const watchedDate          = useWatch({ control, name: "scheduledAt" });
   const watchedDuration      = useWatch({ control, name: "durationMinutes" });
   const watchedServiceId     = useWatch({ control, name: "serviceId" });
-  const watchedDepositRuleId = useWatch({ control, name: "depositRuleId" });
 
   // Keep clientId current for client role
   useEffect(() => {
@@ -413,6 +416,10 @@ export function BookAppointmentForm() {
   });
 
   const activeRules = depositRules?.filter((r) => r.isActive) ?? [];
+  // The rule the server will apply: CreateAppointmentCommand takes the most recently updated
+  // active rule (single-active is enforced; the ordering only matters for legacy data).
+  const appliedRule = activeRules.reduce<DepositRuleResponse | null>(
+    (latest, rule) => (latest === null || rule.updatedAt > latest.updatedAt ? rule : latest), null);
   const activeServices = useMemo(() => (services ?? []).filter((s) => s.isActive), [services]);
   const selectedService = useMemo(
     () => activeServices.find((s) => s.id === watchedServiceId) ?? null,
@@ -445,10 +452,9 @@ export function BookAppointmentForm() {
       date:            new Date(values.scheduledAt).toISOString(),
       durationMinutes: values.durationMinutes,
       serviceId:       values.serviceId ?? null,
-      // NOTE: depositRuleId is sent but ignored by the backend, which always auto-selects the
-      // single active DepositRule if any — a pre-existing mismatch, not fixed in this pass
-      // (see docs/claude/overnight-prompt-guest-checkout-booking-2026-08-31.md Part 6d).
-      depositRuleId:   values.depositRuleId ?? null,
+      // The server always applies the studio's active DepositRule itself (single-active), so
+      // there is nothing to choose here; the field stays in the request contract as null.
+      depositRuleId:   null,
       promoCode:       values.promoCode || null,
       notes:           values.notes || null,
       tattooDescription:          intake.tattooDescription,
@@ -475,7 +481,6 @@ export function BookAppointmentForm() {
         durationMinutes: 60,
         clientId:        isClientRole ? (myClient?.id ?? user?.id ?? "") : "",
         serviceId:       null,
-        depositRuleId:   null,
         promoCode:       "",
       });
       setArtistSearch("");
@@ -566,7 +571,7 @@ export function BookAppointmentForm() {
               <>
                 Secure your slot with a deposit of{" "}
                 <span className="font-medium text-foreground">
-                  {formatCurrency(booked.depositAmount, bookingCurrency)}
+                  <Money amount={booked.depositAmount} currency={bookingCurrency} studio={bookingStudio} />
                 </span>.
               </>
             ) : (
@@ -583,6 +588,7 @@ export function BookAppointmentForm() {
         <PaymentMethodSelector
           appointmentId={booked.id}
           amount={booked.depositAmount}
+          countryCode={bookingStudio.countryCode}
           onSuccess={(method) => setDepositDone(method === "cash" ? "cash" : "paid")}
           onError={(message) => toast.error(message)}
         />
@@ -927,49 +933,28 @@ export function BookAppointmentForm() {
         <div className="space-y-1.5">
           <FieldLabel htmlFor="serviceDeposit">Deposit</FieldLabel>
           <div id="serviceDeposit">
-            <ServiceDepositPreview service={selectedService} currency={bookingCurrency} />
+            <ServiceDepositPreview service={selectedService} currency={bookingCurrency} studio={bookingStudio} />
           </div>
         </div>
       )}
 
-      {/* Deposit rule — shown when the studio has at least one active rule, and no selected
-          service already fixes its own deposit amount. */}
-      {activeRules.length > 0 && !packagePurchaseId
-        && !(selectedService && selectedService.depositAmount !== null) && (
+      {/* Deposit — the studio's active rule, read-only: the server applies it on every booking,
+          so a picker here would only imply a choice that doesn't exist (C-11 production test,
+          28 Oct 2026: clients saw "No deposit" preselected and were then charged). Hidden when a
+          selected service fixes its own deposit, or a package already pays for the booking. */}
+      {appliedRule && !packagePurchaseId
+        && !(selectedService && selectedService.depositAmount !== null) && watchedDuration > 0 && (
         <div className="space-y-1.5">
-          <FieldLabel htmlFor="depositRuleId">Deposit rule</FieldLabel>
-          <Controller
-            control={control}
-            name="depositRuleId"
-            render={({ field }) => (
-              <Select
-                value={field.value ?? "none"}
-                onValueChange={(v) => field.onChange(v === "none" ? null : v)}
-              >
-                <SelectTrigger id="depositRuleId">
-                  <SelectValue placeholder="No deposit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No deposit</SelectItem>
-                  {activeRules.map((rule) => (
-                    <SelectItem key={rule.id} value={rule.id}>
-                      {rule.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-
-          {watchedDepositRuleId && watchedDepositRuleId !== "none" && watchedDuration > 0 && (
+          <FieldLabel htmlFor="depositEstimate">Deposit</FieldLabel>
+          <div id="depositEstimate">
             <DepositPreview
-              ruleId={watchedDepositRuleId}
+              rule={appliedRule}
               durationMinutes={watchedDuration}
-              activeRules={activeRules}
               hourlyRate={selectedArtist?.hourlyRate ?? null}
               currency={bookingCurrency}
+              studio={bookingStudio}
             />
-          )}
+          </div>
         </div>
       )}
 

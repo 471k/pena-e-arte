@@ -3,6 +3,7 @@ using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.API.Endpoints;
 
@@ -21,6 +22,7 @@ public static class AppointmentEndpoints
         group.MapPost("/", CreateAppointment).RequireAuthorization("ClientAndAbove");
         group.MapDelete("{id:guid}", CancelAppointment).RequireAuthorization("ClientAndAbove");
         group.MapPatch("{id:guid}/confirm", ConfirmAppointment).RequireAuthorization("ArtistAndAbove");
+        group.MapPatch("{id:guid}/decline", DeclineAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/complete", CompleteAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/no-show", MarkNoShow).RequireAuthorization("ArtistAndAbove");
         group.MapPatch("{id:guid}/reschedule", RescheduleAppointment).RequireAuthorization("ClientAndAbove");
@@ -81,6 +83,18 @@ public static class AppointmentEndpoints
         CancellationToken ct)
     {
         await mediator.Send(new CancelAppointmentCommand(id), ct);
+        return Results.NoContent();
+    }
+
+    // The staff answer to a booking request: cancels it with StudioDeclined, so the client is told
+    // the studio can't take the request (and any deposit is refunded in full, as for any
+    // studio-side cancellation).
+    private static async Task<IResult> DeclineAppointment(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        await mediator.Send(new CancelAppointmentCommand(id, CancellationReason.StudioDeclined), ct);
         return Results.NoContent();
     }
 

@@ -12,7 +12,8 @@ public class GetCountryDefaultCurrencyHandlerTests
     [Theory]
     [InlineData("al", "AL", "ALL")]
     [InlineData("AL", "AL", "ALL")]
-    [InlineData("pl", "PL", "PLN")]
+    [InlineData("xk", "XK", "EUR")]
+    [InlineData("pl", "PL", "ALL")] // PLN isn't offered (ALL and EUR only, 2026-10-26)
     public async Task Handle_KnownCountry_ReturnsUpperCasedCodeAndDefaultCurrency(
         string input, string expectedCode, string expectedCurrency)
     {
@@ -24,13 +25,13 @@ public class GetCountryDefaultCurrencyHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UnknownCountry_ReturnsNullCurrencyWithoutThrowing()
+    public async Task Handle_UnknownCountry_ReturnsPrimaryCurrencyWithoutThrowing()
     {
         CountryDefaultCurrencyResponse result = await _sut.Handle(
             new GetCountryDefaultCurrencyQuery("ZZ"), default);
 
         result.CountryCode.Should().Be("ZZ");
-        result.Currency.Should().BeNull();
+        result.Currency.Should().Be("ALL");
     }
 }
 

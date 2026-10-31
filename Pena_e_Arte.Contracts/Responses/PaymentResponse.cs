@@ -19,4 +19,10 @@ public record PaymentResponse(
     decimal? RefundedAmount = null,
     // The appointment's status when the query loaded it ("Cancelled" tells a late-cancel
     // partial capture apart from an owner's partial refund). Null when not loaded.
-    string? AppointmentStatus = null);
+    string? AppointmentStatus = null,
+    // Lek reference frozen when the client paid (Albanian EUR studios only; all null otherwise).
+    // A refund's lek figure is RefundedAmount x ReferenceRate, rounded to whole lek, never a later rate.
+    decimal? ReferenceAmount = null,
+    string? ReferenceCurrency = null,
+    decimal? ReferenceRate = null,
+    DateOnly? ReferenceRateDate = null);

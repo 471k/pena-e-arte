@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace Pena_e_Arte.Infrastructure.Persistence;
 
 public class AppDbContext(
     DbContextOptions<AppDbContext> options,
-    ICurrentTenant tenant) : IdentityDbContext<IdentityUser>(options), IAppDbContext
+    ICurrentTenant tenant) : IdentityDbContext<IdentityUser>(options), IAppDbContext, IDataProtectionKeyContext
 {
     // --- Tenant-scoped ---
     public DbSet<Appointment> Appointments => Set<Appointment>();
@@ -115,6 +116,13 @@ public class AppDbContext(
     // --- Traffic analytics (no tenant filter — StudioId nullable, admin-only cross-tenant reads) ---
     public DbSet<TrafficEvent> TrafficEvents => Set<TrafficEvent>();
     public DbSet<TrafficDailyAggregate> TrafficDailyAggregates => Set<TrafficDailyAggregate>();
+
+    // --- Public reference data (no tenant filter — a central-bank rate belongs to no studio) ---
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+
+    // --- ASP.NET Core Data Protection key ring (no tenant filter — shared by every API replica;
+    //     see DataProtectionExtensions) ---
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

@@ -15,7 +15,7 @@ import {
 } from "@/shared/components/ui/select";
 import { DataTable } from "@/shared/components/DataTable";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import {
@@ -23,6 +23,7 @@ import {
   useGetBoothRentChargesQuery, useMarkBoothRentChargeSettledMutation,
 } from "../boothRentApi";
 import { RentFrequency, type BoothRentChargeResponse } from "../boothRent.types";
+import { Money } from "@/shared/components/Money";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -170,7 +171,7 @@ export function BoothRentManagementPage() {
                   <div>
                     <p className="text-sm font-medium">{s.artistName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {currency ? formatCurrency(s.amountFixed, currency) : s.amountFixed} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
+                      {currency ? <Money amount={s.amountFixed} currency={currency} /> : s.amountFixed} / {s.frequency.toLowerCase()} — next charge {formatDate(s.nextChargeDate)}
                     </p>
                   </div>
                   <Badge variant="outline" className={s.isActive ? "border-green-300 bg-green-100 text-green-800" : "border-slate-300 bg-slate-100 text-slate-800"}>
@@ -192,7 +193,7 @@ export function BoothRentManagementPage() {
             <DataTable<BoothRentChargeResponse>
               columns={[
                 { header: "Artist", cell: (c) => c.artistName ?? "—" },
-                { header: "Amount", cell: (c) => <span className="font-semibold">{formatCurrency(c.amount, c.currency)}</span> },
+                { header: "Amount", cell: (c) => <Money amount={c.amount} currency={c.currency} className="font-semibold" /> },
                 { header: "Charged", cell: (c) => formatDate(c.chargedDate) },
                 { header: "Status", cell: (c) => <SettleButton charge={c} /> },
               ]}
@@ -202,7 +203,7 @@ export function BoothRentManagementPage() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{c.artistName ?? "—"}</span>
-                    <span className="font-semibold text-sm">{formatCurrency(c.amount, c.currency)}</span>
+                    <Money amount={c.amount} currency={c.currency} className="font-semibold text-sm" />
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground">{formatDate(c.chargedDate)}</span>

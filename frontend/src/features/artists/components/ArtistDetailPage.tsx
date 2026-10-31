@@ -56,7 +56,7 @@ import {
   TabsTrigger,
 } from "@/shared/components/ui/tabs";
 import { cn } from "@/shared/utils/cn";
-import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
+import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
@@ -77,6 +77,7 @@ import { AppointmentStatusBadge } from "@/features/appointments/components/Appoi
 import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
 import { ArtistSocialTab } from "./ArtistSocialTab";
 import { SITE_URL } from "@/shared/constants/legalEntity";
+import { Money } from "@/shared/components/Money";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -664,7 +665,7 @@ export function ArtistDetailPage() {
                     <div className="flex items-center gap-2 text-sm">
                       <Banknote className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span>
-                        {studioCurrency ? formatCurrency(artist.hourlyRate, studioCurrency) : artist.hourlyRate} / hour
+                        {studioCurrency ? <Money amount={artist.hourlyRate} currency={studioCurrency} /> : artist.hourlyRate} / hour
                       </span>
                     </div>
                   )}

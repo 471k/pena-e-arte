@@ -8,7 +8,6 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { cn } from "@/shared/utils/cn";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
-import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { AppointmentStatus, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
@@ -17,10 +16,12 @@ import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
 import {
   useCancelAppointmentMutation,
+  useDeclineAppointmentMutation,
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
 } from "../appointmentsApi";
+import { Money } from "@/shared/components/Money";
 
 interface AppointmentCardProps {
   appointment: AppointmentResponse;
@@ -53,6 +54,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
 
   const [cancel,   { isLoading: cancelling  }] = useCancelAppointmentMutation();
+  const [decline,  { isLoading: declining   }] = useDeclineAppointmentMutation();
   const { data: studio } = useGetMyStudioQuery();
   const [confirm,  { isLoading: confirming  }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing  }] = useCompleteAppointmentMutation();
@@ -61,22 +63,29 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const isTerminal       = TERMINAL_STATUSES.has(appointment.status);
   const isPending        = appointment.status === AppointmentStatus.Pending;
   const isConfirmed      = appointment.status === AppointmentStatus.Confirmed;
+  // A booking with no deposit has nothing to charge or show (28 Oct 2026: a no-deposit guest
+  // booking read "Deposit: ALL 0 · Pending" on the schedule).
+  const hasDeposit       = appointment.depositAmount > 0;
   const showChargeButton =
     canOwner &&
     !isTerminal &&
+    hasDeposit &&
     appointment.depositStatus === DepositStatus.Pending;
 
-  const anyLoading = cancelling || confirming || completing || markingNoShow;
+  const anyLoading = cancelling || declining || confirming || completing || markingNoShow;
+  const removing   = cancelling || declining;
 
   // Attachments fall back to the deprecated flat imageUrls for pre-migration appointments.
   const attachmentCount = appointment.attachments?.length ?? appointment.imageUrls?.length ?? 0;
 
+  // A request (Pending) is declined, so the client hears "the studio can't take your request";
+  // an accepted booking is cancelled.
   async function handleCancel() {
     if (!confirmCancel) { setConfirmCancel(true); return; }
-    const result = await cancel(appointment.id);
+    const result = isPending ? await decline(appointment.id) : await cancel(appointment.id);
     setConfirmCancel(false);
-    if ("data" in result) toast.success("Appointment cancelled.");
-    else                  toast.error("Failed to cancel appointment.");
+    if ("data" in result) toast.success(isPending ? "Request declined." : "Appointment cancelled.");
+    else                  toast.error(isPending ? "Failed to decline the request." : "Failed to cancel appointment.");
   }
 
   async function handleConfirm() {
@@ -123,12 +132,14 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               </span>
             )}
           </div>
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <span>
-              Deposit: {studio ? formatCurrency(appointment.depositAmount, studio.currency) : appointment.depositAmount}
-            </span>
-            <DepositStatusBadge status={appointment.depositStatus} />
-          </div>
+          {hasDeposit && (
+            <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <span>
+                Deposit: {studio ? <Money amount={appointment.depositAmount} currency={studio.currency} /> : appointment.depositAmount}
+              </span>
+              <DepositStatusBadge status={appointment.depositStatus} />
+            </div>
+          )}
           {(appointment.tattooDescription || appointment.notes) && (
             <p className="text-xs text-muted-foreground truncate">
               {appointment.tattooDescription || appointment.notes}
@@ -218,7 +229,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
             {confirmCancel ? (
               <>
-                <span className="text-xs text-destructive-text">Cancel?</span>
+                <span className="text-xs text-destructive-text">{isPending ? "Decline?" : "Cancel?"}</span>
                 <Button
                   variant="destructive"
                   size="sm"
@@ -226,7 +237,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                   onClick={handleCancel}
                   className="h-7 px-2 text-xs"
                 >
-                  {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Yes"}
+                  {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Yes"}
                 </Button>
                 <Button
                   variant="ghost"
@@ -244,9 +255,9 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 disabled={anyLoading}
                 onClick={handleCancel}
                 className="h-7 w-7 p-0 text-muted-foreground"
-                aria-label="Cancel appointment"
+                aria-label={isPending ? "Decline request" : "Cancel appointment"}
               >
-                {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               </Button>
             )}
           </div>

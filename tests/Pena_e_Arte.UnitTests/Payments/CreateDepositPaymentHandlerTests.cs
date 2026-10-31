@@ -14,6 +14,7 @@ namespace Pena_e_Arte.UnitTests.Payments;
 public class CreateDepositPaymentHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
+    private readonly IReferenceAmountSnapshotter _referenceAmounts = Substitute.For<IReferenceAmountSnapshotter>();
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IPaymentProvider _provider = Substitute.For<IPaymentProvider>();
@@ -36,7 +37,7 @@ public class CreateDepositPaymentHandlerTests
         _db.ChangeTracker.Clear();
     }
 
-    private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _jobs);
+    private CreateDepositPaymentHandler CreateSut() => new(_db, _tenant, _currentUser, _provider, _jobs, _referenceAmounts);
 
     [Fact]
     public async Task Handle_OwnAppointment_CreatesPendingCardPayment()
@@ -48,6 +49,9 @@ public class CreateDepositPaymentHandlerTests
             .Handle(new CreateDepositPaymentCommand(appointmentId), default);
 
         result.ClientToken.Should().Be("secret_new");
+        // The card form shows what it will charge (C-11, 28 Oct 2026).
+        result.Amount.Should().Be(80m);
+        result.Currency.Should().Be("ALL");
         Payment stored = _db.Payments.Single(p => p.AppointmentId == appointmentId);
         stored.Method.Should().Be(ClientPaymentMethod.Card);
         stored.Status.Should().Be(PaymentStatus.Pending);
@@ -414,6 +418,58 @@ public class CreateDepositPaymentHandlerTests
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*already in progress*");
+    }
+
+    // ── Lek reference (Albanian EUR studios, spec D3) ────────────────────────
+
+    [Fact]
+    public async Task Handle_AlbanianEuroStudio_FreezesTheLekReferenceOnTheNewOrder()
+    {
+        _db.Studios.Single(s => s.Id == _studioId).Currency = "EUR";
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId, depositAmount: 50m);
+        CreateDepositPaymentHandler sut = new(_db, _tenant, _currentUser, _provider, _jobs, ReferenceSnapshots.With(90.74m));
+
+        await sut.Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        Payment stored = _db.Payments.Single(p => p.AppointmentId == appointmentId);
+        stored.ReferenceAmount.Should().Be(4537m);
+        stored.ReferenceRate.Should().Be(90.74m);
+        stored.ReferenceCurrency.Should().Be("ALL");
+        stored.ReferenceRateDate.Should().Be(ReferenceSnapshots.RateDate);
+        stored.ReferenceRateSource.Should().Be("BoA-Fix");
+        // The card is still charged in euros, unchanged.
+        await _provider.Received(1).CreatePaymentHoldAsync(
+            Arg.Is<PaymentHoldRequest>(r => r.Amount == 50m && r.Currency == "EUR"), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_AlbanianLekStudio_StoresNoReference()
+    {
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId, depositAmount: 5000m);
+        CreateDepositPaymentHandler sut = new(_db, _tenant, _currentUser, _provider, _jobs, ReferenceSnapshots.With(90.74m));
+
+        await sut.Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        _db.Payments.Single(p => p.AppointmentId == appointmentId).ReferenceAmount.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ResumedOrder_KeepsTheReferenceFrozenWhenItWasCreated()
+    {
+        Guid clientId = await SeedClient(_clientUserId);
+        Guid appointmentId = await SeedAppointment(clientId);
+        await SeedPayment(appointmentId, ClientPaymentMethod.Card, PaymentStatus.Pending,
+            intentId: "pi_old", clientToken: "secret_old");
+        _provider.GetStatusAsync(Arg.Any<Guid>(), "pi_old", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Pending);
+
+        await CreateSut().Handle(new CreateDepositPaymentCommand(appointmentId), default);
+
+        await _referenceAmounts.DidNotReceiveWithAnyArgs().FreezeAsync(default!, default!, default!, default, default);
     }
 
     private async Task<Guid> SeedClient(Guid userId)

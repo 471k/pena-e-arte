@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Banknote,
@@ -17,6 +17,8 @@ import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -29,11 +31,20 @@ import {
 import { PaymentMethod, PaymentStatus } from "../payment.types";
 import { describeDeposit, OUTCOME_BADGE_CLASSES, type DepositOutcomeKind } from "../depositOutcome";
 import { SessionSplitsEditor } from "./SessionSplitsEditor";
+import { Money } from "@/shared/components/Money";
+import { formatAtFrozenRate, type FrozenReference } from "@/shared/hooks/useEurAllRate";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
+}
+
+// The booking's wall-clock time at the studio, e.g. "Wed, 4 Nov 2026, 11:00".
+function formatAppointmentDate(iso: string, studioTimezone: string | undefined): string {
+  return new Date(iso).toLocaleString("en-GB", withStudioTimeZone({
+    weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }, studioTimezone));
 }
 
 function StatusBadge({ kind, label }: { kind: DepositOutcomeKind; label: string }) {
@@ -46,9 +57,12 @@ function StatusBadge({ kind, label }: { kind: DepositOutcomeKind; label: string 
 
 // C-14: a card payment can be refunded several times, until the whole amount is back (POK allows
 // several partial refunds). `remaining` = amount − already refunded; leaving the field blank refunds it.
-function RefundSection({ paymentId, currency, remaining, alreadyRefunded }: {
+function RefundSection({ paymentId, currency, remaining, alreadyRefunded, frozen }: {
   paymentId: string; currency: string; remaining: number; alreadyRefunded: number;
+  /** The payment's frozen lek rate: refunds show lek at the original rate (spec D5). */
+  frozen: FrozenReference;
 }) {
+  const money = (n: number) => formatAtFrozenRate(n, currency, frozen);
   const [open, setOpen]           = useState(false);
   const [amountStr, setAmountStr] = useState("");
   const [amountError, setAmountError] = useState<string | null>(null);
@@ -63,7 +77,7 @@ function RefundSection({ paymentId, currency, remaining, alreadyRefunded }: {
       return;
     }
     if (amount !== undefined && amount > remaining) {
-      setAmountError(`Only ${formatCurrency(remaining, currency)} is left to refund.`);
+      setAmountError(`Only ${money(remaining)} is left to refund.`);
       return;
     }
     try {
@@ -73,7 +87,7 @@ function RefundSection({ paymentId, currency, remaining, alreadyRefunded }: {
       // G-4: the refund used to succeed silently (only the badge changed).
       toast.success(
         amount !== undefined || partlyRefunded
-          ? `Refund of ${formatCurrency(amount ?? remaining, currency)} issued — it goes back to the client's card.`
+          ? `Refund of ${money(amount ?? remaining)} issued — it goes back to the client's card.`
           : "Full refund issued — it goes back to the client's card.",
       );
     } catch (e) {
@@ -91,7 +105,7 @@ function RefundSection({ paymentId, currency, remaining, alreadyRefunded }: {
         className="gap-1.5 text-destructive-text hover:text-destructive-text"
       >
         <RotateCcw className="h-3.5 w-3.5" />
-        {partlyRefunded ? `Refund more — ${formatCurrency(remaining, currency)} left` : "Refund"}
+        {partlyRefunded ? `Refund more — ${money(remaining)} left` : "Refund"}
       </Button>
     );
   }
@@ -102,7 +116,7 @@ function RefundSection({ paymentId, currency, remaining, alreadyRefunded }: {
         <p className="text-sm font-medium">Issue refund</p>
         {partlyRefunded && (
           <p className="text-xs text-muted-foreground">
-            {formatCurrency(alreadyRefunded, currency)} already refunded · {formatCurrency(remaining, currency)} left to refund
+            {money(alreadyRefunded)} already refunded · {money(remaining)} left to refund
           </p>
         )}
         <div className="space-y-1">
@@ -156,6 +170,7 @@ export function PaymentDetailPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate          = useNavigate();
   const canOwner          = usePermission(Role.Owner);
+  const { data: studio }  = useGetMyStudioQuery();
 
   const { data: payment, isLoading, isError } =
     useGetPaymentByAppointmentQuery(appointmentId!);
@@ -329,6 +344,7 @@ export function PaymentDetailPage() {
               currency={payment.currency}
               remaining={leftToRefund}
               alreadyRefunded={alreadyRefunded}
+              frozen={payment}
             />
           )}
 
@@ -365,7 +381,7 @@ export function PaymentDetailPage() {
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold">{formatCurrency(payment.amount, payment.currency)}</h1>
+              <h1 className="text-lg font-semibold"><Money amount={payment.amount} currency={payment.currency} frozen={payment} /></h1>
               <StatusBadge kind={outcome.kind} label={outcome.ownerLabel} />
             </div>
             {outcome.ownerDetail && (
@@ -380,7 +396,20 @@ export function PaymentDetailPage() {
         <Card>
           <CardContent className="p-4 space-y-2.5">
             <Row label="Method"      value={isCash ? "Cash" : "Card"} />
-            <Row label="Appointment" value={payment.appointmentId} mono />
+            {/* Names the booking and links to it, rather than showing its raw id (C-11, 28 Oct 2026). */}
+            <Row
+              label="Appointment"
+              value={
+                <Link
+                  to={`/appointments/${payment.appointmentId}`}
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  {payment.appointmentDate
+                    ? `${payment.clientName} · ${formatAppointmentDate(payment.appointmentDate, studio?.timezone)}`
+                    : payment.clientName}
+                </Link>
+              }
+            />
             {payment.paidAt && (
               <Row label="Paid at" value={formatDate(payment.paidAt)} />
             )}
@@ -406,6 +435,7 @@ export function PaymentDetailPage() {
             paymentAmount={payment.amount}
             currency={payment.currency}
             currentSplits={payment.splits ?? []}
+            frozen={payment}
           />
         )}
       </main>
@@ -419,7 +449,7 @@ function Row({
   mono = false,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   mono?: boolean;
 }) {
   return (

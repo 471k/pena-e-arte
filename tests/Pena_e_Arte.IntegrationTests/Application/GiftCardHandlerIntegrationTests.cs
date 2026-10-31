@@ -12,6 +12,7 @@ using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.ExchangeRates;
 using Pena_e_Arte.IntegrationTests.Infrastructure;
 
 namespace Pena_e_Arte.IntegrationTests.Application;
@@ -32,7 +33,7 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
             .Returns(("pi_gift_test", "secret_gift_test"));
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        PurchaseGiftCardHandler handler = new(db, provider);
+        PurchaseGiftCardHandler handler = new(db, provider, Substitute.For<IReferenceAmountSnapshotter>());
 
         PurchaseGiftCardResponse purchaseResult = await handler.Handle(
             new PurchaseGiftCardCommand(new PurchaseGiftCardRequest(slug, 100m, "buyer@example.com", null)), default);
@@ -71,6 +72,38 @@ public class GiftCardHandlerIntegrationTests(DatabaseFixture fixture)
         typeof(GiftCardBalanceResponse).GetProperties()
             .Select(p => p.Name)
             .Should().NotContain(new[] { "PurchaserEmail", "RecipientEmail" });
+    }
+
+    [Fact]
+    public async Task PurchaseGiftCard_AlbanianEuroStudio_PersistsTheFrozenLekReference()
+    {
+        Guid tenantId = Guid.NewGuid();
+        string slug = await SeedPublishedStudio(tenantId);
+        IPaymentProvider provider = Substitute.For<IPaymentProvider>();
+        provider.Capabilities.Returns(new PaymentProviderCapabilities(
+            SupportsAuthCapture: true, SupportsHoldExpiry: true, SupportedCurrencies: ["ALL", "EUR"]));
+        provider.CreatePaymentHoldAsync(Arg.Any<PaymentHoldRequest>(), Arg.Any<CancellationToken>())
+            .Returns(("pi_gift_ref", "secret_gift_ref"));
+        IExchangeRateProvider rates = Substitute.For<IExchangeRateProvider>();
+        rates.GetLatestAsync("EUR", "ALL", Arg.Any<CancellationToken>())
+            .Returns(new ExchangeRateSnapshot(90.74m, new DateOnly(2026, 10, 23), "BoA-Fix", false));
+
+        Guid giftCardId;
+        await using (AppDbContext db = fixture.CreateDbContext(Guid.Empty))
+        {
+            PurchaseGiftCardHandler handler = new(db, provider,
+                new ReferenceAmountSnapshotter(rates, NullLogger<ReferenceAmountSnapshotter>.Instance));
+            giftCardId = (await handler.Handle(
+                new PurchaseGiftCardCommand(new PurchaseGiftCardRequest(slug, 100m, "buyer@example.com", null)), default)).GiftCardId;
+        }
+
+        await using AppDbContext check = fixture.CreateDbContext(tenantId);
+        GiftCard stored = await check.GiftCards.SingleAsync(g => g.Id == giftCardId);
+        stored.ReferenceAmount.Should().Be(9074m);
+        stored.ReferenceRate.Should().Be(90.740000m);
+        stored.ReferenceCurrency.Should().Be("ALL");
+        stored.ReferenceRateDate.Should().Be(new DateOnly(2026, 10, 23));
+        stored.ReferenceRateSource.Should().Be("BoA-Fix");
     }
 
     private async Task<string> SeedPublishedStudio(Guid tenantId)

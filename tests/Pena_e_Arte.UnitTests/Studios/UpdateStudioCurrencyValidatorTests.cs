@@ -29,6 +29,18 @@ public class UpdateStudioCurrencyValidatorTests
 
     [Fact]
     public void Validate_LowercaseCurrency_IsValid() =>
-        // CurrencyCatalog.IsSupported is case-insensitive.
+        // StudioCurrencies.IsOffered is case-insensitive.
         _sut.ShouldBeValid(new UpdateStudioCurrencyCommand(Guid.NewGuid(), "eur"));
+
+    [Fact]
+    public void Validate_PrimaryCurrency_IsValid() =>
+        _sut.ShouldBeValid(new UpdateStudioCurrencyCommand(Guid.NewGuid(), "ALL"));
+
+    [Theory]
+    [InlineData("USD")]
+    [InlineData("GBP")]
+    [InlineData("ALK")]
+    public void Validate_RealCurrencyThatIsNotOffered_Fails(string currency) =>
+        // Studios may only use ALL or EUR (2026-10-26).
+        _sut.ShouldFailOn(new UpdateStudioCurrencyCommand(Guid.NewGuid(), currency), "Currency");
 }

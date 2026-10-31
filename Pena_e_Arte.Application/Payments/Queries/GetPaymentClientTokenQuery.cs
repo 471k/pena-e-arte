@@ -34,6 +34,14 @@ public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser current
         if (payment.ClientToken is null)
             throw new NotFoundException("ClientToken", query.PaymentId);
 
-        return new PaymentClientTokenResponse(payment.ClientToken, payment.Amount, payment.Currency);
+        // The payment's own studio country: with Currency it tells the checkout page whether to show lek
+        // and the "charged in euros" line (Albanian EUR studios), even before any rate exists.
+        string? studioCountryCode = await db.Studios
+            .Where(s => s.Id == payment.StudioId)
+            .Select(s => s.CountryCode)
+            .FirstOrDefaultAsync(ct);
+
+        return new PaymentClientTokenResponse(payment.ClientToken, payment.Amount, payment.Currency,
+            payment.ReferenceAmount, payment.ReferenceCurrency, studioCountryCode);
     }
 }

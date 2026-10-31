@@ -421,35 +421,31 @@ describe("BookAppointmentForm", () => {
     expect(await screen.findByRole("combobox", { name: /client/i })).toBeInTheDocument();
   });
 
-  it("renders the Deposit rule selector when active rules exist", async () => {
+  // C-11 production test (28 Oct 2026): the form offered a "Deposit rule" picker preset to
+  // "No deposit", but the server always applies the studio's active rule, so clients were
+  // charged after seemingly choosing none. The deposit is now shown read-only.
+  it("shows the studio's active deposit as a read-only estimate, with no rule picker", async () => {
     renderForm();
-    expect(await screen.findByLabelText("Deposit rule")).toBeInTheDocument();
+    const row = (await screen.findByText("Estimated deposit")).parentElement!;
+    expect(row).toHaveTextContent("50");
+    expect(row).not.toHaveTextContent("100");
+    expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
+    expect(screen.queryByText("No deposit")).not.toBeInTheDocument();
   });
 
-  it("shows only active deposit rules in the selector", async () => {
-    const user = userEvent.setup();
-    renderForm();
-    await screen.findByLabelText("Deposit rule");
-    await user.click(screen.getByLabelText("Deposit rule"));
-    expect(await screen.findByRole("option", { name: "Standard (€50)" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Old rule" })).not.toBeInTheDocument();
+  it("shows staff the same read-only deposit estimate", async () => {
+    renderForm(Role.Owner);
+    expect(await screen.findByText("Estimated deposit")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
   });
 
-  it("shows 'No deposit' as the first option in the deposit rule selector", async () => {
-    const user = userEvent.setup();
-    renderForm();
-    await screen.findByLabelText("Deposit rule");
-    await user.click(screen.getByLabelText("Deposit rule"));
-    expect(await screen.findByRole("option", { name: "No deposit" })).toBeInTheDocument();
-  });
-
-  it("does NOT render Deposit rule selector when no rules exist", async () => {
+  it("does NOT show a deposit estimate when the studio has no active rule", async () => {
     server.use(
-      http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([])),
+      http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([INACTIVE_RULE])),
     );
     renderForm();
     await screen.findByText("Luna Artista");
-    expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
+    expect(screen.queryByText("Estimated deposit")).not.toBeInTheDocument();
   });
 
   it("artist dropdown includes a search input", async () => {
@@ -996,6 +992,20 @@ describe("MyBookingsSection", () => {
 
   // ── Client self-cancel ─────────────────────────────────────────────────────
 
+  // 28 Oct 2026: a request the studio declined reads as declined, not just "cancelled".
+  it.each([
+    ["StudioDeclined", "The studio couldn't take this request."],
+    ["StudioCancelled", "This appointment was cancelled."],
+  ])("explains a %s booking in plain words", async (reason, text) => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, status: "Cancelled", cancellationReason: reason }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByText(text, { exact: false })).toBeInTheDocument();
+  });
+
   it("shows a 'Cancel appointment' link for a Pending upcoming booking", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
@@ -1114,6 +1124,41 @@ describe("MyBookingsSection", () => {
     renderMyBookings();
     expect(await screen.findByText(label)).toBeInTheDocument();
     expect(screen.getByText(detail)).toBeInTheDocument();
+    expect(screen.queryByText("Deposit paid")).not.toBeInTheDocument();
+  });
+
+  // C-11 production test (28 Oct 2026): after a refunded self-cancel the card kept saying
+  // "Deposit paid" until a reload, because the payment lives in another RTK Query slice.
+  it("shows the refund right after a self-cancel, without a reload", async () => {
+    let cancelled = false;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{
+          ...APPT_UPCOMING, depositAmount: 50, depositStatus: cancelled ? "Refunded" : "Paid",
+          status: cancelled ? "Cancelled" : APPT_UPCOMING.status,
+        }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () =>
+        HttpResponse.json({
+          id: "pay-1", appointmentId: "appt-001", amount: 50, method: "Card",
+          providerReferenceId: "pi_1", clientToken: null, cashNote: null,
+          paidAt: "2026-06-01T10:00:00Z", clientName: "Marco Cliente", appointmentDate: null, currency: "EUR",
+          status: cancelled ? "Refunded" : "Paid", refundedAmount: cancelled ? 50 : null,
+        }),
+      ),
+      http.delete("http://localhost/api/v1/appointments/:id", () => {
+        cancelled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    expect(await screen.findByText("Deposit paid")).toBeInTheDocument();
+
+    await user.click(await screen.findByText("Cancel appointment"));
+    await user.click(screen.getByRole("button", { name: "Yes, cancel" }));
+
+    expect(await screen.findByText("Deposit refunded")).toBeInTheDocument();
     expect(screen.queryByText("Deposit paid")).not.toBeInTheDocument();
   });
 

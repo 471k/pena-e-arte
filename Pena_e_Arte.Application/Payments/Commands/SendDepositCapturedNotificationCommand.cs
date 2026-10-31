@@ -52,7 +52,12 @@ public class SendDepositCapturedNotificationHandler(
             return Unit.Value;
         }
 
-        string amountFormatted = MoneyText.Format(payment.Amount, payment.Currency);
+        // Albanian EUR studios: the lek frozen when the client paid, plus the rate used (spec D7).
+        string amountFormatted = MoneyText.FormatWithReference(
+            payment.Amount, payment.Currency, payment.ReferenceAmount, payment.ReferenceCurrency, approximate: false);
+        string? exchangeRateLine = payment is { ReferenceRate: decimal rate, ReferenceRateDate: DateOnly rateDate }
+            ? MoneyText.BankOfAlbaniaRateLine(rate, rateDate)
+            : null;
         // Appointment.Date is UTC; the client reads the studio's wall-clock time.
         string appointmentDate = TimezoneUtils.ToStudioLocalForRules(payment.Appointment.Date, studio.Timezone)
             .ToString("dddd, dd MMMM yyyy 'at' HH:mm", CultureInfo.InvariantCulture);
@@ -75,7 +80,8 @@ public class SendDepositCapturedNotificationHandler(
             amountFormatted,
             appointmentDate,
             awaitingConfirmation,
-            studio.ShowPlatformBranding);
+            studio.ShowPlatformBranding,
+            exchangeRateLine);
 
         NotificationLog? emailLog = null;
         if (emailEnabled)

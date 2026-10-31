@@ -24,7 +24,8 @@ public class CreateDepositPaymentHandler(
     ICurrentTenant tenant,
     ICurrentUser currentUser,
     IPaymentProvider paymentProvider,
-    IJobScheduler jobs)
+    IJobScheduler jobs,
+    IReferenceAmountSnapshotter referenceAmounts)
     : IRequestHandler<CreateDepositPaymentCommand, PaymentIntentResponse>
 {
     // Matches the Postman/REST example (expiresAfterMinutes: 1440) — a full day for the client to
@@ -36,8 +37,9 @@ public class CreateDepositPaymentHandler(
     {
         Appointment appointment = await ResolveOwnAppointmentAsync(db, currentUser, command.AppointmentId, ct);
         (Guid paymentId, string clientToken, PaymentStatus status) =
-            await ResolveOrCreateHoldAsync(db, tenant, paymentProvider, jobs, appointment, ct);
-        return new PaymentIntentResponse(paymentId, clientToken, status.ToString());
+            await ResolveOrCreateHoldAsync(db, tenant, paymentProvider, jobs, referenceAmounts, appointment, ct);
+        Payment payment = await db.Payments.AsNoTracking().FirstAsync(p => p.Id == paymentId, ct);
+        return new PaymentIntentResponse(paymentId, clientToken, status.ToString(), payment.Amount, payment.Currency);
     }
 
     /// <summary>
@@ -71,10 +73,12 @@ public class CreateDepositPaymentHandler(
     /// token (POK order id), and the resulting status: Pending means a fresh/resumed hold that
     /// still needs the client to complete payment; Captured/Paid means the deposit is already
     /// settled and the caller should report that directly, with no further POK interaction.
+    /// A freshly minted order freezes the lek reference (Albanian EUR studios, spec D3); a resumed
+    /// order keeps the reference frozen when it was created.
     /// </summary>
     internal static async Task<(Guid PaymentId, string ClientToken, PaymentStatus Status)> ResolveOrCreateHoldAsync(
         IAppDbContext db, ICurrentTenant tenant, IPaymentProvider paymentProvider, IJobScheduler jobs,
-        Appointment appointment, CancellationToken ct)
+        IReferenceAmountSnapshotter referenceAmounts, Appointment appointment, CancellationToken ct)
     {
         if (appointment.DepositAmount <= 0)
             throw new BusinessRuleViolationException("This appointment does not require a deposit.");
@@ -155,10 +159,11 @@ public class CreateDepositPaymentHandler(
         if (existing is not null && !convertible)
             throw new BusinessRuleViolationException("A payment for this appointment is already in progress.");
 
-        string currency = await db.Studios
+        var studio = await db.Studios
             .Where(s => s.Id == tenant.StudioId)
-            .Select(s => s.Currency)
+            .Select(s => new { s.CountryCode, s.Currency })
             .SingleAsync(ct);
+        string currency = studio.Currency;
         CardCurrencyGuard.EnsureSupported(paymentProvider, currency);
 
         Guid paymentId = existing?.Id ?? Guid.NewGuid();
@@ -174,9 +179,10 @@ public class CreateDepositPaymentHandler(
             ct);
         DateTime holdExpiresAt = DateTime.UtcNow.AddMinutes(HoldDurationMinutes);
 
+        Payment payment;
         if (existing is null)
         {
-            db.Payments.Add(new Payment
+            payment = new Payment
             {
                 Id = paymentId,
                 StudioId = tenant.StudioId,
@@ -190,11 +196,13 @@ public class CreateDepositPaymentHandler(
                 ProviderReferenceId = providerReferenceId,
                 ClientToken = clientToken,
                 HoldExpiresAt = holdExpiresAt,
-            });
+            };
+            db.Payments.Add(payment);
         }
         else
         {
             // Convert in place: cash declaration switched to card, or a failed attempt retried
+            payment = existing;
             existing.Method = ClientPaymentMethod.Card;
             existing.Status = PaymentStatus.Pending;
             existing.Provider = "pok";
@@ -205,6 +213,9 @@ public class CreateDepositPaymentHandler(
             existing.CashNote = null;
             existing.UpdatedAt = DateTime.UtcNow;
         }
+
+        // The order just minted is what the client pays: freeze the lek reference they saw now (D3).
+        await referenceAmounts.FreezeAsync(payment, studio.CountryCode, currency, payment.Amount, ct);
 
         await db.SaveChangesAsync(ct);
         return (paymentId, clientToken, PaymentStatus.Pending);

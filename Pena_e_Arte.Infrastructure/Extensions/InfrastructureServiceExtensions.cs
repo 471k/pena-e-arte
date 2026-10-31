@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Pena_e_Arte.Application.Persistence;
@@ -13,6 +14,7 @@ using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
 using Pena_e_Arte.Infrastructure.Persistence;
 using Pena_e_Arte.Infrastructure.Services;
+using Pena_e_Arte.Infrastructure.Services.ExchangeRates;
 using Pena_e_Arte.Infrastructure.Services.MailKit;
 using Pena_e_Arte.Infrastructure.Services.Pok;
 using Pena_e_Arte.Infrastructure.Services.Marketing;
@@ -65,6 +67,7 @@ public static class InfrastructureServiceExtensions
         // email-confirmation links (both use the "Default" provider). A user whose
         // verification link expires can request a new one via /auth/resend-verification.
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));
+        services.AddSharedDataProtection();
 
         var redisConnectionString = configuration["Redis:ConnectionString"]!;
         services.AddStackExchangeRedisCache(options =>
@@ -72,13 +75,7 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 
-        // Hangfire.MySqlStorage's dashboard (the Recurring Jobs page) uses a MySQL user variable
-        // (@rownum); MySqlConnector rejects that unless the connection string allows it, so the page
-        // returned a 500. Only Hangfire's own connection gets the flag, never EF Core's.
-        string hangfireConnectionString = new MySqlConnectionStringBuilder(connectionString)
-        {
-            AllowUserVariables = true
-        }.ConnectionString;
+        string hangfireConnectionString = BuildHangfireConnectionString(connectionString);
 
         services.AddHangfire((serviceProvider, config) => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -253,6 +250,14 @@ public static class InfrastructureServiceExtensions
             .RemoveAllLoggers();
         services.AddTransient<SendCampaignJob>();
 
+        // Bank of Albania EUR/ALL rate for the lek shown next to euro amounts (Albanian EUR studios).
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddHttpClient(BankOfAlbaniaRateFetcher.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddTransient<BankOfAlbaniaRateFetcher>();
+        services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();
+        services.AddScoped<IReferenceAmountSnapshotter, ReferenceAmountSnapshotter>();
+        services.AddTransient<ExchangeRateFetchJob>();
+
         // Webhooks — reuses the Instagram token encryptor above (see ITokenEncryptor's own
         // "generalise this" note) rather than a second encryption key just for this.
         services.AddHttpClient("Webhooks", client => client.Timeout = TimeSpan.FromSeconds(10));
@@ -287,6 +292,23 @@ public static class InfrastructureServiceExtensions
 
         return services;
     }
+
+    // Hangfire's own connection only, never EF Core's:
+    // - AllowUserVariables: Hangfire.MySqlStorage's dashboard (the Recurring Jobs page) uses a MySQL
+    //   user variable (@rownum); MySqlConnector rejects that unless allowed, so the page returned 500.
+    // - UseXaTransactions = false: Hangfire.MySqlStorage writes inside a TransactionScope, which
+    //   MySqlConnector runs as an XA transaction by default. An XA transaction whose client goes away
+    //   at the wrong moment stays on the server with its locks until an admin rolls it back by XID —
+    //   which DigitalOcean's doadmin can't even list (no XA_RECOVER_ADMIN). Found 2026-10-28: one left
+    //   by the 15 Oct migration Job held staging's hangfire_Set for 13 days, so every new recurring
+    //   job and scheduled job insert there timed out. A plain transaction is rolled back by the server
+    //   when its connection drops; Hangfire uses one connection per scope, so it needs nothing more.
+    internal static string BuildHangfireConnectionString(string connectionString) =>
+        new MySqlConnectionStringBuilder(connectionString)
+        {
+            AllowUserVariables = true,
+            UseXaTransactions = false,
+        }.ConnectionString;
 
     // AWSSDK.S3 4.x defaults both checksum settings to WHEN_SUPPORTED, which sends uploads as
     // STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER. Cloudflare R2 does not implement that and

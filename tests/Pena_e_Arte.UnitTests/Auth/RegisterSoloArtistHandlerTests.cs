@@ -174,14 +174,34 @@ public class RegisterSoloArtistHandlerTests
     }
 
     [Fact]
-    public async Task Handle_PolishCountry_StudioCurrencyIsPln()
+    public async Task Handle_PolishCountry_StudioCurrencyFallsBackToAll()
     {
+        // Studios may only use ALL or EUR (2026-10-26); Poland's own PLN isn't one of them.
         IdentitySucceeds();
         RegisterSoloArtistRequest req = ValidRequest() with { CountryCode = "PL" };
 
         await CreateSut().Handle(new RegisterSoloArtistCommand(req), default);
 
-        _db.Studios.Single().Currency.Should().Be("PLN");
+        _db.Studios.Single().Currency.Should().Be("ALL");
+    }
+
+    [Fact]
+    public async Task Handle_ItalianCountry_StudioCurrencyIsEur()
+    {
+        IdentitySucceeds();
+        RegisterSoloArtistRequest req = ValidRequest() with { CountryCode = "IT" };
+
+        await CreateSut().Handle(new RegisterSoloArtistCommand(req), default);
+
+        _db.Studios.Single().Currency.Should().Be("EUR");
+    }
+
+    [Fact]
+    public void Validator_CurrencyThatIsNotOffered_Fails()
+    {
+        RegisterSoloArtistRequest req = ValidRequest() with { CountryCode = "AL", Currency = "USD" };
+        new RegisterSoloArtistValidator()
+            .ShouldFailOn(new RegisterSoloArtistCommand(req), "Request.Currency");
     }
 
     [Fact]

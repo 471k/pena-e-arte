@@ -77,14 +77,10 @@ vi.mock("@/shared/hooks/useAddressGeocode", () => ({
 // an infinite render loop (mount → effect fires → setValue → re-render → new object → repeat).
 // This cache keeps one reference per code so the effect only fires when the value truly changes.
 
-// AL -> EUR matches this codebase's existing seed/fixture convention (every seeded Albanian
-// studio's prices were always shown in € pre-migration — see architecture.md Decisions Log,
-// "Studio currency"), not real-world ISO 4217 (which would say ALL). Any other code falls back
-// to USD rather than null, mirroring how .NET's real RegionInfo resolves a currency for
-// virtually every actual country — null is reserved for a genuinely unknown code, not the
-// common case, so the solo form's browser-locale-guessed country isn't left without a default.
+// Mirrors the server's StudioCurrencies.DefaultFor (2026-10-26): the country's own currency when
+// it is ALL or EUR (AL -> ALL; IT -> EUR), otherwise ALL. Never null for a real code.
 const mockGetCountryDefaultCurrency = vi.fn((code: string) => ({
-  data: { currency: code === "AL" ? "EUR" : code ? "USD" : null }, isFetching: false,
+  data: { currency: code === "IT" ? "EUR" : code ? "ALL" : null }, isFetching: false,
 }));
 
 const countryDefaultCurrencyResultCache = new Map<string, { data: { currency: string | null }; isFetching: boolean }>();
@@ -774,41 +770,44 @@ describe("RegisterStudioPage — country and currency", () => {
     renderPage();
 
     expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/albania/i);
-    expect(await screen.findByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/EUR/i);
+    expect(await screen.findByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/ALL/);
   });
 
-  it("a geocode result with country_code 'pl' preselects Poland and its default currency (PLN)", async () => {
-    mockGetCountryDefaultCurrency.mockImplementation((code: string) => ({
-      data: { currency: code === "PL" ? "PLN" : "EUR" }, isFetching: false,
-    }));
-    renderPage();
-
-    act(() => {
-      capturedOnResolved?.({ lat: 52.2297, lng: 21.0122, city: "Warsaw", countryCode: "PL" });
-    });
-
-    expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/poland/i);
-    expect(await screen.findByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/PLN/i);
-  });
-
-  it("a manually picked currency survives a later country change", async () => {
-    mockGetCountryDefaultCurrency.mockImplementation((code: string) => ({
-      data: { currency: code === "PL" ? "PLN" : "EUR" }, isFetching: false,
-    }));
+  it("offers only Albanian Lek (ALL) then Euro (EUR)", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    // Manually pick a currency that differs from Albania's (EUR) or Poland's (PLN) default.
     await user.click(await screen.findByRole("combobox", { name: /^currency$/i }));
-    await user.click(await screen.findByRole("option", { name: /US Dollar \(USD\)/i }));
-    expect(screen.getByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/USD/i);
+    const options = await screen.findAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["Albanian Lek (ALL)", "Euro (EUR)"]);
+  });
 
-    // A later country change (via geocode) must not overwrite the manual pick.
+  it("a geocode result with country_code 'it' preselects Italy and EUR", async () => {
+    renderPage();
+
+    act(() => {
+      capturedOnResolved?.({ lat: 41.9028, lng: 12.4964, city: "Rome", countryCode: "IT" });
+    });
+
+    expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/italy/i);
+    expect(await screen.findByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/EUR/);
+  });
+
+  it("a manually picked currency survives a later country change", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    // Manually pick EUR over Albania's default (ALL).
+    await user.click(await screen.findByRole("combobox", { name: /^currency$/i }));
+    await user.click(await screen.findByRole("option", { name: /Euro \(EUR\)/i }));
+    expect(screen.getByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/EUR/);
+
+    // A later country change (via geocode; Poland's default would be ALL) must not overwrite it.
     act(() => {
       capturedOnResolved?.({ lat: 52.2297, lng: 21.0122, city: "Warsaw", countryCode: "PL" });
     });
 
     expect(await screen.findByRole("combobox", { name: /^country$/i })).toHaveTextContent(/poland/i);
-    expect(screen.getByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/USD/i);
+    expect(screen.getByRole("combobox", { name: /^currency$/i })).toHaveTextContent(/EUR/);
   });
 });

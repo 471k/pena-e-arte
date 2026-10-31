@@ -26,6 +26,7 @@ import { logout } from "@/features/auth/authSlice";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { NotificationBell } from "@/features/notifications";
 import { StudioJoinInviteBell } from "@/features/auth/components/StudioJoinInviteBell";
@@ -132,6 +133,7 @@ export function OwnerLayout() {
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
   const { data: studio } = useGetMyStudioQuery();
+  const moneyStudio = studio ? { countryCode: studio.countryCode, currency: studio.currency } : null;
   // Fires unconditionally for every owner (most won't have a profile yet — a normal 404 each
   // load, exactly like ArtistLayout already does for every artist). RTK Query dedupes this
   // against the same call ArtistListPage's "Become an artist" CTA makes via the shared
@@ -270,7 +272,10 @@ export function OwnerLayout() {
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
         <div className="flex-1 min-w-0">
-          <Outlet />
+          {/* Staff screens show lek next to euro for Albanian EUR studios (spec Q3, 2026-10-26). */}
+          <MoneyStudioContext.Provider value={moneyStudio}>
+            <Outlet />
+          </MoneyStudioContext.Provider>
         </div>
       </div>
       <FeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />

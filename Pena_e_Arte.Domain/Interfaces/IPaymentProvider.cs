@@ -91,9 +91,10 @@ public interface IPaymentProvider
     /// <summary>Returns the payment's normalized status, or null if unknown/not found.</summary>
     Task<PaymentProviderStatus?> GetStatusAsync(Guid studioId, string providerReferenceId, CancellationToken ct);
 
-    /// <summary>Refunds a captured payment (full when amount is null). Amount is major units,
-    /// already rounded to currency's ISO 4217 minor unit — the same convention as
-    /// PaymentHoldRequest.Amount; the provider converts to its own wire format. Returns the
-    /// refund id.</summary>
-    Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal? amount, string currency, CancellationToken ct);
+    /// <summary>Refunds part or all of a captured payment. The amount is always explicit, even for
+    /// a full refund: POK production rejects a refund without one (400, seen 28 Oct 2026).
+    /// Amount is major units, already rounded to currency's ISO 4217 minor unit — the same
+    /// convention as PaymentHoldRequest.Amount; the provider converts to its own wire format.
+    /// Returns the refund id.</summary>
+    Task<string> RefundAsync(Guid studioId, string providerReferenceId, decimal amount, string currency, CancellationToken ct);
 }
