@@ -7,4 +7,7 @@ public record SavedPaymentMethodResponse(
     string? ExpiryMonth,
     string? ExpiryYear,
     bool IsDefault,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    // Only set by the add endpoint: true when this card was already on file and the existing
+    // entry was kept (refreshed) instead of adding a second copy.
+    bool AlreadySaved = false);

@@ -386,6 +386,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "A card saved at one studio can't be used at another — save a card again if you book with a different studio.",
+      "Saving a card you've already saved doesn't add a second copy — you'll see \"This card is already saved\" and your list stays the same.",
       "Paying with a saved card may still ask you to confirm with your bank, the same as a new card — this keeps your payment secure.",
     ],
     relatedArticleIds: ["client-deposit-pay"],

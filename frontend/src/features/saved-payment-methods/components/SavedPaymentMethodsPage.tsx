@@ -128,8 +128,10 @@ export function SavedPaymentMethodsPage() {
       phoneNumber: data.billingInfo.phoneNumber ?? null,
     });
 
-    if ("data" in result) {
-      toast.success("Card saved.");
+    if ("data" in result && result.data) {
+      toast.success(result.data.alreadySaved
+        ? "This card is already saved — no second copy was added."
+        : "Card saved.");
       // Remounts AddCardForm so it resets to a fresh, empty state for the next card.
       setFormKey((k) => k + 1);
     } else {

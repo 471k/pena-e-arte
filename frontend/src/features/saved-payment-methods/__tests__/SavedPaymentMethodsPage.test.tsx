@@ -220,6 +220,23 @@ describe("SavedPaymentMethodsPage", () => {
     expect(capturedBody?.address1).toBe("Rr. Myslym Shyri 10");
   });
 
+  it("saving a card that is already on file says so instead of 'Card saved.'", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post("http://localhost/api/v1/saved-payment-methods", () =>
+        HttpResponse.json({ ...METHOD_1, alreadySaved: true }, { status: 200 }),
+      ),
+    );
+
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /save card/i }));
+
+    expect(
+      await screen.findByText("This card is already saved — no second copy was added."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Card saved.")).not.toBeInTheDocument();
+  });
+
   it("shows an error toast when saving a card fails", async () => {
     const user = userEvent.setup();
     server.use(
