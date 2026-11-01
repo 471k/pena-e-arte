@@ -6,6 +6,8 @@ export interface SavedPaymentMethodResponse {
   expiryYear:    string | null;
   isDefault:     boolean;
   createdAt:     string;
+  /** Add endpoint only: the card was already on file, so no second copy was added. */
+  alreadySaved?: boolean;
 }
 
 export interface AddSavedPaymentMethodRequest {

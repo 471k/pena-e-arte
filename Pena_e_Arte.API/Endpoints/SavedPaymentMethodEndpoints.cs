@@ -35,7 +35,10 @@ public static class SavedPaymentMethodEndpoints
         CancellationToken ct)
     {
         SavedPaymentMethodResponse result = await mediator.Send(new AddSavedPaymentMethodCommand(request), ct);
-        return Results.Created($"/api/v1/saved-payment-methods/{result.Id}", result);
+        // The same card already on file: nothing new was created, the existing entry is returned.
+        return result.AlreadySaved
+            ? Results.Ok(result)
+            : Results.Created($"/api/v1/saved-payment-methods/{result.Id}", result);
     }
 
     private static async Task<IResult> DeleteSavedPaymentMethod(

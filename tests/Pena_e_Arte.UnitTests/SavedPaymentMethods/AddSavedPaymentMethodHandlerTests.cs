@@ -145,6 +145,98 @@ public class AddSavedPaymentMethodHandlerTests
         _db.SavedPaymentMethods.Should().ContainSingle(s => s.ProviderCardTokenId == "card-dup");
     }
 
+    private SavedPaymentMethod SeedSavedCard(Client client, string token, string? brand, string? maskedPan, bool isDefault)
+    {
+        SavedPaymentMethod method = new()
+        {
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ProviderCardTokenId = token,
+            CardBrand = brand,
+            MaskedPan = maskedPan,
+            IsDefault = isDefault,
+        };
+        _db.SavedPaymentMethods.Add(method);
+        _db.SaveChanges();
+        return method;
+    }
+
+    private void TokenizeReturns(PokTokenizedCard card) =>
+        _cardTokens.TokenizeCardAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<PokCardBillingInfo>(), Arg.Any<CancellationToken>())
+            .Returns(card);
+
+    [Fact]
+    public async Task Handle_SameCardSavedAgainWithNewToken_KeepsOneRowPointingAtNewToken()
+    {
+        // POK gives the same card a new id on every save (staging 31 Oct: 4111 saved twice -> two ids).
+        Client client = SeedClient();
+        SavedPaymentMethod existing = SeedSavedCard(client, "card-old", "VISA", "**** 1111", isDefault: true);
+        TokenizeReturns(new PokTokenizedCard("card-new", "Visa", "**** 1111", null, null));
+
+        SavedPaymentMethodResponse result = await CreateSut().Handle(new AddSavedPaymentMethodCommand(Request), default);
+
+        result.AlreadySaved.Should().BeTrue();
+        result.Id.Should().Be(existing.Id);
+        result.IsDefault.Should().BeTrue();
+        _db.SavedPaymentMethods.Should().ContainSingle()
+            .Which.ProviderCardTokenId.Should().Be("card-new");
+    }
+
+    [Fact]
+    public async Task Handle_SameLastFourDifferentBrand_AddsSecondCard()
+    {
+        Client client = SeedClient();
+        SeedSavedCard(client, "card-visa", "Visa", "**** 1111", isDefault: true);
+        TokenizeReturns(new PokTokenizedCard("card-mc", "Mastercard", "**** 1111", null, null));
+
+        SavedPaymentMethodResponse result = await CreateSut().Handle(new AddSavedPaymentMethodCommand(Request), default);
+
+        result.AlreadySaved.Should().BeFalse();
+        result.IsDefault.Should().BeFalse();
+        _db.SavedPaymentMethods.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_DifferentLastFour_AddsSecondCard()
+    {
+        Client client = SeedClient();
+        SeedSavedCard(client, "card-1", "Visa", "**** 1111", isDefault: true);
+        TokenizeReturns(new PokTokenizedCard("card-2", "Visa", "**** 4242", null, null));
+
+        SavedPaymentMethodResponse result = await CreateSut().Handle(new AddSavedPaymentMethodCommand(Request), default);
+
+        result.AlreadySaved.Should().BeFalse();
+        _db.SavedPaymentMethods.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_CardWithoutBrandOrNumber_IsNeverMerged()
+    {
+        // Without POK's display fields there is nothing safe to match on.
+        Client client = SeedClient();
+        SeedSavedCard(client, "card-1", null, null, isDefault: true);
+        TokenizeReturns(new PokTokenizedCard("card-2", null, null, null, null));
+
+        SavedPaymentMethodResponse result = await CreateSut().Handle(new AddSavedPaymentMethodCommand(Request), default);
+
+        result.AlreadySaved.Should().BeFalse();
+        _db.SavedPaymentMethods.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_SameCardSavedByAnotherClient_IsNotMerged()
+    {
+        SeedSavedCard(new Client { Id = Guid.NewGuid() }, "card-other", "Visa", "**** 1111", isDefault: true);
+        SeedClient();
+        TokenizeReturns(new PokTokenizedCard("card-mine", "Visa", "**** 1111", null, null));
+
+        SavedPaymentMethodResponse result = await CreateSut().Handle(new AddSavedPaymentMethodCommand(Request), default);
+
+        result.AlreadySaved.Should().BeFalse();
+        result.IsDefault.Should().BeTrue();
+        _db.SavedPaymentMethods.Should().HaveCount(2);
+    }
+
     [Fact]
     public async Task Handle_NoClientRecordForUser_ThrowsNotFoundException()
     {

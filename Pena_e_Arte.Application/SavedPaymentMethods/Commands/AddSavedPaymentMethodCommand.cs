@@ -55,6 +55,20 @@ public class AddSavedPaymentMethodHandler(
             return Map(existing);
         }
 
+        // The same card saved again: POK hands out a NEW card id every time and offers no card
+        // fingerprint (POK email Q16), so the token check above can't catch it. Match on what POK
+        // does give — brand + last four — and keep one row per card, now pointing at the newest
+        // token (POK keeps no expiry, so the newest token is the one most likely to stay valid).
+        // Cards whose brand or number POK didn't return are never merged.
+        SavedPaymentMethod? sameCard = await FindSameCardAsync(client.Id, tokenized, ct);
+        if (sameCard is not null)
+        {
+            sameCard.ProviderCardTokenId = tokenized.CardTokenId;
+            sameCard.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return Map(sameCard) with { AlreadySaved = true };
+        }
+
         bool isFirst = !await db.SavedPaymentMethods.AnyAsync(s => s.ClientId == client.Id, ct);
 
         SavedPaymentMethod method = new()
@@ -74,6 +88,21 @@ public class AddSavedPaymentMethodHandler(
         await db.SaveChangesAsync(ct);
 
         return Map(method);
+    }
+
+    private async Task<SavedPaymentMethod?> FindSameCardAsync(Guid clientId, PokTokenizedCard card, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(card.Brand) || string.IsNullOrWhiteSpace(card.MaskedPan))
+            return null;
+
+        List<SavedPaymentMethod> candidates = await db.SavedPaymentMethods
+            .Where(s => s.ClientId == clientId && s.MaskedPan == card.MaskedPan && s.CardBrand != null)
+            .OrderByDescending(s => s.IsDefault)
+            .ThenBy(s => s.CreatedAt)
+            .ToListAsync(ct);
+
+        // Brand casing has varied between POK responses ("VISA", "Visa").
+        return candidates.FirstOrDefault(s => string.Equals(s.CardBrand, card.Brand, StringComparison.OrdinalIgnoreCase));
     }
 
     internal static SavedPaymentMethodResponse Map(SavedPaymentMethod m) => new(
