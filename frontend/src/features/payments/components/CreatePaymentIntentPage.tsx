@@ -21,6 +21,7 @@ import { Input }                           from "@/shared/components/ui/input";
 import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
 import { Badge }                           from "@/shared/components/ui/badge";
 import { cn }                              from "@/shared/utils/cn";
+import { extractErrorMessage }             from "@/shared/utils/extractErrorMessage";
 import { useStudioCurrency }               from "@/shared/hooks/useStudioCurrency";
 import { useGetAppointmentsQuery }         from "@/features/appointments/appointmentsApi";
 import { useGetClientsQuery }              from "@/features/clients/clientsApi";
@@ -302,8 +303,8 @@ function ConfirmPanel({
   );
   const [amountError, setAmountError] = useState<string | null>(null);
 
-  const [createIntent,     { isLoading: isLoadingCard, isError: isErrorCard }] = useCreatePaymentIntentMutation();
-  const [declareCashDeposit, { isLoading: isLoadingCash, isError: isErrorCash }] = useDeclareCashDepositMutation();
+  const [createIntent,     { isLoading: isLoadingCard, isError: isErrorCard, error: errorCard }] = useCreatePaymentIntentMutation();
+  const [declareCashDeposit, { isLoading: isLoadingCash, isError: isErrorCash, error: errorCash }] = useDeclareCashDepositMutation();
 
   const isLoading = isLoadingCard || isLoadingCash;
   const noDepositRule = appointment.depositAmount === 0;
@@ -453,7 +454,9 @@ function ConfirmPanel({
         <Card>
           <CardContent className="p-3">
             <p className="text-sm text-destructive-text">
-              Failed to create payment. This appointment may already have an active payment.
+              {/* The server's message when it has one (e.g. the 2,500 EUR card limit), else the generic text. */}
+              {extractErrorMessage(isErrorCard ? errorCard : errorCash,
+                "Failed to create payment. This appointment may already have an active payment.")}
             </p>
           </CardContent>
         </Card>

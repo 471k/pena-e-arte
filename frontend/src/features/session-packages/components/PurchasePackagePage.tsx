@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { Money } from "@/shared/components/Money";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
@@ -27,7 +28,8 @@ export function PurchasePackagePage() {
   async function handlePurchase(packageId: string) {
     const result = await purchase({ packageId });
     if ("data" in result) toast.success("Package purchase started — check your email to complete payment.");
-    else toast.error("Failed to start package purchase.");
+    // The server's message when it has one (e.g. the 2,500 EUR card limit), else the generic text.
+    else toast.error(extractErrorMessage(result.error, "Failed to start package purchase."));
   }
 
   return (
