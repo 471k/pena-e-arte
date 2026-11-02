@@ -130,6 +130,10 @@ public class CreateAppointmentHandler(
                     "No artist is available at that date and time. Please choose a different slot.");
         }
 
+        // First-line guard only: a cheap Redis lock on the exact start minute that turns away an
+        // identical double-click early. It is NOT what prevents double-booking — it misses overlapping
+        // bookings with different start times and fails open when Redis is down. The database claim
+        // below is the authoritative guard.
         bool locked = req.ArtistId is Guid lockArtistId
             && await slotLocker.TryAcquireLockAsync(studioId, lockArtistId, req.Date, ct);
 
@@ -137,6 +141,16 @@ public class CreateAppointmentHandler(
 
         try
         {
+            // The authoritative double-booking guard: a transaction holding the artist's booking lock,
+            // so the overlap check and the insert below run alone for this artist. A concurrent
+            // overlapping booking waits here, then its overlap check sees this one and it gets
+            // SlotAlreadyBookedException. Committed right after the appointment is saved.
+            // Studio-choice bookings (no artist) claim nothing here — AssignAppointmentArtistCommand
+            // makes the real per-artist claim.
+            await using IBookingClaim? claim = req.ArtistId is Guid claimArtistId
+                ? await db.ClaimArtistForBookingAsync(studioId, claimArtistId, ct)
+                : null;
+
             if (req.ArtistId is Guid checkArtistId)
             {
                 bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(a =>
@@ -324,6 +338,10 @@ public class CreateAppointmentHandler(
             }
 
             await db.SaveChangesAsync(ct);
+
+            // The appointment is saved: release the artist's booking lock.
+            if (claim is not null)
+                await claim.CommitAsync(ct);
 
             // Write-through cache invalidation — the next EnsureWithinLimitAsync call for
             // this studio reflects this new appointment immediately instead of up to 30s later.

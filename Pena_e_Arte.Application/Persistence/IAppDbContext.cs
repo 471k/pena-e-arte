@@ -107,4 +107,16 @@ public interface IAppDbContext
     DbSet<ExchangeRate> ExchangeRates { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The authoritative double-booking guard. Opens a transaction and takes the artist's booking lock
+    /// (a row lock on the artist), so for one artist only one booking at a time can run its
+    /// overlap check and save; a concurrent one waits, then sees the first booking and gets
+    /// SlotAlreadyBookedException. Call it before the overlap check, save inside it, then commit.
+    /// Every path that puts an appointment into an artist's time uses it: CreateAppointmentCoreAsync
+    /// (client/staff, guest and flash-catalog bookings), AssignAppointmentArtistCommand and
+    /// RescheduleAppointmentCommand. ISlotLocker (Redis) stays in front only as a cheap first-line guard.
+    /// The lookup is by explicit studio id, so it works on the anonymous guest path too.
+    /// </summary>
+    Task<IBookingClaim> ClaimArtistForBookingAsync(Guid studioId, Guid artistId, CancellationToken ct);
 }

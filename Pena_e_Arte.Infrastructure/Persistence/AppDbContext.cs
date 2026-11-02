@@ -1,8 +1,10 @@
+using System.Data;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Interfaces;
@@ -123,6 +125,66 @@ public class AppDbContext(
     // --- ASP.NET Core Data Protection key ring (no tenant filter — shared by every API replica;
     //     see DataProtectionExtensions) ---
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    /// <summary>
+    /// The per-artist booking lock (see IAppDbContext.ClaimArtistForBookingAsync): a READ COMMITTED
+    /// transaction that starts with <c>SELECT ... FROM artists ... FOR UPDATE</c>, an InnoDB exclusive
+    /// lock on that one artist row. A concurrent booking for the same artist blocks on the same row
+    /// until this transaction commits or rolls back; READ COMMITTED means its overlap check then sees
+    /// the row this one committed. Chosen over a gap-locking range read on appointments: InnoDB gap
+    /// locks are mutually compatible, so two empty-window range reads both succeed and then deadlock
+    /// on insert (one fails with error 1213 instead of SlotAlreadyBookedException), and a range read
+    /// also gap-locks neighbouring non-overlapping slots. The artist row is one exact lock with no
+    /// deadlock between two bookings. A unique index can't do this job: it would only catch an exact
+    /// start-time duplicate, and MySQL has no partial index to leave cancelled appointments out.
+    /// Raw SQL with explicit ids (not the Artists set) so no tenant query filter is involved — the
+    /// anonymous guest path has no ambient tenant; studioId keeps it to the right studio.
+    /// </summary>
+    public async Task<IBookingClaim> ClaimArtistForBookingAsync(Guid studioId, Guid artistId, CancellationToken ct)
+    {
+        // Already inside a transaction (none of today's callers are): take the lock inside it and leave
+        // committing to whoever opened it.
+        bool ownsTransaction = Database.CurrentTransaction is null;
+        IDbContextTransaction? transaction = ownsTransaction
+            ? await Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+            : null;
+
+        try
+        {
+            string artist = artistId.ToString();
+            string studio = studioId.ToString();
+            await Database.ExecuteSqlAsync(
+                $"SELECT `Id` FROM `artists` WHERE `Id` = {artist} AND `StudioId` = {studio} FOR UPDATE", ct);
+        }
+        catch
+        {
+            if (transaction is not null) await transaction.DisposeAsync();
+            throw;
+        }
+
+        return new ArtistBookingClaim(transaction);
+    }
+
+    private sealed class ArtistBookingClaim(IDbContextTransaction? transaction) : IBookingClaim
+    {
+        private IDbContextTransaction? _transaction = transaction;
+
+        public async Task CommitAsync(CancellationToken ct)
+        {
+            if (_transaction is null) return;
+            await _transaction.CommitAsync(ct);
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+
+        // Not committed: rolls back (EF disposes an uncommitted transaction by rolling it back).
+        public async ValueTask DisposeAsync()
+        {
+            if (_transaction is null) return;
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

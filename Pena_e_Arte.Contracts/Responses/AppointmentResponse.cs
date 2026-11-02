@@ -28,6 +28,16 @@ public record AppointmentResponse(
     IReadOnlyList<AppointmentAttachmentResponse>? Attachments = null,
     bool PromoCodeApplied = false,
     Guid? ServiceId = null,
-    string? ServiceName = null);
+    string? ServiceName = null,
+    AppointmentSelfServiceResponse? SelfService = null);
 
 public record AppointmentAttachmentResponse(string Url, string Category);
+
+/// <summary>
+/// The client self-service policy for one appointment, computed by the server
+/// (ClientCancellationPolicy) when it is read: the notice window that applies and whether the client
+/// still has that much notice. Filled in by GET /api/v1/appointments/mine only; null elsewhere.
+/// The frontend never recomputes it (G-3/G-17). The money detail of a cancellation is in
+/// GET /api/v1/appointments/{id}/cancellation-preview.
+/// </summary>
+public record AppointmentSelfServiceResponse(int NoticeWindowHours, bool IsWithinNoticeWindow);

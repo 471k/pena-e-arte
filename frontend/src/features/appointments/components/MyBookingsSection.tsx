@@ -4,11 +4,15 @@ import { Banknote, CalendarDays, CheckCircle2, ChevronUp, CreditCard, Loader2 } 
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
-import { useGetMyAppointmentsQuery, useCancelAppointmentMutation } from "../appointmentsApi";
+import {
+  useGetMyAppointmentsQuery,
+  useCancelAppointmentMutation,
+  useGetCancellationPreviewQuery,
+} from "../appointmentsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { useGetPaymentByAppointmentQuery } from "@/features/payments/paymentsApi";
 import { describeDeposit } from "@/features/payments/depositOutcome";
-import { useGetDepositRuleDefaultsQuery, useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { Money } from "@/shared/components/Money";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
@@ -17,50 +21,30 @@ import { cn } from "@/shared/utils/cn";
 import { PaymentMethodSelector } from "@/features/payments/components/PaymentMethodSelector";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
-import { DepositStatus } from "../appointment.types";
-import type { AppointmentResponse } from "../appointment.types";
+import { CancellationOutcome, DepositStatus } from "../appointment.types";
+import type { AppointmentResponse, CancellationPreviewResponse } from "../appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
-import type { DepositRuleDefaultsResponse, DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 
-// The studio's active rule, or — when it has none or leaves a field empty — the platform defaults
-// the server applies (ClientCancellationPolicy), read from GET /deposit-rules/defaults. A frontend
-// copy of the default said 24 h while the server applied 48: 24–48 h before an appointment the
-// client was promised "a full refund" and offered Reschedule, while the server refused the
-// reschedule and kept the whole deposit (G-3, re-tested live 2026-10-15).
-interface NoticePolicy {
-  activeRule?: DepositRuleResponse;
-  defaults?:   DepositRuleDefaultsResponse;
-}
-
-// Same notice window backs both self-cancel (refund %) and self-reschedule (hard cutoff) —
-// mirrors ClientCancellationPolicy on the backend. undefined = not known yet (defaults loading).
-function noticeWindowHours({ activeRule, defaults }: NoticePolicy): number | undefined {
-  return activeRule?.cancellationWindowHours ?? defaults?.cancellationWindowHours;
-}
-
-function lateCancelRefundPercent({ activeRule, defaults }: NoticePolicy): number | undefined {
-  return activeRule?.refundPercentOnLateCancel ?? defaults?.refundPercentOnLateCancel;
-}
-
-function isWithinNoticeWindow(appt: AppointmentResponse, policy: NoticePolicy): boolean | undefined {
-  const windowHours = noticeWindowHours(policy);
-  if (windowHours === undefined) return undefined;
-  const hoursUntilAppointment = (new Date(appt.date).getTime() - Date.now()) / (1000 * 60 * 60);
-  return hoursUntilAppointment >= windowHours;
-}
+// The notice window, and everything that follows from it (reschedule cutoff, refund), is decided by
+// the server only: GET /appointments/mine carries `selfService` per appointment, and the cancel
+// confirmation asks GET /appointments/{id}/cancellation-preview. A frontend copy of this policy
+// drifted from the server's once — 24–48 h before an appointment the client was promised "a full
+// refund" and offered Reschedule, while the server refused the reschedule and kept the whole
+// deposit (G-3/G-17, October 2026) — so there is deliberately no notice-window or refund
+// arithmetic in this file.
 
 // ── Reschedule appointment ────────────────────────────────────────────────
 
-function RescheduleArea({ appt, policy }: { appt: AppointmentResponse; policy: NoticePolicy }) {
+function RescheduleArea({ appt }: { appt: AppointmentResponse }) {
   const [open, setOpen] = useState(false);
 
   if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
 
-  // Disabled (without the cutoff message) for the moment the window isn't known yet, so the client
-  // is never offered a reschedule the server would refuse.
-  const within = isWithinNoticeWindow(appt, policy);
+  // Disabled (without the cutoff message) while the server's answer isn't known, so the client is
+  // never offered a reschedule the server would refuse.
+  const within = appt.selfService?.isWithinNoticeWindow;
   const canReschedule = within === true;
-  const windowHours = noticeWindowHours(policy) ?? 0;
+  const windowHours = appt.selfService?.noticeWindowHours ?? 0;
 
   return (
     <>
@@ -95,24 +79,73 @@ function RescheduleArea({ appt, policy }: { appt: AppointmentResponse; policy: N
 
 // ── Cancel appointment ────────────────────────────────────────────────────
 
-function CancelArea({ appt, policy }: { appt: AppointmentResponse; policy: NoticePolicy }) {
+// What the server projects for the deposit, in the client's words. Never claims a refund has
+// happened — it hasn't yet; once the cancellation is committed, DepositArea shows what actually did.
+function ConsequenceText({ preview }: { preview: CancellationPreviewResponse }) {
+  const { countryCode } = useStudioCurrency();
+  const studio: MoneyStudio = { countryCode, currency: preview.currency };
+  const money = (amount: number) => <Money amount={amount} currency={preview.currency} studio={studio} />;
+  const late = preview.noticeWindowApplies && !preview.isWithinNoticeWindow
+    ? <>It&apos;s less than {formatNoticeWindow(preview.noticeWindowHours)} before your appointment. </>
+    : null;
+
+  switch (preview.outcome) {
+    case CancellationOutcome.FullyRefunded:
+      return <>You&apos;ll receive a full refund of {money(preview.refundAmount)}.</>;
+    case CancellationOutcome.PartiallyRefunded:
+      return (
+        <>
+          {late}Under the studio&apos;s policy you&apos;ll get {money(preview.refundAmount)} back and the
+          studio keeps {money(preview.keptAmount)} of your deposit.
+        </>
+      );
+    case CancellationOutcome.DepositKept:
+      return (
+        <>{late}Cancelling now forfeits 100% of your deposit — the studio keeps {money(preview.keptAmount)}.</>
+      );
+    case CancellationOutcome.NothingCollected:
+      return <>No deposit has been taken, so nothing is charged or refunded.</>;
+    case CancellationOutcome.SettledWithStudio:
+      return (
+        <>
+          Your deposit was paid at the studio, so it isn&apos;t refunded automatically — the studio will
+          settle it with you.
+        </>
+      );
+    default:
+      return null;
+  }
+}
+
+function StudioContact() {
+  const { data: studio } = useGetMyStudioQuery();
+  if (studio?.phoneNumber) {
+    return (
+      <>
+        Please contact the studio to cancel:{" "}
+        <a className="underline" href={`tel:${studio.phoneNumber}`}>{studio.phoneNumber}</a>.
+      </>
+    );
+  }
+  return <>Please contact the studio to cancel.</>;
+}
+
+function CancelArea({ appt }: { appt: AppointmentResponse }) {
   const [confirming, setConfirming] = useState(false);
   const [cancelAppointment, { isLoading }] = useCancelAppointmentMutation();
-  const { data: payment } = useGetPaymentByAppointmentQuery(appt.id, { skip: appt.depositAmount <= 0 });
+  // Fetched only once the client opens the confirmation, and fresh every time it opens.
+  const {
+    data: preview,
+    isFetching: previewLoading,
+    isError: previewFailed,
+  } = useGetCancellationPreviewQuery(appt.id, { skip: !confirming, refetchOnMountOrArgChange: true });
 
   if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
 
-  const withinNoticeWindow = isWithinNoticeWindow(appt, policy);
-  const refundPercentOnLateCancel = lateCancelRefundPercent(policy);
-
-  // A deposit is only actually at risk once money has been taken — a card hold
-  // ("Captured") or a completed capture/cash confirmation ("Paid"). A CashPending
-  // intent or an unconfirmed/never-authorized card payment hasn't collected anything
-  // yet, so cancelling it can never be a forfeiture regardless of the notice window —
-  // matches CancelAppointmentHandler's own gate on the backend.
-  const hasActiveDeposit =
-    appt.depositAmount > 0 &&
-    (payment?.status === "Captured" || payment?.status === "Paid");
+  // Confirming is only offered once the server has said what will happen. A failed preview, or an
+  // outcome the server can't tell, points the client at the studio — never at a locally computed guess.
+  const outcomeKnown = preview !== undefined && preview.outcome !== CancellationOutcome.Unknown;
+  const canConfirm = !previewLoading && !previewFailed && outcomeKnown;
 
   async function handleCancel() {
     const result = await cancelAppointment(appt.id);
@@ -120,6 +153,8 @@ function CancelArea({ appt, policy }: { appt: AppointmentResponse; policy: Notic
       toast.error("Failed to cancel appointment.");
       return;
     }
+    // Deliberately no money wording here: the deposit line now shows what the server actually did,
+    // which can differ from the projection (e.g. the studio's policy changed in between).
     toast.success("Appointment cancelled.");
     setConfirming(false);
   }
@@ -136,21 +171,47 @@ function CancelArea({ appt, policy }: { appt: AppointmentResponse; policy: Notic
     );
   }
 
+  const titleId = `cancel-${appt.id}-title`;
+  const detailId = `cancel-${appt.id}-detail`;
+
   return (
-    <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
-      <p className="text-xs">
-        Cancel this appointment?{" "}
-        {/* No promise either way until the policy is known (defaults still loading). */}
-        {hasActiveDeposit && withinNoticeWindow === true && "You'll receive a full refund."}
-        {hasActiveDeposit && withinNoticeWindow === false && refundPercentOnLateCancel !== undefined &&
-          `Cancelling now forfeits ${100 - refundPercentOnLateCancel}% of your deposit.`}
-      </p>
+    <div
+      role="alertdialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
+      aria-describedby={detailId}
+      className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2"
+    >
+      <p id={titleId} className="text-xs">Cancel this appointment?</p>
+      <div id={detailId} className="space-y-1">
+        {previewLoading ? (
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Checking what this means for your deposit…
+          </p>
+        ) : previewFailed ? (
+          <p className="text-xs">
+            We couldn&apos;t check what cancelling would mean for your deposit. <StudioContact />
+          </p>
+        ) : !outcomeKnown ? (
+          <p className="text-xs">
+            We can&apos;t tell what would happen to your deposit. <StudioContact />
+          </p>
+        ) : (
+          <>
+            <p className="text-xs"><ConsequenceText preview={preview} /></p>
+            <p className="text-xs text-muted-foreground">
+              The studio&apos;s cancellation policy decides this; it&apos;s confirmed when you cancel.
+            </p>
+          </>
+        )}
+      </div>
       <div className="flex gap-2">
         <Button
           size="sm"
           variant="destructive"
           className="h-7 flex-1 text-xs"
-          disabled={isLoading}
+          disabled={isLoading || !canConfirm}
           onClick={handleCancel}
         >
           {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, cancel"}
@@ -160,9 +221,11 @@ function CancelArea({ appt, policy }: { appt: AppointmentResponse; policy: Notic
           variant="outline"
           className="h-7 flex-1 text-xs"
           disabled={isLoading}
+          // The safe choice is where focus lands when the confirmation opens.
+          autoFocus
           onClick={() => setConfirming(false)}
         >
-          Keep booking
+          Keep appointment
         </Button>
       </div>
     </div>
@@ -303,11 +366,10 @@ function artistName(artistId: string | null, artists: ArtistResponse[]): string 
 }
 
 function BookingRow({
-  appt, artists, policy,
+  appt, artists,
 }: {
   appt: AppointmentResponse;
   artists: ArtistResponse[];
-  policy: NoticePolicy;
 }) {
   return (
     <div className="py-3 space-y-2">
@@ -339,8 +401,8 @@ function BookingRow({
       )}
       <DepositArea appt={appt} />
       <div className="flex items-center gap-3">
-        <RescheduleArea appt={appt} policy={policy} />
-        <CancelArea appt={appt} policy={policy} />
+        <RescheduleArea appt={appt} />
+        <CancelArea appt={appt} />
       </div>
     </div>
   );
@@ -351,9 +413,6 @@ function BookingRow({
 export function MyBookingsSection() {
   const { data: appointments = [], isLoading, isError } = useGetMyAppointmentsQuery();
   const { data: artists = [] } = useGetArtistsQuery(undefined);
-  const { data: depositRules = [] } = useGetDepositRulesQuery();
-  const { data: defaults } = useGetDepositRuleDefaultsQuery();
-  const policy: NoticePolicy = { activeRule: depositRules.find((r) => r.isActive), defaults };
 
   const now = new Date();
 
@@ -413,7 +472,7 @@ export function MyBookingsSection() {
                 {upcoming.map((appt, i) => (
                   <div key={appt.id}>
                     {i > 0 && <Separator />}
-                    <BookingRow appt={appt} artists={artists} policy={policy} />
+                    <BookingRow appt={appt} artists={artists} />
                   </div>
                 ))}
               </div>
@@ -428,7 +487,7 @@ export function MyBookingsSection() {
                 {past.map((appt, i) => (
                   <div key={appt.id}>
                     {i > 0 && <Separator />}
-                    <BookingRow appt={appt} artists={artists} policy={policy} />
+                    <BookingRow appt={appt} artists={artists} />
                   </div>
                 ))}
               </div>

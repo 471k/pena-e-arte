@@ -4989,3 +4989,150 @@ Each slice ships as its own overnight prompt carrying these approved answers ver
 benchmark note, Help-sync obligations, per-layer tests and verification checklist. Progressive
 disclosure and the rest of the handoff's §03 component contract are acceptance criteria in every UI
 slice, not optional polish.
+
+## After Hours slice 1 — server-authoritative cancellation consequence (DEC04) and the booking race (DEC09) — built — 2026-11-02
+
+### Context
+Built from `docs/claude/overnight-prompt-after-hours-slice1-cancellation-and-booking-race-2026-11-02.md`
+(slice 1 of 5, decisions in the entry above). Branch
+`feature/after-hours-slice1-cancellation-and-booking-race`, cut from `origin/main` at `ccc4fcb6`
+(PR #327 merged on top of the `f80231c` the prompt quotes). No drift from the quoted source was found.
+Not merged, not deployed, no migration (none is needed: no schema change).
+
+### DEC04 — one money decision, two callers
+- **`Pena_e_Arte.Domain/Services/CancellationOutcome.cs`**, a pure static domain service shaped like
+  `ClientCancellationPolicy`/`DepositCalculator`: `Decide(Payment?, appointmentDepositAmount,
+  refundPercent)` returns a `CancellationDecision`. That holds the implied provider action (`None`,
+  `ReleaseHold`, `CaptureWhole`, `CaptureKeptShare`, `Refund`), the refund and kept amounts, the
+  resulting `PaymentStatus`/`DepositStatus` (null = left as is) and a client-facing
+  `CancellationClientOutcome`. Rounding is `CurrencyCatalog.Round(..., payment.Currency)` throughout.
+- **`CancelAppointmentHandler` consumes it** and makes the same provider calls, in the same order,
+  with the same arguments and the same error handling: release / capture-whole (failure tolerated and
+  logged) / capture-kept-share (failure refuses the cancellation) / refund. Logging, reconciliation
+  comments, waitlist FIFO, notifications and the webhook are untouched. The two Paid `RefundAsync`
+  branches became one call fed by the decision's amount. The diff adds, removes or reorders no
+  `IPaymentProvider` call. **All 3,418 existing unit and 623 existing integration tests passed with
+  the refactor before any new test was added, with no existing test edited.**
+- **`GET /api/v1/appointments/{id:guid}/cancellation-preview`** (`ClientAndAbove`, mapped beside
+  `calendar.ics`, no logic in the endpoint): `GetCancellationPreviewQuery` + validator. The client
+  ownership gate is copied verbatim from the handler (404, never 403). The active rule is resolved
+  exactly as `ResolveClientRefundPercentAsync` does, and a staff caller gets `refundPercent` 100 with
+  `NoticeWindowApplies = false`. It returns the new `CancellationPreviewResponse` with
+  `IsProjection = true`. There is no quote token and no expiry: DELETE stays the single commit and
+  re-decides (D2).
+- **`GET /appointments/mine`** now carries `SelfService { NoticeWindowHours, IsWithinNoticeWindow }`
+  per appointment, computed server-side by `ClientCancellationPolicy` with one rule lookup per
+  request, so the list needs no per-card preview call. It is null on every other appointment read.
+- **Frontend:** `noticeWindowHours`, `lateCancelRefundPercent`, `isWithinNoticeWindow` and the
+  client-side `hasActiveDeposit` test are deleted from `MyBookingsSection.tsx`, along with its
+  deposit-rules/defaults fetches. A test asserts the bookings list no longer requests either
+  endpoint. Reschedule gating reads `appt.selfService`. While the value is missing the button is
+  disabled with no cutoff message, which is the same safety property as before. The cancel
+  confirmation fetches the preview fresh on every opening (`keepUnusedDataFor: 0`,
+  `refetchOnMountOrArgChange`). It shows the consequence in the client's words with server amounts
+  and says it is confirmed at cancel time. "Yes, cancel" stays disabled while loading, on a failed
+  preview or on an `Unknown` outcome; those states point at the studio with its phone number when
+  set. "Keep appointment" (renamed from "Keep booking", per the prompt) takes initial focus. After the
+  commit the toast says only "Appointment cancelled."; the deposit line shows what the server
+  actually did. The inline confirm panel keeps its exact classes; it gained `role="alertdialog"`
+  semantics only. Nothing was restyled.
+
+### DEC09 — the database is the arbiter
+- **Chosen mechanism: a per-artist row lock.** `IAppDbContext.ClaimArtistForBookingAsync(studioId,
+  artistId)` opens a **READ COMMITTED** transaction and runs `SELECT Id FROM artists WHERE Id = ? AND
+  StudioId = ? FOR UPDATE`. That is raw SQL with explicit ids, so no tenant filter is involved and no
+  new `IgnoreQueryFilters()` is added; it works on the anonymous guest path. The existing overlap
+  check (kept exactly, with its pre-existing `IgnoreQueryFilters()` + `StudioId` predicate) and the
+  insert run inside the claim, which is committed right after the save. A concurrent booking for the
+  same artist blocks on the row, then its overlap read sees the committed booking and throws
+  `SlotAlreadyBookedException`, so the API contract is unchanged.
+- **Why not the gap-locking range read the prompt suggested (deviation, deliberate):** InnoDB gap
+  locks are mutually compatible. Two `SELECT … FOR UPDATE` reads over an *empty* overlapping window
+  both succeed, then both inserts wait on each other's gap lock: a deadlock (1213). One request fails
+  with a provider exception instead of `SlotAlreadyBookedException` unless retry/mapping code is
+  added. The gaps also span neighbouring *non-overlapping* slots of the same artist, so free
+  bookings can collide too. The artist row is one exact lock with no booking-vs-booking deadlock.
+  A unique index was rejected as the prompt says: it catches only exact starts, and MySQL has no
+  partial index to leave cancelled rows out. READ COMMITTED (rather than the default REPEATABLE
+  READ) guarantees the post-lock overlap read sees the other request's commit.
+- **Paths covered:** `CreateAppointmentCoreAsync`, which is shared by client/staff create,
+  `CreateGuestAppointmentCommand` and `RequestCatalogDesignCommand` (so the catalog path needs no
+  separate treatment). Also `AssignAppointmentArtistCommand` and, **beyond the prompt's list,
+  `RescheduleAppointmentCommand`**, which had the same check-then-save race with no lock at all.
+  Studio-choice bookings without an artist claim nothing, as before.
+- `ISlotLocker` stays in front as a cheap first-line guard. **`SlotLocker.cs`'s comment now says
+  what actually guards the invariant**: its old "DB-level unique appointment constraint" never
+  existed. `ArtistAvailabilityExtensions`' doc comment was corrected the same way.
+- `FakeDbContext` (unit-test helper) implements the new member as a documented no-op, because the
+  InMemory provider has neither transactions nor locks; no unit test changed. The real lock is
+  exercised only by the integration suite.
+
+### Tests
+- **Backend before → after: 3,418 → 3,445 unit, 623 → 646 integration, all green; `dotnet build`
+  0 errors.**
+- **Unit:** `CancellationOutcomeTests` (Captured 100/partial/0, Paid 100/partial/0, CashPending at 0%
+  still Refunded/Refunded, no payment, Pending/Failed intent, confirmed cash, card money without a
+  provider reference, JPY 0-dp, KWD 3-dp, away-from-zero midpoint, both base amounts pinned).
+  `GetCancellationPreviewHandlerTests` (owner, rule-driven partial, wrong client 404, client without
+  a record 404, missing 404, artist/owner not subject to the window, studio-currency fallback).
+  `GetMyAppointmentsSelfServiceTests`.
+- **Integration (real MySQL):** `CancellationPreviewIntegrationTests`, which checks preview vs
+  commit for ten payment branches. Each asserts the previewed refund equals the committed
+  `RefundedAmount`, the provider got exactly the previewed amount and nothing else, and the deposit
+  status matches. A rule widened between preview and commit leaves the deposit kept, sends no refund,
+  and the cancellation notification says forfeited. `CancellationPreviewEndpointTests` covers 401,
+  owning client 200, other client 404 and owner 200 through the real auth pipeline.
+  `BookingRaceIntegrationTests` covers create with healthy-Redis semantics (an exact-minute fake
+  locker) and with Redis down (always grants), both with different starts; the same start with Redis
+  down; guest; reschedule; and assign. It also has a non-overlapping control that must book both.
+  **The race is forced, not hoped for:** an EF command interceptor holds each request at its
+  `appointments` write until the other arrives or 3 s pass. **Verified by stashing the fix:** with
+  the claim call sites reverted to `origin/main`, all six race tests fail with
+  `success | success` (two overlapping rows) and the control passes; with the fix all pass.
+- **Frontend:** **before → after 2,772 → 2,786 vitest tests (+14).** `pnpm run lint`: 0 errors (18 warnings, all
+  pre-existing, none in changed code). `pnpm run build`: green. `pnpm run test`: **not fully green on
+  this machine, for a pre-existing reason** — 17 tests (quiet machine) / 34 (run alongside the
+  integration suite) hit vitest's 10 s timeout, almost all in `StudioProfilePage.test.tsx`, plus single
+  ones in `GuestBookAppointmentForm`/`ReminderDialog`, files this change does not touch; three
+  `BookAppointmentForm` submission tests in `BookPage.test.tsx` timed out only under the heavier load.
+  Every one passes in isolation, and the `StudioProfilePage` timeout reproduces identically with this
+  change's frontend edits stashed. `BookPage.test.tsx`, the only test file changed: 93/93. CI is the
+  authority for the full run. `BookPage.test.tsx` (where the `MyBookingsSection` tests live) gained
+  14 tests. They cover loading, failed preview, unknown outcome (confirmation disabled, studio phone
+  shown) and each outcome's sentence. They also cover the partial-refund amounts, initial focus on
+  "Keep appointment", the post-commit result overriding the projection, the absence of deposit-rule
+  fetches, reschedule disabled with no message while unknown, and enabled inside / disabled with the
+  message outside the window. **Existing tests were updated in fixtures, not in what they assert:**
+  `/mine` responses now carry `selfService` and the preview endpoint is mocked. Three tests that click
+  "Yes, cancel" now wait for it to be enabled first, because confirmation is disabled until the
+  projection loads, which is required behaviour. One test's button name changed from "Keep booking"
+  to "Keep appointment". No test was deleted or weakened.
+
+### Help (rule 7)
+`helpContent.ts` article **`client-cancel-booking`** now covers the projection, the studio's policy
+deciding the refund, re-decision at commit, the unavailable-confirmation case and cash deposits. The
+served manual `frontend/public/user-manual/index.html` (not the stale `docs/user-manual.html`) got
+the same in its My Bookings step and "Cancellation policy" callout. **Client tour:** no step added.
+No step mentions cancelling, and this slice changes what an existing flow says, not where anything
+lives. **Part B needs no Help change:** the only user-visible effect is the existing "slot already
+booked" error in a case where a double booking used to slip through.
+
+### Rule 6 note
+Per the prompt's benchmark finding, the per-cancellation refund projection is a transparency
+improvement **beyond** the category norm (no product in the Fresha/Vagaro/Boulevard/GlossGenius/
+Booksy/Zenoti set was found doing it), not an industry standard, and no copy calls it one.
+Preventing double-booking is table stakes.
+
+### Deviations from the prompt, and questions for Phi
+- Locking approach (above): artist row lock instead of a gap-locking range read.
+- `RescheduleAppointmentCommand` protected too (not in the prompt's list; same defect).
+- The client outcome has six values, not four: `SettledWithStudio` for a studio-confirmed cash
+  deposit (the handler leaves it untouched; confirmation allowed) and `Unknown` for a card payment
+  marked held/paid with no provider reference (confirmation disabled, per the prompt).
+- `CancellationPreviewResponse` also carries `KeptAmount` and `NoticeWindowApplies`.
+- **For Phi (also in the sync note):** whether to base both partial branches on `payment.Amount`
+  instead of the Paid branch's `appointment.DepositAmount` (recommended; a policy change, not made).
+  Note also that a held deposit's forfeit/partial passes no money detail to the cancellation email
+  (pre-existing, kept).
+- This entry sits below the "decisions recorded" entry above, which the Engineering Consultation
+  project wrote and which was uncommitted in the working tree; it is committed separately, unchanged.
