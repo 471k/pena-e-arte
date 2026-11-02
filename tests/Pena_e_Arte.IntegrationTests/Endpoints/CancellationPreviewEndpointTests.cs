@@ -127,16 +127,28 @@ public class CancellationPreviewEndpointTests(DatabaseFixture fixture)
         DateTime start = DateTime.UtcNow.AddDays(7);
         Appointment appointment = new()
         {
-            StudioId = tenantId, ArtistId = artist.Id, ClientId = client.Id,
-            Date = start, EndDate = start.AddHours(1), DurationMinutes = 60,
-            Status = AppointmentStatus.Confirmed, DepositStatus = DepositStatus.Paid, DepositAmount = 50m,
+            StudioId = tenantId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = start,
+            EndDate = start.AddHours(1),
+            DurationMinutes = 60,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Paid,
+            DepositAmount = 50m,
         };
         ctx.Appointments.Add(appointment);
         await ctx.SaveChangesAsync();
         ctx.Payments.Add(new Payment
         {
-            StudioId = tenantId, AppointmentId = appointment.Id, ClientId = client.Id, Amount = 50m, Currency = "EUR",
-            Status = PaymentStatus.Paid, Method = ClientPaymentMethod.Card, ProviderReferenceId = "pok_order_1",
+            StudioId = tenantId,
+            AppointmentId = appointment.Id,
+            ClientId = client.Id,
+            Amount = 50m,
+            Currency = "EUR",
+            Status = PaymentStatus.Paid,
+            Method = ClientPaymentMethod.Card,
+            ProviderReferenceId = "pok_order_1",
         });
         await ctx.SaveChangesAsync();
         return (tenantId, appointment.Id, clientUserId);

@@ -187,7 +187,11 @@ public class CancellationPreviewIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         ctx.Studios.Add(new Studio
         {
-            Id = studioId, Name = "Preview Studio", Slug = studioId.ToString("N")[..8], CountryCode = "PT", Currency = "EUR",
+            Id = studioId,
+            Name = "Preview Studio",
+            Slug = studioId.ToString("N")[..8],
+            CountryCode = "PT",
+            Currency = "EUR",
         });
         Artist artist = new() { StudioId = studioId, FirstName = "A", LastName = "B", Email = $"{Guid.NewGuid()}@a.com" };
         Client client = new() { StudioId = studioId, UserId = userId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid()}@c.com" };
@@ -195,17 +199,27 @@ public class CancellationPreviewIntegrationTests(DatabaseFixture fixture)
         ctx.Clients.Add(client);
         ctx.DepositRules.Add(new DepositRule
         {
-            StudioId = studioId, Name = "Standard", AmountFixed = 50m, IsActive = true,
-            CancellationWindowHours = windowHours, RefundPercentOnLateCancel = latePercent,
+            StudioId = studioId,
+            Name = "Standard",
+            AmountFixed = 50m,
+            IsActive = true,
+            CancellationWindowHours = windowHours,
+            RefundPercentOnLateCancel = latePercent,
         });
         await ctx.SaveChangesAsync();
 
         DateTime start = DateTime.UtcNow.Add(ahead);
         Appointment appointment = new()
         {
-            StudioId = studioId, ArtistId = artist.Id, ClientId = client.Id,
-            Date = start, EndDate = start.AddHours(2), DurationMinutes = 120,
-            Status = AppointmentStatus.Confirmed, DepositStatus = DepositStatus.Pending, DepositAmount = 50m,
+            StudioId = studioId,
+            ArtistId = artist.Id,
+            ClientId = client.Id,
+            Date = start,
+            EndDate = start.AddHours(2),
+            DurationMinutes = 120,
+            Status = AppointmentStatus.Confirmed,
+            DepositStatus = DepositStatus.Pending,
+            DepositAmount = 50m,
         };
         ctx.Appointments.Add(appointment);
         await ctx.SaveChangesAsync();
@@ -218,8 +232,13 @@ public class CancellationPreviewIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(s.StudioId);
         ctx.Payments.Add(new Payment
         {
-            StudioId = s.StudioId, AppointmentId = s.AppointmentId, ClientId = s.ClientId,
-            Amount = 50m, Currency = "EUR", Status = status, Method = method,
+            StudioId = s.StudioId,
+            AppointmentId = s.AppointmentId,
+            ClientId = s.ClientId,
+            Amount = 50m,
+            Currency = "EUR",
+            Status = status,
+            Method = method,
             ProviderReferenceId = method == ClientPaymentMethod.Card ? "pok_order_1" : null,
         });
         await ctx.SaveChangesAsync();

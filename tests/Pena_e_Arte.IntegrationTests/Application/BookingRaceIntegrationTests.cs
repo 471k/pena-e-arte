@@ -282,8 +282,11 @@ public class BookingRaceIntegrationTests(DatabaseFixture fixture)
         seed.Studios.Add(studio);
         Artist artist = new()
         {
-            StudioId = studio.Id, FirstName = "Jane", LastName = "Doe",
-            Email = $"artist-{Guid.NewGuid():N}@test.com", IsActive = true,
+            StudioId = studio.Id,
+            FirstName = "Jane",
+            LastName = "Doe",
+            Email = $"artist-{Guid.NewGuid():N}@test.com",
+            IsActive = true,
         };
         Client a = new() { StudioId = studio.Id, FirstName = "A", LastName = "A", Email = $"{Guid.NewGuid():N}@a.test" };
         Client b = new() { StudioId = studio.Id, FirstName = "B", LastName = "B", Email = $"{Guid.NewGuid():N}@b.test" };
@@ -293,13 +296,20 @@ public class BookingRaceIntegrationTests(DatabaseFixture fixture)
         {
             seed.ArtistSchedules.Add(new ArtistSchedule
             {
-                StudioId = studio.Id, ArtistId = artist.Id, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)), IsAvailable = true,
+                StudioId = studio.Id,
+                ArtistId = artist.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsAvailable = true,
             });
             seed.StudioHours.Add(new StudioHours
             {
-                StudioId = studio.Id, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)), IsOpen = true,
+                StudioId = studio.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsOpen = true,
             });
         }
         await seed.SaveChangesAsync();
@@ -311,8 +321,12 @@ public class BookingRaceIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         Appointment appointment = new()
         {
-            StudioId = studioId, ArtistId = artistId, ClientId = clientId,
-            Date = start, EndDate = start.AddMinutes(minutes), DurationMinutes = minutes,
+            StudioId = studioId,
+            ArtistId = artistId,
+            ClientId = clientId,
+            Date = start,
+            EndDate = start.AddMinutes(minutes),
+            DurationMinutes = minutes,
             Status = artistId is null ? AppointmentStatus.Pending : AppointmentStatus.Confirmed,
             DepositStatus = DepositStatus.Pending,
         };

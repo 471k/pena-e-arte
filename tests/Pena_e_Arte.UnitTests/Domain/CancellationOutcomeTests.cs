@@ -14,13 +14,13 @@ public class CancellationOutcomeTests
 {
     private static Payment CardPayment(PaymentStatus status, decimal amount = 50m, string currency = "EUR",
         string? providerReferenceId = "pok_order_1") => new()
-    {
-        Amount = amount,
-        Currency = currency,
-        Status = status,
-        Method = ClientPaymentMethod.Card,
-        ProviderReferenceId = providerReferenceId,
-    };
+        {
+            Amount = amount,
+            Currency = currency,
+            Status = status,
+            Method = ClientPaymentMethod.Card,
+            ProviderReferenceId = providerReferenceId,
+        };
 
     private static Payment CashPayment(PaymentStatus status, decimal amount = 50m) => new()
     {

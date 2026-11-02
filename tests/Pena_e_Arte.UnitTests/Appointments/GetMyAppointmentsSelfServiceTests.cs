@@ -47,7 +47,11 @@ public class GetMyAppointmentsSelfServiceTests
         Guid clientId = await SeedClient();
         _db.DepositRules.Add(new DepositRule
         {
-            StudioId = _studioId, Name = "R", AmountFixed = 10m, IsActive = true, CancellationWindowHours = 24,
+            StudioId = _studioId,
+            Name = "R",
+            AmountFixed = 10m,
+            IsActive = true,
+            CancellationWindowHours = 24,
         });
         await _db.SaveChangesAsync();
         Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddHours(30));
