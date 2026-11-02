@@ -34,17 +34,19 @@ public sealed record CancellationDecision(
 /// The refund percent comes from <see cref="ClientCancellationPolicy.ResolveRefundPercent"/> for a
 /// client self-cancel, and is 100 for a staff cancellation.
 ///
-/// Note on base amounts, reproduced exactly as the handler had them: a held deposit (Captured) splits
-/// payment.Amount (the authorised amount); a partial refund of a charged deposit (Paid) is computed on
-/// appointment.DepositAmount. The two are normally equal. Rounding is always
-/// <see cref="CurrencyCatalog.Round"/> in the payment's own currency, never a fixed two decimals.
+/// Base amount: always payment.Amount, the money actually taken — the authorised amount of a held
+/// deposit (Captured) or the charged amount (Paid). Until 3 Nov 2026 the Paid partial refund used
+/// appointment.DepositAmount instead; the two are normally equal, but when they differed that could
+/// refund more than was charged (POK refuses, blocking the cancellation) or less than the policy's
+/// share of what the client paid. Phi approved basing both on payment.Amount (3 Nov 2026). Rounding is
+/// always <see cref="CurrencyCatalog.Round"/> in the payment's own currency, never a fixed two decimals.
 /// </summary>
 public static class CancellationOutcome
 {
     private static readonly CancellationDecision NothingMoves = new(
         CancellationProviderAction.None, 0m, 0m, null, null, CancellationClientOutcome.NothingCollected);
 
-    public static CancellationDecision Decide(Payment? payment, decimal appointmentDepositAmount, int refundPercent)
+    public static CancellationDecision Decide(Payment? payment, int refundPercent)
     {
         if (payment is null)
             return NothingMoves;
@@ -57,7 +59,7 @@ public static class CancellationOutcome
         {
             return payment.Status == PaymentStatus.Captured
                 ? DecideHeld(payment, refundPercent)
-                : DecideCharged(payment, appointmentDepositAmount, refundPercent);
+                : DecideCharged(payment, refundPercent);
         }
 
         if (payment.Status == PaymentStatus.CashPending)
@@ -115,7 +117,7 @@ public static class CancellationOutcome
     }
 
     // An already-charged deposit (Paid) goes back through a real provider refund.
-    private static CancellationDecision DecideCharged(Payment payment, decimal appointmentDepositAmount, int refundPercent)
+    private static CancellationDecision DecideCharged(Payment payment, int refundPercent)
     {
         if (refundPercent >= 100)
         {
@@ -127,7 +129,7 @@ public static class CancellationOutcome
         if (refundPercent > 0)
         {
             decimal refundAmount = CurrencyCatalog.Round(
-                appointmentDepositAmount * refundPercent / 100m, payment.Currency);
+                payment.Amount * refundPercent / 100m, payment.Currency);
             return new CancellationDecision(
                 CancellationProviderAction.Refund, refundAmount, Math.Max(0m, payment.Amount - refundAmount),
                 PaymentStatus.Refunded, DepositStatus.Refunded, CancellationClientOutcome.PartiallyRefunded);

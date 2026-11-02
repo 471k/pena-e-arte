@@ -5136,3 +5136,14 @@ Preventing double-booking is table stakes.
   (pre-existing, kept).
 - This entry sits below the "decisions recorded" entry above, which the Engineering Consultation
   project wrote and which was uncommitted in the working tree; it is committed separately, unchanged.
+
+### Addendum — 3 Nov 2026: partial refund of a charged deposit is now a share of what was charged
+Phi approved the recommendation above ("do whatever is recommended"). `CancellationOutcome.Decide`
+now bases **both** partial branches on `payment.Amount`, the money actually taken; the Paid branch no
+longer uses `appointment.DepositAmount`, and that parameter was removed from `Decide`. Identical
+results whenever the two amounts are equal (every existing test, unchanged, still passes). When they
+differ, a late cancel no longer tries to refund more than was charged (POK would refuse and block the
+cancellation) or less than the policy's share of what the client paid. New handler test:
+`Handle_ChargedDeposit_PartialRefundIsAShareOfWhatWasCharged_NotOfTheAppointmentDeposit`; the domain
+test that pinned the old base was rewritten deliberately. Unit suite 3,446 green. No Help change: the
+copy already says the studio's policy decides how much of the deposit comes back.

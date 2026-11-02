@@ -35,7 +35,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void Captured_FullRefund_ReleasesTheHold()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured), 50m, 100);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured), 100);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.ReleaseHold);
         d.RefundAmount.Should().Be(50m);
@@ -48,7 +48,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void Captured_Partial_CapturesOnlyTheKeptShare()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured), 50m, 40);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured), 40);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.CaptureKeptShare);
         d.RefundAmount.Should().Be(20m);
@@ -61,7 +61,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void Captured_ZeroPercent_CapturesTheWholeHold()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured), 50m, 0);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured), 0);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.CaptureWhole);
         d.RefundAmount.Should().Be(0m);
@@ -72,10 +72,10 @@ public class CancellationOutcomeTests
     }
 
     [Fact]
-    public void Captured_SplitsTheAuthorisedAmount_NotTheAppointmentDeposit()
+    public void Captured_SplitsTheAuthorisedAmount()
     {
-        // Reproduces the handler: a held deposit's base is payment.Amount.
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured, amount: 60m), 50m, 50);
+        // A held deposit's base is payment.Amount, the authorised amount.
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Captured, amount: 60m), 50);
 
         d.RefundAmount.Should().Be(30m);
         d.KeptAmount.Should().Be(30m);
@@ -86,7 +86,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void Paid_FullRefund_RefundsThePaymentAmount()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Paid), 50m, 100);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Paid), 100);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.Refund);
         d.RefundAmount.Should().Be(50m);
@@ -97,15 +97,15 @@ public class CancellationOutcomeTests
     }
 
     [Fact]
-    public void Paid_Partial_RefundsTheShareOfTheAppointmentDeposit()
+    public void Paid_Partial_RefundsTheShareOfWhatWasCharged()
     {
-        // Reproduces the handler: the partial refund of a charged deposit is computed on
-        // appointment.DepositAmount (here 40), not payment.Amount (50).
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Paid), 40m, 50);
+        // Since 3 Nov 2026 (Phi): the partial refund of a charged deposit is computed on payment.Amount,
+        // the money taken — the appointment's DepositAmount is no longer an input at all.
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Paid), 50);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.Refund);
-        d.RefundAmount.Should().Be(20m);
-        d.KeptAmount.Should().Be(30m);
+        d.RefundAmount.Should().Be(25m);
+        d.KeptAmount.Should().Be(25m);
         d.ResultingPaymentStatus.Should().Be(PaymentStatus.Refunded);
         d.ResultingDepositStatus.Should().Be(DepositStatus.Refunded);
         d.ClientOutcome.Should().Be(CancellationClientOutcome.PartiallyRefunded);
@@ -114,7 +114,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void Paid_ZeroPercent_KeepsTheDepositWithNoProviderCall()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Paid), 50m, 0);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(PaymentStatus.Paid), 0);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.None);
         d.RefundAmount.Should().Be(0m);
@@ -129,7 +129,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void CashPending_AtZeroPercent_IsStillFullyRefunded()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CashPayment(PaymentStatus.CashPending), 50m, 0);
+        CancellationDecision d = CancellationOutcome.Decide(CashPayment(PaymentStatus.CashPending), 0);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.None);
         d.ResultingPaymentStatus.Should().Be(PaymentStatus.Refunded);
@@ -142,7 +142,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void NoPayment_NothingHappens()
     {
-        CancellationDecision d = CancellationOutcome.Decide(null, 50m, 0);
+        CancellationDecision d = CancellationOutcome.Decide(null, 0);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.None);
         d.RefundAmount.Should().Be(0m);
@@ -157,7 +157,7 @@ public class CancellationOutcomeTests
     [InlineData(PaymentStatus.Failed)]
     public void UnfinishedOrFailedCardIntent_NothingHappens(PaymentStatus status)
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(status), 50m, 0);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(status), 0);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.None);
         d.ResultingPaymentStatus.Should().BeNull();
@@ -171,7 +171,7 @@ public class CancellationOutcomeTests
     [Fact]
     public void ConfirmedCashDeposit_IsLeftForTheStudioToSettle()
     {
-        CancellationDecision d = CancellationOutcome.Decide(CashPayment(PaymentStatus.Paid), 50m, 0);
+        CancellationDecision d = CancellationOutcome.Decide(CashPayment(PaymentStatus.Paid), 0);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.None);
         d.ResultingPaymentStatus.Should().BeNull();
@@ -184,7 +184,7 @@ public class CancellationOutcomeTests
     [InlineData(PaymentStatus.Paid)]
     public void CardMoneyWithoutAProviderReference_IsUnknown(PaymentStatus status)
     {
-        CancellationDecision d = CancellationOutcome.Decide(CardPayment(status, providerReferenceId: null), 50m, 100);
+        CancellationDecision d = CancellationOutcome.Decide(CardPayment(status, providerReferenceId: null), 100);
 
         d.ProviderAction.Should().Be(CancellationProviderAction.None);
         d.ResultingPaymentStatus.Should().BeNull();
@@ -199,7 +199,7 @@ public class CancellationOutcomeTests
     {
         // 1001 JPY × 33% = 330.33 → 330 (JPY has no minor unit); a hardcoded 2 dp would give 330.33.
         CancellationDecision d = CancellationOutcome.Decide(
-            CardPayment(PaymentStatus.Captured, amount: 1001m, currency: "JPY"), 1001m, 33);
+            CardPayment(PaymentStatus.Captured, amount: 1001m, currency: "JPY"), 33);
 
         d.RefundAmount.Should().Be(330m);
         d.KeptAmount.Should().Be(671m);
@@ -210,7 +210,7 @@ public class CancellationOutcomeTests
     {
         // 12.345 KWD × 33% = 4.07385 → 4.074 (KWD has three); a hardcoded 2 dp would give 4.07.
         CancellationDecision d = CancellationOutcome.Decide(
-            CardPayment(PaymentStatus.Paid, amount: 12.345m, currency: "KWD"), 12.345m, 33);
+            CardPayment(PaymentStatus.Paid, amount: 12.345m, currency: "KWD"), 33);
 
         d.RefundAmount.Should().Be(4.074m);
     }
@@ -220,7 +220,7 @@ public class CancellationOutcomeTests
     {
         // 25 JPY × 50% = 12.5 → 13 with away-from-zero; banker's rounding would give 12.
         CancellationDecision d = CancellationOutcome.Decide(
-            CardPayment(PaymentStatus.Captured, amount: 25m, currency: "JPY"), 25m, 50);
+            CardPayment(PaymentStatus.Captured, amount: 25m, currency: "JPY"), 50);
 
         d.RefundAmount.Should().Be(13m);
         d.KeptAmount.Should().Be(12m);

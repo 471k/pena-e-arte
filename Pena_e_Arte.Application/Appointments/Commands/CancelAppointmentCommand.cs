@@ -117,7 +117,7 @@ public class CancelAppointmentHandler(
             // cancellation preview (GetCancellationPreviewQuery) calls, so what the client is shown
             // before confirming and what happens here cannot drift apart. This handler performs the
             // provider I/O the decision implies, exactly as before the extraction.
-            CancellationDecision decision = CancellationOutcome.Decide(payment, appointment.DepositAmount, refundPercent);
+            CancellationDecision decision = CancellationOutcome.Decide(payment, refundPercent);
 
             switch (decision.ProviderAction)
             {

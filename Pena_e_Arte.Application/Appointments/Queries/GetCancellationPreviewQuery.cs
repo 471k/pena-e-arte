@@ -52,7 +52,7 @@ public class GetCancellationPreviewHandler(IAppDbContext db, ICurrentUser curren
         Payment? payment = await db.Payments
             .FirstOrDefaultAsync(p => p.AppointmentId == appointment.Id, ct);
 
-        CancellationDecision decision = CancellationOutcome.Decide(payment, appointment.DepositAmount, refundPercent);
+        CancellationDecision decision = CancellationOutcome.Decide(payment, refundPercent);
 
         string currency = payment?.Currency is { Length: > 0 } paymentCurrency
             ? paymentCurrency
