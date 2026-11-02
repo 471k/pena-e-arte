@@ -190,6 +190,49 @@ public class PokPaymentProviderTests
         body.RootElement.TryGetProperty("failRedirectUrl", out _).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("ALL", 300000, "*about 226,000 ALL (2,500 EUR)*")]
+    [InlineData("EUR", 3000, "*2,500 EUR per payment*")]
+    public async Task CreatePaymentHoldAsync_AmountAbovePokLimit_TellsTheClientTheCardLimit(
+        string currency, int amount, string expectedMessage)
+    {
+        // 1 Nov 2026: POK production refuses any order above 2,500 EUR with this exact 400 (its text says 1000 EUR).
+        // Before, the client saw "POK request failed (400).".
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse("""{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/sdk-orders") => StatusResponse(HttpStatusCode.BadRequest,
+                """{"statusCode":400,"message":"The maximum amount of 1000 EUR per transaction was exceeded","errors":[]}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+
+        Func<Task> act = () => CreateSut(handler).CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), amount, currency), default);
+
+        (await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage(expectedMessage))
+            .Which.Message.Should().Contain("pay in cash").And.NotContain("POK");
+    }
+
+    [Fact]
+    public async Task CreatePaymentHoldAsync_OtherBadRequest_StaysAGenericProviderFailure()
+    {
+        await SeedConnectedStudioAsync();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse("""{"data":{"accessToken":"tok-123","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/sdk-orders") => StatusResponse(HttpStatusCode.BadRequest,
+                """{"statusCode":400,"message":"\"currencyCode\" must be one of [EUR, ALL]","errors":[]}"""),
+            _ => throw new InvalidOperationException($"Unexpected call to {req.RequestUri}"),
+        });
+
+        Func<Task> act = () => CreateSut(handler).CreatePaymentHoldAsync(
+            new PaymentHoldRequest(_studioId, Guid.NewGuid(), 150m, "ALL"), default);
+
+        (await act.Should().ThrowAsync<ServiceUnavailableException>().WithMessage("POK request failed (400)."))
+            .Which.Should().NotBeOfType<PokAmountLimitExceededException>();
+    }
+
     [Fact]
     public async Task CreatePaymentHoldAsync_UnsupportedCurrency_ThrowsWithoutAnyHttpCall()
     {
@@ -517,6 +560,11 @@ public class PokPaymentProviderTests
     }
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
+    {
+        Content = new StringContent(json, Encoding.UTF8, "application/json"),
+    };
+
+    private static HttpResponseMessage StatusResponse(HttpStatusCode status, string json) => new(status)
     {
         Content = new StringContent(json, Encoding.UTF8, "application/json"),
     };

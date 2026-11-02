@@ -7,6 +7,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { currencyLabel, lekReferenceApplies } from "@/shared/utils/formatCurrency";
 import { Money } from "@/shared/components/Money";
 import { MoneyInput, hasAtMostCurrencyMinorUnits, tooManyDecimalsMessage } from "@/shared/components/ui/money-input";
@@ -60,7 +61,8 @@ export function PurchaseGiftCardPage() {
       recipientEmail: recipientEmail || null,
     });
     if ("data" in result) toast.success("Gift card purchase started — check your email to complete payment.");
-    else toast.error("Failed to start gift card purchase.");
+    // The server's message when it has one (e.g. the 2,500 EUR card limit), else the generic text.
+    else toast.error(extractErrorMessage(result.error, "Failed to start gift card purchase."));
   }
 
   return (

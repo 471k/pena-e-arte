@@ -386,6 +386,19 @@ describe("CreatePaymentIntentPage", () => {
     await user.click(await screen.findByText("Maria Silva"));
     await screen.findByText(/selected appointment/i);
     await user.click(screen.getByRole("button", { name: /create card payment/i }));
+    // The server's own message is shown (e.g. the 2,500 EUR card limit, 2 Nov 2026).
+    expect(await screen.findByText(/already has an active payment/i)).toBeInTheDocument();
+  });
+
+  it("API error without a message falls back to the generic text", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/payments", () => new HttpResponse(null, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByText("Maria Silva"));
+    await screen.findByText(/selected appointment/i);
+    await user.click(screen.getByRole("button", { name: /create card payment/i }));
     expect(await screen.findByText(/failed to create payment/i)).toBeInTheDocument();
   });
 

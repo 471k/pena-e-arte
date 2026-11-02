@@ -67,9 +67,42 @@ public sealed class PokAuthClient(
         if (allow409 && response.StatusCode == System.Net.HttpStatusCode.Conflict)
             return default!;
 
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest
+            && await IsAmountLimitRefusalAsync(response, ct))
+        {
+            // POK refuses any single order above its per-payment maximum (production 2,500 EUR, compared in
+            // ALL at POK's own rate) with 400 "The maximum amount of 1000 EUR per transaction was exceeded"
+            // (its text says 1000 EUR; the real limit is 2,500 EUR — measured 1 Nov 2026). Not an outage:
+            // the caller turns it into a message the client can act on. Warning, not error: nothing failed.
+            logger.LogWarning("POK refused an order amount above its per-payment limit for studio {StudioId}", studioId);
+            throw new PokAmountLimitExceededException();
+        }
+
         EnsureSuccessOrThrow(response, studioId);
         T? result = await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct);
         return result ?? throw new ServiceUnavailableException("POK returned an empty response.");
+    }
+
+    /// <summary>
+    /// True when a 400's "message" is POK's per-payment amount limit. The body is only matched, never
+    /// logged or returned (POK error payloads can carry billing details — CLAUDE.md rule 3).
+    /// </summary>
+    private static async Task<bool> IsAmountLimitRefusalAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        try
+        {
+            PokErrorBody? body = await response.Content.ReadFromJsonAsync<PokErrorBody>(cancellationToken: ct);
+            return body?.Message?.Contains("maximum amount", StringComparison.OrdinalIgnoreCase) == true;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+    }
+
+    private sealed class PokErrorBody
+    {
+        [JsonPropertyName("message")] public string? Message { get; init; }
     }
 
     private void EnsureSuccessOrThrow(HttpResponseMessage response, Guid studioId)

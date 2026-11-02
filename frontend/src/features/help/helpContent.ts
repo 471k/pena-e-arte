@@ -363,6 +363,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Your card is charged as soon as you pay. If you cancel, the studio's cancellation policy decides how much comes back: all of it with enough notice, part or none if you cancel late. Payment is by card, or by cash arranged with the studio.",
       "You pay the deposit in the studio's currency — exactly the amount shown. At studios in Albania that price in euros, the amount in lek is shown next to it, converted at the Bank of Albania's official rate. Your receipt shows the rate used on the day you paid. Your card is charged in euros; if your card is in lek, your bank converts it at its own rate, which can differ slightly. If card isn't offered, the studio's currency isn't supported for card payments yet; pay in cash.",
       "If card payments are temporarily unavailable, the page shows a message saying so — Cash always remains available, or you can contact the studio directly.",
+      "A single card payment can be at most 2,500 EUR (about 226,000 ALL). For a larger amount the card form doesn't open; a message says so instead — pay in cash, or contact the studio.",
       "You pay exactly the deposit shown — there's no card surcharge. It goes straight to the studio's own account with POK, the card payment company. The studio pays POK's card fee out of it; TattooOS never takes a cut.",
       "If the studio refunds you, the refund goes back to the card you paid with.",
       "If you pay on POK's own payment page instead of inside TattooOS, POK shows its result and then brings you back to TattooOS: \"Payment received\", or \"Payment not completed\" (nothing was charged) with a Try again button.",
@@ -1089,7 +1090,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Deposit Rules to see all your rules.",
       "Click \"New Rule\" to create one, or click an existing rule to view/edit it.",
     ],
-    tips: ["If you haven't created any rules yet, new appointments won't have an automatic deposit amount calculated."],
+    tips: [
+      "If you haven't created any rules yet, new appointments won't have an automatic deposit amount calculated.",
+      "A single card payment can be at most 2,500 EUR (about 226,000 ALL) — POK's limit per payment. If a deposit (or a package, gift card or session payment) is larger, the client sees a message asking them to pay in cash or contact you. Keep card deposits below that, for example with a percentage rule on expensive services.",
+    ],
     relatedArticleIds: ["owner-deposit-rule-create"],
   },
   {

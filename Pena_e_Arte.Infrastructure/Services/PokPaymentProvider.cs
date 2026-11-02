@@ -45,6 +45,16 @@ public sealed class PokPaymentProvider(
     /// <summary>Frontend page a payer lands on after paying on POK's own hosted page (G-12).</summary>
     public const string PaymentResultPath = "/payment-result";
 
+    /// <summary>
+    /// What the client sees when POK refuses an amount above its per-payment card limit. Measured in production on
+    /// 1 Nov 2026: 2,500 EUR, and for ALL orders 2,500 EUR at POK's own rate (226,000 ALL at 90.4 that day; the rate
+    /// moves, hence "about"). Kept in sync with the Help/manual sentence on the card limit.
+    /// </summary>
+    public static string AmountAboveCardLimitMessage(string currency) =>
+        string.Equals(currency, "EUR", StringComparison.OrdinalIgnoreCase)
+            ? "This amount is above the card payment limit of 2,500 EUR per payment. Please pay in cash, or contact the studio."
+            : "This amount is above the card payment limit of about 226,000 ALL (2,500 EUR) per payment. Please pay in cash, or contact the studio.";
+
     public PaymentProviderCapabilities Capabilities { get; } = new(
         SupportsAuthCapture: true,
         SupportsHoldExpiry: true,
@@ -100,7 +110,16 @@ public sealed class PokPaymentProvider(
         req.Headers.Authorization = new("Bearer", token);
         req.Content = JsonContent.Create(body);
 
-        CreateOrderResponse result = await authClient.SendAsync<CreateOrderResponse>(http, req, request.StudioId, ct);
+        CreateOrderResponse result;
+        try
+        {
+            result = await authClient.SendAsync<CreateOrderResponse>(http, req, request.StudioId, ct);
+        }
+        catch (PokAmountLimitExceededException)
+        {
+            // Before: the client saw "POK request failed (400)." with no hint what to do (1 Nov 2026 check).
+            throw new BusinessRuleViolationException(AmountAboveCardLimitMessage(request.Currency));
+        }
         string orderId = result.Data?.SdkOrder?.Id
             ?? throw new ServiceUnavailableException("POK did not return an order id.");
 
