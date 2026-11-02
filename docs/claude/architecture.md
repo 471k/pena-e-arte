@@ -4874,3 +4874,276 @@ surface here already refetches on navigation/mount (`SubscribePage.tsx` uses
 `refetchOnMountOrArgChange: true`; the public Pricing page is fetched fresh on every visit), so a
 change is live for the next page load, not pushed into a tab a visitor already has open. That would
 be a distinct, larger feature; flagged here rather than silently built or silently skipped.
+
+## After Hours full scope — decisions recorded — 2026-11-02
+
+### Context
+Phi selected the full scope for the TattooOS "After Hours" UI/UX work (external handoff bundle in
+`claude-shared\TattooOS-Engineering-Handoff-2026-11-02\`): the redesign applied across all four
+roles with every existing backend capability covered, plus the features that bundle's Decision
+Register (DEC01–DEC13) left open. The Engineering Consultation project verified each open item
+against live source at commit `f80231c` and produced
+`docs/claude/decision-brief-after-hours-full-scope-2026-11-02.md`, benchmarked per rule 6 against
+Fresha, Zenoti, IntakeQ and B2B support-desk norms, with citations. Phi approved the
+recommendations in that brief. This entry records the decisions; nothing below is built yet.
+
+### Corrected during verification — the handoff's register overstated what is missing
+Four of its nine open items are already built, two above the competitors' standard:
+- **Consent/signature versioning (DEC08) is done.** `ConsentTemplate` is versioned and
+  immutable-once-effective (platform default + per-studio, authorize-in-handler, no tenant filter);
+  `ConsentForm.ConsentTextSnapshot` captures the exact agreed text verbatim and is documented as
+  never re-derived from the template. Zenoti's tattoo-software guide reports Square has no native
+  consent forms and Vagaro uses generic templates — this is ahead of the generalists. **DEC08 is
+  closed**; only a check that `ConsentForm.FileUrl`'s PDF is actually generated and retrievable
+  remains, and that is a bug check, not a decision.
+- **Aftercare already sends** — `Appointment.AftercareSentAt`, `NotificationType.Aftercare`,
+  `IEmailRenderer.RenderAftercare`. Zenoti's guide does not cover aftercare at all.
+- **The waitlist is built** — `Waitlist` carries status, guest entries, nullable `ArtistId` meaning
+  "any artist", and `NotifiedAt` starting a documented 24h claim window; `CancelAppointmentHandler`
+  already does an auto-FIFO match via `db.ClaimNextMatchAsync`.
+- **Conduct reports are substantially built** — status, category, resolution note, capped evidence
+  attachments, a documented `IsReadableBy` matrix and a separate
+  `ConductReportAuthorizationGuard.EnsureCanChangeStatus`. `ImpersonationSession` also already exists.
+
+### Decided
+- **DEC03 — readiness/prep checklist.** No new tracking entity. Requirement configuration goes on
+  `Service` (which already drives duration and deposit per booking); completion is **derived at read
+  time** from `ConsentForm.SignedAt`, `IntakeForm`, `AppointmentAttachment` and
+  `Payment`/`DepositStatus`. Readiness is surfaced, **not** used to block confirmation — matching
+  Fresha, which deliberately allows staff to complete a form on the client's behalf or on-site
+  rather than cancelling over missing information. A service with no requirements configured renders
+  no checklist rather than an empty "0 of 0 complete".
+- **DEC04 — cancellation consequence.** Server-authoritative preview; the frontend's duplicate
+  refund math is deleted, not mirrored. See the slice-1 prompt for the verified design. Honest
+  divergence per rule 6: no competitor in the benchmark set was found showing a per-cancellation
+  refund preview at the moment of cancelling — this is a deliberate transparency improvement beyond
+  the category norm, not a benchmark requirement.
+- **DEC05 — client reschedule.** Already resolved; consume `GET /api/v1/deposit-rules/defaults`.
+  Duration changes stay staff-only. No new rule.
+- **DEC06 — message recipient.** No "reception" account is invented. With no assigned artist the
+  recipient resolves to the **studio owner's user id**, labelled "Studio" in the UI; `Conversation`
+  already models any two participants with roles and normalizes the pair, so no new entity is
+  needed. If no owner user resolves, show the studio's existing contact details rather than a
+  compose box that will fail. `ChatMessage` gains a nullable `AppointmentId` for structured context.
+- **DEC07 — booking drafts.** Benchmark-standard (Zenoti ships Abandoned Cart Recovery, retaining
+  the booking and returning the guest to a pre-filled page; MoeGo, Xola and Booknetic equivalent).
+  A `BookingDraft` entity keyed by client id or guest email, with `ExpiresAt`. **Two privacy
+  decisions, approved:** the booking form's "anything else I should know?" field
+  (`BookingIntake.SafetyNotes`) collects medical information and is **excluded from the draft
+  payload entirely** — a client retypes one field rather than the platform storing unconfirmed
+  medical free-text; and drafts hard-delete after **7 days**. Card data is never drafted.
+- **DEC09 — booking race.** Fixed at the database, not the pre-check. See "Corrected" below.
+- **DEC11 — address and aftercare.** Real `Studio` address fields already exist (`AddressLine1/2`,
+  `City`, `PostalCode`, `Latitude`, `Longitude`), so the handoff's "do not fabricate an address"
+  caution is moot. Existing aftercare content is surfaced in-app after completion from the same
+  renderer source (no second copy); the address shows on **Confirmed** appointments only — an
+  unconfirmed request must not disclose a private studio address. No new content-approval workflow.
+- **DEC12 — admin cases.** Add exactly three things to the existing `ConductReport` surface:
+  `AssignedToUserId`, a priority/severity field, and an age/SLA signal in the admin list, with
+  status changes recorded through the existing `AuditLogEntry`. Support impersonation is **not**
+  built here — `ImpersonationSession` exists and its current behaviour is checked first.
+- **DEC01 / DEC13 — rollout.** Theme scoped to operational authenticated screens; public,
+  marketing and embed styling untouched; DM Sans / Bodoni Moda font rollout deferred to its own
+  slice.
+
+### Corrected during verification — DEC04 and DEC09 are both more specific than the brief said
+- **DEC04.** `ClientCancellationPolicy.ResolveRefundPercent` yields only the *percent*. The actual
+  money outcome branches in `CancelAppointmentHandler` on `payment.Status` and `payment.Method`:
+  `Captured` (authorised hold) settles through `SettleHeldDepositAsync` — full refund releases the
+  hold, 0% **captures** it, partial captures the kept share and the provider releases the rest;
+  `Paid` issues a real provider refund; `CashPending` is always treated as fully refunded
+  regardless of notice, because no money ever changed hands; and a Pending/Failed card intent
+  refunds nothing. Rounding is `CurrencyCatalog.Round(..., payment.Currency)`, not two decimals.
+  A faithful preview therefore cannot be built from the policy alone — the **decision** (which
+  outcome, and on what base amount) is extracted into one shared function that both the preview
+  query and the existing handler call, so the two cannot drift. Provider I/O stays in the handler.
+- **DEC09.** The race is real but narrower, and its documented safety net does not exist.
+  `CreateAppointmentCommand` does acquire `ISlotLocker.TryAcquireLockAsync` and then run a correct
+  interval-overlap check (`a.Date < requestEnd && a.EndDate > req.Date`). But `SlotLocker`'s Redis
+  key is `slot:{studioId}:{artistId}:{yyyyMMddHHmm}` — the **exact start minute** — so two
+  overlapping bookings with *different* start times take different locks, both pass the overlap
+  read before either saves, and both insert. Worse, `TryAcquireLockAsync` **fails open** when Redis
+  is unavailable, justified in its own comment by "the DB-level unique appointment constraint is
+  the authoritative guard" — **that constraint does not exist.** Verified in the model snapshot:
+  `ix_appointments_studio_id`, `ix_appointments_studio_artist_date` (StudioId, ArtistId, Date) and
+  `ix_appointments_artist_date_enddate_status` are all declared without `.IsUnique()`. So on a Redis
+  outage there is currently no double-booking guard at all. Treated as a P1-class correctness
+  defect and scheduled first.
+
+### Blocked — not decided, must not be built
+- **DEC10 — artist earnings, commission and splits.** Deliberately unanswered; this is a Finance
+  decision, not an engineering one. `SessionSplit` exists but is thin (`PaymentId`, `Label`,
+  `Amount`, `PaidAt` — no artist link, no percentage, no tip handling); `BoothRentCharge`,
+  `BoothRentSchedule` and `RentFrequency` are built. Zenoti's guide calls split handling "the real
+  test of tattoo shop software" and expects commission computed per artist from the checkout
+  transaction, the artist's cut settled from that same record, tips routed to the right artist,
+  booth rent invoiced separately from shop revenue, and per-artist payout reporting. **Four answers
+  are required before any of it is built:** which artist arrangements exist (employed commission /
+  booth renter / guest), the actual percentages and whether they vary per artist or service, **who
+  absorbs the payment-provider fee**, and how tips are treated. No default is assumed.
+
+### Delivery order
+1. DEC04 + DEC09 (correctness and money). 2. DEC03 + DEC06 + DEC11 (the client appointment
+experience the handoff specifies). 3. DEC12. 4. DEC07. 5. DEC10, only after Finance answers.
+Each slice ships as its own overnight prompt carrying these approved answers verbatim, with its own
+benchmark note, Help-sync obligations, per-layer tests and verification checklist. Progressive
+disclosure and the rest of the handoff's §03 component contract are acceptance criteria in every UI
+slice, not optional polish.
+
+## After Hours slice 1 — server-authoritative cancellation consequence (DEC04) and the booking race (DEC09) — built — 2026-11-02
+
+### Context
+Built from `docs/claude/overnight-prompt-after-hours-slice1-cancellation-and-booking-race-2026-11-02.md`
+(slice 1 of 5, decisions in the entry above). Branch
+`feature/after-hours-slice1-cancellation-and-booking-race`, cut from `origin/main` at `ccc4fcb6`
+(PR #327 merged on top of the `f80231c` the prompt quotes). No drift from the quoted source was found.
+Not merged, not deployed, no migration (none is needed: no schema change).
+
+### DEC04 — one money decision, two callers
+- **`Pena_e_Arte.Domain/Services/CancellationOutcome.cs`**, a pure static domain service shaped like
+  `ClientCancellationPolicy`/`DepositCalculator`: `Decide(Payment?, appointmentDepositAmount,
+  refundPercent)` returns a `CancellationDecision`. That holds the implied provider action (`None`,
+  `ReleaseHold`, `CaptureWhole`, `CaptureKeptShare`, `Refund`), the refund and kept amounts, the
+  resulting `PaymentStatus`/`DepositStatus` (null = left as is) and a client-facing
+  `CancellationClientOutcome`. Rounding is `CurrencyCatalog.Round(..., payment.Currency)` throughout.
+- **`CancelAppointmentHandler` consumes it** and makes the same provider calls, in the same order,
+  with the same arguments and the same error handling: release / capture-whole (failure tolerated and
+  logged) / capture-kept-share (failure refuses the cancellation) / refund. Logging, reconciliation
+  comments, waitlist FIFO, notifications and the webhook are untouched. The two Paid `RefundAsync`
+  branches became one call fed by the decision's amount. The diff adds, removes or reorders no
+  `IPaymentProvider` call. **All 3,418 existing unit and 623 existing integration tests passed with
+  the refactor before any new test was added, with no existing test edited.**
+- **`GET /api/v1/appointments/{id:guid}/cancellation-preview`** (`ClientAndAbove`, mapped beside
+  `calendar.ics`, no logic in the endpoint): `GetCancellationPreviewQuery` + validator. The client
+  ownership gate is copied verbatim from the handler (404, never 403). The active rule is resolved
+  exactly as `ResolveClientRefundPercentAsync` does, and a staff caller gets `refundPercent` 100 with
+  `NoticeWindowApplies = false`. It returns the new `CancellationPreviewResponse` with
+  `IsProjection = true`. There is no quote token and no expiry: DELETE stays the single commit and
+  re-decides (D2).
+- **`GET /appointments/mine`** now carries `SelfService { NoticeWindowHours, IsWithinNoticeWindow }`
+  per appointment, computed server-side by `ClientCancellationPolicy` with one rule lookup per
+  request, so the list needs no per-card preview call. It is null on every other appointment read.
+- **Frontend:** `noticeWindowHours`, `lateCancelRefundPercent`, `isWithinNoticeWindow` and the
+  client-side `hasActiveDeposit` test are deleted from `MyBookingsSection.tsx`, along with its
+  deposit-rules/defaults fetches. A test asserts the bookings list no longer requests either
+  endpoint. Reschedule gating reads `appt.selfService`. While the value is missing the button is
+  disabled with no cutoff message, which is the same safety property as before. The cancel
+  confirmation fetches the preview fresh on every opening (`keepUnusedDataFor: 0`,
+  `refetchOnMountOrArgChange`). It shows the consequence in the client's words with server amounts
+  and says it is confirmed at cancel time. "Yes, cancel" stays disabled while loading, on a failed
+  preview or on an `Unknown` outcome; those states point at the studio with its phone number when
+  set. "Keep appointment" (renamed from "Keep booking", per the prompt) takes initial focus. After the
+  commit the toast says only "Appointment cancelled."; the deposit line shows what the server
+  actually did. The inline confirm panel keeps its exact classes; it gained `role="alertdialog"`
+  semantics only. Nothing was restyled.
+
+### DEC09 — the database is the arbiter
+- **Chosen mechanism: a per-artist row lock.** `IAppDbContext.ClaimArtistForBookingAsync(studioId,
+  artistId)` opens a **READ COMMITTED** transaction and runs `SELECT Id FROM artists WHERE Id = ? AND
+  StudioId = ? FOR UPDATE`. That is raw SQL with explicit ids, so no tenant filter is involved and no
+  new `IgnoreQueryFilters()` is added; it works on the anonymous guest path. The existing overlap
+  check (kept exactly, with its pre-existing `IgnoreQueryFilters()` + `StudioId` predicate) and the
+  insert run inside the claim, which is committed right after the save. A concurrent booking for the
+  same artist blocks on the row, then its overlap read sees the committed booking and throws
+  `SlotAlreadyBookedException`, so the API contract is unchanged.
+- **Why not the gap-locking range read the prompt suggested (deviation, deliberate):** InnoDB gap
+  locks are mutually compatible. Two `SELECT … FOR UPDATE` reads over an *empty* overlapping window
+  both succeed, then both inserts wait on each other's gap lock: a deadlock (1213). One request fails
+  with a provider exception instead of `SlotAlreadyBookedException` unless retry/mapping code is
+  added. The gaps also span neighbouring *non-overlapping* slots of the same artist, so free
+  bookings can collide too. The artist row is one exact lock with no booking-vs-booking deadlock.
+  A unique index was rejected as the prompt says: it catches only exact starts, and MySQL has no
+  partial index to leave cancelled rows out. READ COMMITTED (rather than the default REPEATABLE
+  READ) guarantees the post-lock overlap read sees the other request's commit.
+- **Paths covered:** `CreateAppointmentCoreAsync`, which is shared by client/staff create,
+  `CreateGuestAppointmentCommand` and `RequestCatalogDesignCommand` (so the catalog path needs no
+  separate treatment). Also `AssignAppointmentArtistCommand` and, **beyond the prompt's list,
+  `RescheduleAppointmentCommand`**, which had the same check-then-save race with no lock at all.
+  Studio-choice bookings without an artist claim nothing, as before.
+- `ISlotLocker` stays in front as a cheap first-line guard. **`SlotLocker.cs`'s comment now says
+  what actually guards the invariant**: its old "DB-level unique appointment constraint" never
+  existed. `ArtistAvailabilityExtensions`' doc comment was corrected the same way.
+- `FakeDbContext` (unit-test helper) implements the new member as a documented no-op, because the
+  InMemory provider has neither transactions nor locks; no unit test changed. The real lock is
+  exercised only by the integration suite.
+
+### Tests
+- **Backend before → after: 3,418 → 3,445 unit, 623 → 646 integration, all green; `dotnet build`
+  0 errors.**
+- **Unit:** `CancellationOutcomeTests` (Captured 100/partial/0, Paid 100/partial/0, CashPending at 0%
+  still Refunded/Refunded, no payment, Pending/Failed intent, confirmed cash, card money without a
+  provider reference, JPY 0-dp, KWD 3-dp, away-from-zero midpoint, both base amounts pinned).
+  `GetCancellationPreviewHandlerTests` (owner, rule-driven partial, wrong client 404, client without
+  a record 404, missing 404, artist/owner not subject to the window, studio-currency fallback).
+  `GetMyAppointmentsSelfServiceTests`.
+- **Integration (real MySQL):** `CancellationPreviewIntegrationTests`, which checks preview vs
+  commit for ten payment branches. Each asserts the previewed refund equals the committed
+  `RefundedAmount`, the provider got exactly the previewed amount and nothing else, and the deposit
+  status matches. A rule widened between preview and commit leaves the deposit kept, sends no refund,
+  and the cancellation notification says forfeited. `CancellationPreviewEndpointTests` covers 401,
+  owning client 200, other client 404 and owner 200 through the real auth pipeline.
+  `BookingRaceIntegrationTests` covers create with healthy-Redis semantics (an exact-minute fake
+  locker) and with Redis down (always grants), both with different starts; the same start with Redis
+  down; guest; reschedule; and assign. It also has a non-overlapping control that must book both.
+  **The race is forced, not hoped for:** an EF command interceptor holds each request at its
+  `appointments` write until the other arrives or 3 s pass. **Verified by stashing the fix:** with
+  the claim call sites reverted to `origin/main`, all six race tests fail with
+  `success | success` (two overlapping rows) and the control passes; with the fix all pass.
+- **Frontend:** **before → after 2,772 → 2,786 vitest tests (+14).** `pnpm run lint`: 0 errors (18 warnings, all
+  pre-existing, none in changed code). `pnpm run build`: green. `pnpm run test`: **not fully green on
+  this machine, for a pre-existing reason** — 17 tests (quiet machine) / 34 (run alongside the
+  integration suite) hit vitest's 10 s timeout, almost all in `StudioProfilePage.test.tsx`, plus single
+  ones in `GuestBookAppointmentForm`/`ReminderDialog`, files this change does not touch; three
+  `BookAppointmentForm` submission tests in `BookPage.test.tsx` timed out only under the heavier load.
+  Every one passes in isolation, and the `StudioProfilePage` timeout reproduces identically with this
+  change's frontend edits stashed. `BookPage.test.tsx`, the only test file changed: 93/93. CI is the
+  authority for the full run. `BookPage.test.tsx` (where the `MyBookingsSection` tests live) gained
+  14 tests. They cover loading, failed preview, unknown outcome (confirmation disabled, studio phone
+  shown) and each outcome's sentence. They also cover the partial-refund amounts, initial focus on
+  "Keep appointment", the post-commit result overriding the projection, the absence of deposit-rule
+  fetches, reschedule disabled with no message while unknown, and enabled inside / disabled with the
+  message outside the window. **Existing tests were updated in fixtures, not in what they assert:**
+  `/mine` responses now carry `selfService` and the preview endpoint is mocked. Three tests that click
+  "Yes, cancel" now wait for it to be enabled first, because confirmation is disabled until the
+  projection loads, which is required behaviour. One test's button name changed from "Keep booking"
+  to "Keep appointment". No test was deleted or weakened.
+
+### Help (rule 7)
+`helpContent.ts` article **`client-cancel-booking`** now covers the projection, the studio's policy
+deciding the refund, re-decision at commit, the unavailable-confirmation case and cash deposits. The
+served manual `frontend/public/user-manual/index.html` (not the stale `docs/user-manual.html`) got
+the same in its My Bookings step and "Cancellation policy" callout. **Client tour:** no step added.
+No step mentions cancelling, and this slice changes what an existing flow says, not where anything
+lives. **Part B needs no Help change:** the only user-visible effect is the existing "slot already
+booked" error in a case where a double booking used to slip through.
+
+### Rule 6 note
+Per the prompt's benchmark finding, the per-cancellation refund projection is a transparency
+improvement **beyond** the category norm (no product in the Fresha/Vagaro/Boulevard/GlossGenius/
+Booksy/Zenoti set was found doing it), not an industry standard, and no copy calls it one.
+Preventing double-booking is table stakes.
+
+### Deviations from the prompt, and questions for Phi
+- Locking approach (above): artist row lock instead of a gap-locking range read.
+- `RescheduleAppointmentCommand` protected too (not in the prompt's list; same defect).
+- The client outcome has six values, not four: `SettledWithStudio` for a studio-confirmed cash
+  deposit (the handler leaves it untouched; confirmation allowed) and `Unknown` for a card payment
+  marked held/paid with no provider reference (confirmation disabled, per the prompt).
+- `CancellationPreviewResponse` also carries `KeptAmount` and `NoticeWindowApplies`.
+- **For Phi (also in the sync note):** whether to base both partial branches on `payment.Amount`
+  instead of the Paid branch's `appointment.DepositAmount` (recommended; a policy change, not made).
+  Note also that a held deposit's forfeit/partial passes no money detail to the cancellation email
+  (pre-existing, kept).
+- This entry sits below the "decisions recorded" entry above, which the Engineering Consultation
+  project wrote and which was uncommitted in the working tree; it is committed separately, unchanged.
+
+### Addendum — 3 Nov 2026: partial refund of a charged deposit is now a share of what was charged
+Phi approved the recommendation above ("do whatever is recommended"). `CancellationOutcome.Decide`
+now bases **both** partial branches on `payment.Amount`, the money actually taken; the Paid branch no
+longer uses `appointment.DepositAmount`, and that parameter was removed from `Decide`. Identical
+results whenever the two amounts are equal (every existing test, unchanged, still passes). When they
+differ, a late cancel no longer tries to refund more than was charged (POK would refuse and block the
+cancellation) or less than the policy's share of what the client paid. New handler test:
+`Handle_ChargedDeposit_PartialRefundIsAShareOfWhatWasCharged_NotOfTheAppointmentDeposit`; the domain
+test that pinned the old base was rewritten deliberately. Unit suite 3,446 green. No Help change: the
+copy already says the studio's policy decides how much of the deposit comes back.

@@ -212,6 +212,18 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
             .HasForeignKey(m => m.ConversationId);
     }
 
+    // The InMemory provider has no transactions or row locks, so the booking claim is a no-op here.
+    // Unit tests cover the booking logic; the real lock (AppDbContext) is exercised against MySQL by
+    // the integration suite's concurrency tests (BookingRaceIntegrationTests).
+    public Task<IBookingClaim> ClaimArtistForBookingAsync(Guid studioId, Guid artistId, CancellationToken ct) =>
+        Task.FromResult<IBookingClaim>(new NoOpBookingClaim());
+
+    private sealed class NoOpBookingClaim : IBookingClaim
+    {
+        public Task CommitAsync(CancellationToken ct) => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
     public static FakeDbContext Create() => Create(Guid.NewGuid().ToString());
 
     public static FakeDbContext Create(string databaseName) =>

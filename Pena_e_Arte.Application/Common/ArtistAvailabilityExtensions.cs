@@ -101,9 +101,9 @@ public static class ArtistAvailabilityExtensions
     /// CreateAppointmentCoreAsync (both authenticated and guest paths) for its PRE-LOCK check,
     /// and by <see cref="CheckArtistSlotAvailabilityAsync"/> below. Kept separate from the
     /// conflict check because CreateAppointmentCoreAsync must run its authoritative conflict
-    /// check AFTER acquiring the per-slot lock (race safety — two concurrent requests could
-    /// both pass a pre-lock conflict check) — that post-lock check is unchanged, still throws
-    /// SlotAlreadyBookedException.
+    /// check AFTER taking the artist booking claim (IAppDbContext.ClaimArtistForBookingAsync, a
+    /// database row lock on the artist — race safety: two concurrent requests could both pass a
+    /// pre-lock conflict check). That post-lock check still throws SlotAlreadyBookedException.
     /// IgnoreQueryFilters() + explicit studioId — see <see cref="IsAnyArtistAvailableAsync"/>'s
     /// doc comment for why both are required for the anonymous/guest callers.
     /// Note: prior to this extraction, CreateAppointmentHandler's inline specific-artist check

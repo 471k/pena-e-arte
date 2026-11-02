@@ -34,7 +34,7 @@ import { MyBookingsSection } from "@/features/appointments/components/MyBookings
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import type { ClientResponse } from "@/features/clients/clientsApi";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
-import type { AppointmentResponse } from "@/features/appointments/appointment.types";
+import type { AppointmentResponse, CancellationPreviewResponse } from "@/features/appointments/appointment.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import { Role } from "@/shared/types/roles";
 
@@ -115,7 +115,33 @@ const APPT_UPCOMING: AppointmentResponse = {
   durationMinutes: 60, status: "Pending",
   depositStatus: "Pending", depositAmount: 0,
   notes: null, createdAt: "2024-01-01T00:00:00Z",
+  // What GET /appointments/mine reports for a booking a week away (server default window, 48 h).
+  selfService: { noticeWindowHours: 48, isWithinNoticeWindow: true },
 };
+
+// GET /appointments/mine's self-service value for a booking with less notice than the window.
+const LATE = { noticeWindowHours: 48, isWithinNoticeWindow: false };
+
+// GET /appointments/{id}/cancellation-preview — the server's projection (default: nothing collected).
+function preview(overrides: Partial<CancellationPreviewResponse> = {}): CancellationPreviewResponse {
+  return {
+    appointmentId: "appt-001", noticeWindowHours: 48, isWithinNoticeWindow: true, noticeWindowApplies: true,
+    refundPercent: 100, depositAmount: 50, currency: "EUR", refundAmount: 0, keptAmount: 0,
+    outcome: "NothingCollected", isProjection: true,
+    ...overrides,
+  };
+}
+
+function previewReturns(body: CancellationPreviewResponse) {
+  return http.get("http://localhost/api/v1/appointments/:id/cancellation-preview", () => HttpResponse.json(body));
+}
+
+// The confirmation only enables "Yes, cancel" once the server's projection has arrived.
+async function confirmCancel(user: ReturnType<typeof userEvent.setup>) {
+  const yes = screen.getByRole("button", { name: /yes, cancel/i });
+  await waitFor(() => expect(yes).toBeEnabled());
+  await user.click(yes);
+}
 
 const APPT_PAST: AppointmentResponse = {
   id: "appt-002", studioId: "s-001",
@@ -161,6 +187,7 @@ const server = setupServer(
     id: "ref-code-001", code: "TESTREF1", shareUrl: "https://tattooos.co/book?studio=test-studio&referral=TESTREF1",
     rewardPercent: 10, redemptionCount: 0,
   })),
+  http.get("http://localhost/api/v1/appointments/:id/cancellation-preview", () => HttpResponse.json(preview())),
   http.delete("http://localhost/api/v1/appointments/:id",     () => new HttpResponse(null, { status: 204 })),
   http.patch("http://localhost/api/v1/appointments/:id/reschedule", () =>
     HttpResponse.json(APPT_UPCOMING)),
@@ -1028,6 +1055,7 @@ describe("MyBookingsSection", () => {
       http.get("http://localhost/api/v1/appointments/mine", () =>
         HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, depositStatus: "Paid" }]),
       ),
+      previewReturns(preview({ outcome: "FullyRefunded", refundAmount: 50 })),
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
@@ -1046,8 +1074,9 @@ describe("MyBookingsSection", () => {
     const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () =>
-        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Paid" }]),
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Paid", selfService: LATE }]),
       ),
+      previewReturns(preview({ outcome: "DepositKept", isWithinNoticeWindow: false, refundPercent: 0, keptAmount: 50 })),
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
@@ -1066,8 +1095,9 @@ describe("MyBookingsSection", () => {
     const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () =>
-        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Pending" }]),
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, depositAmount: 50, depositStatus: "Pending", selfService: LATE }]),
       ),
+      previewReturns(preview({ outcome: "NothingCollected", isWithinNoticeWindow: false, refundPercent: 0 })),
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "CashPending", method: "Cash",
@@ -1156,20 +1186,20 @@ describe("MyBookingsSection", () => {
     expect(await screen.findByText("Deposit paid")).toBeInTheDocument();
 
     await user.click(await screen.findByText("Cancel appointment"));
-    await user.click(screen.getByRole("button", { name: "Yes, cancel" }));
+    await confirmCancel(user);
 
     expect(await screen.findByText("Deposit refunded")).toBeInTheDocument();
     expect(screen.queryByText("Deposit paid")).not.toBeInTheDocument();
   });
 
-  it("'Keep booking' dismisses the confirmation without cancelling", async () => {
+  it("'Keep appointment' dismisses the confirmation without cancelling", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
     );
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
-    await user.click(screen.getByRole("button", { name: /keep booking/i }));
+    await user.click(screen.getByRole("button", { name: /keep appointment/i }));
     expect(screen.getByText("Cancel appointment")).toBeInTheDocument();
   });
 
@@ -1180,7 +1210,7 @@ describe("MyBookingsSection", () => {
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
-    await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
+    await confirmCancel(user);
     expect(await screen.findByText("Appointment cancelled.")).toBeInTheDocument();
   });
 
@@ -1194,8 +1224,156 @@ describe("MyBookingsSection", () => {
     const user = userEvent.setup();
     renderMyBookings();
     await user.click(await screen.findByText("Cancel appointment"));
-    await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
+    await confirmCancel(user);
     expect(await screen.findByText("Failed to cancel appointment.")).toBeInTheDocument();
+  });
+
+  // ── DEC04: the consequence comes from the server, never from the browser ───
+
+  it("shows a loading line and keeps 'Yes, cancel' disabled while the projection loads", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+      http.get("http://localhost/api/v1/appointments/:id/cancellation-preview", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return HttpResponse.json(preview());
+      }),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByText(/checking what this means for your deposit/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /yes, cancel/i })).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: /yes, cancel/i })).toBeEnabled());
+  });
+
+  it("when the projection fails, confirmation stays disabled and the studio's contact is shown", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+      http.get("http://localhost/api/v1/appointments/:id/cancellation-preview", () =>
+        HttpResponse.json({ message: "error" }, { status: 500 })),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(await screen.findByText(/couldn't check what cancelling would mean/i)).toBeInTheDocument();
+    expect(screen.getByText(/please contact the studio to cancel/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /yes, cancel/i })).toBeDisabled();
+    expect(screen.queryByText(/refund/i)).not.toBeInTheDocument();
+  });
+
+  it("when the server can't tell the outcome, confirmation stays disabled and the studio's phone is shown", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+      http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ ...STUDIO, phoneNumber: "+355691234567" })),
+      previewReturns(preview({ outcome: "Unknown" })),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(await screen.findByText(/can't tell what would happen to your deposit/i)).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "+355691234567" })).toHaveAttribute("href", "tel:+355691234567");
+    expect(screen.getByRole("button", { name: /yes, cancel/i })).toBeDisabled();
+  });
+
+  it.each([
+    ["a full refund",    preview({ outcome: "FullyRefunded", refundAmount: 50 }), /you'll receive a full refund/i],
+    ["a partial refund", preview({ outcome: "PartiallyRefunded", isWithinNoticeWindow: false, refundPercent: 40, refundAmount: 20, keptAmount: 30 }),
+      /you'll get .* back and the studio keeps .* of your deposit/i],
+    ["a kept deposit",   preview({ outcome: "DepositKept", isWithinNoticeWindow: false, refundPercent: 0, keptAmount: 50 }),
+      /cancelling now forfeits 100% of your deposit/i],
+    ["nothing taken",    preview({ outcome: "NothingCollected" }), /no deposit has been taken/i],
+    ["a cash deposit",   preview({ outcome: "SettledWithStudio" }), /isn't refunded automatically/i],
+  ])("states %s as the server projected it", async (_name, body, sentence) => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50 }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () => HttpResponse.json(null)),
+      previewReturns(body),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    const dialog = await screen.findByRole("alertdialog", { name: /cancel this appointment/i });
+    await waitFor(() => expect(within(dialog).getByText(sentence)).toBeInTheDocument());
+    expect(within(dialog).getByText(/it's confirmed when you cancel/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /yes, cancel/i })).toBeEnabled();
+  });
+
+  it("names the amounts the server projected for a partial refund", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, selfService: LATE }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () => HttpResponse.json(null)),
+      previewReturns(preview({ outcome: "PartiallyRefunded", isWithinNoticeWindow: false, refundPercent: 40, refundAmount: 20, keptAmount: 30 })),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    const dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(within(dialog).getByText(/€20/)).toBeInTheDocument());
+    expect(within(dialog).getByText(/€30/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/less than 48 hours before your appointment/i)).toBeInTheDocument();
+  });
+
+  it("puts initial focus on 'Keep appointment'", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(screen.getByRole("button", { name: /keep appointment/i })).toHaveFocus();
+  });
+
+  it("after cancelling, shows what the server actually did, not the projection", async () => {
+    // Projected a full refund; the studio's policy changed before the click and the server kept it.
+    let cancelled = false;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{
+          ...APPT_UPCOMING, depositAmount: 50,
+          depositStatus: cancelled ? "Forfeited" : "Paid",
+          status: cancelled ? "Cancelled" : APPT_UPCOMING.status,
+        }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () => HttpResponse.json(null)),
+      previewReturns(preview({ outcome: "FullyRefunded", refundAmount: 50 })),
+      http.delete("http://localhost/api/v1/appointments/:id", () => {
+        cancelled = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    expect(await screen.findByText(/you'll receive a full refund/i)).toBeInTheDocument();
+    await confirmCancel(user);
+
+    expect(await screen.findByText("Deposit kept")).toBeInTheDocument();
+    expect(screen.queryByText(/you'll receive a full refund/i)).not.toBeInTheDocument();
+    expect(await screen.findByText("Appointment cancelled.")).toBeInTheDocument();
+  });
+
+  it("does no refund or notice-window arithmetic of its own: deposit rules are not even fetched", async () => {
+    let depositRulesRequested = false;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPT_UPCOMING])),
+      http.get("http://localhost/api/v1/deposit-rules", () => {
+        depositRulesRequested = true;
+        return HttpResponse.json([ACTIVE_RULE]);
+      }),
+      http.get("http://localhost/api/v1/deposit-rules/defaults", () => {
+        depositRulesRequested = true;
+        return HttpResponse.json({ cancellationWindowHours: 48, refundPercentOnLateCancel: 0 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderMyBookings();
+    await user.click(await screen.findByText("Cancel appointment"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /yes, cancel/i })).toBeEnabled());
+    expect(depositRulesRequested).toBe(false);
   });
 
   // ── Client self-reschedule ─────────────────────────────────────────────────
@@ -1212,7 +1390,7 @@ describe("MyBookingsSection", () => {
     const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () =>
-        HttpResponse.json([{ ...APPT_UPCOMING, date: soon }]),
+        HttpResponse.json([{ ...APPT_UPCOMING, date: soon, selfService: LATE }]),
       ),
     );
     renderMyBookings();
@@ -1226,7 +1404,7 @@ describe("MyBookingsSection", () => {
     const in30h = new Date(Date.now() + 30 * 3_600_000).toISOString();
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () =>
-        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h }]),
+        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h, selfService: LATE }]),
       ),
     );
     renderMyBookings();
@@ -1238,8 +1416,9 @@ describe("MyBookingsSection", () => {
     const in30h = new Date(Date.now() + 30 * 3_600_000).toISOString();
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () =>
-        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h, depositAmount: 50, depositStatus: "Paid" }]),
+        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h, depositAmount: 50, depositStatus: "Paid", selfService: LATE }]),
       ),
+      previewReturns(preview({ outcome: "DepositKept", isWithinNoticeWindow: false, refundPercent: 0, keptAmount: 50 })),
       http.get("http://localhost/api/v1/payments/appointment/:id", () =>
         HttpResponse.json({
           id: "pay-1", appointmentId: "appt-001", amount: 50, status: "Paid", method: "Card",
@@ -1259,7 +1438,7 @@ describe("MyBookingsSection", () => {
     const in30h = new Date(Date.now() + 30 * 3_600_000).toISOString();
     server.use(
       http.get("http://localhost/api/v1/appointments/mine", () =>
-        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h }]),
+        HttpResponse.json([{ ...APPT_UPCOMING, date: in30h, selfService: { noticeWindowHours: 24, isWithinNoticeWindow: true } }]),
       ),
       http.get("http://localhost/api/v1/deposit-rules/defaults", () =>
         HttpResponse.json({ cancellationWindowHours: 24, refundPercentOnLateCancel: 0 }),
@@ -1268,6 +1447,37 @@ describe("MyBookingsSection", () => {
     renderMyBookings();
     await waitFor(() => expect(screen.getByRole("button", { name: /reschedule/i })).toBeEnabled());
     expect(screen.queryByText(/less than/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps 'Reschedule' disabled, with no cutoff message, while the server's window isn't known", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, selfService: null }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: /reschedule/i })).toBeDisabled();
+    expect(screen.queryByText(/less than/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/contact the studio directly to reschedule/i)).not.toBeInTheDocument();
+  });
+
+  it("enables 'Reschedule' inside the window and disables it with the cutoff message outside", async () => {
+    const soon = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([
+          APPT_UPCOMING,
+          { ...APPT_UPCOMING, id: "appt-003", date: soon, selfService: { noticeWindowHours: 72, isWithinNoticeWindow: false } },
+        ]),
+      ),
+    );
+    renderMyBookings();
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /reschedule/i })).toHaveLength(2));
+    // Sorted by the list as the server returned it: the a-week-away booking first.
+    const [enabled, disabled] = screen.getAllByRole("button", { name: /reschedule/i });
+    expect(enabled).toBeEnabled();
+    expect(disabled).toBeDisabled();
+    expect(screen.getByText(/less than 3 days away — contact the studio directly to reschedule/i)).toBeInTheDocument();
   });
 
   it("clicking 'Reschedule' opens the reschedule dialog with a client-facing description", async () => {

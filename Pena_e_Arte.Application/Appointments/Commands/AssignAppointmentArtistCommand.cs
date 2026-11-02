@@ -80,11 +80,18 @@ public class AssignAppointmentArtistHandler(
         if (onTimeOff)
             throw new BusinessRuleViolationException("This artist is on leave on the appointment's date.");
 
+        // First-line guard only (exact start minute, fails open without Redis); the database claim
+        // below is what actually prevents a double booking.
         bool locked = await slotLocker.TryAcquireLockAsync(tenant.StudioId, artistId, appointment.Date, ct);
         if (!locked) throw new SlotAlreadyBookedException();
 
         try
         {
+            // The authoritative guard, same as CreateAppointmentCoreAsync: the artist's booking lock,
+            // held from the overlap check until the assignment is saved, so a concurrent booking or
+            // assignment for this artist waits and then sees this one.
+            await using IBookingClaim claim = await db.ClaimArtistForBookingAsync(tenant.StudioId, artistId, ct);
+
             bool conflict = await db.Appointments.AnyAsync(a =>
                 a.Id != appointment.Id &&
                 a.ArtistId == artistId &&
@@ -137,6 +144,7 @@ public class AssignAppointmentArtistHandler(
 
             appointment.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
+            await claim.CommitAsync(ct);
 
             AppointmentResponse response = CreateAppointmentHandler.Map(
                 appointment,

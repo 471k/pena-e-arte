@@ -9,7 +9,6 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
-using Pena_e_Arte.Domain.Money;
 using Pena_e_Arte.Domain.Services;
 using Pena_e_Arte.Application.Waitlists.Commands;
 using Pena_e_Arte.Application.Waitlists.Common;
@@ -109,60 +108,56 @@ public class CancelAppointmentHandler(
 
         if (payment is not null)
         {
-            if (payment.Method == ClientPaymentMethod.Card
-                && !string.IsNullOrEmpty(payment.ProviderReferenceId)
-                && (payment.Status == PaymentStatus.Captured || payment.Status == PaymentStatus.Paid))
-            {
-                int refundPercent = isClient
-                    ? await ResolveClientRefundPercentAsync(appointment, ct)
-                    : 100;
+            int refundPercent = isClient
+                ? await ResolveClientRefundPercentAsync(appointment, ct)
+                : 100;
 
-                if (payment.Status == PaymentStatus.Captured)
-                {
-                    await SettleHeldDepositAsync(payment, appointment, refundPercent, ct);
-                }
-                else if (refundPercent >= 100)
-                {
+            // The money decision — which provider action, on what base amount, rounded how, and the
+            // resulting statuses — is made by CancellationOutcome, the same function the
+            // cancellation preview (GetCancellationPreviewQuery) calls, so what the client is shown
+            // before confirming and what happens here cannot drift apart. This handler performs the
+            // provider I/O the decision implies, exactly as before the extraction.
+            CancellationDecision decision = CancellationOutcome.Decide(payment, refundPercent);
+
+            switch (decision.ProviderAction)
+            {
+                case CancellationProviderAction.ReleaseHold:
+                case CancellationProviderAction.CaptureWhole:
+                case CancellationProviderAction.CaptureKeptShare:
+                    // A held deposit (Captured, card, provider reference present).
+                    await SettleHeldDepositAsync(payment, appointment, decision, ct);
+                    break;
+
+                case CancellationProviderAction.Refund:
+                    // An already-charged card deposit (Paid), full or partial refund.
                     // Explicit amount even for a full refund: POK rejects a refund without one.
-                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, payment.Amount, payment.Currency, ct);
-                    payment.Status = PaymentStatus.Refunded;
-                    payment.RefundedAmount = payment.Amount;
-                    appointment.DepositStatus = DepositStatus.Refunded;
-                    refundedNow = payment.Amount;
-                }
-                else if (refundPercent > 0)
-                {
-                    decimal refundAmount = CurrencyCatalog.Round(
-                        appointment.DepositAmount * refundPercent / 100m, payment.Currency);
-                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId, refundAmount, payment.Currency, ct);
-                    payment.Status = PaymentStatus.Refunded;
-                    payment.RefundedAmount = refundAmount;
-                    appointment.DepositStatus = DepositStatus.Refunded;
-                    refundedNow = refundAmount;
-                }
-                else
-                {
-                    // Late cancellation, 0% refund — the deposit was already captured (Paid), so the
-                    // studio keeps it with no provider call.
-                    appointment.DepositStatus = DepositStatus.Forfeited;
-                    depositForfeited = true;
-                }
+                    await paymentProvider.RefundAsync(payment.StudioId, payment.ProviderReferenceId!, decision.RefundAmount, payment.Currency, ct);
+                    ApplyStatuses(payment, appointment, decision);
+                    payment.RefundedAmount = decision.RefundAmount;
+                    refundedNow = decision.RefundAmount;
+                    break;
 
-                payment.UpdatedAt = DateTime.UtcNow;
+                case CancellationProviderAction.None:
+                    // Late cancellation, 0% refund, of an already-charged (Paid) card deposit: the
+                    // studio keeps it with no provider call (Forfeited; payment row left as Paid).
+                    //
+                    // CashPending: deliberately NOT subject to ClientCancellationPolicy, for both
+                    // staff and client cancellations — the client only declared an intent to pay
+                    // cash (DeclareCashDepositCommand); no money has actually changed hands yet (that
+                    // only happens via ConfirmCashDepositCommand, which moves the payment to Paid).
+                    // There is nothing to forfeit or partially refund from an amount that was never
+                    // collected, regardless of how much notice was given — mirrors the no-op behavior
+                    // for an unauthorized/never-captured card payment. Closed as Refunded.
+                    //
+                    // Anything else (no money taken, or money the platform can't move) is untouched:
+                    // the decision carries no resulting statuses.
+                    ApplyStatuses(payment, appointment, decision);
+                    depositForfeited = decision.ResultingDepositStatus == DepositStatus.Forfeited;
+                    break;
             }
-            else if (payment.Status == PaymentStatus.CashPending)
-            {
-                // Deliberately NOT subject to ClientCancellationPolicy, for both staff and
-                // client cancellations: CashPending means the client only declared an intent
-                // to pay cash (DeclareCashDepositCommand) — no money has actually changed
-                // hands yet (that only happens via ConfirmCashDepositCommand, which moves the
-                // payment to Paid). There is nothing to forfeit or partially refund from an
-                // amount that was never collected, regardless of how much notice was given —
-                // mirrors the no-op behavior for an unauthorized/never-captured card payment.
-                payment.Status = PaymentStatus.Refunded;
+
+            if (decision.ResultingDepositStatus is not null)
                 payment.UpdatedAt = DateTime.UtcNow;
-                appointment.DepositStatus = DepositStatus.Refunded;
-            }
         }
 
         await db.SaveChangesAsync(ct);
@@ -193,18 +188,14 @@ public class CancelAppointmentHandler(
     /// (POK: one capture per order, capped at the authorised amount; the release gate's T5b
     /// verifies that the remainder is released). Amounts are based on payment.Amount, the
     /// authorised amount. The refund share is rounded first, exactly like the Paid branch, so both
-    /// paths round the same way.
+    /// paths round the same way — both computed by CancellationOutcome, which this method follows.
     /// </summary>
     private async Task SettleHeldDepositAsync(
-        Domain.Entities.Payment payment, Domain.Entities.Appointment appointment, int refundPercent, CancellationToken ct)
+        Domain.Entities.Payment payment, Domain.Entities.Appointment appointment, CancellationDecision decision, CancellationToken ct)
     {
         string providerReferenceId = payment.ProviderReferenceId!;
-        decimal refund = refundPercent >= 100
-            ? payment.Amount
-            : CurrencyCatalog.Round(payment.Amount * Math.Max(refundPercent, 0) / 100m, payment.Currency);
-        decimal keep = payment.Amount - refund;
 
-        if (keep <= 0m)
+        if (decision.ProviderAction == CancellationProviderAction.ReleaseHold)
         {
             // Full refund: release the hold.
             try
@@ -230,13 +221,12 @@ public class CancelAppointmentHandler(
             // Any other failure (studio not connected, POK unreachable or timed out) propagates:
             // 422/500, the cancellation is refused and the caller retries. The refund path for an
             // already-charged deposit behaves the same way.
-            payment.Status = PaymentStatus.Refunded;
-            payment.RefundedAmount = payment.Amount;
-            appointment.DepositStatus = DepositStatus.Refunded;
+            ApplyStatuses(payment, appointment, decision);   // Refunded / Refunded
+            payment.RefundedAmount = decision.RefundAmount;  // the whole authorised amount
             return;
         }
 
-        if (refund <= 0m)
+        if (decision.ProviderAction == CancellationProviderAction.CaptureWhole)
         {
             // Forfeit (0%): the studio keeps the whole deposit, which for a held deposit means
             // capturing it — the old code made no provider call, so the hold lapsed and nothing was
@@ -249,7 +239,7 @@ public class CancelAppointmentHandler(
             try
             {
                 await paymentProvider.CaptureAsync(payment.StudioId, providerReferenceId, ct);
-                payment.Status = PaymentStatus.Paid;
+                payment.Status = decision.ResultingPaymentStatus!.Value;   // Paid
                 payment.PaidAt = DateTime.UtcNow;
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
@@ -259,7 +249,7 @@ public class CancelAppointmentHandler(
                     "Forfeit capture failed ({ErrorType}) for payment {PaymentId} in studio {StudioId}; the deposit stays on hold for the owner to capture.",
                     ex.GetType().Name, payment.Id, payment.StudioId);
             }
-            appointment.DepositStatus = DepositStatus.Forfeited;
+            appointment.DepositStatus = decision.ResultingDepositStatus!.Value;   // Forfeited
             return;
         }
 
@@ -269,11 +259,20 @@ public class CancelAppointmentHandler(
         // release gate's C0 (D2). Never fall back to a full capture: that would charge the client
         // more than the policy allows. If the hold is already gone, the client stays blocked until
         // PaymentReconciliationJob marks the payment Failed.
-        await paymentProvider.CaptureAsync(payment.StudioId, providerReferenceId, keep, payment.Currency, ct);
-        payment.Status = PaymentStatus.Refunded;           // partial "refund" = the released remainder
+        await paymentProvider.CaptureAsync(payment.StudioId, providerReferenceId, decision.KeptAmount, payment.Currency, ct);
+        ApplyStatuses(payment, appointment, decision);    // Refunded (partial "refund" = the released remainder) / Refunded
         payment.PaidAt = DateTime.UtcNow;                  // revenue counts the kept share (PaidAt != null)
-        payment.RefundedAmount = refund;
-        appointment.DepositStatus = DepositStatus.Refunded;
+        payment.RefundedAmount = decision.RefundAmount;
+    }
+
+    // Writes the statuses the decision settled on; a null status means "leave it as it is".
+    private static void ApplyStatuses(
+        Domain.Entities.Payment payment, Domain.Entities.Appointment appointment, CancellationDecision decision)
+    {
+        if (decision.ResultingPaymentStatus is PaymentStatus paymentStatus)
+            payment.Status = paymentStatus;
+        if (decision.ResultingDepositStatus is DepositStatus depositStatus)
+            appointment.DepositStatus = depositStatus;
     }
 
     private async Task<int> ResolveClientRefundPercentAsync(

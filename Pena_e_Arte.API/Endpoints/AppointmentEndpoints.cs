@@ -28,6 +28,7 @@ public static class AppointmentEndpoints
         group.MapPatch("{id:guid}/reschedule", RescheduleAppointment).RequireAuthorization("ClientAndAbove");
         group.MapPatch("{id:guid}/artist", AssignAppointmentArtist).RequireAuthorization("OwnerOnly");
         group.MapGet("{id:guid}/calendar.ics", GetIcs).RequireAuthorization("ClientAndAbove");
+        group.MapGet("{id:guid}/cancellation-preview", GetCancellationPreview).RequireAuthorization("ClientAndAbove");
     }
 
     private static async Task<IResult> GetAppointments(
@@ -142,6 +143,16 @@ public static class AppointmentEndpoints
     {
         string icsContent = await mediator.Send(new GetAppointmentIcsQuery(id), ct);
         return Results.Content(icsContent, "text/calendar; charset=utf-8");
+    }
+
+    // Advisory: what cancelling would do with the deposit. DELETE recomputes it at commit.
+    private static async Task<IResult> GetCancellationPreview(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        CancellationPreviewResponse result = await mediator.Send(new GetCancellationPreviewQuery(id), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> AssignAppointmentArtist(

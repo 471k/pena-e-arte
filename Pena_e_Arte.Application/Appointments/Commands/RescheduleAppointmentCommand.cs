@@ -80,6 +80,13 @@ public class RescheduleAppointmentHandler(
         RescheduleAppointmentRequest req = command.Request;
         DateTime newEnd = req.NewDate.AddMinutes(req.NewDurationMinutes);
 
+        // Moving an appointment into an artist's time is a booking too: the same artist booking lock
+        // as CreateAppointmentCoreAsync, held from the overlap check until the move is saved, so two
+        // concurrent requests can't both land in overlapping time. No artist yet: nothing to claim.
+        await using IBookingClaim? claim = appointment.ArtistId is Guid claimArtistId
+            ? await db.ClaimArtistForBookingAsync(appointment.StudioId, claimArtistId, ct)
+            : null;
+
         bool conflict = appointment.ArtistId is Guid artistId
             ? await db.Appointments.AnyAsync(a =>
                 a.Id != command.AppointmentId &&
@@ -106,6 +113,8 @@ public class RescheduleAppointmentHandler(
             appointment.StudioId, freedArtistId, freedDate, ct);
 
         await db.SaveChangesAsync(ct);
+        if (claim is not null)
+            await claim.CommitAsync(ct);
 
         AppointmentResponse response = CreateAppointmentHandler.Map(appointment);
         await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentUpdated", response, ct);

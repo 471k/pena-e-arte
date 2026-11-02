@@ -6,6 +6,7 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import type {
   AppointmentResponse,
   AssignAppointmentArtistRequest,
+  CancellationPreviewResponse,
   CheckSlotAvailabilityParams,
   CreateAppointmentRequest,
   GetAppointmentsParams,
@@ -37,6 +38,13 @@ export const appointmentsApi = createApi({
     getMyAppointments: builder.query<AppointmentResponse[], void>({
       query: () => "appointments/mine",
       providesTags: ["Appointment"],
+    }),
+    // Advisory only: what cancelling would do with the deposit, worked out by the server. Never
+    // cached between dialog openings (keepUnusedDataFor: 0) — the studio's rule or the payment can
+    // change, and DELETE re-decides at commit anyway.
+    getCancellationPreview: builder.query<CancellationPreviewResponse, string>({
+      query: (id) => `appointments/${id}/cancellation-preview`,
+      keepUnusedDataFor: 0,
     }),
     createAppointment: builder.mutation<AppointmentResponse, CreateAppointmentRequest>({
       query: (body) => ({ url: "appointments", method: "POST", body }),
@@ -119,6 +127,7 @@ export const {
   useGetAppointmentsQuery,
   useGetAppointmentQuery,
   useGetMyAppointmentsQuery,
+  useGetCancellationPreviewQuery,
   useCreateAppointmentMutation,
   useCancelAppointmentMutation,
   useDeclineAppointmentMutation,

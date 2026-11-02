@@ -578,6 +578,23 @@ public class CancelAppointmentHandlerTests
         _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(5.13m);
     }
 
+    [Fact]
+    public async Task Handle_ChargedDeposit_PartialRefundIsAShareOfWhatWasCharged_NotOfTheAppointmentDeposit()
+    {
+        // 3 Nov 2026 (Phi): the base is payment.Amount (50 charged), not appointment.DepositAmount
+        // (40 here) — 50% refunds 25. Before, it refunded 20 of the 50 the client actually paid.
+        Guid clientId = SeedClientAsCurrentUser();
+        await SeedLateCancelRule(50);
+        Guid id = await SeedAppointmentForClient(
+            AppointmentStatus.Confirmed, clientId, DateTime.UtcNow.AddHours(2), depositAmount: 40m);
+        await SeedPayment(id, PaymentStatus.Paid, ClientPaymentMethod.Card, "pi_base", amount: 50m);
+
+        await CreateSut().Handle(new CancelAppointmentCommand(id), default);
+
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_base", 25m, "EUR", Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.AppointmentId == id).RefundedAmount.Should().Be(25m);
+    }
+
     private async Task SeedLateCancelRule(int refundPercent)
     {
         _db.DepositRules.Add(new DepositRule

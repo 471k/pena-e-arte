@@ -72,6 +72,48 @@ export interface AppointmentResponse {
   promoCodeApplied?:          boolean;
   serviceId?:                 string | null;
   serviceName?:               string | null;
+  /** Client self-service policy, computed by the server. Only on GET /appointments/mine. */
+  selfService?:               AppointmentSelfServiceResponse | null;
+}
+
+/**
+ * The notice window that applies to this appointment and whether the client is still inside it
+ * (i.e. still has at least that much notice). Computed by the server (ClientCancellationPolicy) —
+ * the frontend never recomputes it: a frontend copy drifted once (G-3/G-17, October 2026).
+ */
+export interface AppointmentSelfServiceResponse {
+  noticeWindowHours:    number;
+  isWithinNoticeWindow: boolean;
+}
+
+/** What the server says cancelling would do with the client's money (CancellationClientOutcome). */
+export const CancellationOutcome = {
+  NothingCollected:  "NothingCollected",
+  FullyRefunded:     "FullyRefunded",
+  PartiallyRefunded: "PartiallyRefunded",
+  DepositKept:       "DepositKept",
+  SettledWithStudio: "SettledWithStudio",
+  Unknown:           "Unknown",
+} as const;
+export type CancellationOutcome = (typeof CancellationOutcome)[keyof typeof CancellationOutcome];
+
+/**
+ * GET /appointments/{id}/cancellation-preview. A projection worked out by the server with the same
+ * function the cancellation itself uses; the server decides again when the cancellation is
+ * committed, and that result is what counts.
+ */
+export interface CancellationPreviewResponse {
+  appointmentId:        string;
+  noticeWindowHours:    number;
+  isWithinNoticeWindow: boolean;
+  noticeWindowApplies:  boolean;
+  refundPercent:        number;
+  depositAmount:        number;
+  currency:             string;
+  refundAmount:         number;
+  keptAmount:           number;
+  outcome:              CancellationOutcome;
+  isProjection:         boolean;
 }
 
 export interface CreateAppointmentRequest {
