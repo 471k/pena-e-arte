@@ -1,3 +1,11 @@
+/** DEC03: preparation requirements a service turns on for the client's checklist. All default to false. */
+export interface ServiceRequirementFlags {
+  requiresConsentForm:    boolean;
+  requiresIntakeForm:     boolean;
+  requiresReferenceImage: boolean;
+  requiresDepositPaid:    boolean;
+}
+
 export interface ServiceResponse {
   id:              string;
   studioId:        string;
@@ -9,9 +17,13 @@ export interface ServiceResponse {
   isActive:        boolean;
   createdAt:       string;
   updatedAt:       string;
+  requiresConsentForm?:    boolean;
+  requiresIntakeForm?:     boolean;
+  requiresReferenceImage?: boolean;
+  requiresDepositPaid?:    boolean;
 }
 
-export interface CreateServiceRequest {
+export interface CreateServiceRequest extends Partial<ServiceRequirementFlags> {
   name:            string;
   description:     string | null;
   durationMinutes: number;
@@ -20,7 +32,7 @@ export interface CreateServiceRequest {
   isActive:        boolean;
 }
 
-export interface UpdateServiceRequest {
+export interface UpdateServiceRequest extends Partial<ServiceRequirementFlags> {
   name:            string;
   description:     string | null;
   durationMinutes: number;

@@ -426,6 +426,7 @@ function BookingRow({
       </div>
       <Link
         to={`/my-appointments/${appt.id}`}
+        data-tour="client-appointment-details-link"
         className="inline-flex items-center gap-0.5 text-xs text-link underline underline-offset-2"
       >
         View appointment details

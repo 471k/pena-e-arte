@@ -29,7 +29,8 @@ import {
   useUpdateServiceMutation,
   useDeleteServiceMutation,
 } from "../servicesApi";
-import type { UpdateServiceRequest } from "../service.types";
+import type { ServiceResponse, UpdateServiceRequest } from "../service.types";
+import { ServiceRequirementsFieldset } from "./ServiceRequirementsFieldset";
 import { Money } from "@/shared/components/Money";
 
 const editSchema = z.object({
@@ -39,9 +40,23 @@ const editSchema = z.object({
   price:           z.number().min(0, "Must be 0 or greater").nullable(),
   depositAmount:   z.number().min(0, "Must be 0 or greater").nullable(),
   isActive:        z.boolean(),
+  requiresConsentForm:    z.boolean(),
+  requiresIntakeForm:     z.boolean(),
+  requiresReferenceImage: z.boolean(),
+  requiresDepositPaid:    z.boolean(),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
+
+function checklistSummary(service: ServiceResponse): string {
+  const items = [
+    service.requiresDepositPaid && "deposit paid",
+    service.requiresIntakeForm && "intake form",
+    service.requiresConsentForm && "consent form",
+    service.requiresReferenceImage && "reference image",
+  ].filter((x): x is string => typeof x === "string");
+  return items.length === 0 ? "none" : items.join(", ");
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -78,6 +93,10 @@ export function ServiceDetailPage() {
       price:           service.price,
       depositAmount:   service.depositAmount,
       isActive:        service.isActive,
+      requiresConsentForm:    service.requiresConsentForm ?? false,
+      requiresIntakeForm:     service.requiresIntakeForm ?? false,
+      requiresReferenceImage: service.requiresReferenceImage ?? false,
+      requiresDepositPaid:    service.requiresDepositPaid ?? false,
     });
     setMode("edit");
   }
@@ -101,6 +120,10 @@ export function ServiceDetailPage() {
       price:           values.price,
       depositAmount:   values.depositAmount,
       isActive:        values.isActive,
+      requiresConsentForm:    values.requiresConsentForm,
+      requiresIntakeForm:     values.requiresIntakeForm,
+      requiresReferenceImage: values.requiresReferenceImage,
+      requiresDepositPaid:    values.requiresDepositPaid,
     };
     const result = await updateService({ id, body });
     if ("data" in result) {
@@ -227,6 +250,7 @@ export function ServiceDetailPage() {
                       ? <>{currency ? <Money amount={service.depositAmount} currency={currency} /> : service.depositAmount} (overrides the studio's deposit rule)</>
                       : "uses the studio's deposit rule"}
                   </p>
+                  <p>Client checklist: {checklistSummary(service)}</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t">
                   <Calendar className="h-3.5 w-3.5 shrink-0" />
@@ -358,6 +382,8 @@ export function ServiceDetailPage() {
               />
               <span className="text-sm">Active</span>
             </label>
+
+            <ServiceRequirementsFieldset register={register} idPrefix="edit" />
 
             <Button type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? (
