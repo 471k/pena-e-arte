@@ -1558,3 +1558,71 @@ describe("BookAppointmentForm — flash catalog booking", () => {
     expect(normalCreateWasCalled).toBe(false);
   });
 });
+
+// ── Slice 2 regression: the bookings card keeps everything it had ─────────────
+// The client appointment page is additive. These assertions pin every field, button and condition
+// the card showed before it, so dropping one fails the build.
+describe("MyBookingsSection — the card loses nothing (After Hours slice 2)", () => {
+  it("an upcoming booking with a deposit: date, artist · duration, status, notes, pay, reschedule, cancel, and the new link", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, depositAmount: 50, notes: "Bring the sketch" }]),
+      ),
+      http.get("http://localhost/api/v1/payments/appointment/:id", () => HttpResponse.json(null)),
+    );
+    renderMyBookings();
+    expect(await screen.findByText("Luna Artista · 60 min")).toBeInTheDocument();
+    const expectedDate = new Date(FUTURE).toLocaleDateString("en-GB", {
+      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+    });
+    expect(screen.getByText(expectedDate)).toBeInTheDocument();
+    expect(screen.getByText("Requested")).toBeInTheDocument();
+    expect(screen.getByText("Bring the sketch")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /pay deposit/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reschedule" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Cancel appointment" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /view appointment details/i }))
+      .toHaveAttribute("href", "/my-appointments/appt-001");
+  });
+
+  it("a late booking still shows the disabled Reschedule with its contact-the-studio line", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, selfService: LATE }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByRole("button", { name: "Reschedule" })).toBeDisabled();
+    expect(screen.getByText(/contact the studio directly to reschedule/i)).toBeInTheDocument();
+  });
+
+  it("a cancelled booking keeps its reason line and the 'Book a new appointment' button, and gains only the link", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([{ ...APPT_UPCOMING, status: "Cancelled", cancellationReason: "StudioDeclined" }]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByText(/the studio couldn't take this request/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Book a new appointment" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reschedule" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel appointment" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /view appointment details/i })).toBeInTheDocument();
+  });
+
+  it("shows the readiness summary as 'things to do' only when the service has unmet requirements", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments/mine", () =>
+        HttpResponse.json([
+          { ...APPT_UPCOMING, id: "appt-a", readiness: { required: 3, satisfied: 1 } },
+          { ...APPT_UPCOMING, id: "appt-b", readiness: { required: 0, satisfied: 0 } },
+          { ...APPT_UPCOMING, id: "appt-c", readiness: { required: 2, satisfied: 2 } },
+        ]),
+      ),
+    );
+    renderMyBookings();
+    expect(await screen.findByText("2 things to do before your appointment")).toBeInTheDocument();
+    expect(screen.getAllByText(/things? to do before your appointment/)).toHaveLength(1);
+    expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
+  });
+});

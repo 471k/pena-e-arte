@@ -72,8 +72,52 @@ export interface AppointmentResponse {
   promoCodeApplied?:          boolean;
   serviceId?:                 string | null;
   serviceName?:               string | null;
-  /** Client self-service policy, computed by the server. Only on GET /appointments/mine. */
+  /** Client self-service policy, computed by the server. Only on the client's own reads
+   *  (GET /appointments/mine and GET /appointments/mine/{id}). */
   selfService?:               AppointmentSelfServiceResponse | null;
+  /** How many of the service's preparation requirements are met (DEC03), derived by the server.
+   *  Only on the client's own reads. `required === 0` means none are configured: show no checklist. */
+  readiness?:                 AppointmentReadinessSummary | null;
+}
+
+export interface AppointmentReadinessSummary {
+  required:  number;
+  satisfied: number;
+}
+
+/** Stable keys, in the server's priority order. */
+export const ReadinessKey = {
+  DepositPaid:    "DepositPaid",
+  IntakeForm:     "IntakeForm",
+  ConsentForm:    "ConsentForm",
+  ReferenceImage: "ReferenceImage",
+} as const;
+export type ReadinessKey = (typeof ReadinessKey)[keyof typeof ReadinessKey];
+
+/**
+ * One preparation requirement the appointment's service turns on, with whether it is met — derived by
+ * the server from existing consent / intake / attachment / deposit data and never stored. Readiness
+ * never blocks the booking.
+ */
+export interface AppointmentReadinessItem {
+  key:         ReadinessKey;
+  label:       string;
+  actionLabel: string;
+  required:    boolean;
+  satisfied:   boolean;
+  /** The client can do it in the app now. */
+  available:   boolean;
+  /** An existing app route, or null when it's done on the appointment page itself (the deposit). */
+  destination: string | null;
+  /** Shown with an outstanding item the client can't act on in the app. */
+  note:        string | null;
+}
+
+/** GET /appointments/mine/{id} — one of the caller's own appointments, for the client appointment page. */
+export interface ClientAppointmentDetailResponse {
+  appointment: AppointmentResponse;
+  /** Priority order. Empty when the service configures no requirements. */
+  readiness:   AppointmentReadinessItem[];
 }
 
 /**

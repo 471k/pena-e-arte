@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft, CheckCircle, ClipboardList, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useGoBack } from "@/shared/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -172,6 +172,9 @@ export function SubmitIntakeFormPage() {
     return dynamicValues[field.label] ?? defaultValueFor(field);
   }
 
+  const [searchParams] = useSearchParams();
+  const preselectedAppointmentId = searchParams.get("appointmentId") ?? undefined;
+
   const {
     register,
     control,
@@ -180,7 +183,8 @@ export function SubmitIntakeFormPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver:      zodResolver(schema),
-    defaultValues: { consentAccepted: false },
+    // ?appointmentId= pre-selects the appointment (the client appointment page's readiness links here).
+    defaultValues: { consentAccepted: false, appointmentId: preselectedAppointmentId },
   });
 
   async function onSubmit(values: FormValues) {

@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, FileSignature, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useGoBack } from "@/shared/hooks";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
@@ -34,6 +34,9 @@ export function SignConsentFormPage() {
   const navigate = useNavigate();
   const goBack = useGoBack("/book");
   const user = useCurrentUser();
+  // ?appointmentId= pre-selects the appointment (the client appointment page's readiness links here).
+  const [searchParams] = useSearchParams();
+  const preselectedAppointmentId = searchParams.get("appointmentId") ?? "";
 
   const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
   const { data: activeTemplate } = useGetActiveConsentTemplateQuery({ kind: "AppointmentConsent" });
@@ -54,7 +57,7 @@ export function SignConsentFormPage() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { appointmentId: "", signatureData: "" },
+    defaultValues: { appointmentId: preselectedAppointmentId, signatureData: "" },
   });
 
   async function onSubmit(values: FormValues) {

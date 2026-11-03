@@ -1,6 +1,7 @@
 export { SchedulePage } from "./components/SchedulePage";
 export { BookPage } from "./components/BookPage";
 export { AppointmentDetailPage } from "./components/AppointmentDetailPage";
+export { ClientAppointmentDetailPage } from "./components/ClientAppointmentDetailPage";
 export { DepositStatusBadge } from "./components/DepositStatusBadge";
 export { appointmentsApi } from "./appointmentsApi";
 export {

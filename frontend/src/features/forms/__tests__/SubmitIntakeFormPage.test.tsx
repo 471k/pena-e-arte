@@ -79,10 +79,10 @@ function makeStore() {
   });
 }
 
-function renderPage() {
+function renderPage(entry = "/forms/intake/new") {
   render(
     <Provider store={makeStore()}>
-      <MemoryRouter initialEntries={["/forms/intake/new"]}>
+      <MemoryRouter initialEntries={[entry]}>
         <SubmitIntakeFormPage />
       </MemoryRouter>
     </Provider>,
@@ -121,6 +121,16 @@ describe("SubmitIntakeFormPage", () => {
       await user.click(screen.getByRole("button", { name: /submit intake form/i }));
       await screen.findByText("Intake form submitted!");
       expect(capturedBody?.formData).toBe("No known allergies at all");
+    });
+
+    it("pre-selects the appointment named in ?appointmentId= (the client appointment page links here)", async () => {
+      const user = userEvent.setup();
+      renderPage("/forms/intake/new?appointmentId=appt-001");
+      await user.type(await screen.findByLabelText("Medical history & notes"), "No known allergies at all");
+      await user.click(screen.getByLabelText(/I consent/i));
+      await user.click(screen.getByRole("button", { name: /submit intake form/i }));
+      await screen.findByText("Intake form submitted!");
+      expect(capturedBody?.appointmentId).toBe("appt-001");
     });
   });
 
