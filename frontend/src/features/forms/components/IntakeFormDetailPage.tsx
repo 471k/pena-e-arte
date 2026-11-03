@@ -256,7 +256,7 @@ export function IntakeFormDetailPage() {
                       href={form.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-2 hover:opacity-80"
+                      className="inline-flex items-center gap-1.5 text-sm text-link underline underline-offset-2 hover:opacity-80"
                     >
                       <Paperclip className="h-3.5 w-3.5" />
                       View file

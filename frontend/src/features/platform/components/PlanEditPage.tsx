@@ -295,7 +295,7 @@ export function PlanEditPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-16 text-center">
           <p className="text-sm text-destructive-text">Plan not found.</p>
-          <Link to="/platform/plans" className="text-sm text-primary hover:underline mt-2 inline-block">
+          <Link to="/platform/plans" className="text-sm text-link hover:underline mt-2 inline-block">
             ← Back to Plans
           </Link>
         </div>

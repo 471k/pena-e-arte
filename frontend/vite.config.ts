@@ -27,6 +27,11 @@ export default defineConfig({
       jsdom: { url: "http://localhost" },
     },
     setupFiles: ["./src/test/setup.ts"],
+    // Vitest stubs every CSS import to an empty string by default — including `?raw`.
+    // afterHoursTheme.test.ts needs index.css's real source text (it pins the theme tokens
+    // and recomputes their contrast ratios), so that one file is let through. No component
+    // under test imports index.css, so this changes nothing else.
+    css: { include: [/src[\\/]index\.css(\?|$)/] },
     exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
     // Default per-test timeout (5000ms) can be exceeded under full-suite parallel
     // worker load even when nothing is broken — see src/test/setup.ts's

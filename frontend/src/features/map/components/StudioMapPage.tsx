@@ -78,7 +78,7 @@ export function StudioMapPage() {
                   </p>
                   <a
                     href={`/s/${studio.slug}`}
-                    className="block text-xs font-medium text-primary hover:underline"
+                    className="block text-xs font-medium text-link hover:underline"
                   >
                     View studio →
                   </a>
@@ -87,7 +87,7 @@ export function StudioMapPage() {
                       href={buildGoogleMapsDirectionsUrl(studio.latitude, studio.longitude)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block text-xs font-medium text-primary hover:underline"
+                      className="block text-xs font-medium text-link hover:underline"
                     >
                       Get directions →
                     </a>

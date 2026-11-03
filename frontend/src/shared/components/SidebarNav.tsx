@@ -83,7 +83,7 @@ export function SidebarNav({
             rowHeight,
             collapsed ? "mx-auto h-9 w-9 justify-center" : "gap-3 px-3",
             isActive
-              ? "bg-primary/10 text-primary font-medium"
+              ? "bg-primary/10 text-link font-medium"
               : "text-muted-foreground hover:text-foreground hover:bg-muted",
           )
         }

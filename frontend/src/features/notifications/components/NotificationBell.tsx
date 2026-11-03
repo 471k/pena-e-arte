@@ -106,7 +106,7 @@ export function NotificationBell() {
           <Link
             to="/notifications"
             onClick={() => dispatch(toggleInbox())}
-            className="block px-3 py-2 text-center text-xs text-primary hover:bg-muted transition-colors border-t"
+            className="block px-3 py-2 text-center text-xs text-link hover:bg-muted transition-colors border-t"
           >
             View all
           </Link>

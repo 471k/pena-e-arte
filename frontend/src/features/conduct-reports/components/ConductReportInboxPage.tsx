@@ -46,7 +46,7 @@ function ReportCard({ report }: { report: ConductReportResponse }) {
         >
           <div className="flex items-center gap-2 flex-wrap">
             {report.isHighSeverity && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-red-500/15 text-red-600 flex items-center gap-1">
+              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 bg-red-500/15 text-red-700 dark:text-red-400 flex items-center gap-1">
                 <ShieldAlert className="h-3 w-3" aria-hidden="true" /> High severity
               </span>
             )}

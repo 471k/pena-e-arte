@@ -33,6 +33,24 @@
   --color-border: hsl(240 5.9% 58%);
   --color-input: hsl(240 5.9% 58%);
   --color-ring: hsl(240 5.9% 10%);
+  /* ── Tokens added with the After Hours scope (2026-11-03). Registered here so Tailwind
+     generates their utilities; the light defaults below make every screen OUTSIDE the scope
+     render exactly as it did before they existed. Their dark defaults sit in their own
+     media block further down, so the original dark block stays untouched. ── */
+  /* Button hover. Same expression Tailwind emits for primary at 90% opacity, which is what the
+     default button used before it switched to `hover:bg-primary-hover`, so the hover is
+     unchanged outside the scope. */
+  --color-primary-hover: color-mix(in oklab, var(--color-primary) 90%, transparent);
+  /* Link / text-in-brand-colour. Same value as --color-primary outside the scope (so
+     `text-link` looks exactly like the old `text-primary`). Inside the scope it splits off,
+     because a violet that carries white text cannot also pass as text on dark charcoal. */
+  --color-link: hsl(240 5.9% 10%);
+  /* Decorative dividers ONLY. Never a control boundary — that is --color-border, which the
+     global `* { border-color }` rule below puts on every element. */
+  --color-rule: hsl(240 5.9% 90%);
+  /* Semantic status text/icons only, not fills. */
+  --color-success-text: hsl(142 72% 29%);
+  --color-warning-text: hsl(26 90% 37%);
   --radius: 0.5rem;
   --font-sans: "Fraunces", sans-serif;
 }
@@ -72,6 +90,127 @@
     --color-border: hsl(240 5% 40%);
     --color-input: hsl(240 5% 40%);
     --color-ring: hsl(240 4.9% 83.9%);
+  }
+}
+
+/* Dark defaults for the tokens added on 2026-11-03 only — kept out of the block above so
+   that block's existing declarations are byte-for-byte what they were. Same plain-`@media`
+   pattern, for the same reason. (--color-primary-hover needs no dark value: it derives from
+   --color-primary, which the block above already switches.) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-link: hsl(0 0% 98%);
+    --color-rule: hsl(240 3.7% 15.9%);
+    --color-success-text: hsl(142 69% 58%);
+    --color-warning-text: hsl(43 96% 56%);
+  }
+}
+
+/* ── After Hours: scoped palette for the authenticated role layouts (DEC01, 2026-11-03) ──
+   The four role layouts (Client/Artist/Owner/Admin) set data-theme="after-hours" on their
+   root div. Everything else (public portfolios, marketing, embeds, sign-in) keeps the
+   palette above. This is a palette, not a forced dark mode: a light set here and a dark set
+   in the media block below, still following prefers-color-scheme (the Leaflet dark rules
+   further down depend on that).
+
+   Plain custom-property overrides on an attribute selector — NEVER a nested `@theme`, for
+   the reason in the comment above the first dark block.
+
+   Overlays: Radix dialogs/sheets/selects/dropdowns and the onboarding tour portal to
+   <body>, outside the layout div, so they cannot inherit its attribute. The second selector
+   gives the palette to body's direct children other than #root (those portal nodes) only
+   while a themed layout is mounted; the third does the same for Sonner's toaster, which
+   mounts inside #root but beside the router, not inside a layout. Nothing goes on <html>
+   or <body> themselves, and no component needs to know about the theme.
+
+   `color` is set as well because body's `color: var(--color-foreground)` resolves at
+   <body> (unscoped) and descendants inherit that computed colour, not the variable.
+
+   Every ratio below was measured with the WCAG 2.1 relative-luminance formula on the
+   exact hex values (alpha layers composited first), then confirmed in Chromium by
+   accessibility.spec.ts's axe-core scans of themed screens in both colour schemes. Full
+   table: docs/claude/architecture.md, "After Hours slice 0" Decisions Log entry. */
+[data-theme="after-hours"],
+body:has([data-theme="after-hours"]) > :not(#root),
+body:has([data-theme="after-hours"]) [data-sonner-toaster] {
+  --color-background: #F5F1E8;            /* canvas */
+  --color-foreground: #19161D;            /* 15.87:1 on canvas, 17.59:1 on surface */
+  --color-card: #FFFDF7;                  /* surface */
+  --color-card-foreground: #19161D;
+  --color-popover: #FFFDF7;
+  --color-popover-foreground: #19161D;
+  /* #751FFF, not the handoff's #863BFF (same hue 263deg, saturation 100%; lightness 61.6%
+     -> 56%). Measured 2026-11-03: white text on #863BFF itself passes (5.14:1), but on the
+     translucent hovers the app still renders it fails — primary at 90% over the page
+     (Tailwind `/90`) 4.48:1 on canvas, 4.43:1 on surface; the badge's `hover:bg-primary/80`
+     3.87:1 / 3.74:1 — all under AA's 4.5:1. #751FFF gives 6.18:1 white-on-fill, 5.44 / 5.38
+     at 90%, 4.67 / 4.54 at 80%. Dark mode keeps #863BFF (its pairs pass). */
+  --color-primary: #751FFF;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-hover: #7130DC;         /* white on it: 6.65:1 */
+  /* Derived (the handoff names no secondary/muted/accent): muted + secondary are the
+     canvas's own ivory hue one step darker (40deg, ~89% L); accent — hover/selected rows
+     in menus, selects, ghost buttons — is the primary's hue as a pale lavender (262deg,
+     ~94% L), so hover reads as brand rather than grey. */
+  --color-secondary: #EBE5D9;
+  --color-secondary-foreground: #19161D;  /* 14.26:1 */
+  --color-muted: #EBE5D9;
+  --color-muted-foreground: #635B6A;      /* 5.76 canvas, 6.38 surface, 5.18 muted, 5.39 accent */
+  --color-accent: #EEE7FA;
+  --color-accent-foreground: #19161D;     /* 14.86:1 */
+  --color-destructive-text: #A22434;      /* 6.56 canvas, 7.27 surface */
+  --color-border: #80718D;                /* control boundary: 3.99 canvas, 4.43 surface, 3.59 muted */
+  --color-input: #80718D;
+  --color-ring: #6430A8;                  /* 7.36 canvas, 8.16 surface */
+  --color-link: #6430A8;                  /* same "stencil" value as the ring */
+  --color-rule: #B6ABBF;                  /* decorative only (1.95 / 2.16 — not a boundary) */
+  --color-success-text: #285A2D;          /* 7.19 canvas, 7.97 surface */
+  --color-warning-text: #785017;          /* 6.30 canvas, 6.98 surface */
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="after-hours"],
+  body:has([data-theme="after-hours"]) > :not(#root),
+  body:has([data-theme="after-hours"]) [data-sonner-toaster] {
+    --color-background: #19161D;          /* canvas */
+    --color-foreground: #F5F1E8;          /* 15.87:1 on canvas, 14.69:1 on surface */
+    --color-card: #211D26;                /* surface */
+    --color-card-foreground: #F5F1E8;
+    --color-popover: #211D26;
+    --color-popover-foreground: #F5F1E8;
+    --color-primary: #863BFF;             /* white on it 5.14:1; 90% hover 5.91 / 5.83 */
+    --color-primary-foreground: #FFFFFF;
+    --color-primary-hover: #7130DC;       /* 6.65:1 */
+    /* Derived: muted + secondary = the canvas's hue (265deg) one step above the surface;
+       accent = the primary's hue at low saturation, a step above that. */
+    --color-secondary: #2D2834;
+    --color-secondary-foreground: #F5F1E8; /* 12.72:1 */
+    --color-muted: #2D2834;
+    --color-muted-foreground: #BBB3C4;    /* 8.82 canvas, 8.17 surface, 7.07 muted, 6.70 accent */
+    --color-accent: #332A40;
+    --color-accent-foreground: #F5F1E8;   /* 12.05:1 */
+    --color-destructive-text: #FFB7BD;    /* 10.87 canvas, 10.06 surface */
+    --color-border: #877A93;              /* 4.46 canvas, 4.13 surface, 3.57 muted */
+    --color-input: #877A93;
+    --color-ring: #CBB6F3;                /* 9.82 canvas, 9.09 surface */
+    /* #863BFF as TEXT measured 3.48:1 on canvas / 3.22:1 on surface — and no single
+       lightness can serve both white-on-violet (needs luminance <= 0.183) and
+       violet-on-charcoal (needs >= 0.215), so text uses read --color-link instead. */
+    --color-link: #CBB6F3;                /* 9.82 canvas, 9.09 surface */
+    --color-rule: #514758;                /* decorative only (2.04 / 1.89) */
+    --color-success-text: #C3DFBF;        /* 12.46 canvas, 11.53 surface */
+    --color-warning-text: #E8C994;        /* 11.26 canvas, 10.42 surface */
+  }
+}
+
+/* In `@layer base`, not unlayered like the variables above: Radix Dialog portals its
+   DialogContent element itself as a direct child of <body>, so an unlayered `color` here
+   would beat any `text-*` utility on that dialog (unlayered styles outrank every layer). */
+@layer base {
+  [data-theme="after-hours"],
+  body:has([data-theme="after-hours"]) > :not(#root),
+  body:has([data-theme="after-hours"]) [data-sonner-toaster] {
+    color: var(--color-foreground);
   }
 }
 

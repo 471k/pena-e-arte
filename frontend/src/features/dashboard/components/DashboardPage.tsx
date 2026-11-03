@@ -74,7 +74,7 @@ export function bannerConfig(sub: SubscriptionResponse): BannerConfig | null {
       };
     case "GracePeriod":
       return {
-        bg:   "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        bg:   "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-400",
         icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
         text: `Trial expired — read-only mode. ${daysUntil(sub.gracePeriodEnd)} day${daysUntil(sub.gracePeriodEnd) !== 1 ? "s" : ""} left.`,
         cta:  "Subscribe now",

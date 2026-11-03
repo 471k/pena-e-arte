@@ -84,7 +84,7 @@ function CheckoutLinkPanel({
         <p className="text-sm font-medium text-green-800 dark:text-green-400">
           Card payment intent created
         </p>
-        <p className="text-xs text-green-700 dark:text-green-500 mt-0.5">
+        <p className="text-xs text-green-800 dark:text-green-500 mt-0.5">
           {clientName} · {appointmentDate}
         </p>
       </div>
@@ -145,7 +145,7 @@ function CashResultPanel({
           <p className="text-sm font-medium text-green-800 dark:text-green-400">
             Cash payment recorded
           </p>
-          <p className="text-xs text-green-700 dark:text-green-500 mt-0.5">
+          <p className="text-xs text-green-800 dark:text-green-500 mt-0.5">
             {clientName} · {appointmentDate}
           </p>
         </div>
@@ -385,7 +385,7 @@ function ConfirmPanel({
                   disabled
                     ? "opacity-50 cursor-not-allowed"
                     : effectiveMethod === m
-                    ? "border-primary bg-primary/5 text-primary"
+                    ? "border-primary bg-primary/5 text-link"
                     : "hover:bg-muted/60 hover:border-muted-foreground/30"
                 )}
               >
@@ -544,7 +544,7 @@ export function CreatePaymentIntentPage() {
       <main className="max-w-md mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <CreditCard className="h-5 w-5 text-primary" />
+            <CreditCard className="h-5 w-5 text-link" />
           </div>
           <div>
             <h1 className="text-lg font-semibold">New payment</h1>

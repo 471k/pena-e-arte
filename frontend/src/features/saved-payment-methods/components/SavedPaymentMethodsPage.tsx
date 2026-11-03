@@ -46,7 +46,7 @@ function CardRow({ method }: { method: SavedPaymentMethodResponse }) {
           </p>
         </div>
         {method.isDefault && (
-          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-700">
+          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/10 text-amber-800 dark:text-amber-400">
             <Star className="h-3 w-3" />
             Default
           </span>

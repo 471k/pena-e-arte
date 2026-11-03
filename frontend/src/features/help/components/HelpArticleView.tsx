@@ -71,7 +71,7 @@ export function HelpArticleView({ article, onBack, onGoToPage, onSelectRelated }
               key={r.id}
               type="button"
               onClick={() => onSelectRelated(r.id)}
-              className="block w-full text-left text-sm text-primary hover:underline"
+              className="block w-full text-left text-sm text-link hover:underline"
             >
               {r.title}
             </button>

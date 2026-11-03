@@ -220,7 +220,7 @@ export function PromoCodeDetailPage() {
                 <h1 className="text-lg font-semibold leading-tight font-mono">{promoCode.code}</h1>
                 <span className={cn(
                   "text-xs px-2 py-0.5 rounded-full font-medium",
-                  promoCode.isActive ? "bg-green-500/10 text-green-700" : "bg-muted text-muted-foreground",
+                  promoCode.isActive ? "bg-green-500/10 text-green-800 dark:text-green-400" : "bg-muted text-muted-foreground",
                 )}>
                   {promoCode.isActive ? "Active" : "Inactive"}
                 </span>

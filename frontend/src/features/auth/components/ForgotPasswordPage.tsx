@@ -105,7 +105,7 @@ export function ForgotPasswordPage() {
             )}
 
             <AuthShellFooter>
-              <Link to="/login" className="underline underline-offset-4 hover:text-primary py-2 inline-block">
+              <Link to="/login" className="underline underline-offset-4 hover:text-link py-2 inline-block">
                 Back to sign in
               </Link>
             </AuthShellFooter>

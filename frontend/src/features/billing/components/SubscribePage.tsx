@@ -101,7 +101,7 @@ function PlanCard({
         </div>
       </div>
       {selected && (
-        <div className="mt-2 flex items-center gap-1 text-xs text-primary">
+        <div className="mt-2 flex items-center gap-1 text-xs text-link">
           <CheckCircle className="h-3.5 w-3.5" />
           Selected
         </div>

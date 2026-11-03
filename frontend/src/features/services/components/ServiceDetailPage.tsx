@@ -200,7 +200,7 @@ export function ServiceDetailPage() {
                 <h1 className="text-lg font-semibold leading-tight">{service.name}</h1>
                 <span className={cn(
                   "text-xs px-2 py-0.5 rounded-full font-medium",
-                  service.isActive ? "bg-green-500/10 text-green-700" : "bg-muted text-muted-foreground",
+                  service.isActive ? "bg-green-500/10 text-green-800 dark:text-green-400" : "bg-muted text-muted-foreground",
                 )}>
                   {service.isActive ? "Active" : "Inactive"}
                 </span>

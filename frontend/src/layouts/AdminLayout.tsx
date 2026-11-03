@@ -79,7 +79,7 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
       <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />

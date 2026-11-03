@@ -5147,3 +5147,225 @@ cancellation) or less than the policy's share of what the client paid. New handl
 `Handle_ChargedDeposit_PartialRefundIsAShareOfWhatWasCharged_NotOfTheAppointmentDeposit`; the domain
 test that pinned the old base was rewritten deliberately. Unit suite 3,446 green. No Help change: the
 copy already says the studio's policy decides how much of the deposit comes back.
+
+## After Hours slice 0 — scoped theme layer for the four role layouts (DEC01) — built — 2026-11-03
+
+### Context
+Built from `docs/claude/overnight-prompt-after-hours-slice0-theme-foundation-2026-11-02.md`, after
+slice 1 (PR #328) landed. Branch `feature/after-hours-slice0-theme-foundation`, cut from `main` at
+`3522b04a`. `git diff --stat f80231c..HEAD -- frontend/src/index.css frontend/src/layouts/` is empty,
+as the prompt's re-confirmed base block says, and every quoted source line matched. No drift. Phi was
+present for part of the run and made the three decisions marked **(Phi, 3 Nov)** below. Phi also
+authorised merge and deploy once everything is green, which the prompt itself did not.
+
+### What was built
+- **`frontend/src/index.css`**: the After Hours palette as plain custom-property overrides on
+  `[data-theme="after-hours"]` (light), plus the same selectors inside
+  `@media (prefers-color-scheme: dark)` (dark). It is a palette, not a forced dark mode: the
+  OS preference still decides, so the Leaflet dark rules keep working. There is no nested
+  `@theme`. The `@theme` block keeps every existing value; five tokens were *added* to it with
+  defaults that leave unscoped screens exactly as before:
+  - `--color-primary-hover` defaults to `color-mix(in oklab, var(--color-primary) 90%, transparent)`,
+    the expression Tailwind emits for `bg-primary/90`.
+  - `--color-link` defaults to the same value as `--color-primary`.
+  - `--color-rule` is for decorative dividers only.
+  - `--color-success-text` and `--color-warning-text` are for status text and icons.
+  
+  Their dark defaults sit in a **separate** new media block, so the original dark block is
+  byte-for-byte unchanged. Fonts, `--font-sans`, `body { font-family }`, the destructive fill pair,
+  Leaflet, `--admin-nav-height`, the keyframes and the Radix scrollbar rules are untouched.
+- **The four layouts** (`ClientLayout`, `ArtistLayout`, `OwnerLayout`, `AdminLayout`) each gained
+  `data-theme="after-hours"` on their root div and nothing else. No public, marketing or embed route
+  renders inside them. `/book` uses `AppLayout` only for a signed-in visit (themed); a guest gets
+  the bare outlet (unthemed), which is correct.
+- **Overlay portals — the approach.** Radix dialogs, sheets, selects and dropdowns, and the
+  onboarding tour, portal straight to `<body>`, outside the layout div. Radix Dialog even makes
+  `DialogContent` itself the body child. The scope therefore has three selectors:
+  `[data-theme="after-hours"]`,
+  `body:has([data-theme="after-hours"]) > :not(#root)` (every portal node, but only while a themed
+  layout is mounted), and `body:has([data-theme="after-hours"]) [data-sonner-toaster]` (Sonner mounts
+  inside `#root` beside the router, so it is not a body child). Nothing goes on `<html>` or `<body>`
+  themselves, and no component knows about the theme. Public pages, `#root` itself and
+  `ImpersonationBanner`/`StagingBanner`/`CookieConsentBanner`, which render above or beside the
+  layout, keep the unscoped palette. `color: var(--color-foreground)` is also set on the scoped
+  elements, because `body`'s colour resolves at `<body>` and descendants inherit the computed
+  colour, not the variable. That one declaration sits in `@layer base`: an unlayered `color` on a
+  portalled `DialogContent` would beat its `text-*` utilities.
+- **Built-CSS check (§8), done on `dist/assets/index-*.css`, not the source:**
+  `--color-background` is declared unconditionally in `@layer theme :root` (`#fff`) and separately in
+  `@media (prefers-color-scheme:dark) :root` (`#09090b`). The scope compiled as top-level
+  attribute/`:has()` rules (`#f5f1e8`), with a second copy inside
+  `@media (prefers-color-scheme:dark)` (`#19161d`). No collapse into `:root`.
+
+### Measured contrast — the full table
+**Method:** the WCAG 2.1 relative-luminance formula applied to the exact hex values, in a Node script.
+Translucent layers (Tailwind `/90`, `/80`, `/10`, `/5`) are composited over their backdrop first,
+the way the browser paints them. `src/layouts/__tests__/afterHoursTheme.test.ts` recomputes the
+same pairs from `index.css` on every CI run. Chromium then confirmed them: the axe-core scans in
+`e2e/accessibility.spec.ts`, both colour-scheme projects, on themed screens with overlays open.
+Canvas = `--color-background`, surface = `--color-card`/`--color-popover`. AA is 4.5:1 for text,
+3:1 for focus rings and control boundaries.
+
+| Pair | Light | Dark |
+|---|---|---|
+| Text on canvas / surface | 15.87 / 17.59 | 15.87 / 14.69 |
+| Muted text on canvas / surface | 5.76 / 6.38 | 8.82 / 8.17 |
+| Muted text on muted / accent | 5.18 / 5.39 | 7.07 / 6.70 |
+| Text on muted (= secondary) / accent | 14.26 / 14.86 | 12.72 / 12.05 |
+| White on primary fill | 6.18 (`#751FFF`) | 5.14 (`#863BFF`) |
+| White on primary hover token `#7130DC` | 6.65 | 6.65 |
+| White on primary at 90% over canvas / surface (still used) | 5.44 / 5.38 | 5.91 / 5.83 |
+| White on primary at 80% over canvas / surface (badge hover) | 4.67 / 4.54 | 6.75 / 6.61 |
+| Link (`--color-link` = ring value) on canvas / surface | 7.36 / 8.16 | 9.82 / 9.09 |
+| Link on muted / accent | 6.62 / 6.90 | 7.87 / 7.45 |
+| Link on primary/10 over canvas / surface (sidebar active item) | 6.27 / 6.93 | 9.06 / 8.38 |
+| Link on primary/5 over surface (selected card) | 7.52 | 8.78 |
+| Success text on canvas / surface | 7.19 / 7.97 | 12.46 / 11.53 |
+| Warning text on canvas / surface | 6.30 / 6.98 | 11.26 / 10.42 |
+| Error text (`--color-destructive-text`) on canvas / surface | 6.56 / 7.27 | 10.87 / 10.06 |
+| Focus ring on canvas / surface (3:1) | 7.36 / 8.16 | 9.82 / 9.09 |
+| Control boundary (`--color-border`/`--color-input`) on canvas / surface / muted (3:1) | 3.99 / 4.43 / 3.59 | 4.46 / 4.13 / 3.57 |
+| Primary fill as border/icon/chart stroke on canvas / surface (3:1) | 5.49 / 6.08 | 3.48 / 3.22 |
+| Decorative rule on canvas / surface (no AA requirement; never a boundary) | 1.95 / 2.16 | 2.04 / 1.89 |
+| Unchanged destructive fill: white text on it | 5.13 | 9.60 |
+| Unchanged destructive fill against canvas | 4.75 | 1.79 (1.99 today) |
+
+The last cell is the only number under a threshold, and it is not an AA failure. A filled button is
+identified by its label (9.60:1); WCAG 1.4.11 does not require the fill to contrast with the page.
+It was already 1.99:1 on today's dark canvas, and §4 of the prompt keeps the destructive pair as is.
+
+### Adjusted from the handoff, with before and after
+- **Light primary `#863BFF` → `#751FFF`** (hue 263°, saturation 100%, lightness 61.6% → 56%;
+  dark keeps `#863BFF`). White on `#863BFF` itself passes (5.14). But the app still paints primary
+  translucently, and those pairs failed: Tailwind `bg-primary/90` 4.48 on canvas and 4.43 on surface;
+  the badge's `hover:bg-primary/80` 3.87 and 3.74. `#751FFF` gives 5.44 / 5.38 and 4.67 / 4.54.
+  **(Phi, 3 Nov.)** Phi approved darkening to `#7A24FF`. At that value the badge hover still
+  measured 4.48 / 4.36, so I went one step further to `#751FFF` rather than restyle `badge.tsx`.
+  The comment beside the token records all of this.
+- **Primary-as-text moved to `--color-link`. (Phi, 3 Nov.)** `text-primary` was used as a *text*
+  colour in 30 places, for example the sidebar's active item and the button `link` variant. Violet
+  `#863BFF` as text on the dark canvas measured 3.48, 3.22 on surface and 3.21 on the active item.
+  Today's slate theme gave 19:1. No lightness fixes it: white-on-violet needs luminance ≤ 0.183,
+  violet-on-charcoal needs ≥ 0.215. All 30 became `text-link`. The handoff's "stencil" value is
+  `#CBB6F3` dark and `#6430A8` light, the same as the ring. Unscoped, `--color-link` equals the
+  primary, so nothing outside the scope changes. The default button variant's
+  `hover:bg-primary/90` became `hover:bg-primary-hover` (same rendering unscoped; `#7130DC` in
+  scope). This goes past the prompt's "four attributes only" rule, at Phi's decision. It is a
+  class-name swap in 20 files, with no markup or layout change.
+- **Hard-coded Tailwind text colours shifted one shade. (Phi, 3 Nov.)** The first e2e run failed on
+  two of these: the "verify your email" notice (`text-amber-700` on its tint, 4.16) and the
+  artist chip in the booking select (`text-violet-700`, 4.46 light; `violet-400`, 4.26 dark). A scan
+  of every hard-coded `text-{colour}-{shade}` in `src/` found which ones pass on today's backgrounds
+  but fail on After Hours. The oklch values were converted to sRGB; the conversion reproduces axe's
+  own readings, `#bb4d00` and `#7008e7`. Eight class/mode pairs fail, about 55 usages:
+
+  | Class | Mode | Today | Canvas | Surface |
+  |---|---|---|---|---|
+  | amber-700 | light | 5.03 | 4.46 | 4.95 |
+  | green-700 | light | 4.95 | 4.39 | 4.86 |
+  | red-600 | light | 4.77 | 4.23 | 4.69 |
+  | yellow-700 | light | 4.93 | 4.37 | 4.85 |
+  | red-500 | dark | 5.23 | 4.70 | 4.35 |
+  | blue-500 | dark | 5.29 | 4.76 | 4.40 |
+  | violet-500 | dark | 4.52 | 4.06 | 3.76 |
+  | sky-600 | dark | 4.95 | 4.45 | 4.12 |
+
+  48 text usages moved one shade further from the background, in the same hue. Where a light-only
+  class had no `dark:` twin, one was added so dark mode cannot get worse. Lowest results:
+  amber-800 6.29, green-800 6.33, red-700 5.70, yellow-800 6.07, blue-700 6.06, sky-700 5.20,
+  violet-700 6.47 (light, canvas); red-400 5.73, green-400 9.31, blue-400 6.28, sky-400 7.60,
+  amber-400 9.61, violet-400 5.81, violet-300 8.92 (dark, surface). On the tints they actually sit
+  on, the lowest are red-700 on `red-500/15` 4.62 and sky-700 on `sky-500/15` 4.51 (light canvas),
+  and red-400 on `red-500/15` 4.99 (dark surface).
+  Not shifted: icons (non-text, 3:1, all ≥ 3.4), and three usages that render only on unscoped
+  surfaces where they still pass (`LoginPage`, `LawyerReviewBanner`, `ImpersonationBanner`). These
+  shifts make the affected usages slightly darker or higher-contrast on any public screen that also
+  uses them. Phi accepted that.
+  **Not addressed (pre-existing, not caused by this slice):** hard-coded shades that already failed
+  AA on today's white, e.g. `text-green-500`/`text-amber-500` status labels. Worth a separate sweep.
+
+### Derived secondary / muted / accent (the handoff names none)
+- **Muted = secondary:** the canvas's own hue one step darker in light (`#EBE5D9`, ivory at 40° and
+  about 89% lightness). In dark it is the canvas hue one step above the surface (`#2D2834`, 265°,
+  18%). These are neutral fills (tabs, skeletons, secondary buttons), so they stay in the canvas
+  family rather than introducing a third hue.
+- **Accent:** the primary's hue as a pale lavender in light (`#EEE7FA`, 262°, about 94%). In dark it
+  is the same hue at low saturation, one step above muted (`#332A40`). Accent is what menus, selects
+  and ghost buttons paint on hover and focus, so the highlight reads as brand rather than grey.
+  Foregrounds are the text colour. Every pair is in the table above.
+
+### Verification
+- **Unscoped screens unchanged — pixel diff, not eyeballing.** `origin/main` and this branch were
+  built with the same env and served side by side with `vite preview`. Full-page Chromium
+  screenshots (1280 px wide, animations off, identical API mocks) of `/login`, `/features`,
+  `/s/tinta-alma` (public studio portfolio) and `/embed/tinta-alma` (embed) were taken in light and
+  dark on both builds, then compared pixel by pixel in a canvas. **0 changed pixels on all 8.**
+  `/login` differed at first only because Google's third-party sign-in button rendered on one
+  origin and not the other. With Google/Apple's scripts blocked on both sides it is 0 px, and
+  main-vs-main is also 0 px, so the comparison is deterministic. No public page carries
+  `data-theme`, and `<body>` keeps `#fff` / `#09090b`.
+- **Themed screens and overlays, opened in real Chromium in both schemes** (client signed in at
+  `/book`, inside `ClientLayout`):
+  - **Layout:** paints `#F5F1E8` / `#19161D`, text `#19161D` / `#F5F1E8`, while `<body>` stays
+    unscoped. The sidebar's active item uses the link colour (`#6430A8` / `#CBB6F3`).
+  - **Overlays:** the Select listbox paints the surface (`#FFFDF7` / `#211D26`). The help Sheet
+    (a Radix Dialog) and the onboarding-tour popover paint the canvas. All three were confirmed
+    to sit outside the themed subtree, so they get the palette from the portal rule alone.
+    Screenshots were reviewed by eye.
+  - **Toasts are the exception, and the gap is pre-existing.** The toaster does receive the
+    scoped variables (`--color-background` = `#f5f1e8` / `#19161d`). But a real toast paints
+    Sonner's own `#fff` / `#000` on **both main and this branch**, because Sonner's unlayered
+    `[data-styled]` CSS beats the `group-[.toaster]:bg-background` classes in
+    `ui/sonner.tsx`. Toasts were never on the app's tokens. That is unchanged and left for a
+    follow-up, as a component restyle. Their contrast passes (axe, both schemes).
+- **`e2e/accessibility.spec.ts` — 18/18 passed** (9 tests × `chromium-light`/`chromium-dark`). The
+  existing client, owner and payment scans now run on themed screens. Two tests were added:
+  - **Themed screen:** asserts the scoped colours on the layout, the Select listbox and the help
+    Sheet, and that `<html>`/`<body>` are not themed. It runs axe with each overlay open, scanned
+    on the overlay itself.
+  - **Public pages:** asserts that `/login`, `/features`, `/s/tinta-alma` and `/embed/tinta-alma`
+    have no `data-theme` and keep the unscoped background.
+
+  The first run failed on real contrast: the hard-coded shades described above, fixed. The
+  listbox scan disables `aria-required-children` only. That rule and `aria-hidden-focus` (the
+  page behind an open Radix modal) reproduce identically on `origin/main`'s production build in
+  both schemes, so they are pre-existing structure issues in the searchable artist picker, not
+  palette issues. Follow-up.
+- **Unit:** `afterHoursTheme.test.ts` (16) pins the token contract and recomputes every ratio from
+  `index.css`. It does not have to trust these comments: restoring `#863BFF` in light makes it fail
+  at 4.48. `overlayAfterHoursScope.test.tsx` (5) runs real Radix Dialog and Select portals against
+  the shipped selectors, themed and unthemed. Each layout test gained one root-attribute test.
+  **Frontend vitest 2,786 → 2,811 (+25: 16 + 5 + 4).**
+  `pnpm run lint`: 0 errors. The 18 warnings are all pre-existing; the 4 in changed files sit on
+  the same lines on `main`. `pnpm run build`: green.
+  **`pnpm run test` is not fully green on this machine, for the pre-existing reason recorded in
+  slice 1.** Under load, 18–56 tests hit vitest's timeout, almost all in `StudioProfilePage`
+  (plus `BookPage`, `GuestBookAppointmentForm`, `ReminderDialog`, `RegisterStudioPage`). In the
+  worst run, 55 of 56 were timeouts and one a `findBy` that gave up. `StudioProfilePage` alone passes 40/40, and the five files run together
+  pass 218/220 (2 timeouts). CI is the authority.
+- **Full e2e suite:** **84/84 passed** (all specs × both colour schemes, 10.6 min).
+
+### Help (rule 7)
+No Help content change. `helpContent.ts`, the served manual and all four tour files were searched
+for colour descriptions of the interface. Two exist, and both stay accurate. The conduct-report
+"amber dot" is `bg-amber-500`, untouched. The impersonation "purple banner" is a hard-coded
+`bg-indigo-600` outside the layout, also untouched. The manual has no screenshots. **Follow-up:**
+its 116 inline SVG illustrations use hard-coded pre-After-Hours colours (e.g. a `#7c3aed` primary),
+so they are now stylistically stale for operational screens. They were not redrawn tonight. Tours
+target `data-tour` selectors, which this slice does not touch. The tour overlay was opened in both
+schemes (see Verification): its popover takes the palette via the portal rule, and its scrim is a
+neutral black.
+
+### Rule 6 note
+Supporting light and dark and meeting AA on every semantic pair is the baseline for this category.
+The violet-on-charcoal/ivory palette is a deliberate brand divergence, not a benchmark-driven
+choice, and no copy calls it industry-standard. Scoping a rebrand to operational surfaces first is
+the benchmark-aligned part.
+
+### Deviations from the prompt
+- Component files beyond the four layouts changed, at Phi's decision. That covers the `text-link`
+  swap (20 files incl. `button.tsx`), `button.tsx`'s hover token, and the hard-coded shade shifts
+  (25 files).
+- Light primary is `#751FFF`, not the handoff's `#863BFF` (above).
+- `frontend/vite.config.ts`: `test.css.include` lets `src/index.css` through Vitest's CSS stubbing.
+  The contract test needs the stylesheet's real text, and `?raw` otherwise comes back empty.

@@ -265,7 +265,7 @@ export function AppointmentDetailPage() {
                       value={
                         <Link
                           to={`/clients/${appt.clientId}`}
-                          className="text-violet-500 hover:underline"
+                          className="text-violet-700 dark:text-violet-400 hover:underline"
                         >
                           {appt.clientName}
                         </Link>

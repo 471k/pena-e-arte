@@ -185,6 +185,16 @@ async function expandGroup(user: ReturnType<typeof userEvent.setup>, name: RegEx
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("OwnerLayout", () => {
+  it("scopes the After Hours palette to its root element (DEC01)", () => {
+    renderLayout();
+    const themed = document.querySelectorAll<HTMLElement>("[data-theme=\"after-hours\"]");
+    expect(themed).toHaveLength(1);
+    // The attribute sits on the layout's outermost element: header and page both inherit it.
+    expect(themed[0]).toContainElement(screen.getByRole("banner"));
+    expect(themed[0]).toContainElement(screen.getByTestId("outlet"));
+    expect(themed[0].parentElement?.closest("[data-theme]")).toBeNull();
+  });
+
   it("renders the brand name", () => {
     renderLayout();
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
