@@ -24,7 +24,11 @@ public class CreateServiceHandler(IAppDbContext db, ICurrentTenant tenant)
             DurationMinutes = req.DurationMinutes,
             Price = req.Price,
             DepositAmount = req.DepositAmount,
-            IsActive = req.IsActive
+            IsActive = req.IsActive,
+            RequiresConsentForm = req.RequiresConsentForm,
+            RequiresIntakeForm = req.RequiresIntakeForm,
+            RequiresReferenceImage = req.RequiresReferenceImage,
+            RequiresDepositPaid = req.RequiresDepositPaid,
         };
 
         db.Services.Add(service);
@@ -36,5 +40,6 @@ public class CreateServiceHandler(IAppDbContext db, ICurrentTenant tenant)
     internal static ServiceResponse Map(Service s) => new(
         s.Id, s.StudioId, s.Name, s.Description,
         s.DurationMinutes, s.Price, s.DepositAmount,
-        s.IsActive, s.CreatedAt, s.UpdatedAt);
+        s.IsActive, s.CreatedAt, s.UpdatedAt,
+        s.RequiresConsentForm, s.RequiresIntakeForm, s.RequiresReferenceImage, s.RequiresDepositPaid);
 }

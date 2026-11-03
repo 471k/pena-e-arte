@@ -24,4 +24,13 @@ public class Service : TenantEntity
     public decimal? DepositAmount { get; set; }
 
     public bool IsActive { get; set; }
+
+    // Preparation requirements (DEC03). Each one only turns on a checklist item for the client;
+    // whether it is met is derived at read time (Domain.Services.AppointmentReadiness), never stored,
+    // and it never blocks booking or confirmation. All default to false, so an existing service shows
+    // its clients no checklist until the owner turns one on.
+    public bool RequiresConsentForm { get; set; }
+    public bool RequiresIntakeForm { get; set; }
+    public bool RequiresReferenceImage { get; set; }
+    public bool RequiresDepositPaid { get; set; }
 }

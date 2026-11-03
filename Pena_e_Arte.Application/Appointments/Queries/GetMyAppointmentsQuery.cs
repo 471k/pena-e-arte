@@ -15,7 +15,9 @@ namespace Pena_e_Arte.Application.Appointments.Queries;
 /// so this never exposes another client's schedule. Each appointment carries its self-service
 /// policy (notice window, and whether the client is still within it), computed here by
 /// ClientCancellationPolicy so the bookings list never needs a call per appointment and the
-/// frontend never recomputes it (G-3/G-17).
+/// frontend never recomputes it (G-3/G-17). Each also carries a readiness summary (DEC03: how many of
+/// its service's preparation requirements are met), read for the whole list in one extra query by
+/// AppointmentReadinessReader; the itemised list is on GET /appointments/mine/{id}.
 /// </summary>
 public record GetMyAppointmentsQuery : IRequest<List<AppointmentResponse>>;
 
@@ -27,8 +29,9 @@ public class GetMyAppointmentsHandler(IAppDbContext db, ICurrentUser currentUser
         Domain.Entities.Client? me = await db.FindClientForUserAsync(currentUser, ct);
         if (me is null) return [];
 
-        List<AppointmentResponse> appointments = await db.Appointments
-            .Where(a => a.ClientId == me.Id)
+        IQueryable<Appointment> mine = db.Appointments.Where(a => a.ClientId == me.Id);
+
+        List<AppointmentResponse> appointments = await mine
             .Include(a => a.Attachments)
             .OrderBy(a => a.Date)
             .Select(a => CreateAppointmentHandler.Map(a))
@@ -44,11 +47,16 @@ public class GetMyAppointmentsHandler(IAppDbContext db, ICurrentUser currentUser
         int windowHours = ClientCancellationPolicy.NoticeWindowHours(rule);
         DateTime nowUtc = DateTime.UtcNow;
 
+        Dictionary<Guid, ReadinessFacts> readiness = await AppointmentReadinessReader.LoadAsync(db, mine, ct);
+
         return appointments
             .Select(a => a with
             {
                 SelfService = new AppointmentSelfServiceResponse(
                     windowHours, ClientCancellationPolicy.IsWithinNoticeWindow(rule, a.Date, nowUtc)),
+                Readiness = readiness.TryGetValue(a.Id, out ReadinessFacts? facts)
+                    ? AppointmentReadinessReader.Summarize(AppointmentReadiness.Derive(facts))
+                    : null,
             })
             .ToList();
     }

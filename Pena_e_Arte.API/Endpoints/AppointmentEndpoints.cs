@@ -28,6 +28,8 @@ public static class AppointmentEndpoints
         group.MapPatch("{id:guid}/reschedule", RescheduleAppointment).RequireAuthorization("ClientAndAbove");
         group.MapPatch("{id:guid}/artist", AssignAppointmentArtist).RequireAuthorization("OwnerOnly");
         group.MapGet("{id:guid}/calendar.ics", GetIcs).RequireAuthorization("ClientAndAbove");
+        // The client appointment page (DEC02): one of the caller's own appointments, 404 for anyone else's.
+        group.MapGet("/mine/{id:guid}", GetMyAppointment).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}/cancellation-preview", GetCancellationPreview).RequireAuthorization("ClientAndAbove");
     }
 
@@ -57,6 +59,15 @@ public static class AppointmentEndpoints
         CancellationToken ct)
     {
         List<AppointmentResponse> result = await mediator.Send(new GetMyAppointmentsQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetMyAppointment(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ClientAppointmentDetailResponse result = await mediator.Send(new GetMyAppointmentQuery(id), ct);
         return Results.Ok(result);
     }
 

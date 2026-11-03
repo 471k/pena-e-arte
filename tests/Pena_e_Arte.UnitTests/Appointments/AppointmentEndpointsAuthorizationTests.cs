@@ -44,6 +44,28 @@ public class AppointmentEndpointsAuthorizationTests
         FindEndpoint(app, "GET", "/api/v1/appointments/");
     }
 
+    [Fact]
+    public void GetMyAppointmentEndpoint_RequiresClientAndAbovePolicy()
+    {
+        using WebApplication app = BuildApp();
+
+        RouteEndpoint endpoint = FindEndpoint(app, "GET", "/api/v1/appointments/mine/{id:guid}");
+
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Should().ContainSingle(a => a.Policy == "ClientAndAbove");
+    }
+
+    [Fact]
+    public void StaffGetAppointmentEndpoint_StaysArtistAndAbove()
+    {
+        using WebApplication app = BuildApp();
+
+        RouteEndpoint endpoint = FindEndpoint(app, "GET", "/api/v1/appointments/{id:guid}");
+
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Should().ContainSingle(a => a.Policy == "ArtistAndAbove");
+    }
+
     private static RouteEndpoint FindEndpoint(WebApplication app, string method, string pattern) =>
         ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(ds => ds.Endpoints)

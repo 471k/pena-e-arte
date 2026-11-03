@@ -6,4 +6,9 @@ public record CreateServiceRequest(
     int DurationMinutes,
     decimal? Price,
     decimal? DepositAmount,
-    bool IsActive);
+    bool IsActive,
+    // Preparation requirements (DEC03). Off unless the owner turns them on.
+    bool RequiresConsentForm = false,
+    bool RequiresIntakeForm = false,
+    bool RequiresReferenceImage = false,
+    bool RequiresDepositPaid = false);

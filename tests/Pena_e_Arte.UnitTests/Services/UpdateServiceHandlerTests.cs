@@ -67,4 +67,35 @@ public class UpdateServiceHandlerTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    [Fact]
+    public async Task Handle_RequirementFlags_AreUpdated()
+    {
+        Service service = Seed();
+        UpdateServiceRequest req = new("Original", null, 60, 100m, 20m, true,
+            RequiresConsentForm: true, RequiresIntakeForm: true, RequiresReferenceImage: false, RequiresDepositPaid: true);
+
+        ServiceResponse result = await CreateSut().Handle(new UpdateServiceCommand(service.Id, req), default);
+
+        result.RequiresConsentForm.Should().BeTrue();
+        result.RequiresIntakeForm.Should().BeTrue();
+        result.RequiresReferenceImage.Should().BeFalse();
+        result.RequiresDepositPaid.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_RequirementFlagsOmitted_LeavesTheStoredValuesAlone()
+    {
+        Service service = Seed();
+        service.RequiresConsentForm = true;
+        service.RequiresDepositPaid = true;
+        _db.SaveChanges();
+        UpdateServiceRequest req = new("Renamed", null, 60, null, null, true);
+
+        ServiceResponse result = await CreateSut().Handle(new UpdateServiceCommand(service.Id, req), default);
+
+        result.RequiresConsentForm.Should().BeTrue();
+        result.RequiresDepositPaid.Should().BeTrue();
+        result.RequiresIntakeForm.Should().BeFalse();
+    }
 }

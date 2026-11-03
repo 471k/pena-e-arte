@@ -10,4 +10,8 @@ public record ServiceResponse(
     decimal? DepositAmount,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    bool RequiresConsentForm = false,
+    bool RequiresIntakeForm = false,
+    bool RequiresReferenceImage = false,
+    bool RequiresDepositPaid = false);

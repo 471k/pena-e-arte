@@ -3031,6 +3031,18 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                     b.Property<decimal?>("Price")
                         .HasColumnType("decimal(18,4)");
 
+                    b.Property<bool>("RequiresConsentForm")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("RequiresDepositPaid")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("RequiresIntakeForm")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("RequiresReferenceImage")
+                        .HasColumnType("tinyint(1)");
+
                     b.Property<Guid>("StudioId")
                         .HasColumnType("char(36)");
 
