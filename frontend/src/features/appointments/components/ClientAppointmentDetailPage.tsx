@@ -1,21 +1,25 @@
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, CircleDashed, Loader2, RotateCw } from "lucide-react";
+import { CheckCircle2, ChevronLeft, CircleDashed, Loader2, RotateCw, Send } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Label } from "@/shared/components/ui/label";
+import { Textarea } from "@/shared/components/ui/textarea";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/shared/components/ui/accordion";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useCreateConversationMutation, useSendMessageMutation } from "@/features/messaging/messagingApi";
 import { useGetMyAppointmentQuery } from "../appointmentsApi";
 import { AppointmentStatus, ReadinessKey } from "../appointment.types";
 import type {
   AppointmentReadinessItem,
   AppointmentResponse,
+  ClientAppointmentContact,
   ClientAppointmentDetailResponse,
 } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
@@ -344,6 +348,118 @@ function Design({ appt }: { appt: AppointmentResponse }) {
   );
 }
 
+const MESSAGE_MAX = 2000;
+
+function StudioDetails({ contact }: { contact: ClientAppointmentContact }) {
+  const handle = contact.studioInstagram?.replace(/^@/, "");
+  if (!contact.studioPhone && !handle) {
+    return <p className="text-sm text-muted-foreground">{contact.studioName} hasn&apos;t added contact details yet.</p>;
+  }
+  return (
+    <ul className="space-y-1 text-sm">
+      {contact.studioPhone && (
+        <li>
+          Phone:{" "}
+          <a className="text-link underline underline-offset-2" href={`tel:${contact.studioPhone}`}>{contact.studioPhone}</a>
+        </li>
+      )}
+      {handle && (
+        <li>
+          Instagram:{" "}
+          <a className="text-link underline underline-offset-2" href={`https://instagram.com/${handle}`} target="_blank" rel="noreferrer">
+            @{handle}
+          </a>
+        </li>
+      )}
+    </ul>
+  );
+}
+
+// DEC06: a message reaches the recipient the server resolved (the artist, else the studio owner).
+// Nothing is sent until the client presses Send; with no recipient there is no compose box at all.
+function Contact({ appointmentId, contact }: { appointmentId: string; contact: ClientAppointmentContact }) {
+  const [body, setBody] = useState("");
+  const [sentConversationId, setSentConversationId] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [createConversation, { isLoading: creating }] = useCreateConversationMutation();
+  const [sendMessage, { isLoading: sending }] = useSendMessageMutation();
+  const busy = creating || sending;
+  const fieldId = useId();
+
+  const recipient = contact.recipientRole === "artist" && contact.recipientName
+    ? contact.recipientName
+    : contact.studioName;
+
+  async function handleSend() {
+    const text = body.trim();
+    if (!text || !contact.recipientUserId) return;
+    setFailed(false);
+    const conversation = await createConversation({ recipientUserId: contact.recipientUserId });
+    if ("error" in conversation || !conversation.data) { setFailed(true); return; }
+    const sent = await sendMessage({ conversationId: conversation.data.id, body: text, appointmentId });
+    if ("error" in sent) { setFailed(true); return; }
+    setBody("");
+    setSentConversationId(conversation.data.id);
+  }
+
+  return (
+    <Section title="Contact the studio" labelledBy="contact-heading">
+      {contact.recipientUserId ? (
+        <div className="space-y-2">
+          <Label htmlFor={fieldId}>Message {recipient} about this appointment</Label>
+          <Textarea
+            id={fieldId}
+            value={body}
+            maxLength={MESSAGE_MAX}
+            onChange={(e) => { setBody(e.target.value); setSentConversationId(null); }}
+            placeholder="Your message"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={busy || body.trim().length === 0}
+            onClick={() => void handleSend()}
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            Send
+          </Button>
+          <div aria-live="polite">
+            {sentConversationId && (
+              <p className="text-sm text-success-text">
+                Message sent.{" "}
+                <Link
+                  className="text-link underline underline-offset-2"
+                  to={`/messages?conversation=${sentConversationId}`}
+                >
+                  Open the conversation
+                </Link>
+              </p>
+            )}
+          </div>
+          {failed && (
+            <p role="alert" className="text-sm text-destructive-text">
+              Your message wasn&apos;t sent. Please try again, or contact the studio directly.
+            </p>
+          )}
+          {(contact.studioPhone || contact.studioInstagram) && (
+            <div className="pt-1 text-xs text-muted-foreground space-y-1">
+              <p>Or contact {contact.studioName} directly:</p>
+              <StudioDetails contact={contact} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm">Messaging isn&apos;t available for this studio, so please contact {contact.studioName} directly.</p>
+          <StudioDetails contact={contact} />
+        </div>
+      )}
+    </Section>
+  );
+}
+
 function ChangeOrCancel({ appt }: { appt: AppointmentResponse }) {
   // Behind a disclosure so it is easy to find but never competes with the next step.
   return (
@@ -404,6 +520,7 @@ function AppointmentView({
       {next && <NextAction appt={appt} item={next} />}
       {upcoming && data.readiness.length > 0 && <Preparation items={data.readiness} next={next} />}
       <Design appt={appt} />
+      <Contact appointmentId={appt.id} contact={data.contact} />
       {upcoming && <ChangeOrCancel appt={appt} />}
     </div>
   );

@@ -31,11 +31,14 @@ export const messagingApi = createApi({
         `conversations/${conversationId}/messages${before ? `?before=${before}` : ""}`,
       providesTags: (_result, _err, arg) => [{ type: "Messages", id: arg.conversationId }],
     }),
-    sendMessage: builder.mutation<ChatMessageResponse, { conversationId: string; body: string }>({
-      query: ({ conversationId, body }) => ({
+    sendMessage: builder.mutation<
+      ChatMessageResponse,
+      { conversationId: string; body: string; appointmentId?: string }
+    >({
+      query: ({ conversationId, body, appointmentId }) => ({
         url: `conversations/${conversationId}/messages`,
         method: "POST",
-        body: { body },
+        body: appointmentId ? { body, appointmentId } : { body },
       }),
       invalidatesTags: (_result, _err, arg) => [
         { type: "Messages", id: arg.conversationId }, "Conversation", "UnreadCount",

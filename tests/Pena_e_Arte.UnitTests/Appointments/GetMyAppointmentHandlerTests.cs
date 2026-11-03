@@ -20,6 +20,7 @@ public class GetMyAppointmentHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _studioId = Guid.NewGuid();
 
@@ -27,10 +28,21 @@ public class GetMyAppointmentHandlerTests
     {
         _currentUser.UserId.Returns(_userId);
         _currentUser.Role.Returns("client");
+        _db.Studios.Add(new Studio
+        {
+            Id = _studioId,
+            Name = "Ink Studio",
+            Slug = _studioId.ToString("N")[..8],
+            OwnerEmail = "owner@ink.test",
+            PhoneNumber = "+355 69 111 2222",
+            InstagramHandle = "inkstudio",
+        });
+        _db.SaveChanges();
+        _db.ChangeTracker.Clear();
     }
 
     private Task<ClientAppointmentDetailResponse> Get(Guid id) =>
-        new GetMyAppointmentHandler(_db, _currentUser).Handle(new GetMyAppointmentQuery(id), default);
+        new GetMyAppointmentHandler(_db, _currentUser, _identity).Handle(new GetMyAppointmentQuery(id), default);
 
     private Task<List<AppointmentResponse>> Mine() =>
         new GetMyAppointmentsHandler(_db, _currentUser).Handle(new GetMyAppointmentsQuery(), default);
@@ -212,6 +224,106 @@ public class GetMyAppointmentHandlerTests
         list.Single(a => a.Id == noService).Readiness.Should().Be(new AppointmentReadinessSummaryResponse(0, 0));
     }
 
+    // ── Contact (DEC06) ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Contact_AssignedArtistWithALogin_IsTheRecipient()
+    {
+        Guid clientId = await SeedClient(_userId);
+        Guid artistUserId = Guid.NewGuid();
+        Guid artistId = await SeedArtist(artistUserId, isActive: true);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5), artistId: artistId);
+
+        ClientAppointmentContactResponse contact = (await Get(id)).Contact;
+
+        contact.RecipientUserId.Should().Be(artistUserId);
+        contact.RecipientRole.Should().Be("artist");
+        contact.RecipientName.Should().Be("Ari Kola");
+        await _identity.DidNotReceiveWithAnyArgs().GetStudioOwnerUserIdAsync(default, default);
+    }
+
+    [Fact]
+    public async Task Contact_NoArtist_IsTheDeclaredOwner()
+    {
+        Guid clientId = await SeedClient(_userId);
+        Guid ownerUserId = Guid.NewGuid();
+        _identity.GetUserIdByEmailAsync("owner@ink.test", Arg.Any<CancellationToken>()).Returns(ownerUserId);
+        _identity.GetUserDisplayNameAsync("owner@ink.test", Arg.Any<CancellationToken>()).Returns("Dua");
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5));
+
+        ClientAppointmentContactResponse contact = (await Get(id)).Contact;
+
+        contact.RecipientUserId.Should().Be(ownerUserId);
+        contact.RecipientRole.Should().Be("owner");
+        contact.RecipientName.Should().Be("Dua");
+    }
+
+    [Theory]
+    [InlineData(false, true)]   // artist without a login can't read a message
+    [InlineData(true, false)]   // deactivated artist isn't messageable
+    public async Task Contact_ArtistWhoCantBeMessaged_FallsBackToTheOwner(bool hasLogin, bool isActive)
+    {
+        Guid clientId = await SeedClient(_userId);
+        Guid artistId = await SeedArtist(hasLogin ? Guid.NewGuid() : null, isActive);
+        Guid ownerUserId = Guid.NewGuid();
+        _identity.GetUserIdByEmailAsync("owner@ink.test", Arg.Any<CancellationToken>()).Returns(ownerUserId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5), artistId: artistId);
+
+        ClientAppointmentContactResponse contact = (await Get(id)).Contact;
+
+        contact.RecipientUserId.Should().Be(ownerUserId);
+        contact.RecipientRole.Should().Be("owner");
+    }
+
+    [Fact]
+    public async Task Contact_NoArtistAndNoOwner_HasNoRecipient_ButTheStudiosOwnDetails()
+    {
+        Guid clientId = await SeedClient(_userId);
+        _identity.GetUserIdByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.GetStudioOwnerUserIdAsync(_studioId, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5));
+
+        ClientAppointmentContactResponse contact = (await Get(id)).Contact;
+
+        contact.RecipientUserId.Should().BeNull();
+        contact.RecipientRole.Should().BeNull();
+        contact.StudioName.Should().Be("Ink Studio");
+        contact.StudioPhone.Should().Be("+355 69 111 2222");
+        contact.StudioInstagram.Should().Be("inkstudio");
+    }
+
+    [Fact]
+    public async Task Contact_SoloStudio_OwnerWhoIsAlsoTheArtist_IsOneRecipient()
+    {
+        Guid clientId = await SeedClient(_userId);
+        Guid soloUserId = Guid.NewGuid();
+        Guid artistId = await SeedArtist(soloUserId, isActive: true);
+        _identity.GetUserIdByEmailAsync("owner@ink.test", Arg.Any<CancellationToken>()).Returns(soloUserId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5), artistId: artistId);
+
+        ClientAppointmentContactResponse contact = (await Get(id)).Contact;
+
+        contact.RecipientUserId.Should().Be(soloUserId);
+        contact.RecipientRole.Should().Be("artist");
+    }
+
+    private async Task<Guid> SeedArtist(Guid? userId, bool isActive)
+    {
+        Artist artist = new()
+        {
+            StudioId = _studioId,
+            UserId = userId,
+            IsActive = isActive,
+            FirstName = "Ari",
+            LastName = "Kola",
+            Email = $"{Guid.NewGuid():N}@a.test",
+        };
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+        return artist.Id;
+    }
+
     private async Task<Guid> SeedClient(Guid userId)
     {
         Client client = new() { StudioId = _studioId, UserId = userId, FirstName = "T", LastName = "C", Email = $"{Guid.NewGuid():N}@c.com" };
@@ -241,12 +353,13 @@ public class GetMyAppointmentHandlerTests
         return service.Id;
     }
 
-    private async Task<Guid> SeedAppointment(Guid clientId, DateTime date, Guid? serviceId = null)
+    private async Task<Guid> SeedAppointment(Guid clientId, DateTime date, Guid? serviceId = null, Guid? artistId = null)
     {
         Appointment appointment = new()
         {
             StudioId = _studioId,
             ClientId = clientId,
+            ArtistId = artistId,
             ServiceId = serviceId,
             Date = date,
             EndDate = date.AddMinutes(120),

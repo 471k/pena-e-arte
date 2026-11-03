@@ -112,16 +112,9 @@ internal static class ConversationEligibility
         return contacts.Any(c => c.UserId == recipientUserId);
     }
 
-    public static async Task<(Guid? UserId, string DisplayName)> TryResolveOwnerAsync(
-        IAppDbContext db, IIdentityService identity, Guid studioId, CancellationToken ct)
-    {
-        Domain.Entities.Studio? studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == studioId, ct);
-        if (studio is null) return (null, "Studio Owner");
-
-        Guid? ownerUserId = await identity.GetUserIdByEmailAsync(studio.OwnerEmail, ct);
-        if (ownerUserId is null) return (null, "Studio Owner");
-
-        string? displayName = await identity.GetUserDisplayNameAsync(studio.OwnerEmail, ct);
-        return (ownerUserId, displayName ?? "Studio Owner");
-    }
+    // The one owner rule (StudioOwnerResolver), shared with the client appointment page so the page
+    // never offers a recipient this check would refuse.
+    public static Task<(Guid? UserId, string DisplayName)> TryResolveOwnerAsync(
+        IAppDbContext db, IIdentityService identity, Guid studioId, CancellationToken ct) =>
+        StudioOwnerResolver.ResolveAsync(db, identity, studioId, ct);
 }

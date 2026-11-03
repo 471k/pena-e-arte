@@ -828,6 +828,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("AppointmentId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("Body")
                         .IsRequired()
                         .HasMaxLength(2000)

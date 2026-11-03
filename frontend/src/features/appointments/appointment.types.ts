@@ -118,6 +118,21 @@ export interface ClientAppointmentDetailResponse {
   appointment: AppointmentResponse;
   /** Priority order. Empty when the service configures no requirements. */
   readiness:   AppointmentReadinessItem[];
+  contact:     ClientAppointmentContact;
+}
+
+/**
+ * Who a message from the appointment page reaches (DEC06): the appointment's artist when they can sign
+ * in, otherwise the studio owner — the same rule the server checks when the conversation is created.
+ * `recipientUserId` null means nobody can be messaged: show the studio's details, never a compose box.
+ */
+export interface ClientAppointmentContact {
+  recipientUserId: string | null;
+  recipientRole:   "artist" | "owner" | null;
+  recipientName:   string | null;
+  studioName:      string;
+  studioPhone:     string | null;
+  studioInstagram: string | null;
 }
 
 /**

@@ -16,5 +16,9 @@ public class SendChatMessageValidator : AbstractValidator<SendChatMessageCommand
         RuleFor(x => x.Request.Body)
             .NotEmpty().WithMessage("Message cannot be empty.")
             .MaximumLength(2000).WithMessage("Message must be at most 2000 characters.");
+
+        RuleFor(x => x.Request.AppointmentId)
+            .NotEqual(Guid.Empty).WithMessage("Appointment id is invalid.")
+            .When(x => x.Request.AppointmentId.HasValue);
     }
 }

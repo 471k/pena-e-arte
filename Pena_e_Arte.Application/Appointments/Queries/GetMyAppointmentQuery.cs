@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Common;
+using Pena_e_Arte.Application.Messaging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -21,7 +22,7 @@ namespace Pena_e_Arte.Application.Appointments.Queries;
 /// </summary>
 public record GetMyAppointmentQuery(Guid AppointmentId) : IRequest<ClientAppointmentDetailResponse>;
 
-public class GetMyAppointmentHandler(IAppDbContext db, ICurrentUser currentUser)
+public class GetMyAppointmentHandler(IAppDbContext db, ICurrentUser currentUser, IIdentityService identity)
     : IRequestHandler<GetMyAppointmentQuery, ClientAppointmentDetailResponse>
 {
     public async Task<ClientAppointmentDetailResponse> Handle(GetMyAppointmentQuery query, CancellationToken ct)
@@ -69,8 +70,49 @@ public class GetMyAppointmentHandler(IAppDbContext db, ICurrentUser currentUser)
 
         return new ClientAppointmentDetailResponse(
             mapped,
-            AppointmentReadinessReader.Itemise(items, facts, id));
+            AppointmentReadinessReader.Itemise(items, facts, id),
+            await ResolveContactAsync(appointment, ct));
     }
+
+    // DEC06: the same people ConversationEligibility lets a client message: an active artist with a
+    // login on one of their appointments, or the studio owner by the one shared owner rule.
+    private async Task<ClientAppointmentContactResponse> ResolveContactAsync(Appointment appointment, CancellationToken ct)
+    {
+        StudioContact studio = await db.Studios
+            .Where(s => s.Id == appointment.StudioId)
+            .Select(s => new StudioContact(s.Name, s.PhoneNumber, s.InstagramHandle))
+            .SingleAsync(ct);
+
+        Guid? recipientId = null;
+        string? recipientRole = null;
+        string? recipientName = null;
+
+        if (appointment.Artist is { UserId: { } artistUserId, IsActive: true } artist)
+        {
+            recipientId = artistUserId;
+            recipientRole = "artist";
+            recipientName = $"{artist.FirstName} {artist.LastName}";
+        }
+        else
+        {
+            (Guid? ownerId, string ownerName) = await StudioOwnerResolver.ResolveAsync(
+                db, identity, appointment.StudioId, ct);
+            if (ownerId is { } id && id != currentUser.UserId)
+            {
+                recipientId = id;
+                recipientRole = "owner";
+                recipientName = ownerName;
+            }
+        }
+
+        return new ClientAppointmentContactResponse(
+            recipientId, recipientRole, recipientName,
+            studio.Name,
+            string.IsNullOrWhiteSpace(studio.Phone) ? null : studio.Phone,
+            string.IsNullOrWhiteSpace(studio.Instagram) ? null : studio.Instagram);
+    }
+
+    private sealed record StudioContact(string Name, string? Phone, string? Instagram);
 }
 
 public class GetMyAppointmentValidator : AbstractValidator<GetMyAppointmentQuery>

@@ -209,6 +209,7 @@ public class ClientAppointmentEndpointTests(DatabaseFixture fixture)
                     services.AddSingleton(notifications);
                     services.AddSingleton(prefs);
                     services.AddSingleton(r2);
+                    services.AddSingleton(Substitute.For<IIdentityService>());
 
                     services.AddDbContext<AppDbContext>(options =>
                         options.UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0))));

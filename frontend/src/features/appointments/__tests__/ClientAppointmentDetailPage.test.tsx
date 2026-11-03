@@ -21,6 +21,7 @@ import type {
   AppointmentReadinessItem,
   AppointmentResponse,
   CancellationPreviewResponse,
+  ClientAppointmentContact,
   ClientAppointmentDetailResponse,
 } from "@/features/appointments/appointment.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
@@ -82,11 +83,18 @@ function item(key: AppointmentReadinessItem["key"], satisfied: boolean, extra: P
   };
 }
 
+const CONTACT: ClientAppointmentContact = {
+  recipientUserId: "u-artist", recipientRole: "artist", recipientName: "Luna Artista",
+  studioName: "Test Studio", studioPhone: "+355 69 000 0000", studioInstagram: null,
+};
+
 function detail(
   appt: Partial<AppointmentResponse> = {},
   readiness: AppointmentReadinessItem[] = [],
+  contact: Partial<ClientAppointmentContact> = {},
 ): ClientAppointmentDetailResponse {
   return {
+    contact: { ...CONTACT, ...contact },
     appointment: {
       ...APPT,
       ...appt,
@@ -492,5 +500,76 @@ describe("ClientAppointmentDetailPage — cancel panel", () => {
     expect(await screen.findByText(/this appointment was cancelled/i)).toBeInTheDocument();
     expect(screen.getByText("Deposit refunded")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /need to change or cancel/i })).not.toBeInTheDocument();
+  });
+});
+
+// ── Contact (DEC06) ─────────────────────────────────────────────────────────
+
+describe("ClientAppointmentDetailPage — contact", () => {
+  it("sends a message to the resolved recipient, tagged with this appointment, only when Send is pressed", async () => {
+    let conversationBody: unknown = null;
+    let messageBody: unknown = null;
+    server.use(
+      http.post("http://localhost/api/v1/conversations", async ({ request }) => {
+        conversationBody = await request.json();
+        return HttpResponse.json({
+          id: "conv-1", otherUserId: "u-artist", otherRole: "artist", otherDisplayName: "Luna Artista",
+          otherAvatarUrl: null, lastMessageAt: null, lastMessagePreview: null, lastMessageFromMe: false,
+          unreadCount: 0, createdAt: "2030-01-01T00:00:00Z",
+        });
+      }),
+      http.post("http://localhost/api/v1/conversations/:id/messages", async ({ request }) => {
+        messageBody = await request.json();
+        return HttpResponse.json({
+          id: "m-1", conversationId: "conv-1", senderUserId: "u-001", senderRole: "client",
+          body: "Can I bring a friend?", createdAt: "2030-01-01T00:00:00Z", readAt: null, appointmentId: "appt-001",
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await loaded();
+
+    await user.type(screen.getByLabelText("Message Luna Artista about this appointment"), "Can I bring a friend?");
+    expect(conversationBody).toBeNull();
+    expect(messageBody).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(/message sent/i)).toBeInTheDocument();
+    expect(conversationBody).toEqual({ recipientUserId: "u-artist" });
+    expect(messageBody).toEqual({ body: "Can I bring a friend?", appointmentId: "appt-001" });
+    expect(screen.getByRole("link", { name: "Open the conversation" })).toHaveAttribute("href", "/messages?conversation=conv-1");
+  });
+
+  it("names the studio, not a person, when the recipient is the owner", async () => {
+    server.use(detailReturns(detail({ artistId: null, artistName: null }, [], {
+      recipientUserId: "u-owner", recipientRole: "owner", recipientName: "Dua",
+    })));
+    renderPage();
+    await loaded();
+    expect(screen.getByLabelText("Message Test Studio about this appointment")).toBeInTheDocument();
+  });
+
+  it("with no recipient: no compose box, and the studio's contact details instead", async () => {
+    server.use(detailReturns(detail({}, [], { recipientUserId: null, recipientRole: null, recipientName: null, studioInstagram: "@teststudio" })));
+    renderPage();
+    await loaded();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
+    const contact = screen.getByRole("region", { name: "Contact the studio" });
+    expect(within(contact).getByRole("link", { name: "+355 69 000 0000" })).toHaveAttribute("href", "tel:+355 69 000 0000");
+    expect(within(contact).getByRole("link", { name: "@teststudio" })).toHaveAttribute("href", "https://instagram.com/teststudio");
+  });
+
+  it("a failed send says so and keeps the text", async () => {
+    server.use(http.post("http://localhost/api/v1/conversations", () => HttpResponse.json({ message: "no" }, { status: 403 })));
+    const user = userEvent.setup();
+    renderPage();
+    await loaded();
+    const box = screen.getByLabelText("Message Luna Artista about this appointment");
+    await user.type(box, "Hello");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText(/your message wasn't sent/i)).toBeInTheDocument();
+    expect(box).toHaveValue("Hello");
   });
 });

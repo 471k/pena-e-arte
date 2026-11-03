@@ -19,6 +19,8 @@ export interface ChatMessageResponse {
   body:           string;
   createdAt:      string;
   readAt:         string | null;
+  /** The appointment the message is about, when sent from the client appointment page. */
+  appointmentId?: string | null;
 }
 
 export interface ConversationContactResponse {

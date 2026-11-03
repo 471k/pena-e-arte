@@ -701,4 +701,50 @@ public class IdentityServiceTests(DatabaseFixture fixture)
     }
 
     private static string UniqueEmail() => $"user-{Guid.NewGuid():N}@test.com";
+
+    // ── GetStudioOwnerUserIdAsync (DEC06 owner fallback) ────────────────────────
+
+    [Fact]
+    public async Task GetStudioOwnerUserIdAsync_SoloStudio_ReturnsItsOwner()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        Guid studioId = Guid.NewGuid();
+        (_, Guid ownerId, _) = await sut.CreateUserAsync(UniqueEmail(), "Password1!", "owner", studioId);
+
+        (await sut.GetStudioOwnerUserIdAsync(studioId, default)).Should().Be(ownerId);
+    }
+
+    [Fact]
+    public async Task GetStudioOwnerUserIdAsync_SeveralOwners_PicksTheLowestIdEveryTime()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        Guid studioId = Guid.NewGuid();
+        List<Guid> owners = [];
+        for (int i = 0; i < 3; i++)
+        {
+            (_, Guid id, _) = await sut.CreateUserAsync(UniqueEmail(), "Password1!", "owner", studioId);
+            owners.Add(id);
+        }
+        Guid expected = owners.OrderBy(id => id.ToString(), StringComparer.Ordinal).First();
+
+        (await sut.GetStudioOwnerUserIdAsync(studioId, default)).Should().Be(expected);
+        (await sut.GetStudioOwnerUserIdAsync(studioId, default)).Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task GetStudioOwnerUserIdAsync_IgnoresArtistsClientsLockedOutOwnersAndOtherStudios()
+    {
+        UserManager<IdentityUser> um = await BuildUserManagerAsync();
+        IdentityService sut = CreateSut(um);
+        Guid studioId = Guid.NewGuid();
+        await sut.CreateUserAsync(UniqueEmail(), "Password1!", "artist", studioId);
+        await sut.CreateUserAsync(UniqueEmail(), "Password1!", "client", studioId);
+        await sut.CreateUserAsync(UniqueEmail(), "Password1!", "owner", Guid.NewGuid());
+        (_, Guid erasedOwner, _) = await sut.CreateUserAsync(UniqueEmail(), "Password1!", "owner", studioId);
+        await sut.DisableLoginAsync(erasedOwner, default);
+
+        (await sut.GetStudioOwnerUserIdAsync(studioId, default)).Should().BeNull();
+    }
 }

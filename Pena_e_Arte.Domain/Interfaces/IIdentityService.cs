@@ -162,4 +162,14 @@ public interface IIdentityService
     /// hardcoded address. Empty list if the role has no members or doesn't exist.
     /// </summary>
     Task<IReadOnlyList<string>> GetEmailsInRoleAsync(string role, CancellationToken ct);
+
+    /// <summary>
+    /// The user id of an owner of the given studio: a user in the "owner" role who holds a
+    /// "tenant_id" claim for it and is not locked out (an erased account can't read a message).
+    /// When more than one qualifies, the lowest user id (ordinal) wins, so the answer is stable
+    /// between calls. Null when none qualifies. Callers that know the studio's declared owner
+    /// (Studio.OwnerEmail) should prefer that account and use this only as the fallback; see
+    /// Application.Messaging.StudioOwnerResolver.
+    /// </summary>
+    Task<Guid?> GetStudioOwnerUserIdAsync(Guid studioId, CancellationToken ct);
 }

@@ -11,9 +11,26 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// does not carry it either.</param>
 /// <param name="Readiness">The itemised preparation requirements in priority order. Empty when the
 /// service configures none; the page then shows no checklist.</param>
+/// <param name="Contact">Who a message from this page reaches, and the studio's own contact details.</param>
 public record ClientAppointmentDetailResponse(
     AppointmentResponse Appointment,
-    IReadOnlyList<AppointmentReadinessItemResponse> Readiness);
+    IReadOnlyList<AppointmentReadinessItemResponse> Readiness,
+    ClientAppointmentContactResponse Contact);
+
+/// <summary>
+/// DEC06. The recipient is the appointment's artist when they can sign in to read it, otherwise the
+/// studio owner (Application.Messaging.StudioOwnerResolver), and null when neither resolves; the page
+/// then shows the studio's contact details and no compose box. It is the same rule CreateConversation
+/// checks, so a recipient offered here is always accepted. A recipient is never guessed.
+/// </summary>
+/// <param name="RecipientRole">"artist" or "owner"; null with no recipient.</param>
+public record ClientAppointmentContactResponse(
+    Guid? RecipientUserId,
+    string? RecipientRole,
+    string? RecipientName,
+    string StudioName,
+    string? StudioPhone,
+    string? StudioInstagram);
 
 /// <param name="Key">Stable: DepositPaid, IntakeForm, ConsentForm or ReferenceImage.</param>
 /// <param name="Label">What the requirement is, e.g. "Consent form".</param>
