@@ -19,8 +19,10 @@ import { AppointmentStatus, ReadinessKey } from "../appointment.types";
 import type {
   AppointmentReadinessItem,
   AppointmentResponse,
+  ClientAppointmentAftercare,
   ClientAppointmentContact,
   ClientAppointmentDetailResponse,
+  ClientAppointmentVisit,
 } from "../appointment.types";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
@@ -348,6 +350,47 @@ function Design({ appt }: { appt: AppointmentResponse }) {
   );
 }
 
+// DEC11: the address arrives only for a Confirmed appointment; nothing about it is sent otherwise.
+function Visit({ appt, visit }: { appt: AppointmentResponse; visit: ClientAppointmentVisit | null | undefined }) {
+  let body: ReactNode;
+  if (appt.status === AppointmentStatus.Pending) {
+    body = (
+      <p className="text-sm text-muted-foreground">
+        The studio&apos;s address appears here once your booking is confirmed.
+      </p>
+    );
+  } else if (visit?.addressComplete) {
+    body = (
+      <address className="not-italic text-sm space-y-0.5">
+        <p>{visit.addressLine1}</p>
+        {visit.addressLine2 && <p>{visit.addressLine2}</p>}
+        <p>{[visit.postalCode, visit.city].filter(Boolean).join(" ")}</p>
+      </address>
+    );
+  } else {
+    body = (
+      <p className="text-sm text-muted-foreground">
+        The studio hasn&apos;t added its full address yet. Contact them below for directions.
+      </p>
+    );
+  }
+  return <Section title="Your visit" labelledBy="visit-heading">{body}</Section>;
+}
+
+function Aftercare({ aftercare, timezone }: { aftercare: ClientAppointmentAftercare; timezone: string | undefined }) {
+  const sent = new Date(aftercare.sentAt).toLocaleDateString("en-GB", withStudioTimeZone({
+    day: "numeric", month: "long", year: "numeric",
+  }, timezone));
+  return (
+    <Section title="Aftercare" labelledBy="aftercare-heading">
+      <p className="text-xs text-muted-foreground">The studio sent you these instructions on {sent}.</p>
+      <ul className="list-disc space-y-1 pl-5 text-sm">
+        {aftercare.steps.map((step) => <li key={step}>{step}</li>)}
+      </ul>
+    </Section>
+  );
+}
+
 const MESSAGE_MAX = 2000;
 
 function StudioDetails({ contact }: { contact: ClientAppointmentContact }) {
@@ -519,7 +562,11 @@ function AppointmentView({
       />
       {next && <NextAction appt={appt} item={next} />}
       {upcoming && data.readiness.length > 0 && <Preparation items={data.readiness} next={next} />}
+      {appt.status === AppointmentStatus.Completed && data.aftercare && (
+        <Aftercare aftercare={data.aftercare} timezone={studio?.timezone} />
+      )}
       <Design appt={appt} />
+      {upcoming && <Visit appt={appt} visit={data.visit} />}
       <Contact appointmentId={appt.id} contact={data.contact} />
       {upcoming && <ChangeOrCancel appt={appt} />}
     </div>

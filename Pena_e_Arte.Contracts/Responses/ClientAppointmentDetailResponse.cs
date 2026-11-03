@@ -12,10 +12,34 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// <param name="Readiness">The itemised preparation requirements in priority order. Empty when the
 /// service configures none; the page then shows no checklist.</param>
 /// <param name="Contact">Who a message from this page reaches, and the studio's own contact details.</param>
+/// <param name="Visit">Where to go (DEC11). Null unless the appointment is Confirmed: an unconfirmed
+/// request never receives the studio's private address.</param>
+/// <param name="Aftercare">The aftercare the studio sent after the session (DEC11). Null unless the
+/// appointment is Completed and the studio's aftercare email actually went out.</param>
 public record ClientAppointmentDetailResponse(
     AppointmentResponse Appointment,
     IReadOnlyList<AppointmentReadinessItemResponse> Readiness,
-    ClientAppointmentContactResponse Contact);
+    ClientAppointmentContactResponse Contact,
+    ClientAppointmentVisitResponse? Visit = null,
+    ClientAppointmentAftercareResponse? Aftercare = null);
+
+/// <summary>
+/// The studio's real address, for a Confirmed appointment only. <paramref name="AddressComplete"/> is
+/// false when the studio has not entered at least a street line and a city; every address field is then
+/// null, so a partial address is never shown. No coordinates are sent: the page shows no map pin.
+/// </summary>
+public record ClientAppointmentVisitResponse(
+    bool AddressComplete,
+    string? AddressLine1,
+    string? AddressLine2,
+    string? City,
+    string? PostalCode);
+
+/// <summary>
+/// The aftercare steps from the email the studio sent (Domain.Constants.AftercareInstructions, the one
+/// copy the email also renders from), and when it was sent.
+/// </summary>
+public record ClientAppointmentAftercareResponse(DateTime SentAt, IReadOnlyList<string> Steps);
 
 /// <summary>
 /// DEC06. The recipient is the appointment's artist when they can sign in to read it, otherwise the

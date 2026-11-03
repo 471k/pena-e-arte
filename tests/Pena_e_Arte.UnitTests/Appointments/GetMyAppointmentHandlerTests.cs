@@ -21,6 +21,7 @@ public class GetMyAppointmentHandlerTests
     private readonly FakeDbContext _db = FakeDbContext.Create();
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IIdentityService _identity = Substitute.For<IIdentityService>();
+    private readonly INotificationPreferenceService _prefs = Substitute.For<INotificationPreferenceService>();
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _studioId = Guid.NewGuid();
 
@@ -42,7 +43,7 @@ public class GetMyAppointmentHandlerTests
     }
 
     private Task<ClientAppointmentDetailResponse> Get(Guid id) =>
-        new GetMyAppointmentHandler(_db, _currentUser, _identity).Handle(new GetMyAppointmentQuery(id), default);
+        new GetMyAppointmentHandler(_db, _currentUser, _identity, _prefs).Handle(new GetMyAppointmentQuery(id), default);
 
     private Task<List<AppointmentResponse>> Mine() =>
         new GetMyAppointmentsHandler(_db, _currentUser).Handle(new GetMyAppointmentsQuery(), default);
@@ -307,6 +308,90 @@ public class GetMyAppointmentHandlerTests
         contact.RecipientRole.Should().Be("artist");
     }
 
+    // ── Visit and aftercare (DEC11) ──────────────────────────────────────────
+
+    [Theory]
+    [InlineData(AppointmentStatus.Pending)]
+    [InlineData(AppointmentStatus.Cancelled)]
+    [InlineData(AppointmentStatus.Completed)]
+    [InlineData(AppointmentStatus.NoShow)]
+    public async Task Visit_IsWithheld_UnlessConfirmed(AppointmentStatus status)
+    {
+        await SetStudioAddress("Rruga e Durresit 12", null, "Tirana", "1001");
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5), status: status);
+
+        (await Get(id)).Visit.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Visit_Confirmed_ShowsTheStudiosRealAddress()
+    {
+        await SetStudioAddress("Rruga e Durresit 12", "Kati 2", "Tirana", "1001");
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5));
+
+        (await Get(id)).Visit.Should().Be(new ClientAppointmentVisitResponse(true, "Rruga e Durresit 12", "Kati 2", "Tirana", "1001"));
+    }
+
+    [Fact]
+    public async Task Visit_Confirmed_IncompleteAddress_SaysSo_AndSendsNoPartialAddress()
+    {
+        await SetStudioAddress(null, "Kati 2", "Tirana", "1001");
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(5));
+
+        (await Get(id)).Visit.Should().Be(new ClientAppointmentVisitResponse(false, null, null, null, null));
+    }
+
+    [Fact]
+    public async Task Aftercare_CompletedAndSentWithTheEmailOn_IsTheSameStepsTheEmailSends()
+    {
+        _prefs.IsEnabledAsync(_studioId, NotificationType.Aftercare, NotificationChannel.Email, Arg.Any<CancellationToken>()).Returns(true);
+        Guid clientId = await SeedClient(_userId);
+        DateTime sentAt = DateTime.UtcNow.AddDays(-1);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: AppointmentStatus.Completed, aftercareSentAt: sentAt);
+
+        ClientAppointmentAftercareResponse? aftercare = (await Get(id)).Aftercare;
+
+        aftercare.Should().NotBeNull();
+        aftercare!.Steps.Should().BeSameAs(AftercareInstructions.Steps);
+        aftercare.SentAt.Should().BeCloseTo(sentAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public async Task Aftercare_EmailOff_IsNotShown_TheStudioPublishedNone()
+    {
+        _prefs.IsEnabledAsync(Arg.Any<Guid>(), Arg.Any<NotificationType>(), Arg.Any<NotificationChannel>(), Arg.Any<CancellationToken>()).Returns(false);
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: AppointmentStatus.Completed, aftercareSentAt: DateTime.UtcNow);
+
+        (await Get(id)).Aftercare.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(AppointmentStatus.Completed, false)]
+    [InlineData(AppointmentStatus.Confirmed, true)]
+    public async Task Aftercare_NotSentOrNotCompleted_IsNotShown(AppointmentStatus status, bool sent)
+    {
+        _prefs.IsEnabledAsync(Arg.Any<Guid>(), Arg.Any<NotificationType>(), Arg.Any<NotificationChannel>(), Arg.Any<CancellationToken>()).Returns(true);
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: status, aftercareSentAt: sent ? DateTime.UtcNow : null);
+
+        (await Get(id)).Aftercare.Should().BeNull();
+    }
+
+    private async Task SetStudioAddress(string? line1, string? line2, string city, string? postalCode)
+    {
+        Studio studio = _db.Studios.Single(s => s.Id == _studioId);
+        studio.AddressLine1 = line1;
+        studio.AddressLine2 = line2;
+        studio.City = city;
+        studio.PostalCode = postalCode;
+        await _db.SaveChangesAsync();
+        _db.ChangeTracker.Clear();
+    }
+
     private async Task<Guid> SeedArtist(Guid? userId, bool isActive)
     {
         Artist artist = new()
@@ -353,7 +438,9 @@ public class GetMyAppointmentHandlerTests
         return service.Id;
     }
 
-    private async Task<Guid> SeedAppointment(Guid clientId, DateTime date, Guid? serviceId = null, Guid? artistId = null)
+    private async Task<Guid> SeedAppointment(
+        Guid clientId, DateTime date, Guid? serviceId = null, Guid? artistId = null,
+        AppointmentStatus status = AppointmentStatus.Confirmed, DateTime? aftercareSentAt = null)
     {
         Appointment appointment = new()
         {
@@ -364,7 +451,8 @@ public class GetMyAppointmentHandlerTests
             Date = date,
             EndDate = date.AddMinutes(120),
             DurationMinutes = 120,
-            Status = AppointmentStatus.Confirmed,
+            Status = status,
+            AftercareSentAt = aftercareSentAt,
             DepositStatus = DepositStatus.Pending,
             DepositAmount = 50m,
         };

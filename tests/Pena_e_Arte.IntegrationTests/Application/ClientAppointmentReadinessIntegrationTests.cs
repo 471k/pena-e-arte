@@ -123,7 +123,7 @@ public class ClientAppointmentReadinessIntegrationTests(DatabaseFixture fixture)
     {
         await using AppDbContext db = fixture.CreateDbContext(s.StudioId);
         UseClient(s);
-        return await new GetMyAppointmentHandler(db, _user, Substitute.For<IIdentityService>()).Handle(new GetMyAppointmentQuery(id), default);
+        return await new GetMyAppointmentHandler(db, _user, Substitute.For<IIdentityService>(), Substitute.For<INotificationPreferenceService>()).Handle(new GetMyAppointmentQuery(id), default);
     }
 
     private async Task<List<AppointmentResponse>> Mine(Seeded s)

@@ -116,6 +116,30 @@ public class ClientAppointmentEndpointTests(DatabaseFixture fixture)
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    [Theory]
+    [InlineData(AppointmentStatus.Pending, false)]
+    [InlineData(AppointmentStatus.Confirmed, true)]
+    public async Task TheStudioAddress_IsSentForAConfirmedAppointmentOnly(AppointmentStatus status, bool sent)
+    {
+        (Guid tenantId, Guid appointmentId, Guid clientUserId) = await SeedAsync();
+        await using (AppDbContext ctx = fixture.CreateDbContext(tenantId))
+        {
+            Studio studio = await ctx.Studios.SingleAsync(s => s.Id == tenantId);
+            studio.AddressLine1 = "Rruga e Kavajes 7";
+            studio.City = "Tirana";
+            Appointment appointment = await ctx.Appointments.SingleAsync(a => a.Id == appointmentId);
+            appointment.Status = status;
+            await ctx.SaveChangesAsync();
+        }
+        using IHost host = await BuildHost();
+        using HttpClient client = host.GetTestServer().CreateClient();
+
+        HttpResponseMessage response = await Get(client, BuildToken(tenantId, "client", clientUserId), $"/api/v1/appointments/mine/{appointmentId}");
+
+        string json = await response.Content.ReadAsStringAsync();
+        json.Contains("Rruga e Kavajes 7").Should().Be(sent);
+    }
+
     private static async Task<HttpResponseMessage> Get(HttpClient client, string token, string url)
     {
         HttpRequestMessage request = new(HttpMethod.Get, url);

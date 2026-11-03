@@ -119,6 +119,25 @@ export interface ClientAppointmentDetailResponse {
   /** Priority order. Empty when the service configures no requirements. */
   readiness:   AppointmentReadinessItem[];
   contact:     ClientAppointmentContact;
+  /** Null unless Confirmed — an unconfirmed request never receives the studio's address. */
+  visit?:      ClientAppointmentVisit | null;
+  /** Null unless Completed and the studio's aftercare email actually went out. */
+  aftercare?:  ClientAppointmentAftercare | null;
+}
+
+/** DEC11. `addressComplete` false: the studio hasn't entered a street and city; every field is null. */
+export interface ClientAppointmentVisit {
+  addressComplete: boolean;
+  addressLine1:    string | null;
+  addressLine2:    string | null;
+  city:            string | null;
+  postalCode:      string | null;
+}
+
+/** DEC11. The steps the studio's aftercare email sent — the server's one copy, never a frontend one. */
+export interface ClientAppointmentAftercare {
+  sentAt: string;
+  steps:  string[];
 }
 
 /**

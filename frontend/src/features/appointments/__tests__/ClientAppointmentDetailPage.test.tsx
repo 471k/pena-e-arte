@@ -573,3 +573,59 @@ describe("ClientAppointmentDetailPage — contact", () => {
     expect(box).toHaveValue("Hello");
   });
 });
+
+// ── Visit and aftercare (DEC11) ───────────────────────────────────────────────
+
+describe("ClientAppointmentDetailPage — visit and aftercare", () => {
+  const ADDRESS = { addressComplete: true, addressLine1: "Rruga e Kavajes 7", addressLine2: "Kati 2", city: "Tirana", postalCode: "1001" };
+
+  it("Pending: no address, and says it comes once the booking is confirmed", async () => {
+    server.use(detailReturns({ ...detail({ status: "Pending" }), visit: null }));
+    renderPage();
+    await loaded();
+    expect(screen.queryByText("Rruga e Kavajes 7")).not.toBeInTheDocument();
+    expect(screen.getByText(/appears here once your booking is confirmed/i)).toBeInTheDocument();
+  });
+
+  it("Confirmed: shows the studio's real address", async () => {
+    server.use(detailReturns({ ...detail(), visit: ADDRESS }));
+    renderPage();
+    await loaded();
+    const visit = screen.getByRole("region", { name: "Your visit" });
+    expect(within(visit).getByText("Rruga e Kavajes 7")).toBeInTheDocument();
+    expect(within(visit).getByText("Kati 2")).toBeInTheDocument();
+    expect(within(visit).getByText("1001 Tirana")).toBeInTheDocument();
+  });
+
+  it("Confirmed with an incomplete address: says so and points at the studio, no partial address", async () => {
+    server.use(detailReturns({
+      ...detail(),
+      visit: { addressComplete: false, addressLine1: null, addressLine2: null, city: null, postalCode: null },
+    }));
+    renderPage();
+    await loaded();
+    expect(screen.getByText(/hasn't added its full address yet/i)).toBeInTheDocument();
+  });
+
+  it("Completed with aftercare: shows exactly the steps the server sent, and no visit block", async () => {
+    server.use(detailReturns({
+      ...detail({ status: "Completed" }),
+      aftercare: { sentAt: "2030-12-10T15:00:00Z", steps: ["Step from the server one.", "Step from the server two."] },
+    }));
+    renderPage();
+    await loaded();
+    const aftercare = screen.getByRole("region", { name: "Aftercare" });
+    expect(within(aftercare).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Step from the server one.", "Step from the server two.",
+    ]);
+    expect(within(aftercare).getByText(/10 December 2030/)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Your visit" })).not.toBeInTheDocument();
+  });
+
+  it("Completed without published aftercare: no aftercare text at all", async () => {
+    server.use(detailReturns({ ...detail({ status: "Completed" }), aftercare: null }));
+    renderPage();
+    await loaded();
+    expect(screen.queryByRole("region", { name: "Aftercare" })).not.toBeInTheDocument();
+  });
+});
