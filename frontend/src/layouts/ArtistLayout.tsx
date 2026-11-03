@@ -57,7 +57,7 @@ export function ArtistLayout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
       <SuspensionBanner role="artist" />
       <ReadOnlyBanner />
       <PlanLimitBanner />

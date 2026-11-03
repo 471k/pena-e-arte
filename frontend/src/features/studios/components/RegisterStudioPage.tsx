@@ -936,7 +936,7 @@ export function RegisterStudioPage() {
             Already have an account?{" "}
             <Link
               to="/login"
-              className="underline underline-offset-4 hover:text-primary"
+              className="underline underline-offset-4 hover:text-link"
             >
               Sign in
             </Link>

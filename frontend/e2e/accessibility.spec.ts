@@ -253,3 +253,107 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
   });
 
 });
+
+// ── After Hours scoped palette (DEC01, slice 0) ───────────────────────────────────────
+// The client/owner tests above already scan themed screens (each sits inside a role layout
+// carrying data-theme="after-hours"), in both colour-scheme projects. These two tests make
+// that coverage non-vacuous: they assert the scoped palette is what actually rendered —
+// on the screen AND on overlays Radix portals to <body>, outside the layout — and scan with
+// those overlays open; and that public pages still render the unscoped palette.
+
+const AFTER_HOURS = {
+  light: { canvas: "rgb(245, 241, 232)", surface: "rgb(255, 253, 247)" },
+  dark:  { canvas: "rgb(25, 22, 29)",    surface: "rgb(33, 29, 38)" },
+} as const;
+// index.css's unscoped --color-background: hsl(0 0% 100%) / hsl(240 10% 3.9%).
+const UNSCOPED_BACKGROUND = { light: "rgb(255, 255, 255)", dark: "rgb(9, 9, 11)" } as const;
+
+async function colourScheme(page: Page): Promise<"light" | "dark"> {
+  return page.evaluate(() => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+}
+
+/** The background colour actually painted behind `selector`'s first match: its own, or the
+ *  nearest ancestor's that isn't transparent. */
+async function paintedBackground(page: Page, selector: string): Promise<string> {
+  return page.evaluate((sel) => {
+    let el = document.querySelector(sel);
+    while (el) {
+      const bg = getComputedStyle(el).backgroundColor;
+      if (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return bg;
+      el = el.parentElement;
+    }
+    return "none";
+  }, selector);
+}
+
+test.describe("After Hours palette — scoped to authenticated layouts", () => {
+
+  test("themed screen and its portalled overlays (select, help sheet) render the scoped palette and pass axe", async ({ page }) => {
+    await mockApiFallback(page);
+    await mockAuthLogin(page, CLIENT_TOKEN);
+    await page.route("**/api/v1/artists*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com", specializations: [] },
+        ]),
+      });
+    });
+
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    const mode = await colourScheme(page);
+    const palette = AFTER_HOURS[mode];
+
+    // The layout root carries the scope and paints the After Hours canvas…
+    await expect(page.locator('[data-theme="after-hours"]')).toHaveCount(1);
+    expect(await paintedBackground(page, '[data-theme="after-hours"]')).toBe(palette.canvas);
+    // …while <html>/<body> themselves stay unscoped (no global theme, DEC01 / D4).
+    expect(await page.evaluate(() => document.documentElement.hasAttribute("data-theme"))).toBe(false);
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(UNSCOPED_BACKGROUND[mode]);
+
+    // Select: Radix portals the listbox to <body>, outside the layout div.
+    await page.getByRole("combobox", { name: "Select artist" }).click();
+    await page.getByRole("option", { name: "Rafaela Costa" }).waitFor({ state: "visible", timeout: 5_000 });
+    // (Proves the premise: the listbox is NOT inside the themed subtree.)
+    expect(await page.evaluate(() => Boolean(document.querySelector('[role="listbox"]')?.closest("[data-theme]")))).toBe(false);
+    expect(await paintedBackground(page, '[role="listbox"]')).toBe(palette.surface);
+    // Scanned on the overlay itself: with a Radix modal open, the rest of the page is
+    // aria-hidden on purpose, which axe reports as aria-hidden-focus. aria-required-children
+    // is off for this one scan only: the artist picker puts its search <input> inside
+    // role="listbox". Both reproduce identically on origin/main (3 Nov 2026, measured against
+    // its production build, both schemes) — pre-existing, logged as a follow-up, not caused
+    // by the palette. Every other WCAG rule, colour contrast included, still runs.
+    await assertNoViolations(
+      new AxeBuilder({ page }).include('[role="listbox"]').disableRules(["aria-required-children"]),
+      page,
+    );
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+
+    // Help sheet: a Radix Dialog, also portalled to <body>.
+    await page.getByRole("button", { name: "Open help menu" }).click();
+    const sheet = page.getByRole("dialog", { name: "Help" });
+    await expect(sheet).toBeVisible();
+    // Let the slide-in finish so axe reads settled colours, not a mid-animation frame.
+    await expect.poll(() => sheet.evaluate((el) => el.getAnimations().length)).toBe(0);
+    expect(await paintedBackground(page, '[role="dialog"]')).toBe(palette.canvas);
+    await assertNoViolations(new AxeBuilder({ page }).include('[role="dialog"]'), page);
+  });
+
+  test("public pages outside the four layouts keep the unscoped palette", async ({ page }) => {
+    await mockApiFallback(page);
+    const mode = await (async () => { await page.goto("/login"); return colourScheme(page); })();
+    for (const path of ["/login", "/features", "/s/tinta-alma", "/embed/tinta-alma"]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      await expect(page.locator("[data-theme]"), path).toHaveCount(0);
+      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), path).toBe(UNSCOPED_BACKGROUND[mode]);
+      expect(
+        await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--color-background").trim()),
+        path,
+      ).not.toBe(mode === "light" ? "#f5f1e8" : "#19161d");
+    }
+  });
+
+});

@@ -42,13 +42,13 @@ import { startImpersonation as beginImpersonationSession } from "@/features/auth
 import { ReferralCodeRow } from "./PlatformReferralPage";
 
 const STATUS_CLASSES: Record<string, string> = {
-  Active:         "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  Active:         "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   Trialing:       "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  PastDue:        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+  PastDue:        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
   GracePeriod:    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   Cancelled:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   NoSubscription: "bg-muted text-muted-foreground",
-  Suspended:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  Suspended:      "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -245,7 +245,7 @@ export function AdminStudioDetailPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-16 text-center">
           <p className="text-sm text-destructive-text">Studio not found.</p>
-          <Link to="/platform/studios" className="text-sm text-primary hover:underline mt-2 inline-block">
+          <Link to="/platform/studios" className="text-sm text-link hover:underline mt-2 inline-block">
             ← Back to Studios
           </Link>
         </div>
@@ -359,7 +359,7 @@ export function AdminStudioDetailPage() {
                     href={`/s/${studio.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                    className="inline-flex items-center gap-1.5 text-xs text-link hover:underline"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     View public portfolio
@@ -409,7 +409,7 @@ export function AdminStudioDetailPage() {
                       {summary.ownerEmail !== "—" && (
                         <a
                           href={`mailto:${summary.ownerEmail}`}
-                          className="text-primary hover:underline"
+                          className="text-link hover:underline"
                         >
                           {summary.ownerEmail}
                         </a>
@@ -452,8 +452,8 @@ export function AdminStudioDetailPage() {
                                 refund.status === "Failed"
                                   ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                                   : refund.status === "Succeeded"
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
                               }`}
                               title={refund.failureReason ?? undefined}
                             >

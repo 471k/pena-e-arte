@@ -26,9 +26,9 @@ const TYPE_LABEL: Record<FeedbackType, string> = {
 };
 
 const TYPE_BADGE: Record<FeedbackType, string> = {
-  BugReport:      "bg-red-500/15 text-red-600",
+  BugReport:      "bg-red-500/15 text-red-700 dark:text-red-400",
   FeatureRequest: "bg-purple-500/15 text-purple-600",
-  General:        "bg-sky-500/15 text-sky-600",
+  General:        "bg-sky-500/15 text-sky-700 dark:text-sky-400",
   SupportRequest: "bg-emerald-500/15 text-emerald-600",
 };
 

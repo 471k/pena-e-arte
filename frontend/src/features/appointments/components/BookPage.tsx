@@ -124,17 +124,17 @@ function AuthenticatedBookPage() {
                          px-4 py-3 text-sm flex items-start gap-3"
             >
               <AlertTriangle
-                className="h-4 w-4 mt-0.5 shrink-0 text-amber-700 dark:text-amber-400"
+                className="h-4 w-4 mt-0.5 shrink-0 text-amber-800 dark:text-amber-400"
                 aria-hidden="true"
               />
               <div className="flex-1 space-y-1">
                 {resentOk ? (
-                  <p className="text-amber-700 dark:text-amber-400">
+                  <p className="text-amber-800 dark:text-amber-400">
                     Verification email sent — check your inbox.
                   </p>
                 ) : (
                   <>
-                    <p className="text-amber-700 dark:text-amber-400">
+                    <p className="text-amber-800 dark:text-amber-400">
                       Please verify your email address to complete bookings.
                     </p>
                     <button

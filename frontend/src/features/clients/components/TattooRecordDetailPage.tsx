@@ -230,7 +230,7 @@ export function TattooRecordDetailPage() {
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline break-all"
+                            className="text-xs text-link hover:underline break-all"
                           >
                             Photo {i + 1}
                           </a>

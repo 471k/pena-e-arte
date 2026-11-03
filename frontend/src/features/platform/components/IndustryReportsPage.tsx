@@ -92,7 +92,7 @@ function ReportRow({ report }: ReportRowProps) {
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 text-xs gap-1.5 text-primary hover:text-primary"
+            className="h-7 text-xs gap-1.5 text-link hover:text-link"
             asChild
           >
             <a

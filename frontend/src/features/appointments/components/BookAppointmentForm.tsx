@@ -130,7 +130,7 @@ function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   return (
     <span
       aria-hidden="true"
-      className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-700 dark:text-violet-400
+      className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-800 dark:text-violet-300
                  text-[9px] font-semibold flex items-center justify-center shrink-0"
     >
       {initials}

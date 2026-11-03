@@ -208,10 +208,10 @@ export function SchedulePage() {
             return (
               <section key={day.toISOString()}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
+                  <span className={`text-sm font-semibold ${isToday ? "text-link" : "text-foreground"}`}>
                     {DAY_NAMES[i]}
                   </span>
-                  <span className={`text-sm ${isToday ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`text-sm ${isToday ? "text-link" : "text-muted-foreground"}`}>
                     {day.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                   </span>
                   {isToday && (

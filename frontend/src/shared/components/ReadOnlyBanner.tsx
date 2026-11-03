@@ -10,7 +10,7 @@ export function ReadOnlyBanner() {
   if (!message) return null;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-sm">
+    <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/30 text-amber-800 dark:text-amber-400 text-sm">
       <ShieldOff className="h-4 w-4 shrink-0" />
       <span className="flex-1">
         {message}{" "}

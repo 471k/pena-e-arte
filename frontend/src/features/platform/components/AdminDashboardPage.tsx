@@ -64,14 +64,14 @@ function ExpiryLabel({ dateStr, status }: { dateStr: string; status: string }) {
   const days = daysUntilExpiry(dateStr);
   if (status === "PastDue") {
     return (
-      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 font-medium">
+      <p className="text-xs text-red-700 dark:text-red-400 mt-0.5 font-medium">
         Payment overdue
       </p>
     );
   }
   if (days <= 0) {
     return (
-      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 font-medium">
+      <p className="text-xs text-red-700 dark:text-red-400 mt-0.5 font-medium">
         Expires today
       </p>
     );
@@ -128,7 +128,7 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
               className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                 sub.status === "PastDue"
                   ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
               }`}
             >
               {sub.status === "PastDue" ? "Past due" : "Grace period"}
@@ -408,7 +408,7 @@ export function AdminDashboardPage() {
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               At-Risk Studios
               {atRisk.length > 0 && (
-                <span className="ml-1 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium">
+                <span className="ml-1 text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium">
                   {atRisk.length}
                 </span>
               )}

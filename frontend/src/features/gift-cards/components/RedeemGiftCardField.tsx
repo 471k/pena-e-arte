@@ -33,7 +33,7 @@ export function RedeemGiftCardField({ appointmentId, amount }: RedeemGiftCardFie
 
   if (isSuccess) {
     return (
-      <p className="flex items-center gap-1.5 text-xs text-green-700">
+      <p className="flex items-center gap-1.5 text-xs text-green-800 dark:text-green-400">
         <Gift className="h-3.5 w-3.5" />
         Gift card applied.
       </p>

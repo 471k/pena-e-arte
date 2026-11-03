@@ -376,8 +376,8 @@ export function PaymentDetailPage() {
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10">
             {isCash
-              ? <Banknote   className="h-6 w-6 text-primary" />
-              : <CreditCard className="h-6 w-6 text-primary" />}
+              ? <Banknote   className="h-6 w-6 text-link" />
+              : <CreditCard className="h-6 w-6 text-link" />}
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -402,7 +402,7 @@ export function PaymentDetailPage() {
               value={
                 <Link
                   to={`/appointments/${payment.appointmentId}`}
-                  className="text-primary underline-offset-4 hover:underline"
+                  className="text-link underline-offset-4 hover:underline"
                 >
                   {payment.appointmentDate
                     ? `${payment.clientName} · ${formatAppointmentDate(payment.appointmentDate, studio?.timezone)}`

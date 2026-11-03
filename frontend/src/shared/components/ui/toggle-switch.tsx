@@ -39,7 +39,7 @@ export function ToggleSwitch({
         {checked && (
           <svg
             viewBox="0 0 8 8"
-            className="h-2 w-2 text-primary"
+            className="h-2 w-2 text-link"
             aria-hidden="true"
           >
             <path

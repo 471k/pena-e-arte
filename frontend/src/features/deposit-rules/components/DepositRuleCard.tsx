@@ -47,7 +47,7 @@ export function DepositRuleCard({ rule }: DepositRuleCardProps) {
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full font-medium",
               rule.isActive
-                ? "bg-green-500/10 text-green-700"
+                ? "bg-green-500/10 text-green-800 dark:text-green-400"
                 : "bg-muted text-muted-foreground",
             )}>
               {rule.isActive ? "Active" : "Inactive"}

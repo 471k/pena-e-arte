@@ -90,7 +90,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                 form.signedAt
                   ? "bg-green-500/15 text-green-600 dark:text-green-400"
-                  : "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400"
+                  : "bg-yellow-500/15 text-yellow-800 dark:text-yellow-400"
               }`}
               aria-label={`Status: ${form.signedAt ? "Signed" : "Pending"}`}
             >
@@ -122,7 +122,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
             <DetailRow label="Client">
               <Link
                 to={`/clients/${form.clientId}`}
-                className="font-medium hover:underline underline-offset-2 text-primary"
+                className="font-medium hover:underline underline-offset-2 text-link"
               >
                 {form.clientName}
               </Link>
@@ -131,7 +131,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
             <DetailRow label="Appointment">
               <Link
                 to={`/appointments/${form.appointmentId}`}
-                className="font-medium hover:underline underline-offset-2 text-primary"
+                className="font-medium hover:underline underline-offset-2 text-link"
               >
                 {new Date(form.appointmentDate).toLocaleDateString("en-GB", {
                   weekday: "short", day: "numeric", month: "short", year: "numeric",
@@ -181,7 +181,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
                     href={form.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-2 hover:opacity-80"
+                    className="inline-flex items-center gap-1.5 text-sm text-link underline underline-offset-2 hover:opacity-80"
                     aria-label={docLabel}
                   >
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden />

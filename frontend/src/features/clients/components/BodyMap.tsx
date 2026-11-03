@@ -162,7 +162,7 @@ export function BodyMap({ locations, readOnly = false, onChange }: BodyMapProps)
           {markedLabels.map((label) => (
             <span
               key={label}
-              className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+              className="text-xs bg-primary/10 text-link px-2 py-0.5 rounded-full"
             >
               {label}
             </span>

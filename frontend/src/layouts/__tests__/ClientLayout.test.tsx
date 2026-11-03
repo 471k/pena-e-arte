@@ -114,6 +114,16 @@ afterEach(() => { server.resetHandlers(); cleanup(); });
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("ClientLayout", () => {
+  it("scopes the After Hours palette to its root element (DEC01)", () => {
+    renderLayout();
+    const themed = document.querySelectorAll<HTMLElement>("[data-theme=\"after-hours\"]");
+    expect(themed).toHaveLength(1);
+    // The attribute sits on the layout's outermost element: header and page both inherit it.
+    expect(themed[0]).toContainElement(screen.getByRole("banner"));
+    expect(themed[0]).toContainElement(screen.getByTestId("outlet"));
+    expect(themed[0].parentElement?.closest("[data-theme]")).toBeNull();
+  });
+
   it("has the sidebar toggle in the header (always on screen), not inside the sidebar", () => {
     renderLayout();
     const header = screen.getByRole("banner");
