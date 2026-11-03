@@ -5369,3 +5369,40 @@ the benchmark-aligned part.
 - Light primary is `#751FFF`, not the handoff's `#863BFF` (above).
 - `frontend/vite.config.ts`: `test.css.include` lets `src/index.css` through Vitest's CSS stubbing.
   The contract test needs the stylesheet's real text, and `?raw` otherwise comes back empty.
+
+## Accessibility follow-ups from After Hours slice 0 — triaged — 2026-11-03
+
+Slice 0's live report listed four accessibility follow-ups it found but deliberately did not fix.
+Phi accepted the Engineering Consultation project's triage. Recorded here so the two that are *not*
+being fixed are visibly decisions rather than oversights.
+
+### Folded into one cleanup slice
+`docs/claude/overnight-prompt-accessibility-contrast-cleanup-2026-11-03.md`, to run after slice 2 so
+its sweep also covers the screens slice 2 adds:
+- **Themed toasts.** Root cause verified while writing that prompt, and worth recording because it
+  will otherwise be rediscovered: `sonner` 2.0.8's `dist/styles.css` contains **no `@layer`**, and
+  unlayered CSS beats Tailwind v4's layered utilities **regardless of specificity** — so
+  `ui/sonner.tsx`'s `toastOptions.classNames` background/text/border entries have never taken
+  effect, on `main` as much as in the After Hours scope. The fix is Sonner's own custom properties
+  (`--normal-bg`/`-text`/`-border` and the `--success-*`/`--error-*`/`--warning-*`/`--info-*`
+  triples, all present in the installed version), not a cascade fight.
+- **Light-mode status shades that already failed AA on white.** 50 usages across the app apply a
+  400/500-level colour text class with no `dark:` prefix (verified 2026-11-03). White is lighter
+  than the new ivory canvas, so these failed before After Hours existed: `text-green-500` ≈ 2.3:1 and
+  `text-amber-400` ≈ 1.8:1 on white, failing even the 3:1 non-text bar. Distinct from the 48 usages
+  slice 0 shifted, which broke specifically on the new canvases. Five of the affected files are in
+  `features/public`, which slice 0 never touched — so unlike slice 0, that slice will legitimately
+  change public pixels.
+
+### Tracked, deliberately not fixed
+- **The searchable artist picker's ARIA structure** — `aria-required-children` (its search input
+  sits inside `role="listbox"`) and `aria-hidden-focus` with the Radix Select open. Both reproduce
+  identically on `main`'s production build, so they are **pre-existing and unrelated to After
+  Hours**. Restructuring a Radix listbox is a real regression risk on a booking-critical control and
+  needs its own slice with its own test plan. The e2e listbox scan disables only
+  `aria-required-children`, with a comment.
+
+### Deferred
+- **The user manual's 116 inline SVG illustrations**, still showing the old operational-screen
+  colours: stale visuals, accurate content. Deferred until the redesign settles — redrawing them now
+  means redrawing them again after slice 2 and the later role slices.
