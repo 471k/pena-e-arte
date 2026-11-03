@@ -72,8 +72,86 @@ export interface AppointmentResponse {
   promoCodeApplied?:          boolean;
   serviceId?:                 string | null;
   serviceName?:               string | null;
-  /** Client self-service policy, computed by the server. Only on GET /appointments/mine. */
+  /** Client self-service policy, computed by the server. Only on the client's own reads
+   *  (GET /appointments/mine and GET /appointments/mine/{id}). */
   selfService?:               AppointmentSelfServiceResponse | null;
+  /** How many of the service's preparation requirements are met (DEC03), derived by the server.
+   *  Only on the client's own reads. `required === 0` means none are configured: show no checklist. */
+  readiness?:                 AppointmentReadinessSummary | null;
+}
+
+export interface AppointmentReadinessSummary {
+  required:  number;
+  satisfied: number;
+}
+
+/** Stable keys, in the server's priority order. */
+export const ReadinessKey = {
+  DepositPaid:    "DepositPaid",
+  IntakeForm:     "IntakeForm",
+  ConsentForm:    "ConsentForm",
+  ReferenceImage: "ReferenceImage",
+} as const;
+export type ReadinessKey = (typeof ReadinessKey)[keyof typeof ReadinessKey];
+
+/**
+ * One preparation requirement the appointment's service turns on, with whether it is met — derived by
+ * the server from existing consent / intake / attachment / deposit data and never stored. Readiness
+ * never blocks the booking.
+ */
+export interface AppointmentReadinessItem {
+  key:         ReadinessKey;
+  label:       string;
+  actionLabel: string;
+  required:    boolean;
+  satisfied:   boolean;
+  /** The client can do it in the app now. */
+  available:   boolean;
+  /** An existing app route, or null when it's done on the appointment page itself (the deposit). */
+  destination: string | null;
+  /** Shown with an outstanding item the client can't act on in the app. */
+  note:        string | null;
+}
+
+/** GET /appointments/mine/{id} — one of the caller's own appointments, for the client appointment page. */
+export interface ClientAppointmentDetailResponse {
+  appointment: AppointmentResponse;
+  /** Priority order. Empty when the service configures no requirements. */
+  readiness:   AppointmentReadinessItem[];
+  contact:     ClientAppointmentContact;
+  /** Null unless Confirmed — an unconfirmed request never receives the studio's address. */
+  visit?:      ClientAppointmentVisit | null;
+  /** Null unless Completed and the studio's aftercare email actually went out. */
+  aftercare?:  ClientAppointmentAftercare | null;
+}
+
+/** DEC11. `addressComplete` false: the studio hasn't entered a street and city; every field is null. */
+export interface ClientAppointmentVisit {
+  addressComplete: boolean;
+  addressLine1:    string | null;
+  addressLine2:    string | null;
+  city:            string | null;
+  postalCode:      string | null;
+}
+
+/** DEC11. The steps the studio's aftercare email sent — the server's one copy, never a frontend one. */
+export interface ClientAppointmentAftercare {
+  sentAt: string;
+  steps:  string[];
+}
+
+/**
+ * Who a message from the appointment page reaches (DEC06): the appointment's artist when they can sign
+ * in, otherwise the studio owner — the same rule the server checks when the conversation is created.
+ * `recipientUserId` null means nobody can be messaged: show the studio's details, never a compose box.
+ */
+export interface ClientAppointmentContact {
+  recipientUserId: string | null;
+  recipientRole:   "artist" | "owner" | null;
+  recipientName:   string | null;
+  studioName:      string;
+  studioPhone:     string | null;
+  studioInstagram: string | null;
 }
 
 /**

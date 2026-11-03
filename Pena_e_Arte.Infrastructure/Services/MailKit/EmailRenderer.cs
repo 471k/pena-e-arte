@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Services.MailKit;
@@ -291,6 +292,10 @@ public class EmailRenderer : IEmailRenderer
             ? "<p style=\"text-align:center;font-size:12px;color:#9ca3af\">Powered by TattooOS</p>"
             : "";
 
+        // The steps come from the one shared copy, which the client appointment page also shows (DEC11).
+        string steps = string.Join("\n    ", AftercareInstructions.Steps
+            .Select(step => $"<li>{System.Net.WebUtility.HtmlEncode(step)}</li>"));
+
         return $"""
             <!DOCTYPE html>
             <html>
@@ -301,12 +306,7 @@ public class EmailRenderer : IEmailRenderer
               <p>Thank you for your session with {System.Net.WebUtility.HtmlEncode(artistName)} at {System.Net.WebUtility.HtmlEncode(studioName)}!
               Here are your aftercare instructions to keep your new tattoo looking great:</p>
               <ul>
-                <li>Keep the tattoo covered for 2–4 hours after the session.</li>
-                <li>Gently wash with lukewarm water and fragrance-free soap.</li>
-                <li>Pat dry — never rub.</li>
-                <li>Apply a thin layer of unscented moisturizer 2–3 times daily for 2 weeks.</li>
-                <li>Avoid sun exposure, pools, and soaking for 2 weeks.</li>
-                <li>Contact the studio if you notice redness, swelling, or discharge after 3 days.</li>
+                {steps}
               </ul>
               <p>We hope to see you again soon!</p>
               {branding}

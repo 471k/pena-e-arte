@@ -9,6 +9,15 @@ export function getClientTourSteps(hasMultipleStudios: boolean, showPaymentMetho
       title: "Book an appointment",
       body: "Request a tattoo appointment here — pick an artist, a date, and how long the session should be, or let the studio choose your artist for you.",
     },
+    {
+      // On My bookings (where the tour runs), so it resolves whenever the client has a booking and is
+      // skipped when they have none yet. The page's own next-step button carries
+      // data-tour="client-appointment-next-action" for a page-level tour later.
+      targetSelector: '[data-tour="client-appointment-details-link"]',
+      route: "/book",
+      title: "Everything about one appointment",
+      body: "Open a booking's own page to see what to do before it, the studio's address once it's confirmed, and to message the studio about it.",
+    },
   ];
 
   if (hasMultipleStudios) {

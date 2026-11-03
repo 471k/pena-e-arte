@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Messaging.Commands;
@@ -21,8 +22,21 @@ public class SendChatMessageHandler(
         Conversation conversation = await ConversationAccessGuard.LoadParticipantConversationAsync(
             db, command.ConversationId, user.UserId, ct);
 
+        Guid? appointmentId = command.Request.AppointmentId;
+        if (appointmentId is { } apptId)
+        {
+            // The appointment must be in this studio (tenant filter) and belong to the client in this
+            // conversation; anything else is 404, so the id can't be used to probe other bookings.
+            Guid? clientUserId = await db.Appointments
+                .Where(a => a.Id == apptId)
+                .Select(a => a.Client.UserId)
+                .FirstOrDefaultAsync(ct);
+            if (clientUserId is null || !conversation.IsParticipant(clientUserId.Value))
+                throw new NotFoundException(nameof(Appointment), apptId);
+        }
+
         ChatMessage message = ChatMessage.Create(
-            tenant.StudioId, conversation.Id, user.UserId, user.Role, command.Request.Body);
+            tenant.StudioId, conversation.Id, user.UserId, user.Role, command.Request.Body, appointmentId);
         db.ChatMessages.Add(message);
         conversation.RecordLastMessage(user.UserId, message.Body);
 
@@ -60,5 +74,5 @@ public class SendChatMessageHandler(
     }
 
     internal static ChatMessageResponse Map(ChatMessage m) =>
-        new(m.Id, m.ConversationId, m.SenderUserId, m.SenderRole, m.Body, m.CreatedAt, m.ReadAt);
+        new(m.Id, m.ConversationId, m.SenderUserId, m.SenderRole, m.Body, m.CreatedAt, m.ReadAt, m.AppointmentId);
 }

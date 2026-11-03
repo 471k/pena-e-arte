@@ -89,7 +89,7 @@ describe("CreateServicePage", () => {
     expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/duration/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/starting price/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/deposit/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^deposit \(/i)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
@@ -148,11 +148,35 @@ describe("CreateServicePage", () => {
     renderPage();
     await user.type(screen.getByLabelText("Service name"), "New Tattoo Session");
     await user.type(screen.getByLabelText(/starting price/i), "150");
-    await user.type(screen.getByLabelText(/deposit/i), "50");
+    await user.type(screen.getByLabelText(/^deposit \(/i), "50");
     await user.click(screen.getByRole("button", { name: /create service/i }));
     await screen.findByTestId("detail-page");
     expect(capturedBody?.price).toBe(150);
     expect(capturedBody?.depositAmount).toBe(50);
+  });
+
+  it("offers the four client-checklist switches, all off by default, and sends what the owner picks", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.post("http://localhost/api/v1/services", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(CREATED_SERVICE, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    for (const label of ["Deposit paid", "Intake form submitted", "Consent form signed", "Reference image added"]) {
+      expect(screen.getByRole("checkbox", { name: label })).not.toBeChecked();
+    }
+    await user.type(screen.getByLabelText("Service name"), "New Tattoo Session");
+    await user.click(screen.getByRole("checkbox", { name: "Consent form signed" }));
+    await user.click(screen.getByRole("checkbox", { name: "Deposit paid" }));
+    await user.click(screen.getByRole("button", { name: /create service/i }));
+    await screen.findByTestId("detail-page");
+    expect(capturedBody).toMatchObject({
+      requiresConsentForm: true, requiresDepositPaid: true,
+      requiresIntakeForm: false, requiresReferenceImage: false,
+    });
   });
 
   it("shows a success toast after creating a service", async () => {

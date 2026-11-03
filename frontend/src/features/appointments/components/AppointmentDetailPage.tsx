@@ -25,7 +25,9 @@ import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
-import { AppointmentStatus, AppointmentAttachmentCategory, DepositStatus, ReferralSource } from "../appointment.types";
+import { AppointmentStatus, DepositStatus, ReferralSource } from "../appointment.types";
+import { AppointmentImageGallery as ImageGallery } from "./AppointmentImageGallery";
+import { splitAppointmentImages } from "../appointmentImages";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
@@ -68,29 +70,6 @@ const REFERRAL_SOURCE_LABELS: Record<string, string> = {
   [ReferralSource.FriendsAndFamily]: "Friends & family",
   [ReferralSource.Other]:            "Somewhere else",
 };
-
-function ImageGallery({ label, imageAlt, urls }: { label: string; imageAlt: string; urls: string[] }) {
-  if (urls.length === 0) return null;
-  return (
-    <div className="py-2 space-y-1.5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <div className="grid grid-cols-4 gap-2">
-        {urls.map((url) => (
-          <a
-            key={url}
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="block aspect-square rounded-md overflow-hidden
-                       border border-border/40 bg-muted/30"
-          >
-            <img src={url} alt={imageAlt} className="h-full w-full object-cover" />
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const TERMINAL_STATUSES = new Set<AppointmentStatus>([
   AppointmentStatus.Cancelled,
@@ -161,15 +140,7 @@ export function AppointmentDetailPage() {
 
   // Attachments fall back to the deprecated flat imageUrls (all treated as Reference, matching
   // its pre-Category-split meaning) for appointments created before this migration.
-  const attachments = appt?.attachments
-    ?? appt?.imageUrls?.map((url) => ({ url, category: AppointmentAttachmentCategory.Reference }))
-    ?? [];
-  const areaPhotoUrls = attachments
-    .filter((a) => a.category === AppointmentAttachmentCategory.AreaPhoto)
-    .map((a) => a.url);
-  const referenceUrls = attachments
-    .filter((a) => a.category === AppointmentAttachmentCategory.Reference)
-    .map((a) => a.url);
+  const { areaPhotoUrls, referenceUrls } = splitAppointmentImages(appt);
 
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;

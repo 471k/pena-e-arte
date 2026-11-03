@@ -445,6 +445,23 @@ public class IdentityService(
             .ToList();
     }
 
+    public async Task<Guid?> GetStudioOwnerUserIdAsync(Guid studioId, CancellationToken ct)
+    {
+        IList<IdentityUser> members = await userManager.GetUsersForClaimAsync(
+            new Claim("tenant_id", studioId.ToString()));
+
+        List<Guid> owners = [];
+        foreach (IdentityUser user in members.OrderBy(u => u.Id, StringComparer.Ordinal))
+        {
+            if (!Guid.TryParse(user.Id, out Guid id)) continue;
+            if (!await userManager.IsInRoleAsync(user, "owner")) continue;
+            if (await userManager.IsLockedOutAsync(user)) continue;
+            owners.Add(id);
+        }
+
+        return owners.Count > 0 ? owners[0] : null;
+    }
+
     private string GenerateJwt(
         IdentityUser user, IList<string> roles, IList<Claim> userClaims, Guid? activeStudioId = null,
         IReadOnlyList<Claim>? extraClaims = null, DateTime? expiresAtOverride = null)

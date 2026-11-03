@@ -8,6 +8,7 @@ import type {
   AssignAppointmentArtistRequest,
   CancellationPreviewResponse,
   CheckSlotAvailabilityParams,
+  ClientAppointmentDetailResponse,
   CreateAppointmentRequest,
   GetAppointmentsParams,
   RescheduleAppointmentRequest,
@@ -37,6 +38,13 @@ export const appointmentsApi = createApi({
     // Client-facing: the caller's own appointments only
     getMyAppointments: builder.query<AppointmentResponse[], void>({
       query: () => "appointments/mine",
+      providesTags: ["Appointment"],
+    }),
+    // Client-facing: one of the caller's own appointments, for the client appointment page.
+    // Tagged "Appointment" so a cancel / reschedule from the page refetches it and shows the
+    // server's actual result.
+    getMyAppointment: builder.query<ClientAppointmentDetailResponse, string>({
+      query: (id) => `appointments/mine/${id}`,
       providesTags: ["Appointment"],
     }),
     // Advisory only: what cancelling would do with the deposit, worked out by the server. Never
@@ -127,6 +135,7 @@ export const {
   useGetAppointmentsQuery,
   useGetAppointmentQuery,
   useGetMyAppointmentsQuery,
+  useGetMyAppointmentQuery,
   useGetCancellationPreviewQuery,
   useCreateAppointmentMutation,
   useCancelAppointmentMutation,

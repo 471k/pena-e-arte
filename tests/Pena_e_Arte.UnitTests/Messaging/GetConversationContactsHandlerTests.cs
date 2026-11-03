@@ -213,6 +213,42 @@ public class GetConversationContactsHandlerTests
         _db.SaveChangesAsync().GetAwaiter().GetResult();
     }
 
+    [Fact]
+    public async Task Handle_Client_OwnerEmailMatchesNoAccount_FallsBackToTheStudiosOwnerAccount()
+    {
+        // The owner changed their login email, so Studio.OwnerEmail no longer finds them (DEC06).
+        Guid clientUserId = Guid.NewGuid();
+        Guid ownerUserId = Guid.NewGuid();
+        SeedClient(clientUserId, assignedArtistId: null);
+        SeedStudio("old-address@studio.test");
+        _user.UserId.Returns(clientUserId);
+        _user.Role.Returns("client");
+        _identity.GetUserIdByEmailAsync("old-address@studio.test", Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.GetStudioOwnerUserIdAsync(_studioId, Arg.Any<CancellationToken>()).Returns(ownerUserId);
+        _identity.GetUserEmailAsync(ownerUserId, Arg.Any<CancellationToken>()).Returns("new-address@studio.test");
+        _identity.GetUserDisplayNameAsync("new-address@studio.test", Arg.Any<CancellationToken>()).Returns("Dua");
+
+        List<ConversationContactResponse> result = await CreateSut().Handle(new GetConversationContactsQuery(), default);
+
+        result.Should().ContainSingle(c => c.UserId == ownerUserId && c.Role == "owner" && c.DisplayName == "Dua");
+    }
+
+    [Fact]
+    public async Task Handle_Client_NoOwnerAccountAtAll_HasNoOwnerContact()
+    {
+        Guid clientUserId = Guid.NewGuid();
+        SeedClient(clientUserId, assignedArtistId: null);
+        SeedStudio("nobody@studio.test");
+        _user.UserId.Returns(clientUserId);
+        _user.Role.Returns("client");
+        _identity.GetUserIdByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.GetStudioOwnerUserIdAsync(_studioId, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+
+        List<ConversationContactResponse> result = await CreateSut().Handle(new GetConversationContactsQuery(), default);
+
+        result.Should().BeEmpty();
+    }
+
     private void SeedStudio(string ownerEmail)
     {
         _db.Studios.Add(new Studio

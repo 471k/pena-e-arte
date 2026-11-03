@@ -65,4 +65,32 @@ public class CreateServiceHandlerTests
         result.Price.Should().BeNull();
         result.DepositAmount.Should().BeNull();
     }
+
+    [Fact]
+    public async Task Handle_NoRequirementFlags_DefaultsEveryRequirementOff()
+    {
+        CreateServiceRequest req = new("Walk-in", null, 30, null, null, true);
+
+        ServiceResponse result = await CreateSut().Handle(new CreateServiceCommand(req), default);
+
+        result.RequiresConsentForm.Should().BeFalse();
+        result.RequiresIntakeForm.Should().BeFalse();
+        result.RequiresReferenceImage.Should().BeFalse();
+        result.RequiresDepositPaid.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_RequirementFlags_ArePersisted()
+    {
+        CreateServiceRequest req = new("Session", null, 120, null, null, true,
+            RequiresConsentForm: true, RequiresIntakeForm: false, RequiresReferenceImage: true, RequiresDepositPaid: true);
+
+        ServiceResponse result = await CreateSut().Handle(new CreateServiceCommand(req), default);
+
+        Pena_e_Arte.Domain.Entities.Service saved = _db.Services.Single(s => s.Id == result.Id);
+        saved.RequiresConsentForm.Should().BeTrue();
+        saved.RequiresIntakeForm.Should().BeFalse();
+        saved.RequiresReferenceImage.Should().BeTrue();
+        saved.RequiresDepositPaid.Should().BeTrue();
+    }
 }

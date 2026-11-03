@@ -6,7 +6,7 @@ import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
-import { SchedulePage, BookPage, AppointmentDetailPage } from "@/features/appointments";
+import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage } from "@/features/appointments";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, MyProfilePage, TattooRecordDetailPage } from "@/features/clients";
 import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage } from "@/features/designs";
@@ -224,6 +224,15 @@ export const routes = [
                 path: "my-studios",
                 element: <RoleGuard allowedRoles={[Role.Client]} />,
                 children: [{ index: true, element: <ErrorBoundary><MyStudiosPage /></ErrorBoundary> }],
+              },
+              // The client's own appointment page (DEC02) — deep-linkable; a signed-out visitor comes
+              // back here after sign-in. Staff keep /appointments/:id, which is unchanged.
+              {
+                path: "my-appointments",
+                element: <RoleGuard allowedRoles={[Role.Client]} />,
+                children: [
+                  { path: ":id", element: <ErrorBoundary><ClientAppointmentDetailPage /></ErrorBoundary> },
+                ],
               },
 
               // ── Artist + Owner ───────────────────────────────────────────────

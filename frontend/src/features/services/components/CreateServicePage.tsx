@@ -14,6 +14,7 @@ import { currencyLabel } from "@/shared/utils/formatCurrency";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useCreateServiceMutation } from "../servicesApi";
 import type { CreateServiceRequest } from "../service.types";
+import { ServiceRequirementsFieldset } from "./ServiceRequirementsFieldset";
 
 const createSchema = z.object({
   name:            z.string().min(1, "Name is required").max(100, "Max 100 characters"),
@@ -22,6 +23,10 @@ const createSchema = z.object({
   price:           z.number().min(0, "Must be 0 or greater").nullable(),
   depositAmount:   z.number().min(0, "Must be 0 or greater").nullable(),
   isActive:        z.boolean(),
+  requiresConsentForm:    z.boolean(),
+  requiresIntakeForm:     z.boolean(),
+  requiresReferenceImage: z.boolean(),
+  requiresDepositPaid:    z.boolean(),
 });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -43,6 +48,10 @@ export function CreateServicePage() {
       price: null,
       depositAmount: null,
       isActive: true,
+      requiresConsentForm: false,
+      requiresIntakeForm: false,
+      requiresReferenceImage: false,
+      requiresDepositPaid: false,
     },
   });
   const { currency } = useStudioCurrency();
@@ -65,6 +74,10 @@ export function CreateServicePage() {
       price:           values.price,
       depositAmount:   values.depositAmount,
       isActive:        values.isActive,
+      requiresConsentForm:    values.requiresConsentForm,
+      requiresIntakeForm:     values.requiresIntakeForm,
+      requiresReferenceImage: values.requiresReferenceImage,
+      requiresDepositPaid:    values.requiresDepositPaid,
     };
     const result = await createService(body);
     if ("data" in result) {
@@ -215,6 +228,8 @@ export function CreateServicePage() {
             />
             <span className="text-sm">Active</span>
           </label>
+
+          <ServiceRequirementsFieldset register={register} idPrefix="create" />
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (

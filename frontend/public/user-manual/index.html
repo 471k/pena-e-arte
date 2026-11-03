@@ -290,6 +290,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="true">Booking</button>
         <ul class="nav-section-list">
           <li><a href="#client-book" data-nav-link>Book an appointment</a></li>
+          <li><a href="#client-appointment-page" data-nav-link>Your appointment page</a></li>
           <li><a href="#client-my-studios" data-nav-link>My Studios</a></li>
           <li><a href="#client-waitlist" data-nav-link>Join a waitlist</a></li>
         </ul>
@@ -996,6 +997,7 @@ ol.steps li { margin: 6px 0; }
 <li>Your existing bookings are listed below the form (once signed in).</li>
 <li>On a Pending or Confirmed booking, click <span class="step-title">Cancel appointment</span> to self-cancel it. Before you confirm, TattooOS checks your deposit and shows what cancelling now would mean for it — a full refund, part back with the rest kept by the studio, the whole deposit kept, or nothing to refund because no deposit was taken — with the amounts. <span class="step-title">Keep appointment</span> is selected when the message opens; click <span class="step-title">Yes, cancel</span> to go ahead. If the deposit can't be checked, or TattooOS can't tell what would happen to it, <span class="step-title">Yes, cancel</span> stays unavailable and the message asks you to contact the studio (with its phone number, if the studio added one). The cancellation email (and a text message, if you gave a phone number) then confirms it and says what happened to your deposit, and if money comes back to your card you'll also get a "Refund processed" email and text message with the amount. If the studio can't take a booking request, My Bookings shows "The studio couldn't take this request."</li>
 <li>Click <span class="step-title">Reschedule</span> to move the same booking to a new date, time, or duration (only enabled with enough notice — otherwise contact the studio directly).</li>
+<li>Click <span class="step-title">View appointment details</span> on a booking to open its own page (see <a href="#client-appointment-page">Your appointment page</a>). Reschedule and Cancel appointment work the same there, under <span class="step-title">Need to change or cancel?</span>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> arriving from a specific studio's public page (via its Book button) automatically switches your active studio to that one first (or, if you're not signed in, takes you straight to that studio's guest checkout form).</div>
 <div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.</div>
@@ -1005,6 +1007,26 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Let the studio choose:</strong> if you don't have an artist preference, toggle this on instead of picking one. You won't know who your artist is until the studio assigns one — you'll get an email the moment they do, and the appointment still needs the studio's confirmation either way.</div>
 <div class="callout callout-warn"><strong>Cancellation policy:</strong> your studio's own policy decides the refund. Cancelling with enough notice (the studio's configured window, 48 hours by default) refunds your deposit in full. Cancelling later than that may only refund part of it, or none, per the studio's settings. The message you see before confirming is worked out from that policy, but it's a preview: the amount is decided again when you click <span class="step-title">Yes, cancel</span>, so if the studio changed its policy in between, the result can differ — My Bookings then shows what actually happened. A deposit paid in cash at the studio isn't refunded automatically; the studio settles it with you. The same notice window gates self-reschedule — inside it, the Reschedule button is disabled. A card deposit is charged when you pay it, so a refund goes back to your card; your bank may take a few days to show it. Afterwards, My Bookings says what happened to your deposit: "Deposit refunded" with the amount back on your card, "Partly refunded" with what the studio's policy kept and what came back, or "Deposit kept".</div>
 <div class="crosslinks">See also: <a href="#client-deposit">Pay a deposit</a>, <a href="#client-my-studios">My Studios</a>, <a href="#ref-appointment-statuses">Appointment statuses</a></div>
+</section>
+
+<section id="client-appointment-page" data-role="client">
+<h2><span class="role-badge role-client">Client</span> Your appointment page</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own appointments)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>At <code>/my-appointments/&lt;id&gt;</code>: everything about one of your bookings in one place. Open it with <span class="step-title">View appointment details</span> on any booking under My Bookings. You can bookmark it or open it from a link; if you're signed out, you sign in and land straight on it. Someone else's appointment shows "Appointment not found".</p>
+<h3>What's on the page, top to bottom</h3>
+<ol class="steps">
+<li><span class="step-title">Summary</span>: the date, start and end time, length, your artist, and two separate statuses: the booking (Requested, Confirmed, Cancelled, Completed or No Show) and your deposit.</li>
+<li><span class="step-title">Next step</span>: if there's something to do before your appointment, the next one is a single button, for example <span class="step-title">Pay your deposit</span>, <span class="step-title">Fill in the intake form</span> or <span class="step-title">Sign the consent form</span>. The form pages open with this appointment already selected. With nothing left to do, there's no button.</li>
+<li><span class="step-title">Before your appointment</span>: anything else still to do. What you've already done is folded under <span class="step-title">Done</span>; open it to check.</li>
+<li><span class="step-title">Your design</span>: your description, style, placement and photos. A long description shows a <span class="step-title">Show more</span> button to read all of it.</li>
+<li><span class="step-title">Your visit</span>: the studio's address, once your booking is confirmed. While it's a request, the address isn't shown yet.</li>
+<li><span class="step-title">Contact the studio</span>: type a message and click <span class="step-title">Send</span>. It goes to your artist, or to the studio owner if no artist who can receive messages is on the booking, and it's linked to this appointment. <span class="step-title">Open the conversation</span> then takes you to Messages.</li>
+<li><span class="step-title">Need to change or cancel?</span>: open it for Reschedule and Cancel appointment, which work exactly as in My Bookings.</li>
+</ol>
+<div class="callout callout-tip"><strong>The checklist:</strong> your studio chooses, per service, what to ask for: deposit paid, intake form, consent form, reference image. If it asks for nothing, there's no checklist. It never stops the booking: the studio can still confirm it, and anything outstanding can be done with them at the studio. My Bookings shows how many things are left ("2 things to do before your appointment").</div>
+<div class="callout callout-tip"><strong>Good to know:</strong> a cash deposit stays on the list until the studio confirms it received the money. A reference image can only be added while booking; if the checklist asks for one and you didn't add it, contact the studio. If the studio hasn't entered its full address, the page says so. If messaging isn't available for your studio, its phone number and Instagram are shown instead. After a completed session, the page shows the aftercare instructions your studio emailed you.</div>
+<div class="crosslinks">See also: <a href="#client-book">Book an appointment</a>, <a href="#client-deposit">Pay a deposit</a>, <a href="#client-intake-submit">Submit intake form</a>, <a href="#client-consent-sign">Sign consent form</a></div>
 </section>
 
 <section id="client-my-studios" data-role="client">
@@ -2496,6 +2518,7 @@ ol.steps li { margin: 6px 0; }
 <li>Uncheck <span class="step-title">Active</span> instead of deleting to hide a service from the booking picker without losing its history.</li>
 </ol>
 <div class="callout callout-tip"><strong>No services yet?</strong> Booking works exactly as before — clients pick a free-text duration and your deposit rules apply as usual.</div>
+<div class="callout callout-tip"><strong>Client checklist:</strong> each service can ask clients to pay the deposit, submit an intake form, sign the consent form, or add a reference image before their appointment. Turn items on under <span class="step-title">Client checklist</span> when creating or editing the service; clients booking it then see what's left to do on their appointment page. Every item starts off. It's a reminder, never a block: you can still confirm and complete an appointment with items missing. Items tick themselves off from what the client has actually done; a cash deposit counts once you confirm you received it.</div>
 <div class="crosslinks">See also: <a href="#owner-service-create">Create service</a>, <a href="#owner-deposit-rules">Deposit rule list</a>, <a href="#client-book">Client: book an appointment</a></div>
 </section>
 
@@ -2519,7 +2542,7 @@ ol.steps li { margin: 6px 0; }
 <rect x="280" y="320" width="200" height="26" rx="4" fill="#7c3aed"/><text x="330" y="337" font-size="10" fill="#fff">Create Service</text>
 </svg>
 </figure>
-<figcaption>Create service — fields in order: name, description, duration, price, deposit, active toggle</figcaption>
+<figcaption>Create service — fields in order: name, description, duration, price, deposit, active toggle, then the optional client checklist (not drawn)</figcaption>
 <h3>Steps (in field order)</h3>
 <ol class="steps">
 <li>Enter a <span class="step-title">Service name</span> (e.g. "New Tattoo Session").</li>
@@ -2528,6 +2551,7 @@ ol.steps li { margin: 6px 0; }
 <li>Optionally set a <span class="step-title">Starting price</span> — shown to clients, not charged automatically.</li>
 <li>Optionally set a <span class="step-title">Deposit</span> — when set, it replaces your studio's deposit rules entirely for bookings that pick this service. Leave blank to use your deposit rules instead.</li>
 <li>Leave <span class="step-title">Active</span> checked (default) or uncheck to save it as inactive.</li>
+<li>Optionally, under <span class="step-title">Client checklist</span>, tick what clients booking this service should do before their appointment: <span class="step-title">Deposit paid</span>, <span class="step-title">Intake form submitted</span>, <span class="step-title">Consent form signed</span>, <span class="step-title">Reference image added</span>. All start unticked.</li>
 <li>Click <span class="step-title">Create Service</span>.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-services">Service catalog</a></div>

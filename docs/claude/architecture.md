@@ -430,6 +430,7 @@ Frontend:    VerifiedSocialBadge (shared/components/) — same badge variant as
 | 39 | Solo/Independent Artist Signup | `Studio.IsSolo`/`IsPublished` (Phase 1); `StudioJoinInvite` (Phase 6, admin-shaped, no tenant filter) | `RegisterSoloArtistCommand` (auto-provisions `Studio`+`Subscription` on `Free` plan, no NIPT/city/coords); `IPlanLimitService` (existing `MaxArtists` enforcement, unchanged); `IIdentityService` role-swap for studio-join acceptance | Per-tenant (solo signup, publish-on-real-location); cross-tenant (Phase 6 studio-join invite/accept, dual-consent) |
 | 40 | Client Account Deletion Hardening | `Client.ArchivedAt`; fixed `ClientDataErasure` fan-out | `ClientAccountExtensions.FindAllClientRecordsForUserAsync` (approved usage #29) | Per-tenant (archive/restore), cross-tenant (erasure/export/cancel fan-out, same person) |
 | 41 | Lek next to euro for Albanian EUR studios (2026-10-26) | `ExchangeRate` (global, no tenant filter: one Bank of Albania EUR/ALL official rate per business day); five nullable reference columns on `Payment`, `GiftCard`, `PackagePurchase` (`IHasReferenceAmount`) | `BankOfAlbaniaRateFetcher` (named HttpClient "BankOfAlbania", regex parse, no new package) + `ExchangeRateFetchJob` (Hangfire, weekdays 12:40/14:00/17:00 Europe/Tirane, 09:00 stale check); `IReferenceAmountSnapshotter`; anonymous `GET /api/v1/public/exchange-rates/eur-all`; frontend `<Money>` | Platform-wide rate, per-tenant snapshots |
+| 42 | Client appointment page (After Hours slice 2, 2026-11-03) | No new entity. `Service.RequiresConsentForm`/`RequiresIntakeForm`/`RequiresReferenceImage`/`RequiresDepositPaid` (bool, default false); readiness derived at read time by `Domain/Services/AppointmentReadiness` from `ConsentForm`, `IntakeForm`, `AppointmentAttachment`, `Payment`/`Appointment.DepositStatus`, never stored; `ChatMessage.AppointmentId` (nullable, no FK); aftercare text in `Domain/Constants/AftercareInstructions` (shared with `EmailRenderer.RenderAftercare`) | `GET /api/v1/appointments/mine/{id}` (`ClientAndAbove`, 404 for anyone else's) → `GetMyAppointmentQuery`; readiness facts in one SQL statement (`AppointmentReadinessReader`); owner recipient via `StudioOwnerResolver` + `IIdentityService.GetStudioOwnerUserIdAsync`. Frontend `/my-appointments/:id` (`ClientAppointmentDetailPage`, Client only), owner switches in `ServiceRequirementsFieldset` | Per-tenant |
 
 ### Client Self-Service Cancel/Reschedule + Owner Revenue Reporting + Structured Audit Log — 2026-07-21
 
@@ -5369,3 +5370,203 @@ the benchmark-aligned part.
 - Light primary is `#751FFF`, not the handoff's `#863BFF` (above).
 - `frontend/vite.config.ts`: `test.css.include` lets `src/index.css` through Vitest's CSS stubbing.
   The contract test needs the stylesheet's real text, and `?raw` otherwise comes back empty.
+
+## Accessibility follow-ups from After Hours slice 0 — triaged — 2026-11-03
+
+Slice 0's live report listed four accessibility follow-ups it found but deliberately did not fix.
+Phi accepted the Engineering Consultation project's triage. Recorded here so the two that are *not*
+being fixed are visibly decisions rather than oversights.
+
+### Folded into one cleanup slice
+`docs/claude/overnight-prompt-accessibility-contrast-cleanup-2026-11-03.md`, to run after slice 2 so
+its sweep also covers the screens slice 2 adds:
+- **Themed toasts.** Root cause verified while writing that prompt, and worth recording because it
+  will otherwise be rediscovered: `sonner` 2.0.8's `dist/styles.css` contains **no `@layer`**, and
+  unlayered CSS beats Tailwind v4's layered utilities **regardless of specificity** — so
+  `ui/sonner.tsx`'s `toastOptions.classNames` background/text/border entries have never taken
+  effect, on `main` as much as in the After Hours scope. The fix is Sonner's own custom properties
+  (`--normal-bg`/`-text`/`-border` and the `--success-*`/`--error-*`/`--warning-*`/`--info-*`
+  triples, all present in the installed version), not a cascade fight.
+- **Light-mode status shades that already failed AA on white.** 50 usages across the app apply a
+  400/500-level colour text class with no `dark:` prefix (verified 2026-11-03). White is lighter
+  than the new ivory canvas, so these failed before After Hours existed: `text-green-500` ≈ 2.3:1 and
+  `text-amber-400` ≈ 1.8:1 on white, failing even the 3:1 non-text bar. Distinct from the 48 usages
+  slice 0 shifted, which broke specifically on the new canvases. Five of the affected files are in
+  `features/public`, which slice 0 never touched — so unlike slice 0, that slice will legitimately
+  change public pixels.
+
+### Tracked, deliberately not fixed
+- **The searchable artist picker's ARIA structure** — `aria-required-children` (its search input
+  sits inside `role="listbox"`) and `aria-hidden-focus` with the Radix Select open. Both reproduce
+  identically on `main`'s production build, so they are **pre-existing and unrelated to After
+  Hours**. Restructuring a Radix listbox is a real regression risk on a booking-critical control and
+  needs its own slice with its own test plan. The e2e listbox scan disables only
+  `aria-required-children`, with a comment.
+
+### Deferred
+- **The user manual's 116 inline SVG illustrations**, still showing the old operational-screen
+  colours: stale visuals, accurate content. Deferred until the redesign settles — redrawing them now
+  means redrawing them again after slice 2 and the later role slices.
+
+## After Hours slice 2 — the client appointment page (DEC02, DEC03, DEC06, DEC11) — built — 2026-11-03
+
+### Context
+Built from `docs/claude/overnight-prompt-after-hours-slice2-client-appointment-2026-11-03.md` on
+`feature/after-hours-slice2-client-appointment`, cut from `main` at `b506f346` (slice 0 merged). Fully
+autonomous run; nothing pushed, merged, deployed or migrated outside the local dev database. Commits:
+`43b09da5` (the Engineering Consultation project's uncommitted slice-0 triage entry above, committed
+unchanged, separately), then one per phase: A `ca7b4b9b`, B `727bcb26`, C `bbf6a836`, D `8b13b8a6`,
+E (owner settings, Help, these docs; the prompt's final commit message).
+
+### Drift from the prompt's quoted base (recorded, approach not silently changed)
+- **`/mine` does not carry `TattooDescription` or `SafetyNotes`.** §3 says it does. `BookingIntake` is
+  its own entity (`Appointment.Intake`) and `GetMyAppointmentsHandler` never `Include`s it, so those
+  fields are always null on `/mine`. The DEC02 framing still holds — the client is reading data they
+  authored, the staff route is unchanged — but the new endpoint is the first client read that returns
+  the tattoo description. It therefore **withholds `SafetyNotes`** (medical, and the page does not
+  display it), which reduces nothing the list already returns.
+- **A studio owner could already be resolved.** §7 says no lookup exists. `ConversationEligibility.
+  TryResolveOwnerAsync` resolved the owner through `Studio.OwnerEmail` → `GetUserIdByEmailAsync`, and
+  `CreateConversation` relies on it. Built on it rather than beside it (see the owner rule below).
+- **The slice-1 cancel panel is not an `AlertDialog` primitive.** It is an inline `div role="alertdialog"`
+  in `MyBookingsSection`. No screen in this slice uses Radix `AlertDialog` or `DropdownMenu`, so §1b's
+  "first screen that uses one" did not arise; the page was still opened in real Chromium in both
+  schemes, including the reschedule `Dialog` portal (evidence below).
+
+### DEC02 — the endpoint, stated honestly
+`GET /api/v1/appointments/mine/{id:guid}`, `ClientAndAbove`, mapped beside `{id:guid}/calendar.ics`,
+served by the new `GetMyAppointmentQuery` (validator included; `GetAppointmentQuery` untouched). The
+ownership gate is the existing client gate verbatim: 404, never 403, also for a caller with no client
+record. It exists to deep-link one appointment (a signed-out visitor goes through `/login?redirect=`
+and lands back on it) and to carry the itemised blocks (readiness, contact, visit, aftercare) without
+adding them to every row of `/mine`. **It is not an authorization fix.** The staff route
+`/appointments/:id`, its `ArtistAndAbove` policy and `AppointmentDetailPage`'s behaviour are unchanged
+(a unit test pins the policy; an endpoint test shows a client still gets 403 there). `SelfService` is
+populated on it too and the contract comment now says so.
+
+### DEC03 — readiness, and the query shape
+- Four flags on `Service` (`RequiresConsentForm`, `RequiresIntakeForm`, `RequiresReferenceImage`,
+  `RequiresDepositPaid`), non-null `tinyint(1)` default false. Existing services show no checklist.
+- One pure domain function, `Domain/Services/AppointmentReadiness.Derive(ReadinessFacts)`, lists the
+  configured requirements in priority order (**deposit → intake → consent → reference image**) with
+  `satisfied` and `available`. Nothing is stored or cached; no requirement blocks booking or
+  confirmation.
+- **Deposit paid reuses the existing meaning:** `DepositStatus.Paid` (set only when a card charge or
+  the studio's cash confirmation lands) or `PrePaid` (package), nothing due, or a card hold
+  (`PaymentStatus.Captured`, which the bookings list already shows as settled). `CashPending` is a
+  promise, not money: unsatisfied, and not offered as an in-app action (the note says so).
+- Intake counts only an `IntakeForm` linked to this appointment with `SubmittedAt`; consent only a
+  `ConsentForm` with `SignedAt`; a reference image only an attachment with category `Reference`
+  (an `AreaPhoto` does not count). **There is no client path to add an attachment after booking**, so
+  that item is never `available` and carries a note pointing at the studio.
+- Destinations are existing routes: `/forms/intake/new?appointmentId=…` and
+  `/forms/consent/new?appointmentId=…` (both pages now pre-select the appointment from the query
+  string); the deposit is paid on the page itself (`destination` null).
+- **Query shape / N+1:** `AppointmentReadinessReader.LoadAsync` projects every fact for any number of
+  appointments in **one SQL statement** — the service flags from a single left join, and
+  `EXISTS`/scalar correlated subqueries for consent, intake, reference attachment and payment status.
+  `/mine` therefore costs a fixed number of queries (client lookup, list, active rule, readiness).
+  Evidence: `ClientAppointmentReadinessIntegrationTests.TheBookingsList_QueryCountDoesNotScaleWithRows`
+  counts real MySQL commands through a `DbCommandInterceptor` for 1 and for 8 appointments and asserts
+  the counts are equal (and non-zero). `/mine` carries only the summary (`Required`, `Satisfied`); the
+  detail endpoint carries the itemised list from the same reader, and tests assert the two agree.
+- **Phase E:** the owner's create and edit service forms gained a "Client checklist (optional)"
+  fieldset (`ServiceRequirementsFieldset`, existing checkbox pattern, no new design); the service view
+  shows "Client checklist: …". `UpdateServiceRequest`'s flags are nullable so an older caller cannot
+  switch requirements off by omission.
+
+### DEC06 — who receives a message (the owner rule)
+One rule, `Application/Messaging/StudioOwnerResolver`, used by **both** `ConversationEligibility` and
+the page, so the page never offers a recipient `CreateConversation` would refuse:
+1. the studio's declared owner — the account whose email is `Studio.OwnerEmail` (registration binds
+   the owner account to it; unchanged behaviour);
+2. otherwise, when that address matches no account (the owner changed their login email), the new
+   `IIdentityService.GetStudioOwnerUserIdAsync`: users in role `owner` holding the studio's `tenant_id`
+   claim and not locked out, **lowest user id (ordinal) wins** when several qualify;
+3. otherwise none.
+The recipient is the appointment's artist when the artist is active and has a login (exactly what
+eligibility allows), else the owner by that rule (excluding the caller), else **none — the page shows
+the studio's phone and Instagram and no compose box**. A solo studio whose owner is also the artist
+resolves to the one account (as the artist). Nothing is sent until the client presses Send. Known
+pre-existing edge, not changed: rule 1 does not check that the declared account still holds the owner
+role or is not locked out.
+`ChatMessage.AppointmentId` (nullable `char(36)`, **no foreign key**: the id is validated on write and
+an appointment purge must never be blocked). `SendChatMessageRequest` accepts it; the server accepts it
+only for an appointment (tenant-filtered) whose client is a participant in that conversation, 404
+otherwise. The messages thread does not display it yet.
+
+### DEC11 — visit and aftercare (shared, not copied)
+- The address is sent **only for a Confirmed appointment**; for every other status the response has
+  no address at all (an endpoint test checks the raw JSON). Complete means a street line and a city;
+  otherwise every field is null and the page says the address is incomplete. No coordinates are sent
+  and no map is drawn.
+- **Aftercare without a second copy:** the steps moved out of `EmailRenderer.RenderAftercare`'s inline
+  HTML into `Domain/Constants/AftercareInstructions.Steps`. The email renders its `<li>`s from that
+  list (a unit test checks every step and the count) and the endpoint returns the same list. Shown
+  only for a Completed appointment whose aftercare notification ran (`AftercareSentAt`) while the
+  studio's aftercare **email** was on — the only channel that carries these steps — so text the studio
+  did not send is never shown. The SMS version in `SendAftercareNotificationHandler` is a separate,
+  shorter, pre-existing copy and was left alone.
+
+### The page (Phase B)
+`ClientAppointmentDetailPage` at `/my-appointments/:id`, `RoleGuard` Client, inside `AppLayout`
+(→ `ClientLayout`). Reading order as specified: summary → next step → preparation (completed in the
+shared Radix `Accordion`, collapsed and unmounted, so unreachable by tab) → design → visit → contact →
+change/cancel (also an `Accordion`). On a Completed appointment the aftercare block sits right after
+the summary, since there is no next step or preparation then. `RescheduleArea`, `CancelArea` and
+`DepositArea` are **exported from `MyBookingsSection` and reused**, so the slice-1 panel is the same
+code; `DepositArea` gained an optional `prominent` prop (filled button when paying is the next step;
+the list keeps the outline). The staff page's `ImageGallery` moved to `AppointmentImageGallery` plus
+`appointmentImages.ts` with identical markup — the only change to `AppointmentDetailPage.tsx`, as §6
+asks. `MyBookingsSection` lost nothing (a regression describe in `BookPage.test.tsx` pins every field,
+button and condition) and gained "View appointment details" and "N things to do before your
+appointment". No new colours or tokens: only `text-link`, `text-success-text`,
+`text-destructive-text`, `muted-foreground` and existing primitives.
+
+### Help (rule 7)
+`helpContent.ts`: new `client-appointment-page`, wired into `client-book-appointment`'s
+`relatedArticleIds`; `client-cancel-booking` and `client-reschedule-booking` copy edited (no second
+cancellation article); `owner-services` and `owner-service-create` describe the checklist. Manual
+(`frontend/public/user-manual/index.html`, the served copy): new `#client-appointment-page` section and
+nav entry, edits to the booking and service sections. Tour: a step right after the booking step,
+targeting `data-tour="client-appointment-details-link"` on My bookings with `route: "/book"`.
+**Deviation:** the prompt asked for the step on the page's primary action; the client tour runs on
+`/book`, where that button does not exist, and `OnboardingTour` skips unresolvable targets, so such a
+step would almost never show. The page's next-step block still carries
+`data-tour="client-appointment-next-action"` for a later page-level tour.
+
+### Migrations and rollback
+`20261103133905_AddServiceReadinessRequirements` (four non-null bool columns, default false) and
+`20261103211851_AddChatMessageAppointmentId` (one nullable column). Both additive and safe on populated
+tables. Rollback: each migration's `Down` drops its columns (`dotnet ef database update
+AddDataProtectionKeys`); no data depends on them outside this slice.
+
+### Tests
+- Backend: unit 3,446 → 3,508 (+62), integration 646 → 659 (+13), all green; `dotnet build` clean;
+  `dotnet format --verify-no-changes` clean on every changed file.
+- Frontend: vitest 2,811 → 2,856 (+45). The full run's only failures were five `StudioProfilePage`
+  10 s timeouts under load (that file passes 40/40 alone and is untouched — the known pre-existing
+  flake) and the SEO route-coverage test, fixed by adding `my-appointments` to the nginx noindex map.
+  `pnpm run lint` 0 errors; `pnpm run build` green. `BookPage.test.tsx`'s "the list does not fetch
+  deposit rules" still passes; a new describe pins every field, button and condition of the
+  bookings card.
+- §8 is asserted in `ClientAppointmentDetailPage.test.tsx`: one primary CTA not repeated below;
+  completed items in a collapsed real disclosure unreachable by Tab and keyboard-operable; "Show
+  more" with `aria-expanded` revealing the full text; change/cancel collapsed and never a filled
+  button; every action keyboard-operable; date, statuses and the primary action rendered whole.
+  The slice-1 panel behaviour is re-asserted on the page (focus, disabled-until-preview, failed and
+  `Unknown` previews with the studio's phone, server result after commit).
+- Real browser (Playwright/Chromium against the local API + Vite, light and dark, 390 and 1100 px):
+  scoped palette on the page (`#F5F1E8` / `#19161D`), no horizontal scroll at 390, the reused cancel
+  panel with focus on "Keep appointment" and "Yes, cancel" enabled only after the preview's 200, the
+  reschedule `Dialog` portal themed in both schemes, the My bookings link and "3 things to do" hint,
+  and the owner form's four switches. The local test rows were deleted afterwards (dev DB counts back
+  to baseline); the local dev DB keeps the two new migrations.
+
+### Benchmark (rule 6)
+Per-service forms with completion tracking and a non-blocking checklist follow the 2026-11-02 research
+in the decision brief (Fresha assigns forms per service and deliberately does not hard-block the
+appointment). A deep-linkable client appointment view with status, preparation and in-context contact
+is standard across the Fresha/Vagaro/Boulevard/GlossGenius tier. Gaps flagged, not fixed: no
+post-booking reference-image upload; no reminder for outstanding items; the messages thread does not
+yet show which appointment a message is about.

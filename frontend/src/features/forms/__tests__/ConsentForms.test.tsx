@@ -198,6 +198,24 @@ describe("SignConsentFormPage", () => {
 
     expect(await screen.findByText(/failed to sign\. please try again\./i)).toBeInTheDocument();
   });
+
+  it("pre-selects the appointment named in ?appointmentId= (the client appointment page links here)", async () => {
+    let body: { appointmentId?: string } = {};
+    server.use(
+      http.post("http://localhost/api/v1/consent-forms", async ({ request }) => {
+        body = (await request.json()) as { appointmentId?: string };
+        return HttpResponse.json(SIGNED_FORM, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithRoute(<SignConsentFormPage />, `/forms/consent/new?appointmentId=${APPOINTMENT.id}`);
+
+    await user.type(screen.getByLabelText(/digital signature/i), "Marco Cliente");
+    await user.click(screen.getByRole("button", { name: /sign consent form/i }));
+
+    expect(await screen.findByText("Consent form signed!")).toBeInTheDocument();
+    expect(body.appointmentId).toBe(APPOINTMENT.id);
+  });
 });
 
 // ── ConsentFormListPage ────────────────────────────────────────────────────────

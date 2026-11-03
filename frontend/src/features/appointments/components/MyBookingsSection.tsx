@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Banknote, CalendarDays, CheckCircle2, ChevronUp, CreditCard, Loader2 } from "lucide-react";
+import { Banknote, CalendarDays, CheckCircle2, ChevronRight, ChevronUp, CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
@@ -32,10 +33,13 @@ import type { ArtistResponse } from "@/features/artists/artistsApi";
 // refund" and offered Reschedule, while the server refused the reschedule and kept the whole
 // deposit (G-3/G-17, October 2026) — so there is deliberately no notice-window or refund
 // arithmetic in this file.
+//
+// RescheduleArea, CancelArea and DepositArea are exported so the client appointment page
+// (ClientAppointmentDetailPage) reuses exactly this behaviour rather than a second copy of it.
 
 // ── Reschedule appointment ────────────────────────────────────────────────
 
-function RescheduleArea({ appt }: { appt: AppointmentResponse }) {
+export function RescheduleArea({ appt }: { appt: AppointmentResponse }) {
   const [open, setOpen] = useState(false);
 
   if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
@@ -130,7 +134,7 @@ function StudioContact() {
   return <>Please contact the studio to cancel.</>;
 }
 
-function CancelArea({ appt }: { appt: AppointmentResponse }) {
+export function CancelArea({ appt }: { appt: AppointmentResponse }) {
   const [confirming, setConfirming] = useState(false);
   const [cancelAppointment, { isLoading }] = useCancelAppointmentMutation();
   // Fetched only once the client opens the confirmation, and fresh every time it opens.
@@ -240,7 +244,9 @@ function formatDate(iso: string): string {
 
 // ── Deposit state per booking ─────────────────────────────────────────────
 
-function DepositArea({ appt }: { appt: AppointmentResponse }) {
+// `prominent` renders the pay button as the page's filled primary action (the client appointment
+// page, when paying the deposit is the next thing to do). The bookings list keeps the outline button.
+export function DepositArea({ appt, prominent = false }: { appt: AppointmentResponse; prominent?: boolean }) {
   const [paying, setPaying] = useState(false);
 
   const { data: payment, isLoading } = useGetPaymentByAppointmentQuery(appt.id, {
@@ -345,7 +351,7 @@ function DepositArea({ appt }: { appt: AppointmentResponse }) {
 
   // No payment yet, an unauthorised card intent, or a failed attempt
   return (
-    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs"
+    <Button size="sm" variant={prominent ? "default" : "outline"} className="h-8 gap-1.5 text-xs"
       onClick={() => setPaying(true)}>
       <CreditCard className="h-3.5 w-3.5" />
       {payment?.status === "Pending"
@@ -363,6 +369,19 @@ function artistName(artistId: string | null, artists: ArtistResponse[]): string 
   if (artistId === null) return "Studio will assign an artist";
   const a = artists.find((x) => x.id === artistId);
   return a ? `${a.firstName} ${a.lastName}` : "—";
+}
+
+// "2 things to do" from the server's readiness summary (DEC03) — only for an upcoming booking whose
+// service turns requirements on. The detail lives on the appointment page.
+function ReadinessHint({ appt }: { appt: AppointmentResponse }) {
+  if (appt.status !== "Pending" && appt.status !== "Confirmed") return null;
+  const outstanding = appt.readiness ? appt.readiness.required - appt.readiness.satisfied : 0;
+  if (outstanding <= 0) return null;
+  return (
+    <p className="text-xs font-medium">
+      {outstanding === 1 ? "1 thing to do" : `${outstanding} things to do`} before your appointment
+    </p>
+  );
 }
 
 function BookingRow({
@@ -399,11 +418,20 @@ function BookingRow({
           </button>
         </p>
       )}
+      <ReadinessHint appt={appt} />
       <DepositArea appt={appt} />
       <div className="flex items-center gap-3">
         <RescheduleArea appt={appt} />
         <CancelArea appt={appt} />
       </div>
+      <Link
+        to={`/my-appointments/${appt.id}`}
+        data-tour="client-appointment-details-link"
+        className="inline-flex items-center gap-0.5 text-xs text-link underline underline-offset-2"
+      >
+        View appointment details
+        <ChevronRight className="h-3 w-3" aria-hidden="true" />
+      </Link>
     </div>
   );
 }

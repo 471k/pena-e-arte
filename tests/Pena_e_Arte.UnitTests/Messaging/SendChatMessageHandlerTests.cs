@@ -152,4 +152,60 @@ public class SendChatMessageHandlerTests
         typeof(ChatMessage).GetProperty("CreatedAt")!.SetValue(message, createdAt);
         _db.SaveChangesAsync().GetAwaiter().GetResult();
     }
+
+    // ── AppointmentId (DEC06) ──────────────────────────────────────────────────
+
+    private Guid SeedAppointmentForClientUser(Guid clientUserId)
+    {
+        Client client = new() { StudioId = _studioId, UserId = clientUserId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid():N}@c.test" };
+        _db.Clients.Add(client);
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ClientId = client.Id,
+            Date = DateTime.UtcNow.AddDays(3),
+            EndDate = DateTime.UtcNow.AddDays(3).AddHours(1),
+            DurationMinutes = 60,
+        };
+        _db.Appointments.Add(appointment);
+        _db.SaveChangesAsync().GetAwaiter().GetResult();
+        return appointment.Id;
+    }
+
+    [Fact]
+    public async Task Handle_WithTheClientsOwnAppointment_StoresAndReturnsIt()
+    {
+        Conversation conversation = SeedConversation();
+        Guid appointmentId = SeedAppointmentForClientUser(_userA);
+
+        ChatMessageResponse result = await CreateSut().Handle(
+            new SendChatMessageCommand(conversation.Id, new SendChatMessageRequest("About my booking", appointmentId)), default);
+
+        result.AppointmentId.Should().Be(appointmentId);
+        _db.ChatMessages.Single(m => m.Id == result.Id).AppointmentId.Should().Be(appointmentId);
+    }
+
+    [Fact]
+    public async Task Handle_WithAnAppointmentOfSomeoneOutsideTheConversation_IsNotFound()
+    {
+        Conversation conversation = SeedConversation();
+        Guid otherAppointmentId = SeedAppointmentForClientUser(Guid.NewGuid());
+
+        Func<Task> act = async () => await CreateSut().Handle(
+            new SendChatMessageCommand(conversation.Id, new SendChatMessageRequest("hi", otherAppointmentId)), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        _db.ChatMessages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_WithoutAnAppointment_StoresNone()
+    {
+        Conversation conversation = SeedConversation();
+
+        ChatMessageResponse result = await CreateSut().Handle(
+            new SendChatMessageCommand(conversation.Id, new SendChatMessageRequest("hi")), default);
+
+        result.AppointmentId.Should().BeNull();
+    }
 }

@@ -27,6 +27,10 @@ public class UpdateServiceHandler(IAppDbContext db)
         service.Price = req.Price;
         service.DepositAmount = req.DepositAmount;
         service.IsActive = req.IsActive;
+        service.RequiresConsentForm = req.RequiresConsentForm ?? service.RequiresConsentForm;
+        service.RequiresIntakeForm = req.RequiresIntakeForm ?? service.RequiresIntakeForm;
+        service.RequiresReferenceImage = req.RequiresReferenceImage ?? service.RequiresReferenceImage;
+        service.RequiresDepositPaid = req.RequiresDepositPaid ?? service.RequiresDepositPaid;
         service.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

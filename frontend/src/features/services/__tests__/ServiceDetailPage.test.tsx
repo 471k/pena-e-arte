@@ -169,7 +169,37 @@ describe("ServiceDetailPage", () => {
     expect(screen.getByLabelText("Service name")).toHaveValue("New Tattoo Session");
     expect(screen.getByLabelText(/duration/i)).toHaveValue(90);
     expect(screen.getByLabelText(/starting price/i)).toHaveValue(150);
-    expect(screen.getByLabelText(/deposit/i)).toHaveValue(50);
+    expect(screen.getByLabelText(/^deposit \(/i)).toHaveValue(50);
+  });
+
+  it("shows the client checklist in view mode, pre-fills it in edit mode, and saves changes to it", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.get("http://localhost/api/v1/services/:id", () =>
+        HttpResponse.json({ ...SERVICE, requiresIntakeForm: true, requiresReferenceImage: false, requiresConsentForm: false, requiresDepositPaid: false })),
+      http.put("http://localhost/api/v1/services/:id", async ({ request }) => {
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(UPDATED_SERVICE);
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    expect(await screen.findByText("Client checklist: intake form")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    expect(screen.getByRole("checkbox", { name: "Intake form submitted" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Consent form signed" })).not.toBeChecked();
+    await user.click(screen.getByRole("checkbox", { name: "Consent form signed" }));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await screen.findByText("Service updated.");
+    expect(capturedBody).toMatchObject({
+      requiresIntakeForm: true, requiresConsentForm: true,
+      requiresReferenceImage: false, requiresDepositPaid: false,
+    });
+  });
+
+  it("a service with no checklist says so", async () => {
+    renderPage();
+    expect(await screen.findByText("Client checklist: none")).toBeInTheDocument();
   });
 
   it("Cancel exits the edit form without saving", async () => {

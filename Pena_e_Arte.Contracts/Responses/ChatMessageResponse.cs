@@ -7,4 +7,5 @@ public record ChatMessageResponse(
     string SenderRole,
     string Body,
     DateTime CreatedAt,
-    DateTime? ReadAt);
+    DateTime? ReadAt,
+    Guid? AppointmentId = null);
