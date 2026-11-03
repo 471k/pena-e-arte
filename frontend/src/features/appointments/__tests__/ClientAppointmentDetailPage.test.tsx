@@ -215,7 +215,9 @@ describe("ClientAppointmentDetailPage — states", () => {
     renderPage();
     await loaded();
     expect(screen.getByText(/^Tuesday,? 10 December 2030$/)).toBeInTheDocument();
-    expect(screen.getByText(/10:00 – 12:00/)).toBeInTheDocument();
+    // Times are in the studio's timezone, which arrives with GET /studios/me; until then the browser's
+    // own zone is used (CI runs in UTC), so wait for it.
+    expect(await screen.findByText(/10:00 – 12:00/)).toBeInTheDocument();
     expect(screen.getByText(/120 min/)).toBeInTheDocument();
     expect(screen.getByText("Luna Artista")).toBeInTheDocument();
     expect(screen.getByText("Confirmed")).toBeInTheDocument();
