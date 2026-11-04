@@ -34,6 +34,12 @@ public class GetConversationMessagesHandler(IAppDbContext db, ICurrentUser user)
 
         List<ChatMessage> page = await q.OrderByDescending(m => m.CreatedAt).Take(take).ToListAsync(ct);
         page.Reverse(); // return oldest-first within the page, newest page fetched first
-        return page.Select(SendChatMessageHandler.Map).ToList();
+
+        // One query for every appointment the page references (none when it references none).
+        Dictionary<Guid, MessageAppointmentLabelResponse> labels =
+            await MessageAppointmentLabels.ResolveAsync(db, page.Select(m => m.AppointmentId), ct);
+        return page
+            .Select(m => SendChatMessageHandler.Map(m) with { Appointment = MessageAppointmentLabels.For(labels, m.AppointmentId) })
+            .ToList();
     }
 }

@@ -183,6 +183,8 @@ public class SendChatMessageHandlerTests
 
         result.AppointmentId.Should().Be(appointmentId);
         _db.ChatMessages.Single(m => m.Id == result.Id).AppointmentId.Should().Be(appointmentId);
+        _db.Conversations.Single(c => c.Id == conversation.Id).LastMessageAppointmentId.Should().Be(appointmentId,
+            "the inbox row shows the appointment its last message is about");
     }
 
     [Fact]
@@ -207,5 +209,6 @@ public class SendChatMessageHandlerTests
             new SendChatMessageCommand(conversation.Id, new SendChatMessageRequest("hi")), default);
 
         result.AppointmentId.Should().BeNull();
+        _db.Conversations.Single(c => c.Id == conversation.Id).LastMessageAppointmentId.Should().BeNull();
     }
 }

@@ -10,4 +10,8 @@ public record ConversationResponse(
     string? LastMessagePreview,
     bool LastMessageFromMe,
     int UnreadCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    // The appointment the last message is about (id denormalized on the conversation; the label
+    // is resolved from the appointment on every read). Both null when it has none.
+    Guid? LastMessageAppointmentId = null,
+    MessageAppointmentLabelResponse? LastMessageAppointment = null);

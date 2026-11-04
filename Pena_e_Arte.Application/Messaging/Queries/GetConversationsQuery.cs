@@ -39,6 +39,11 @@ public class GetConversationsHandler(IAppDbContext db, ICurrentUser user, IIdent
         Dictionary<Guid, (string DisplayName, string? AvatarUrl)> displayByUserId =
             await ResolveDisplaysAsync(db, identity, others, ct);
 
+        // Each row's last-message appointment label, for the whole inbox in one query — the id is
+        // denormalized on the conversation so this needs no per-row subquery into chat_messages.
+        Dictionary<Guid, MessageAppointmentLabelResponse> labels = await MessageAppointmentLabels.ResolveAsync(
+            db, conversations.Select(c => c.LastMessageAppointmentId), ct);
+
         List<ConversationResponse> results = [];
         foreach (Conversation c in conversations)
         {
@@ -51,7 +56,9 @@ public class GetConversationsHandler(IAppDbContext db, ICurrentUser user, IIdent
                 c.Id, otherId, otherRole, displayName, avatarUrl,
                 c.LastMessageAt, c.LastMessagePreview,
                 c.LastMessageSenderUserId == user.UserId,
-                unreadByConversation.GetValueOrDefault(c.Id, 0), c.CreatedAt));
+                unreadByConversation.GetValueOrDefault(c.Id, 0), c.CreatedAt,
+                c.LastMessageAppointmentId,
+                MessageAppointmentLabels.For(labels, c.LastMessageAppointmentId)));
         }
         return results;
     }

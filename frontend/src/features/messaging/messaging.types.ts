@@ -9,6 +9,18 @@ export interface ConversationResponse {
   lastMessageFromMe:  boolean;
   unreadCount:        number;
   createdAt:          string;
+  /** The appointment the last message is about, if any (the id is stored; the label is resolved
+   * from the appointment on every read, so a reschedule shows straight away). */
+  lastMessageAppointmentId?: string | null;
+  lastMessageAppointment?:   MessageAppointmentLabel | null;
+}
+
+/** "Which appointment is this message about" — resolved server-side on every read. `startsAt` is
+ * UTC: render it in the studio's timezone. `serviceName` is null when there is no service. */
+export interface MessageAppointmentLabel {
+  appointmentId: string;
+  startsAt:      string;
+  serviceName:   string | null;
 }
 
 export interface ChatMessageResponse {
@@ -21,6 +33,8 @@ export interface ChatMessageResponse {
   readAt:         string | null;
   /** The appointment the message is about, when sent from the client appointment page. */
   appointmentId?: string | null;
+  /** Its label — present on GET messages; the send response and realtime push carry the id only. */
+  appointment?:   MessageAppointmentLabel | null;
 }
 
 export interface ConversationContactResponse {

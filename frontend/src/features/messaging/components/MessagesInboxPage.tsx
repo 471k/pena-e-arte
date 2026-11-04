@@ -7,7 +7,9 @@ import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { useGetConversationsQuery } from "../messagingApi";
+import { MessageAppointmentLabel } from "./MessageAppointmentLabel";
 import { ConversationThread } from "./ConversationThread";
 import { NewConversationDialog } from "./NewConversationDialog";
 
@@ -32,6 +34,10 @@ export function MessagesInboxPage() {
   const { data: conversations, isLoading } = useGetConversationsQuery();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newConversationOpen, setNewConversationOpen] = useState(false);
+  // A row's appointment label renders in the studio's timezone, so it waits for it.
+  const hasAppointmentLabels = conversations?.some((c) => c.lastMessageAppointment) ?? false;
+  const { data: studio } = useGetMyStudioQuery(undefined, { skip: !hasAppointmentLabels });
+  const studioTimezone = studio?.timezone;
 
   // Adjusting state during render (react.dev-documented pattern) instead of an effect —
   // re-syncs selectedId whenever the URL's `?conversation=` param changes (e.g. a fresh
@@ -81,38 +87,56 @@ export function MessagesInboxPage() {
             </p>
           )}
 
-          {!isLoading && conversations?.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setSelectedId(c.id)}
-              aria-label={`Conversation with ${c.otherDisplayName}`}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-colors hover:bg-muted/50",
-                selectedId === c.id && "bg-muted",
-              )}
-            >
-              <Avatar className="h-9 w-9">
-                <AvatarFallback>{initials(c.otherDisplayName)}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium truncate">{c.otherDisplayName}</p>
-                  {c.lastMessageAt && (
-                    <span className="text-[10px] text-muted-foreground shrink-0">{fmt(c.lastMessageAt)}</span>
+          {!isLoading && conversations?.map((c) => {
+            // The row's aria-label replaces its content as its name, so the appointment label is
+            // announced as the row's description instead.
+            const appointmentLabelId = c.lastMessageAppointment && studioTimezone
+              ? `conversation-${c.id}-appointment`
+              : undefined;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setSelectedId(c.id)}
+                aria-label={`Conversation with ${c.otherDisplayName}`}
+                aria-describedby={appointmentLabelId}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-colors hover:bg-muted/50",
+                  selectedId === c.id && "bg-muted",
+                )}
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback>{initials(c.otherDisplayName)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium truncate">{c.otherDisplayName}</p>
+                    {c.lastMessageAt && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">{fmt(c.lastMessageAt)}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {c.lastMessageFromMe && "You: "}{c.lastMessagePreview ?? "No messages yet"}
+                  </p>
+                  {/* Which appointment the last message is about. Rows without one render as before. */}
+                  {c.lastMessageAppointment && studioTimezone && (
+                    <MessageAppointmentLabel
+                      label={c.lastMessageAppointment}
+                      studioTimezone={studioTimezone}
+                      asLink={false}
+                      className="mt-1"
+                      id={appointmentLabelId}
+                    />
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground truncate">
-                  {c.lastMessageFromMe && "You: "}{c.lastMessagePreview ?? "No messages yet"}
-                </p>
-              </div>
-              {c.unreadCount > 0 && (
-                <Badge className="shrink-0 h-5 min-w-5 justify-center px-1">
-                  {c.unreadCount > 9 ? "9+" : c.unreadCount}
-                </Badge>
-              )}
-            </button>
-          ))}
+                {c.unreadCount > 0 && (
+                  <Badge className="shrink-0 h-5 min-w-5 justify-center px-1">
+                    {c.unreadCount > 9 ? "9+" : c.unreadCount}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
         </aside>
 
         <section className={cn("flex-1 min-h-0", selected ? "flex flex-col" : "hidden sm:flex sm:flex-col")}>

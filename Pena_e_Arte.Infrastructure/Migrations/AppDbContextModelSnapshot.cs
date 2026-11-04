@@ -17,7 +17,7 @@ namespace Pena_e_Arte.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.21")
+                .HasAnnotation("ProductVersion", "9.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -1361,6 +1361,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("LastMessageAppointmentId")
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime?>("LastMessageAt")
                         .HasColumnType("datetime(6)");

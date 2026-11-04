@@ -76,6 +76,37 @@ public class GetConversationMessagesHandlerTests
     }
 
     [Fact]
+    public async Task Handle_MessageAboutAnAppointment_CarriesItsLabel_OthersCarryNone()
+    {
+        Conversation conversation = SeedConversation();
+        DateTime startsAt = new(2026, 12, 10, 9, 0, 0, DateTimeKind.Utc);
+        Client client = new() { StudioId = _studioId, UserId = _userA, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid():N}@c.test" };
+        _db.Clients.Add(client);
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ClientId = client.Id,
+            Date = startsAt,
+            EndDate = startsAt.AddHours(1),
+            DurationMinutes = 60,
+        };
+        _db.Appointments.Add(appointment);
+        ChatMessage about = ChatMessage.Create(_studioId, conversation.Id, _userA, "client", "About my booking", appointment.Id);
+        ChatMessage plain = ChatMessage.Create(_studioId, conversation.Id, _userB, "artist", "sure");
+        typeof(ChatMessage).GetProperty("CreatedAt")!.SetValue(about, DateTime.UtcNow.AddMinutes(-2));
+        _db.ChatMessages.AddRange(about, plain);
+        await _db.SaveChangesAsync();
+
+        List<ChatMessageResponse> result = await CreateSut().Handle(
+            new GetConversationMessagesQuery(conversation.Id, null, 30), default);
+
+        result[0].Appointment.Should().Be(new MessageAppointmentLabelResponse(appointment.Id, startsAt, null),
+            "no service, so the label is the date alone");
+        result[1].AppointmentId.Should().BeNull();
+        result[1].Appointment.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_TakeIsClampedBetween1And100()
     {
         Conversation conversation = SeedConversation();

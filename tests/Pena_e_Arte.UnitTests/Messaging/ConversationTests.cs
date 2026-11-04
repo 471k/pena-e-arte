@@ -42,11 +42,25 @@ public class ConversationTests
         Conversation conversation = Conversation.Create(Guid.NewGuid(), sender, "client", Guid.NewGuid(), "artist");
         string longBody = new string('x', 200);
 
-        conversation.RecordLastMessage(sender, longBody);
+        conversation.RecordLastMessage(sender, longBody, null);
 
         conversation.LastMessagePreview.Should().HaveLength(140);
         conversation.LastMessageSenderUserId.Should().Be(sender);
         conversation.LastMessageAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void RecordLastMessage_TracksTheLastMessagesAppointment_AndALaterPlainMessageClearsIt()
+    {
+        Guid sender = Guid.NewGuid();
+        Guid appointmentId = Guid.NewGuid();
+        Conversation conversation = Conversation.Create(Guid.NewGuid(), sender, "client", Guid.NewGuid(), "artist");
+
+        conversation.RecordLastMessage(sender, "about my booking", appointmentId);
+        conversation.LastMessageAppointmentId.Should().Be(appointmentId);
+
+        conversation.RecordLastMessage(sender, "unrelated", null);
+        conversation.LastMessageAppointmentId.Should().BeNull();
     }
 
     [Fact]
