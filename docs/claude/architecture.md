@@ -6035,9 +6035,21 @@ command on a real MySQL context: the staff list issues the same number of comman
 (artist lookup, the list with its joins, one readiness statement). The preparation read is one session at a
 time, opened on demand.
 
-### §1b debt (AlertDialog / DropdownMenu)
-Not paid: Today renders neither primitive. Its only disclosure is the Radix `Accordion`, which renders inline
-(no portal). Carried forward a fifth time, to the first slice that renders either.
+### §1b debt (AlertDialog / DropdownMenu) — PAID
+Today itself renders neither primitive (its only disclosure is the inline Radix `Accordion`). But the "carry it to
+the first slice that renders one" framing was wrong: both already render inside the themed layouts. The Clients
+list (`ClientListPage.tsx`, reachable by an artist) has a row `DropdownMenu` whose "Archive" item opens an
+`AlertDialog`, and eight other pages use `AlertDialog`. Checked there in real Chrome at 1100 px as a signed-in
+artist, opening the menu and the dialog and pressing Cancel. Nothing was written (17 clients, 0 archived, before
+and after).
+- Both portals are direct children of `<body>` and match `body:has([data-theme="after-hours"]) > :not(#root)`.
+- Menu background = the scoped `--color-popover` (light `#FFFDF7`, dark `#211D26`; the unscoped `:root` values
+  are `hsl(0 0% 100%)` / `hsl(240 10% 3.9%)`). Item text 17.59:1 light, 14.69:1 dark.
+- Dialog background = the scoped `--color-background` (light `#F5F1E8`, dark `#19161D`, again not the `:root`
+  values). Title 15.87:1 both schemes; description 5.76:1 light, 8.82:1 dark; the "Archive" action (white on
+  violet) 6.18:1 light, 5.14:1 dark. The backdrop dims the page and focus lands on Cancel.
+- No change needed. Unrelated, pre-existing copy quirk seen on the way: the archive title reads
+  "Archive MultiStudio ?" when the client has no last name.
 
 ### Browser check (real Chrome, local stack)
 Signed in as a seeded artist with two temporary sessions (removed afterwards; dev DB counts back to baseline).
