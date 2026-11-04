@@ -516,6 +516,30 @@ export const HELP_ARTICLES: HelpArticle[] = [
 
   // ── Artist ──────────────────────────────────────────────────────────────
   {
+    id: "artist-today",
+    roles: [Artist, Owner],
+    title: "Start your day with Today",
+    route: "/today",
+    keywords: ["today", "today's sessions", "prepare", "preparation", "session preparation", "consent", "intake", "reference image", "deposit", "brief", "ready"],
+    summary: "Today is the first page you see: the sessions assigned to you on the studio's current day, each with its date and time, the client, the brief, placement, reference images, deposit and how much of its preparation is done.",
+    steps: [
+      "Open Today from the top of the menu. It is also where you land when you sign in.",
+      "Each session shows its date and time in the studio's timezone. A session that runs past midnight shows both dates, for example \"Wed 4 Nov, 23:00 – Thu 5 Nov, 02:00\".",
+      "\"Preparation: 2 of 4 done\" counts the things the session's service asks for (deposit, intake form, consent form, reference image). It isn't shown when the service asks for none.",
+      "Click \"Brief and preparation\" to see the full brief, the images, and each requirement: whether the client has done it (for example \"Not signed yet\") and what they can still do about it.",
+      "If something is still outstanding, write to the client in the message box under the list. The message goes to your conversation with them and shows which appointment it is about.",
+      "Click \"Open appointment\" for the full record, including notes, safety notes and the forms, or \"Open schedule\" for the week view.",
+    ],
+    tips: [
+      "Preparation is worked out from the studio's real records (signed consent forms, submitted intake forms, reference images added at booking, and the deposit payment), so it updates as soon as the client does something. Nothing has to be ticked off by hand.",
+      "Preparation never blocks a session. You can always go ahead, for example by completing a form with the client at the studio.",
+      "Reference images can only be added when the client books, so ask the client about a missing one directly.",
+      "A client without a TattooOS account can't be messaged here; contact them another way.",
+      "Owners who also work as artists see only their own assigned sessions here. Requests that still need an artist are on the Schedule and the Dashboard.",
+    ],
+    relatedArticleIds: ["artist-schedule", "artist-appointment-detail", "artist-messaging"],
+  },
+  {
     id: "artist-schedule",
     roles: [Artist],
     title: "View and manage your schedule",
@@ -529,6 +553,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click any appointment card to open its full details.",
     ],
     tips: ["Days with no appointments show \"No appointments\"; the current day is highlighted with a \"Today\" badge."],
+    relatedArticleIds: ["artist-today"],
   },
   {
     id: "artist-appointment-detail",

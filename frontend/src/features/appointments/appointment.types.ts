@@ -1,3 +1,5 @@
+import type { PaymentMethod, PaymentStatus } from "@/features/payments/payment.types";
+
 export const AppointmentStatus = {
   Pending:   "Pending",
   Confirmed: "Confirmed",
@@ -76,7 +78,8 @@ export interface AppointmentResponse {
    *  (GET /appointments/mine and GET /appointments/mine/{id}). */
   selfService?:               AppointmentSelfServiceResponse | null;
   /** How many of the service's preparation requirements are met (DEC03), derived by the server.
-   *  Only on the client's own reads. `required === 0` means none are configured: show no checklist. */
+   *  On the client's own reads and the staff list (GET /appointments). `required === 0` means none
+   *  are configured: show no checklist. */
   readiness?:                 AppointmentReadinessSummary | null;
 }
 
@@ -237,6 +240,44 @@ export interface GetAppointmentsParams {
   from?:     string;
   to?:       string;
   artistId?: string;
+  /** Only the caller's own assigned sessions, whatever their role (the artist's Today view). */
+  assignedToMe?: boolean;
+}
+
+/**
+ * One preparation requirement for the artist (E04a), from the same server derivation as the client's
+ * checklist but worded about the client: where it stands, never an instruction to do it.
+ */
+export interface AppointmentPreparationItem {
+  key:       ReadinessKey;
+  label:     string;
+  satisfied: boolean;
+  /** Third person, e.g. "Signed" or "Not signed yet". */
+  state:     string;
+  /** Outstanding and upcoming only: what the client can still do, so the artist knows what to ask for. */
+  followUp:  string | null;
+}
+
+/** The deposit payment's outcome fields, as describeDeposit reads them. No splits or other payment detail. */
+export interface AppointmentPreparationDeposit {
+  amount:            number;
+  status:            PaymentStatus;
+  method:            PaymentMethod;
+  paidAt:            string | null;
+  currency:          string;
+  refundedAmount:    number | null;
+  appointmentStatus: string;
+  referenceCurrency: string | null;
+  referenceRate:     number | null;
+}
+
+/** GET /appointments/{id}/preparation — staff only; 404 for an artist's session that isn't theirs. */
+export interface AppointmentPreparationResponse {
+  appointmentId: string;
+  /** Priority order. Empty when the service configures no requirements. */
+  items:         AppointmentPreparationItem[];
+  /** Null when there is no payment row. */
+  deposit:       AppointmentPreparationDeposit | null;
 }
 
 export interface SlotAvailabilityResponse {

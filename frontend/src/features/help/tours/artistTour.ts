@@ -2,6 +2,11 @@ import type { TourStep } from "@/shared/components/OnboardingTour";
 
 export const artistTourSteps: TourStep[] = [
   {
+    targetSelector: '[data-tour="artist-today-nav"]',
+    title: "Start your day here",
+    body: "Today shows the sessions assigned to you today, with the brief, the references and how much of each session's preparation the client has done.",
+  },
+  {
     targetSelector: '[data-tour="artist-schedule-nav"]',
     title: "Your schedule",
     body: "See your appointments for the week here, organized by day.",

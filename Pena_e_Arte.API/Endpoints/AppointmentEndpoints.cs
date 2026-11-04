@@ -31,16 +31,29 @@ public static class AppointmentEndpoints
         // The client appointment page (DEC02): one of the caller's own appointments, 404 for anyone else's.
         group.MapGet("/mine/{id:guid}", GetMyAppointment).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}/cancellation-preview", GetCancellationPreview).RequireAuthorization("ClientAndAbove");
+        // E04a: a session's preparation for the artist; an artist gets 404 for a session not assigned to them.
+        group.MapGet("{id:guid}/preparation", GetAppointmentPreparation).RequireAuthorization("ArtistAndAbove");
+    }
+
+    private static async Task<IResult> GetAppointmentPreparation(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AppointmentPreparationResponse result = await mediator.Send(new GetAppointmentPreparationQuery(id), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetAppointments(
         DateTime? from,
         DateTime? to,
         Guid? artistId,
+        bool? assignedToMe,
         ISender mediator,
         CancellationToken ct)
     {
-        List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to, artistId), ct);
+        List<AppointmentResponse> result = await mediator.Send(
+            new GetAppointmentsQuery(from, to, artistId, assignedToMe ?? false), ct);
         return Results.Ok(result);
     }
 

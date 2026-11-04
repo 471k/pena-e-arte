@@ -86,7 +86,7 @@ function renderPage(initialPath = "/login") {
         <Routes>
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/book"     element={<div data-testid="client-home" />} />
-          <Route path="/schedule" element={<div data-testid="artist-home" />} />
+          <Route path="/today"    element={<div data-testid="artist-home" />} />
           <Route path="/dashboard" element={<div data-testid="owner-home" />} />
           <Route path="/platform" element={<div data-testid="admin-home" />} />
         </Routes>
@@ -104,7 +104,7 @@ function renderLoggedIn(role: string) {
         <Routes>
           <Route path="/login"     element={<LoginPage />} />
           <Route path="/book"      element={<div data-testid="client-home" />} />
-          <Route path="/schedule"  element={<div data-testid="artist-home" />} />
+          <Route path="/today"     element={<div data-testid="artist-home" />} />
           <Route path="/dashboard" element={<div data-testid="owner-home" />} />
           <Route path="/platform"  element={<div data-testid="admin-home" />} />
         </Routes>
