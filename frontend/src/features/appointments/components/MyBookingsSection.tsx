@@ -279,7 +279,7 @@ export function DepositArea({ appt, prominent = false }: { appt: AppointmentResp
     return (
       <div className="space-y-0.5">
         <p className={cn("flex items-center gap-1.5 text-xs",
-          positive ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+          positive ? "text-success-text dark:text-green-400" : "text-muted-foreground")}>
           {positive && <CheckCircle2 className="h-3.5 w-3.5" />}
           {outcome.clientLabel}
         </p>
@@ -298,7 +298,7 @@ export function DepositArea({ appt, prominent = false }: { appt: AppointmentResp
   }
   if (appt.depositStatus === DepositStatus.Paid) {
     return (
-      <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+      <p className="flex items-center gap-1.5 text-xs text-success-text dark:text-green-400">
         <CheckCircle2 className="h-3.5 w-3.5" />
         Deposit paid
       </p>

@@ -43,7 +43,7 @@ function ConsentFormRow({ form }: { form: ConsentFormResponse }) {
             <span
               className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                 form.signedAt
-                  ? "bg-green-500/15 text-green-600 dark:text-green-400"
+                  ? "bg-green-500/10 text-success-text dark:text-green-400"
                   : "bg-yellow-500/15 text-yellow-800 dark:text-yellow-400"
               }`}
             >

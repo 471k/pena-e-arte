@@ -89,7 +89,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
             <span
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                 form.signedAt
-                  ? "bg-green-500/15 text-green-600 dark:text-green-400"
+                  ? "bg-green-500/10 text-success-text dark:text-green-400"
                   : "bg-yellow-500/15 text-yellow-800 dark:text-yellow-400"
               }`}
               aria-label={`Status: ${form.signedAt ? "Signed" : "Pending"}`}
@@ -109,7 +109,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
                 aria-label="Copy full form ID"
               >
                 {copied
-                  ? <Check  className="h-3.5 w-3.5 text-green-500" />
+                  ? <Check  className="h-3.5 w-3.5 text-success-text" />
                   : <Copy   className="h-3.5 w-3.5" />}
               </button>
             </div>

@@ -51,7 +51,7 @@ export function ConfirmChangeEmailPage() {
         )}
         {status === "success" && (
           <>
-            <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500" />
+            <CheckCircle2 aria-hidden="true" className="h-10 w-10 mx-auto text-emerald-500" />
             <p className="font-semibold">Email changed!</p>
             <p className="text-sm text-muted-foreground">Sign in with your new email address.</p>
             <Button onClick={() => navigate("/login")} className="w-full">Sign in</Button>

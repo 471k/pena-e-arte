@@ -69,7 +69,7 @@ function CheckoutForm({
   if (succeeded) {
     return (
       <div className="flex flex-col items-center gap-3 py-8 text-center">
-        <CheckCircle2 className="h-12 w-12 text-green-500" />
+        <CheckCircle2 aria-hidden="true" className="h-12 w-12 text-green-500" />
         <h2 className="text-lg font-semibold">{succeeded === "paid" ? "Deposit paid" : "Deposit authorised"}</h2>
         <p className="text-sm text-muted-foreground max-w-xs">
           {succeeded === "paid"
@@ -147,7 +147,7 @@ export function DepositCheckoutPage() {
         <Card className="w-full max-w-md">
           <CardContent className="py-8">
             <div className="flex flex-col items-center gap-3 text-center">
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
+              <CheckCircle2 aria-hidden="true" className="h-12 w-12 text-green-500" />
               <h2 className="text-lg font-semibold">Deposit paid</h2>
               <p className="text-sm text-muted-foreground max-w-xs">
                 {DEPOSIT_PAID_TEXT}

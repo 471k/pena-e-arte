@@ -63,7 +63,7 @@ export function ReferralCodeCard() {
             <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
               <span className="font-mono text-sm flex-1 truncate">{referralCode.shareUrl}</span>
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleCopy}>
-                {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? <Check className="h-3.5 w-3.5 text-success-text" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
 

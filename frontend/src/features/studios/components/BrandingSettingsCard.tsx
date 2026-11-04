@@ -52,7 +52,7 @@ export function BrandingSettingsCard() {
               Displayed in the booking widget footer for your clients.
             </p>
             {upgradeHint && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              <p className="text-xs text-warning-text dark:text-amber-400 mt-1">
                 {upgradeHint}
               </p>
             )}

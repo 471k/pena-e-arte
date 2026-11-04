@@ -30,8 +30,17 @@ export default defineConfig({
     // Vitest stubs every CSS import to an empty string by default — including `?raw`.
     // afterHoursTheme.test.ts needs index.css's real source text (it pins the theme tokens
     // and recomputes their contrast ratios), so that one file is let through. No component
-    // under test imports index.css, so this changes nothing else.
-    css: { include: [/src[\\/]index\.css(\?|$)/] },
+    // under test imports index.css, so this changes nothing else. The same goes for the
+    // two vendor stylesheets the contrast tests read as text: Tailwind's palette
+    // (hardcodedTextColourContrast.test.ts) and Sonner's toast CSS (toastTheme.test.ts) —
+    // nothing imports either as a stylesheet (Sonner injects its CSS from JavaScript).
+    css: {
+      include: [
+        /src[\\/]index\.css(\?|$)/,
+        /tailwindcss[\\/]theme\.css(\?|$)/,
+        /sonner[\\/]dist[\\/]styles\.css(\?|$)/,
+      ],
+    },
     exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
     // Default per-test timeout (5000ms) can be exceeded under full-suite parallel
     // worker load even when nothing is broken — see src/test/setup.ts's

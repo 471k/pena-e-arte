@@ -78,7 +78,7 @@ function ExpiryLabel({ dateStr, status }: { dateStr: string; status: string }) {
   }
   if (days <= 3) {
     return (
-      <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
+      <p className="text-xs text-warning-text dark:text-amber-400 mt-0.5 font-medium">
         {days} day{days !== 1 ? "s" : ""} left
       </p>
     );
@@ -405,7 +405,7 @@ export function AdminDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTriangle className="h-4 w-4 text-warning-text" />
               At-Risk Studios
               {atRisk.length > 0 && (
                 <span className="ml-1 text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-medium">

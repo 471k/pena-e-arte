@@ -5570,3 +5570,172 @@ appointment). A deep-linkable client appointment view with status, preparation a
 is standard across the Fresha/Vagaro/Boulevard/GlossGenius tier. Gaps flagged, not fixed: no
 post-booking reference-image upload; no reminder for outstanding items; the messages thread does not
 yet show which appointment a message is about.
+
+## Accessibility contrast cleanup — themed toasts and the light-mode shade sweep — built — 2026-11-04
+
+Runs the 2026-11-03 triage above. It folds slice 0's follow-up #1 (themed toasts) and #3 (light-mode
+status shades that failed AA long before After Hours) into one cleanup slice. Follow-ups #2 (artist
+picker ARIA) and #4 (the manual's stale SVG illustrations) stay out of scope. Base `b0f45bd6`. Colour
+and labelling only: no behaviour, copy or layout change, and no backend files.
+
+### Toasts: why they were never themed
+- `sonner` 2.0.8 injects its stylesheet from JavaScript (`__insertCSS`, a `<style>` appended to
+  `<head>`) and that stylesheet has no `@layer`.
+- Tailwind v4 emits every utility inside cascade layers, and unlayered CSS beats layered CSS
+  regardless of specificity.
+- So the colour utilities `ui/sonner.tsx` passed through `toastOptions.classNames` never painted:
+  `group-[.toaster]:bg-background`, `text-foreground`, `border-border` and `shadow-lg` on the toast;
+  `text-muted-foreground` on the description; `bg-primary`/`bg-muted` on the action and cancel
+  buttons.
+- Measured on `origin/main`'s production build, inside the After Hours scope, with those classes
+  present on the element: the toast painted Sonner's stock `#FFFFFF` text `#171717` border
+  `#EDEDED` (light) and `#000000` / `#FCFCFC` / `#333333` (dark). The classes asked for `#F5F1E8` /
+  `#19161D` / `#80718D`.
+- Fix: index.css sets Sonner's own variables (`--normal-bg/-text/-border`, the
+  `--success/info/warning/error-*` triples, `--border-radius`) to app tokens, on
+  `:root [data-sonner-toaster][data-sonner-theme]`.
+  - The rule needs (0,3,0) specificity. Sonner's own variable rules are (0,2,0) and load after
+    index.css in production (before it in dev), so source order cannot settle the tie.
+  - Specificity is raised only on custom-property declarations. No painted property and none of
+    Sonner's layout CSS is touched, and Sonner's stylesheet is not moved into a layer.
+  - The toaster already receives the After Hours tokens through slice 0's
+    `body:has([data-theme="after-hours"]) [data-sonner-toaster]` hook. So one var()-based rule gives
+    the unscoped palette outside the scope and the scoped palette inside it, in both schemes.
+  - The bg uses `--color-popover`, which equals `--color-background` outside the scope; inside it is
+    the floating-surface colour, as for every other overlay.
+  - The dead `classNames` were all removed, with no visual change (verified in the browser).
+  - The type triples only paint with `richColors`, which the app does not enable. They are set so
+    that enabling it cannot bring back Sonner's untokened palette.
+- Measured with the WCAG 2.1 relative-luminance formula. Pairs, in the order: text / border /
+  success / info / warning / error / Sonner's own description colour:
+  - light: 19.90 / 3.24 / 5.08 / 7.95 / 5.05 / 6.42 / 10.53
+  - dark: 19.06 / 3.25 / 11.42 / 7.90 / 11.75 / 6.02 / 16.24
+  - After Hours light: 17.59 / 4.43 / 7.97 / 8.47 / 6.98 / 7.27 / 10.35
+  - After Hours dark: 14.69 / 4.13 / 11.53 / 10.49 / 10.42 / 10.06 / 13.51
+  - Type borders on their backgrounds are the same as the type text values.
+- Painted colours of a real toast, verified in Chromium:
+  - out of scope (`/contact`): `rgb(255,255,255)` / `rgb(9,9,11)` / `rgb(142,142,154)` light;
+    `rgb(9,9,11)` / `rgb(250,250,250)` / `rgb(97,97,107)` dark.
+  - in scope (`/book`): `#FFFDF7` / `#19161D` / `#80718D` light; `#211D26` / `#F5F1E8` / `#877A93`
+    dark.
+
+### Shade sweep: what was enumerated
+- Every Tailwind palette text class in non-test `frontend/src` was enumerated: every hue, every
+  shade, every variant.
+  - 472 occurrences: 299 paint in light mode (unprefixed, including `hover:`), 173 are `dark:` twins.
+- Each one was measured against what it actually sits on: a palette background on the same line
+  (composited over the page), or the light page backgrounds (white, After Hours `#F5F1E8` and
+  `#FFFDF7`).
+  - 138 light-mode uses were under 4.5:1. By shade: 200:2, 300:2, 400:9, 500:40, 600:75, 700:10.
+  - The 600 band was the largest group. 700-level text also failed once it sat on a 10–15 % tint
+    of its own hue, or on the ivory canvas.
+- After the sweep, 382 occurrences remain and 32 measure under 4.5:1 in light mode. All 32 are
+  deliberate:
+  - 19 decorative, explicitly `aria-hidden="true"`.
+  - 13 in the guard's allow-list.
+- `ClientAppointmentDetailPage.tsx` and `ServiceRequirementsFieldset.tsx` (slice 2) have zero
+  palette text classes. They use `text-link`, `text-success-text`, `text-destructive-text` and
+  `text-muted-foreground`, so they were confirmed clean, not assumed.
+
+### Classification (prompt §4.2), per cluster
+| Cluster | Kind | Action |
+|---|---|---|
+| Status text and status pills: billing, subscribe, forms lists/details, designs, conduct/feedback/support statuses, notification logs, deposit outcomes, payment method, "Free" price labels, settings warnings, char-limit counters, MyBookings deposit lines | Text, 4.5:1 | Semantic token. Existing `dark:` twins kept untouched, so dark pixels are unchanged. Green/emerald/amber pill tints moved from `/15` to `/10` where a token sits on them: `text-success-text` on `bg-green-500/15` over white measured 4.45, on `/10` 4.66 |
+| Copy-confirmed ticks, setup-checklist tick, no-plan / admin warning triangles, default-card star, KPI accent icons, suspended-studio shield, plan delete icon button | Meaningful icon, 3:1 | Semantic token (clears 4.5 as well) |
+| Large confirmation ticks above a heading (booking confirmed, email confirmed, form signed, deposit paid, unsubscribed, waitlist joined…), the empty-reviews stars, the portfolio-feed ★ (its parent carries the rating label) | Decorative | Colour kept; `aria-hidden="true"` made explicit (lucide already renders it; the guard needs it in source) |
+| Categories, not status: channel badge (Email/SMS/Platform), feedback type (Feature request/Support), cash-pending outcome | Text | Measured darker shade (`blue-700`, `purple-700`, `amber-800`, `emerald-800`, `orange-800`), with a `dark:` twin kept or added (`purple-300`, `emerald-300`) |
+| Boxes designed for dark mode that also render in light: safety notes on the staff appointment page, the artist's profile-strength nudge (public page), "Review submitted" (public) | Text, 1.03–1.58:1 in light | Light tint plus tokens / `text-foreground`; the original dark look is kept by **added** `dark:` twins (`dark:bg-amber-950/20 dark:text-amber-400` etc.) |
+| Impersonation countdown: `indigo-200` on the `indigo-600` banner, 4.33 | Text | `text-white/80`, 4.67 |
+| Staff payment page "Awaiting cash collection" box: `orange-800` on `orange-50/30`, which **in dark mode** measured 1.08 | Text | Added `dark:bg-orange-950/20 dark:text-orange-200` (12+:1); light unchanged (6.66+) |
+| My waitlist "A slot opened up": `blue-700` passed light, 2.42 in dark | Text | `text-info-text` |
+| Icon-only round badges (deposit-rule / promo-code type, service, saved card) | Decorative, type spelled out beside them | Left, and allow-listed with the reason |
+| Solid light badges (`bg-*-100 text-*-800`) used in dark mode too | Text on its own light fill | Left: 6.49+ in both schemes |
+
+Notes:
+- Two `dark:` classes measure under 4.5 and were **not** changed, because the prompt bars changing
+  `dark:` classes. Recorded as found:
+  - `BillingPage` "Studio suspended" body `dark:text-red-400/80` on `red-500/10`: 3.86 on the After
+    Hours dark surface.
+  - `BookPage`'s dismiss-X `dark:text-amber-400/60`: 4.31. It is an icon, so 3:1 applies and it passes.
+- The profile-nudge footnote's newly added dark twin uses `amber-400/70` rather than the old `/60`
+  (4.31 → 5.37), so `/artist/:slug` changes 1,707 px in dark mode.
+
+### New token
+`--color-info-text`, registered in `@theme`, measured the same way as slice 0's tokens:
+
+| Context | Value | Contrast | On the `blue-500/15` badge tint |
+|---|---|---|---|
+| Light | `hsl(221 83% 40%)` | 7.95 on white | 6.65 |
+| Dark | `hsl(213 94% 68%)` | 7.90 | 6.85 |
+| After Hours light | `#2B4C7E` | 7.64 canvas / 8.47 surface | 6.46 |
+| After Hours dark | `#BCCFEF` | 11.34 canvas / 10.49 surface | 9.52 |
+
+No slice 0 token value was changed. `--color-link` is not used for status.
+
+### StarRating decision
+- The amber stars are kept.
+- The rating is never conveyed by the stars alone:
+  - The display wrapper is `role="img"` with `aria-label="Rating: N out of 5 stars"`.
+  - Each interactive star is a labelled radio, with a live text readout of the choice.
+  - The stars themselves are `aria-hidden`.
+- Amber stars are the category convention, and a darker shade would be visually loud. No labelling
+  bug was found, so nothing changed.
+- What remains is a sighted, low-vision reading: a review card shows stars without the number.
+  Adding the number is a copy and layout change, outside this slice; it is flagged here.
+
+### Public screens whose pixels changed (expected, unlike slice 0)
+Pixel-diffed `origin/main` vs this branch, production builds, both schemes:
+- Changed:
+  - `/privacy` and `/terms`, light: 6,743 px (the lawyer-review banner text, `amber-700` → `warning-text`).
+  - `/artist/:slug` for the artist viewing their own page: light 75,292 px (the profile nudge
+    became readable), dark 1,707 px (footnote, above).
+  - Not in the diff set, but changed by design: the "Review submitted" confirmation on public review
+    sections, and `LoginPage`'s amber notice.
+- Zero changed pixels in both schemes: `/login`, `/features`, `/s/:slug`, `/embed/:slug`, `/contact`,
+  `/unsubscribe`, `/data-deletion/instagram`. On the last two only `aria-hidden` was added.
+
+### The guard
+`src/shared/__tests__/hardcodedTextColourContrast.test.ts` measures the light-mode classes on every
+run. It covers every palette text class not behind `dark:`, on its same-line background or the three
+light page backgrounds, with a 4.5:1 bar.
+- How it works:
+  - It reads the palette from `tailwindcss/theme.css` (oklch → sRGB) and the page colours from
+    index.css.
+  - Escape hatches: `aria-hidden="true"` on the same line, or `ALLOWED` (7 files plus StarRating,
+    each with its reason).
+  - Stale allow-list entries fail.
+- It goes beyond the prompt's "400/500 level" because shade level is not the criterion: the 600 band
+  was the largest failing group.
+- Proved non-vacuous: `text-green-500` reintroduced into `StudioProfilePage`'s "Changes saved." made
+  it fail with `features/studios/components/StudioProfilePage.tsx:394 text-green-500 1.97:1 on After
+  Hours canvas`. It passed again once removed.
+- It also self-tests on a sample of the removed classes.
+
+### Tests
+- New:
+  - `toastTheme.test.ts`: the variable rule, Sonner still unlayered, every pair in all four contexts
+    recomputed from the stylesheets.
+  - `sonner.test.tsx`: a real toaster is matched by the toast rule everywhere, by the scope only
+    under a themed layout, and has no dead classes.
+  - `KpiCard.test.tsx`.
+  - The guard.
+  - e2e `toasts paint the app palette …`: a real toast out of scope (`/contact`) and in scope
+    (`/book`), with exact painted colours and axe. It **fails on `origin/main`** in both projects, as
+    intended.
+- Extended: `afterHoursTheme.test.ts` gained `--color-info-text`. `vite.config.ts` lets
+  `tailwindcss/theme.css` and `sonner/dist/styles.css` through Vitest's CSS stubbing, as text only.
+- Results:
+  - `e2e/accessibility.spec.ts`: 20/20 against the branch's production build, light and dark.
+  - lint: 0 errors.
+  - `tsc -b` and build: green.
+  - Full vitest: green apart from the known pre-existing `StudioProfilePage` timeout flake under
+    full load.
+
+### Help (rule 7) and benchmark (rule 6)
+- Help and tours: no change.
+  - `helpContent.ts` and the manual describe two colours: the green "Verified" social badge and the
+    purple impersonation banner. Neither was changed; the banner keeps `bg-indigo-600`, and only its
+    countdown text moved to `white/80`.
+  - Tours target `data-tour` selectors, which were untouched.
+- WCAG 2.1 AA is the floor for this category (Fresha, Vagaro, Boulevard, GlossGenius and Booksy all
+  claim it). The public-page fixes matter most. This is not a feature claim.

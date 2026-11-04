@@ -100,7 +100,7 @@ function CheckoutLinkPanel({
           />
           <Button type="button" variant="outline" size="icon" onClick={copyLink} className="shrink-0">
             {copied
-              ? <Check className="h-4 w-4 text-green-500" />
+              ? <Check className="h-4 w-4 text-success-text" />
               : <Copy className="h-4 w-4" />}
           </Button>
         </div>
@@ -140,7 +140,7 @@ function CashResultPanel({
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 px-4 py-3 flex items-start gap-3">
-        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+        <CheckCircle2 className="h-5 w-5 text-success-text dark:text-green-400 shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium text-green-800 dark:text-green-400">
             Cash payment recorded
@@ -417,8 +417,8 @@ function ConfirmPanel({
 
         {noDepositRule && (
           <div className="flex items-start gap-2 rounded-md border border-yellow-300/50 bg-yellow-50/10 px-3 py-2">
-            <AlertCircle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+            <AlertCircle className="h-4 w-4 text-warning-text mt-0.5 shrink-0" />
+            <p className="text-xs text-warning-text dark:text-yellow-400">
               No deposit rule is set for this appointment. Enter the amount manually.
             </p>
           </div>

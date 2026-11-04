@@ -94,12 +94,12 @@ export function describeDeposit(p: DepositFields): DepositOutcome {
 // Badge colours by outcome (G-13): green = studio received money, slate = given back / nothing charged.
 // The -300 shades keep the label readable on the dark theme.
 export const OUTCOME_BADGE_CLASSES: Record<DepositOutcomeKind, string> = {
-  pending:        "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
-  cashPending:    "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  pending:        "bg-yellow-500/10 text-warning-text dark:text-yellow-300",
+  cashPending:    "bg-orange-500/10 text-orange-800 dark:text-orange-300",
   onHold:         "bg-blue-500/10   text-blue-700 dark:text-blue-300",
-  paid:           "bg-green-500/10  text-green-700 dark:text-green-300",
-  kept:           "bg-green-500/10  text-green-700 dark:text-green-300",
-  partlyKept:     "bg-green-500/10  text-green-700 dark:text-green-300",
+  paid:           "bg-green-500/10  text-success-text dark:text-green-300",
+  kept:           "bg-green-500/10  text-success-text dark:text-green-300",
+  partlyKept:     "bg-green-500/10  text-success-text dark:text-green-300",
   partlyRefunded: "bg-slate-500/10  text-slate-700 dark:text-slate-300",
   refunded:       "bg-slate-500/10  text-slate-700 dark:text-slate-300",
   released:       "bg-slate-500/10  text-slate-700 dark:text-slate-300",

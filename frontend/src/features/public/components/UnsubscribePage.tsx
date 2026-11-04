@@ -30,7 +30,7 @@ export function UnsubscribePage() {
         )}
         {isSuccess && (
           <>
-            <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500" />
+            <CheckCircle2 aria-hidden="true" className="h-10 w-10 mx-auto text-emerald-500" />
             <p className="font-semibold">You've been unsubscribed</p>
             <p className="text-sm text-muted-foreground">
               You won't receive marketing emails from this studio anymore.

@@ -80,7 +80,7 @@ export function PokSettingsCard() {
 
         {!statusLoading && status?.connected && !editing && (
           <div className="rounded-md border px-3 py-3 space-y-2">
-            <p className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
+            <p className="flex items-center gap-2 text-sm font-medium text-success-text dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" /> Connected
             </p>
             <p className="text-xs text-muted-foreground font-mono">Merchant ID: {status.merchantId}</p>

@@ -270,7 +270,7 @@ export function ArtistListPage() {
               className={cn(
                 "text-xs",
                 usage.artists.current >= usage.artists.max
-                  ? "text-amber-600 dark:text-amber-400 font-medium"
+                  ? "text-warning-text dark:text-amber-400 font-medium"
                   : "text-muted-foreground",
               )}
             >

@@ -267,7 +267,7 @@ export function AppointmentDetailPage() {
                     ) : appt.artistName ? (
                       appt.artistName
                     ) : (
-                      <span className="flex items-center gap-1 text-amber-600">
+                      <span className="flex items-center gap-1 text-warning-text">
                         <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
                         Unassigned
                       </span>
@@ -334,12 +334,12 @@ export function AppointmentDetailPage() {
                       {appt.safetyNotes && (
                         <div
                           role="alert"
-                          className="rounded-md border border-amber-800/40 bg-amber-950/20 px-3 py-2"
+                          className="rounded-md border border-amber-800/40 bg-amber-500/10 dark:bg-amber-950/20 px-3 py-2"
                         >
-                          <p className="text-xs font-medium text-amber-400 mb-0.5">
+                          <p className="text-xs font-medium text-warning-text dark:text-amber-400 mb-0.5">
                             Anything else I should know
                           </p>
-                          <p className="text-sm text-amber-200">{appt.safetyNotes}</p>
+                          <p className="text-sm text-foreground dark:text-amber-200">{appt.safetyNotes}</p>
                         </div>
                       )}
                     </div>
@@ -358,7 +358,7 @@ export function AppointmentDetailPage() {
                       label="Aftercare"
                       value={
                         appt.aftercareSentAt
-                          ? <span className="text-emerald-600 text-xs font-medium">Sent ✓</span>
+                          ? <span className="text-success-text text-xs font-medium">Sent ✓</span>
                           : <span className="text-muted-foreground text-xs">Pending</span>
                       }
                     />

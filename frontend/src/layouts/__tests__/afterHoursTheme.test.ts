@@ -124,7 +124,7 @@ describe("After Hours theme layer (index.css)", () => {
     // and hover:bg-primary-hover exactly like the old 90%-opacity primary hover.
     expect(t.get("--color-link")).toBe(t.get("--color-primary"));
     expect(t.get("--color-primary-hover")).toBe("color-mix(in oklab, var(--color-primary) 90%, transparent)");
-    for (const token of ["--color-rule", "--color-success-text", "--color-warning-text"]) {
+    for (const token of ["--color-rule", "--color-success-text", "--color-warning-text", "--color-info-text"]) {
       expect(t.has(token), token).toBe(true);
     }
     const newDark = must(darkRootBlocks[1], "dark :root block for the new tokens").decls;
@@ -170,7 +170,7 @@ describe("After Hours theme layer (index.css)", () => {
     it("body text, muted text, link, error/success/warning text: >= 4.5:1 on canvas and surface", () => {
       for (const [name, bg] of backdrops()) {
         for (const token of ["--color-foreground", "--color-muted-foreground", "--color-link",
-          "--color-destructive-text", "--color-success-text", "--color-warning-text"]) {
+          "--color-destructive-text", "--color-success-text", "--color-warning-text", "--color-info-text"]) {
           expect(contrast(c(token), bg), `${token} on ${name}`).toBeGreaterThanOrEqual(4.5);
         }
       }

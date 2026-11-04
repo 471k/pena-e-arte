@@ -259,10 +259,10 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
         role="status"
         aria-live="polite"
         className="flex items-center gap-2.5 rounded-lg border border-green-800/60
-                   bg-green-950/30 px-4 py-3"
+                   bg-green-500/10 dark:bg-green-950/30 px-4 py-3"
       >
-        <CheckCircle className="h-4 w-4 shrink-0 text-green-400" aria-hidden="true" />
-        <p className="text-sm text-green-400">
+        <CheckCircle className="h-4 w-4 shrink-0 text-success-text dark:text-green-400" aria-hidden="true" />
+        <p className="text-sm text-success-text dark:text-green-400">
           Review submitted — thank you!
         </p>
       </div>

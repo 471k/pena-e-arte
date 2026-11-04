@@ -27,15 +27,15 @@ const TYPE_LABEL: Record<FeedbackType, string> = {
 
 const TYPE_BADGE: Record<FeedbackType, string> = {
   BugReport:      "bg-red-500/15 text-red-700 dark:text-red-400",
-  FeatureRequest: "bg-purple-500/15 text-purple-600",
+  FeatureRequest: "bg-purple-500/15 text-purple-700 dark:text-purple-300",
   General:        "bg-sky-500/15 text-sky-700 dark:text-sky-400",
-  SupportRequest: "bg-emerald-500/15 text-emerald-600",
+  SupportRequest: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
 };
 
 const STATUS_BADGE: Record<FeedbackStatus, string> = {
-  Open:      "bg-blue-500/15 text-blue-600",
-  Reviewing: "bg-amber-500/15 text-amber-600",
-  Resolved:  "bg-green-500/15 text-green-600",
+  Open:      "bg-blue-500/15 text-info-text",
+  Reviewing: "bg-amber-500/10 text-warning-text",
+  Resolved:  "bg-green-500/10 text-success-text",
   Dismissed: "bg-muted text-muted-foreground",
 };
 

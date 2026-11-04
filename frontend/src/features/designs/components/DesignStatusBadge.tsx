@@ -10,8 +10,8 @@ const STATUS_LABEL: Record<DesignStatus, string> = {
 
 const STATUS_CLS: Record<DesignStatus, string> = {
   Draft:             "bg-muted text-muted-foreground",
-  InReview:          "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  Approved:          "bg-green-500/15 text-green-600 dark:text-green-400",
+  InReview:          "bg-blue-500/15 text-info-text dark:text-blue-400",
+  Approved:          "bg-green-500/10 text-success-text dark:text-green-400",
   ChangesRequested:  "bg-amber-500/15 text-amber-800 dark:text-amber-400",
 };
 

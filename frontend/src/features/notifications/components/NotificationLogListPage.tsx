@@ -52,7 +52,7 @@ function NotificationRow({
           </div>
           <div className="shrink-0 text-right space-y-1">
             {log.isSuccess ? (
-              <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <span className="inline-flex items-center gap-1 text-xs text-success-text dark:text-green-400">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Delivered
               </span>

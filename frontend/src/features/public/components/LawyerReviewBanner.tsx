@@ -12,7 +12,7 @@ export function LawyerReviewBanner() {
   return (
     <div
       role="alert"
-      className="mb-6 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
+      className="mb-6 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-warning-text dark:text-amber-300"
     >
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <p>

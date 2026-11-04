@@ -234,7 +234,7 @@ export function SubmitIntakeFormPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4 px-6">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+          <CheckCircle aria-hidden="true" className="h-12 w-12 text-green-500 mx-auto" />
           <p className="text-base font-medium">Intake form submitted!</p>
           <p className="text-sm text-muted-foreground">
             Your studio has received your information.

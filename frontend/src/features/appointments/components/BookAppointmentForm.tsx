@@ -609,9 +609,9 @@ export function BookAppointmentForm() {
     return (
       <div className="text-center space-y-3 py-6">
         {depositDone === "cash" ? (
-          <Banknote className="h-8 w-8 mx-auto text-green-500" />
+          <Banknote aria-hidden="true" className="h-8 w-8 mx-auto text-green-500" />
         ) : (
-          <CheckCircle2 className="h-8 w-8 mx-auto text-green-500" />
+          <CheckCircle2 aria-hidden="true" className="h-8 w-8 mx-auto text-green-500" />
         )}
         <p className="text-sm font-medium">Appointment requested!</p>
         <p className="text-xs text-muted-foreground">

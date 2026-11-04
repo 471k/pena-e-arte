@@ -108,7 +108,7 @@ export function WebhookSettingsCard() {
         </p>
 
         {!studio.allowApiAccess && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs text-warning-text dark:text-amber-400">
             Upgrade to the Pro plan to enable webhooks.
           </p>
         )}
@@ -123,7 +123,7 @@ export function WebhookSettingsCard() {
                 </div>
 
                 {!status.isActive && (
-                  <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <p className="flex items-start gap-1.5 text-xs text-warning-text dark:text-amber-400">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                     Disabled after repeated delivery failures. Re-save the URL below to reactivate.
                   </p>

@@ -203,12 +203,12 @@ function ProfileStrengthNudge({
   if (!hasRate)            missing.push("Set your hourly rate");
 
   return (
-    <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 p-4 space-y-3">
+    <div className="rounded-lg border border-amber-800/50 bg-amber-500/10 dark:bg-amber-950/20 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-amber-300">
+        <p className="text-sm font-semibold text-warning-text dark:text-amber-300">
           Profile {pct}% complete
         </p>
-        <span className="text-xs text-amber-400/70">{done}/{total} sections</span>
+        <span className="text-xs text-warning-text dark:text-amber-400/70">{done}/{total} sections</span>
       </div>
 
       <div className="h-1.5 rounded-full bg-amber-900/40 overflow-hidden">
@@ -225,14 +225,14 @@ function ProfileStrengthNudge({
 
       <ul className="space-y-1">
         {missing.map((action) => (
-          <li key={action} className="flex items-center gap-1.5 text-xs text-amber-300/70">
+          <li key={action} className="flex items-center gap-1.5 text-xs text-foreground dark:text-amber-300/70">
             <span aria-hidden="true">·</span>
             {action}
           </li>
         ))}
       </ul>
 
-      <p className="text-xs text-amber-400/60">
+      <p className="text-xs text-muted-foreground dark:text-amber-400/70">
         Only visible to you. Complete your profile to attract more clients.
       </p>
     </div>

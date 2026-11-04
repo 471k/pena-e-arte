@@ -65,7 +65,7 @@ export function ForgotPasswordPage() {
           <CardContent>
             {isSuccess ? (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+                <CheckCircle aria-hidden="true" className="h-8 w-8 text-green-500" />
                 <p className="text-sm">
                   If an account exists for that email, a reset link has been sent.
                 </p>

@@ -267,6 +267,18 @@ const AFTER_HOURS = {
 } as const;
 // index.css's unscoped --color-background: hsl(0 0% 100%) / hsl(240 10% 3.9%).
 const UNSCOPED_BACKGROUND = { light: "rgb(255, 255, 255)", dark: "rgb(9, 9, 11)" } as const;
+// A toast paints --color-popover / --color-popover-foreground / --color-border (index.css).
+// Unscoped: hsl(0 0% 100%) / hsl(240 10% 3.9%) / hsl(240 5.9% 58%) light,
+//           hsl(240 10% 3.9%) / hsl(0 0% 98%) / hsl(240 5% 40%) dark.
+const UNSCOPED_TOAST = {
+  light: { bg: "rgb(255, 255, 255)", color: "rgb(9, 9, 11)",    border: "rgb(142, 142, 154)" },
+  dark:  { bg: "rgb(9, 9, 11)",      color: "rgb(250, 250, 250)", border: "rgb(97, 97, 107)" },
+} as const;
+// After Hours: #FFFDF7 / #19161D / #80718D light, #211D26 / #F5F1E8 / #877A93 dark.
+const AFTER_HOURS_TOAST = {
+  light: { bg: AFTER_HOURS.light.surface, color: "rgb(25, 22, 29)",    border: "rgb(128, 113, 141)" },
+  dark:  { bg: AFTER_HOURS.dark.surface,  color: "rgb(245, 241, 232)", border: "rgb(135, 122, 147)" },
+} as const;
 
 async function colourScheme(page: Page): Promise<"light" | "dark"> {
   return page.evaluate(() => (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
@@ -339,6 +351,82 @@ test.describe("After Hours palette — scoped to authenticated layouts", () => {
     await expect.poll(() => sheet.evaluate((el) => el.getAnimations().length)).toBe(0);
     expect(await paintedBackground(page, '[role="dialog"]')).toBe(palette.canvas);
     await assertNoViolations(new AxeBuilder({ page }).include('[role="dialog"]'), page);
+  });
+
+  // Toasts (accessibility cleanup, 2026-11-04). Sonner's stylesheet is unlayered, so it beats
+  // every Tailwind utility; index.css themes toasts through Sonner's own --normal-* variables
+  // instead. Before that, a toast painted Sonner's stock #fff/#171717 (light) and #000/#fcfcfc
+  // (dark) everywhere, ignoring both the app palette and the After Hours scope. These assert
+  // the painted colours of a REAL toast — one out of scope (/contact) and one in scope
+  // (/book) — in whichever colour scheme this project runs, and scan each with axe.
+  test("toasts paint the app palette out of scope and the After Hours palette in scope, and pass axe", async ({ page }) => {
+    const settledToast = async (text: RegExp) => {
+      const toast = page.locator("[data-sonner-toast]").filter({ hasText: text }).first();
+      await expect(toast).toBeVisible({ timeout: 10_000 });
+      await waitForToastsToSettle(page);
+      return toast.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { bg: s.backgroundColor, color: s.color, border: s.borderTopColor, themed: Boolean(el.closest("[data-theme]")) };
+      });
+    };
+
+    // ── Out of scope: the public contact form (PublicContentLayout, no data-theme). ──
+    await mockApiFallback(page);
+    await page.goto("/contact");
+    const mode = await colourScheme(page);
+    await page.getByLabel("Name").fill("Ana Silva");
+    await page.getByLabel("Email").fill("ana@example.com");
+    await page.getByLabel("Message").fill("Hello — testing the contact form.");
+    await page.getByRole("button", { name: "Send message" }).click();
+    const outside = await settledToast(/Message sent/);
+    expect(await page.locator("[data-theme]").count()).toBe(0);
+    expect(outside).toEqual({ ...UNSCOPED_TOAST[mode], themed: false });
+    await assertNoViolations(new AxeBuilder({ page }).include("[data-sonner-toaster]"), page);
+
+    // ── In scope: a booking the mocked API rejects fires a real toast.error on /book. ──
+    await page.unrouteAll({ behavior: "ignoreErrors" });
+    await mockApiFallback(page);
+    await mockAuthLogin(page, CLIENT_TOKEN);
+    await page.route("**/api/v1/artists*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          { id: ARTIST_ID, firstName: "Rafaela", lastName: "Costa", email: "rafaela@tinta-alma.com", specializations: [] },
+        ]),
+      });
+    });
+    await page.route("**/api/v1/appointments", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 400,
+          contentType: "application/json",
+          body: JSON.stringify({ title: "Bad Request", detail: "That slot was just taken." }),
+        });
+      } else {
+        await route.fallback();
+      }
+    });
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    await page.getByRole("combobox", { name: "Select artist" }).click();
+    await page.getByRole("option", { name: "Rafaela Costa" }).waitFor({ state: "visible", timeout: 5_000 });
+    await page.getByRole("option", { name: "Rafaela Costa" }).click();
+    const future = new Date(Date.now() + 7 * 86_400_000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    await page.getByLabel("Date & Time").fill(
+      `${future.getFullYear()}-${pad(future.getMonth() + 1)}-${pad(future.getDate())}` +
+      `T${pad(future.getHours())}:${pad(future.getMinutes())}`,
+    );
+    await page.getByLabel("Appointment Duration").click();
+    await page.getByRole("option", { name: "2 hours" }).waitFor({ state: "visible", timeout: 5_000 });
+    await page.getByRole("option", { name: "2 hours" }).click();
+    await page.getByLabel("What are you looking to get done?").fill("A small rose");
+    await page.getByRole("button", { name: "Request Appointment" }).click();
+    const inside = await settledToast(/./);
+    // The toaster mounts beside the router, NOT inside the themed layout — the scoped
+    // colours reach it only through index.css's `body:has(...) [data-sonner-toaster]` hook.
+    expect(inside).toEqual({ ...AFTER_HOURS_TOAST[mode], themed: false });
+    await assertNoViolations(new AxeBuilder({ page }).include("[data-sonner-toaster]"), page);
   });
 
   test("public pages outside the four layouts keep the unscoped palette", async ({ page }) => {

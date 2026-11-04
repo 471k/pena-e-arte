@@ -6,9 +6,9 @@ import type { ReportStatus } from "../conductReports.types";
 // react-refresh/only-export-components when mixed with these non-component exports.
 
 export const STATUS_BADGE: Record<ReportStatus, string> = {
-  Open:      "bg-blue-500/15 text-blue-600",
-  Reviewing: "bg-amber-500/15 text-amber-600",
-  Resolved:  "bg-green-500/15 text-green-600",
+  Open:      "bg-blue-500/15 text-info-text",
+  Reviewing: "bg-amber-500/10 text-warning-text",
+  Resolved:  "bg-green-500/10 text-success-text",
   Dismissed: "bg-muted text-muted-foreground",
 };
 

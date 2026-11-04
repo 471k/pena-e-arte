@@ -64,7 +64,7 @@ export function PortableProfileToggle({ currentOptIn }: Props) {
 
         {enabled && (
           <div className="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
-            <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <ShieldAlert className="h-4 w-4 text-warning-text dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 dark:text-amber-300">
               Any artist on TattooOS will be able to view your tattoo history
               (body-map locations, tattoo photos, and descriptions). Your medical

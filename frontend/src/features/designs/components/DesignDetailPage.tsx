@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: string | null }) {
   }
   if (status === "Approved") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-success-text dark:text-green-400">
         <Check className="h-3 w-3" />
         Approved
       </span>
