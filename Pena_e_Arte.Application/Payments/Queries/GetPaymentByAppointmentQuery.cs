@@ -1,3 +1,4 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
@@ -39,10 +40,32 @@ public class GetPaymentByAppointmentHandler(IAppDbContext db, ICurrentUser curre
         Appointment? appointment = await db.Appointments
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+
+        // Artists may only see the payment on a session assigned to them, the same rule as the
+        // session preparation read. Without this any artist could read any payment in the studio,
+        // including other artists' session splits. 404 (null), never 403, so a guessed id confirms nothing.
+        if (currentUser.Role == "artist")
+        {
+            Guid? myArtistId = await db.Artists
+                .Where(a => a.UserId == currentUser.UserId)
+                .Select(a => (Guid?)a.Id)
+                .FirstOrDefaultAsync(ct);
+            if (myArtistId is null || appointment?.ArtistId != myArtistId)
+                return null;
+        }
+
         return payment.ToResponse() with
         {
             AppointmentStatus = appointment?.Status.ToString(),
             AppointmentDate = appointment?.Date,
         };
+    }
+}
+
+public class GetPaymentByAppointmentValidator : AbstractValidator<GetPaymentByAppointmentQuery>
+{
+    public GetPaymentByAppointmentValidator()
+    {
+        RuleFor(x => x.AppointmentId).NotEmpty();
     }
 }
