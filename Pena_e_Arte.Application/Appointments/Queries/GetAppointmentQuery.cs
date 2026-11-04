@@ -19,6 +19,8 @@ public class GetAppointmentHandler(IAppDbContext db)
             .Include(a => a.Artist)
             .Include(a => a.Attachments)
             .Include(a => a.Service)
+            // The brief, placement and safety notes the page shows. Without it they were always null.
+            .Include(a => a.Intake)
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), query.AppointmentId);
 

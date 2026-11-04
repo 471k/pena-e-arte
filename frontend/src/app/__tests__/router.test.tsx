@@ -49,8 +49,8 @@ describe("getRoleRedirectPath", () => {
     expect(getRoleRedirectPath(Role.Client)).toBe("/book");
   });
 
-  it("returns /schedule for artist", () => {
-    expect(getRoleRedirectPath(Role.Artist)).toBe("/schedule");
+  it("returns /today for artist (the daily entry point; the week view stays at /schedule)", () => {
+    expect(getRoleRedirectPath(Role.Artist)).toBe("/today");
   });
 
   it("returns /dashboard for owner", () => {
@@ -84,7 +84,7 @@ describe("RoleGuard", () => {
             </Route>
             <Route path="/login"     element={<div data-testid="login-page" />} />
             <Route path="/book"      element={<div data-testid="client-home" />} />
-            <Route path="/schedule"  element={<div data-testid="artist-home" />} />
+            <Route path="/today"     element={<div data-testid="artist-home" />} />
             <Route path="/dashboard" element={<div data-testid="owner-home" />} />
             <Route path="/platform"  element={<div data-testid="admin-home" />} />
           </Routes>
@@ -126,7 +126,7 @@ describe("RoleGuard", () => {
     expect(screen.queryByTestId("protected-page")).not.toBeInTheDocument();
   });
 
-  it("redirects artist to /schedule when accessing a client-only route", () => {
+  it("redirects artist to /today when accessing a client-only route", () => {
     renderGuard([Role.Client], "artist");
     expect(screen.getByTestId("artist-home")).toBeInTheDocument();
     expect(screen.queryByTestId("protected-page")).not.toBeInTheDocument();

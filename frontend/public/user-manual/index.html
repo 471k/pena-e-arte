@@ -339,6 +339,7 @@ ol.steps li { margin: 6px 0; }
       <div class="nav-section">
         <button class="nav-section-toggle" aria-expanded="true">Schedule</button>
         <ul class="nav-section-list">
+          <li><a href="#artist-today" data-nav-link>Today</a></li>
           <li><a href="#artist-schedule" data-nav-link>Weekly schedule</a></li>
           <li><a href="#artist-appointment-detail" data-nav-link>Appointment detail</a></li>
           <li><a href="#artist-messaging" data-nav-link>Messages</a></li>
@@ -1614,11 +1615,29 @@ ol.steps li { margin: 6px 0; }
 <div class="crosslinks">See also: <a href="#client-book">Book an appointment</a></div>
 </section>
 
+<section id="artist-today" data-role="artist">
+<h2><span class="role-badge role-artist">Artist</span> Today</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own sessions)</td></tr><tr><td>Owner</td><td>✓ (own assigned sessions, in the Artist view)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>The artist's home screen at <code>/today</code>, first in the menu and where an artist lands after signing in. It lists the sessions assigned to you on the studio's current day, including one that started last night and is still running. Each session shows its date and time in the studio's timezone (both dates when it runs past midnight, e.g. <em>Wed 4 Nov, 23:00 – Thu 5 Nov, 02:00</em>), the client, the status, a short line of the brief, the placement, how many reference images there are, the deposit status and a preparation count such as <em>Preparation: 2 of 4 done</em>. An owner who also works as an artist sees only their own assigned sessions here; requests that still need an artist stay on the schedule and the dashboard.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open <span class="step-title">Today</span> from the top of the menu.</li>
+<li>Click <span class="step-title">Brief and preparation</span> on a session to open the full brief (long ones have <span class="step-title">Show more</span>), the area photo and reference images, and each preparation requirement: whether the client has done it (for example <em>Not signed yet</em>) and what they can still do about it.</li>
+<li>If something is outstanding, write to the client in the <span class="step-title">Message … about this session</span> box and click <span class="step-title">Send</span>. The message lands in your conversation with them and is labelled with this appointment.</li>
+<li>Click <span class="step-title">Open appointment</span> for the full record (notes, safety notes, forms), or <span class="step-title">Open schedule</span> for the week view.</li>
+</ol>
+<div class="callout callout-tip"><strong>Preparation is never a gate.</strong> It is worked out from the studio's real records (a signed consent form, a submitted intake form, a reference image added at booking, the deposit payment), so nothing has to be ticked off by hand, and you can always go ahead with the session, for example by completing a form with the client at the studio. A service that asks for nothing shows no preparation count at all.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> reference images can only be added when the client books, so ask the client about a missing one directly. A client without a TattooOS account can't be messaged here.</div>
+<p>When you have no sessions today the page says so and links to your schedule.</p>
+<div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#artist-appointment-detail">Appointment detail</a>, <a href="#artist-messaging">Artist: messages</a></div>
+</section>
+
 <section id="artist-schedule" data-role="artist">
 <h2><span class="role-badge role-artist">Artist</span> Weekly schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (all artists)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The artist's home screen at <code>/schedule</code>: a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card (on a Requested booking the trash icon declines the request instead). A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet. Owners get this button after switching to the Artist view.</p>
+<p>The artist's week view at <code>/schedule</code> (<a href="#artist-today">Today</a> is where you land): a week-by-week list of appointments grouped by day, with quick confirm/complete/no-show/cancel actions right on each card (on a Requested booking the trash icon declines the request instead). A <strong>Quick Reminder</strong> button in the toolbar sends a one-off SMS to anyone — even someone with no appointment or client record yet. Owners get this button after switching to the Artist view.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Weekly schedule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1640,7 +1659,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click an appointment card to open its full detail, or use the inline <span class="step-title">Confirm</span> / <span class="step-title">Complete</span> / no-show / cancel buttons directly on the card.</li>
 <li>Click the <span class="step-title">Quick Reminder</span> button (message icon, top right) to send a one-off SMS to a typed-in name and phone number (the country starts on your studio's country; change it if needed, then type the number) — no appointment or client record required. The dialog stays open after you send and lists your <span class="step-title">Recent quick reminders</span> (newest 50) with each one's status, so you can see that it went out. Owners: switch to the <span class="step-title">Artist</span> view in the header first; the text is sent on behalf of your own artist profile.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#artist-appointment-detail">Appointment detail</a>, <a href="#owner-schedule">Owner: schedule</a></div>
+<div class="crosslinks">See also: <a href="#artist-today">Today</a>, <a href="#artist-appointment-detail">Appointment detail</a>, <a href="#owner-schedule">Owner: schedule</a></div>
 </section>
 
 <section id="artist-appointment-detail" data-role="artist">

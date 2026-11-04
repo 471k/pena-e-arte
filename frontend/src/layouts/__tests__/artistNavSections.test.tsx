@@ -10,6 +10,18 @@ const BASE = {
 } as const;
 
 describe("buildArtistSections", () => {
+  it("puts Today first, ahead of Schedule, with its own tour id — for an artist and for an owner in artist mode", () => {
+    const artist = flattenNavItems(buildArtistSections({ ...BASE, tourIds: true }));
+    expect(artist[0]).toMatchObject({ label: "Today", href: "/today", tourId: "artist-today-nav" });
+    expect(artist[1]?.label).toBe("Schedule");
+
+    // The owner's artist mode keeps "Owner Dashboard" as its escape hatch, then Today; Today never needs
+    // an ?artistId because it is always the viewer's own sessions.
+    const owner = flattenNavItems(buildArtistSections({ ...BASE, scheduleHref: "/schedule?artistId=a1", ownerDashboard: true }));
+    expect(owner.map((i) => i.label).slice(0, 3)).toEqual(["Owner Dashboard", "Today", "Schedule"]);
+    expect(owner.find((i) => i.label === "Today")?.href).toBe("/today");
+  });
+
   it("labels the group that holds Clients/Messages/Waitlist 'People' so it no longer echoes its own first item", () => {
     const sections = buildArtistSections({ ...BASE });
     const group = sections.find((s) => s.id === "clients");

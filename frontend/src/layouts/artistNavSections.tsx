@@ -1,5 +1,5 @@
 import {
-  Bell, CalendarDays, DollarSign, FileText, ImagePlus, LayoutDashboard, MessageCircle,
+  Bell, CalendarDays, CalendarCheck, DollarSign, FileText, ImagePlus, LayoutDashboard, MessageCircle,
   Palette, ScrollText, ShieldAlert, Users, Wallet, ListOrdered, Layers,
 } from "lucide-react";
 import type { NavItem, NavSection } from "@/shared/types/navItem";
@@ -29,6 +29,9 @@ export function buildArtistSections(opts: ArtistNavOptions): NavSection[] {
     ...(opts.ownerDashboard
       ? [{ label: "Owner Dashboard", href: "/dashboard", icon: <LayoutDashboard className={icon} /> }]
       : []),
+    // First: the daily entry point (E04a). It always shows the viewer's own sessions, so it needs no
+    // ?artistId for an owner in artist mode.
+    { label: "Today", href: "/today", icon: <CalendarCheck className={icon} />, tourId: tour("artist-today-nav") },
     { label: "Schedule", href: opts.scheduleHref, icon: <CalendarDays className={icon} />, tourId: tour("artist-schedule-nav") },
   ];
 

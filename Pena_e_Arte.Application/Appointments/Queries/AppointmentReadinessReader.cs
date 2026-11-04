@@ -8,9 +8,11 @@ using Pena_e_Arte.Domain.Services;
 namespace Pena_e_Arte.Application.Appointments.Queries;
 
 /// <summary>
-/// Reads the facts DEC03 readiness is derived from and maps the result for clients. Shared by
-/// GET /appointments/mine (summary counts per row) and GET /appointments/mine/{id} (itemised), so the
-/// two can never disagree about the same appointment.
+/// Reads the facts DEC03 readiness is derived from and maps the result: for clients, and (E04a) for the
+/// staff who prepare the session. Shared by GET /appointments/mine and the staff list GET /appointments
+/// (summary counts per row), GET /appointments/mine/{id} (itemised for the client) and
+/// GET /appointments/{id}/preparation (itemised for the artist), so none of them can disagree about the
+/// same appointment. Only the wording differs between the two audiences.
 /// </summary>
 internal static class AppointmentReadinessReader
 {
@@ -56,6 +58,57 @@ internal static class AppointmentReadinessReader
     public static List<AppointmentReadinessItemResponse> Itemise(
         IReadOnlyList<ReadinessItem> items, ReadinessFacts facts, Guid appointmentId) =>
         items.Select(i => ToResponse(i, facts, appointmentId)).ToList();
+
+    /// <summary>
+    /// The same items worded for the artist preparing the session (E04a, A03): whether the client has
+    /// done each thing, and for an outstanding one what the client can still do, so the artist knows what
+    /// to ask for. Never the client's own instructions ("Sign the consent form"): an artist doesn't sign
+    /// the client's consent form.
+    /// </summary>
+    public static List<AppointmentPreparationItemResponse> ItemiseForStaff(
+        IReadOnlyList<ReadinessItem> items, ReadinessFacts facts) =>
+        items.Select(i => ToStaffResponse(i, facts)).ToList();
+
+    private static AppointmentPreparationItemResponse ToStaffResponse(ReadinessItem item, ReadinessFacts facts)
+    {
+        // Once the session is over (or cancelled) there is nothing left to follow up.
+        bool upcoming = facts.Status is AppointmentStatus.Pending or AppointmentStatus.Confirmed;
+        bool cashPromised = facts.PaymentStatus == PaymentStatus.CashPending;
+
+        (string label, string done, string outstanding, string? followUp) = item.Requirement switch
+        {
+            ReadinessRequirement.DepositPaid => (
+                "Deposit",
+                facts.DepositAmount <= 0m ? "Nothing due" : "Secured",
+                cashPromised ? "Cash not received yet" : "Not paid yet",
+                cashPromised
+                    ? "The client chose to pay in cash at the studio."
+                    : "The client can pay it from their appointment page."),
+            ReadinessRequirement.IntakeForm => (
+                "Intake form",
+                "Submitted",
+                "Not submitted yet",
+                "The client can fill it in from their appointment page."),
+            ReadinessRequirement.ConsentForm => (
+                "Consent form",
+                "Signed",
+                "Not signed yet",
+                "The client can sign it from their appointment page."),
+            ReadinessRequirement.ReferenceImage => (
+                "Reference image",
+                "Added",
+                "None added",
+                "Clients can only add reference images when they book, so ask the client about it."),
+            _ => throw new ArgumentOutOfRangeException(nameof(item), item.Requirement, null),
+        };
+
+        return new AppointmentPreparationItemResponse(
+            item.Requirement.ToString(),
+            label,
+            item.Satisfied,
+            item.Satisfied ? done : outstanding,
+            item.Satisfied || !upcoming ? null : followUp);
+    }
 
     private static AppointmentReadinessItemResponse ToResponse(ReadinessItem item, ReadinessFacts facts, Guid appointmentId)
     {

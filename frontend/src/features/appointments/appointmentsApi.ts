@@ -4,6 +4,7 @@ import { baseQuery } from "@/shared/api/baseQuery";
 // inside callbacks that run after both modules have loaded.
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import type {
+  AppointmentPreparationResponse,
   AppointmentResponse,
   AssignAppointmentArtistRequest,
   CancellationPreviewResponse,
@@ -21,14 +22,21 @@ export const appointmentsApi = createApi({
   tagTypes: ["Appointment"],
   endpoints: (builder) => ({
     getAppointments: builder.query<AppointmentResponse[], GetAppointmentsParams>({
-      query: ({ from, to, artistId } = {}) => ({
+      query: ({ from, to, artistId, assignedToMe } = {}) => ({
         url:    "appointments",
         params: {
           ...(from ? { from } : {}),
           ...(to ? { to } : {}),
           ...(artistId ? { artistId } : {}),
+          ...(assignedToMe ? { assignedToMe: true } : {}),
         },
       }),
+      providesTags: ["Appointment"],
+    }),
+    // Staff: a session's preparation for the artist (E04a), worded about the client. Tagged
+    // "Appointment" so a cancel, reschedule or completion anywhere refetches it.
+    getAppointmentPreparation: builder.query<AppointmentPreparationResponse, string>({
+      query: (id) => `appointments/${id}/preparation`,
       providesTags: ["Appointment"],
     }),
     getAppointment: builder.query<AppointmentResponse, string>({
@@ -134,6 +142,7 @@ export const appointmentsApi = createApi({
 export const {
   useGetAppointmentsQuery,
   useGetAppointmentQuery,
+  useGetAppointmentPreparationQuery,
   useGetMyAppointmentsQuery,
   useGetMyAppointmentQuery,
   useGetCancellationPreviewQuery,
