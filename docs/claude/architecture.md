@@ -5850,3 +5850,109 @@ Carried forward again.
 ### Rollback
 `dotnet ef database update AddChatMessageAppointmentId` (drops the nullable column), then revert the
 commit. Additive and nullable: the previous build runs fine against the new column.
+
+## Cancellation/refund money path re-proved after slice 1 — and held deposits are unreachable — 2026-11-04
+
+Slice 1 (PR #328) extracted the cancellation money decision into `CancellationOutcome.Decide` and
+was verified only against a test double, then shipped to production. It has now been re-proved
+against real POK. Full evidence: `claude-shared\pok-gate\evidence.md`, last section; report:
+`claude-shared\handoffs\code-report-cancellation-refund-verification-2026-11-04.md`.
+
+### Result: the refactor preserved the recorded behaviour
+Four scenarios at `6eeb514b`, each with the new `cancellation-preview` called first and compared
+against what POK actually did: a full refund of 1,234 ALL; a 50% late cancel refunding exactly 617
+(601.58 + 15.42 commission), matching both the preview and `18c43155`'s `payment.Amount` base; a 0%
+late cancel making **no provider call at all** and marking the appointment Forfeited; and a declared
+cash deposit resolving to `NothingCollected` with no POK order in existence. Every POK outcome
+matched its preview. Nothing was changed to make anything pass.
+
+### The finding that matters more than the result
+**No new booking can create a held deposit.** Since C-4 (22 October) both appointment-deposit paths
+pass `CaptureImmediately: true` — `CreateDepositPaymentCommand.cs:178` and
+`CreatePaymentIntentCommand.cs:59` — so every booking charges immediately. Consequences:
+
+- `CancellationOutcome`'s held branches (`ReleaseHold`, `CaptureWhole`, `CaptureKeptShare`) are
+  reachable only by **pre-22-October holds**. They are still correct and still tested, and should be
+  kept, but they are legacy paths, not live ones.
+- The release gate's T5a and T5b baselines — the hold-release and partial-capture cases this
+  project treated as the reference behaviour — describe a path the application can no longer enter.
+  They remain valid history; they are not a live regression surface.
+- Whether those branches can be hit at all now depends on whether any `Payment` rows remain with
+  `Status = Captured` and `Method = Card` in production. **Not yet counted** — a read-only production
+  query needing the owner's go-ahead.
+
+### The 0%-forfeit "discrepancy" was not one
+This project flagged the gate's C0 line ("0% forfeit always proceeds, deposit stays held") as
+possibly contradicting the handler, which captures. It does not: the C0 line answers the gate's
+**failure** sub-question — what happens when POK refuses or is unreachable during a held-deposit
+cancellation — while capture-on-forfeit is the normal case, introduced by the same gate commit
+`a58b229b` and proved live by go 7 (POK captured 12.34 of 12.34). Both halves are intact at
+`6eeb514b`. Neither record was changed.
+
+### Two corrections to earlier records
+- Phase 0's "Deployed production → also POK staging (go-live blocker C-2)" is **stale**. Read from
+  the running pods on 4 Nov: production → `https://api.pokpay.io`, staging → `https://api-staging.pokpay.io`.
+  Production moved to POK production on 26 October.
+- The G-5/G-6 owner-display gap ("kept 617" indistinguishable from "nothing charged") is **already
+  closed**, by `frontend/src/features/payments/depositOutcome.ts` (`describeDeposit`, G-13), which
+  derives the real outcome from `refundedAmount`, `paidAt` and `appointmentStatus` and shows the
+  receipt only when actually charged. No new backend work is needed for those screens.
+
+### What is left of the held-deposit cancellation-wording question
+Only email/SMS copy. `SendAppointmentCancellationCommand` receives just `refundedNow` and
+`depositForfeited`; charged deposits are covered, and the uncovered case — a held deposit's
+forfeit or partial — now arises **only for legacy holds**. So the production count above decides
+whether that copy change is worth making at all, rather than the copy being written first.
+
+### Environment limitation worth knowing
+**Deployed staging cannot verify money at all**: `Payments__CardDepositsEnabled=false`, no Vault in
+the pod (blockers doc C-1), no staging studio has a POK merchant, and its `payments` table is empty.
+This verification therefore ran on the local stack against POK staging, per the gate's own D1=A
+setup. Any future "verify on staging" plan must either do the same or first give staging a Vault.
+
+## Legacy held deposits in production: zero — and successful POK actions are now logged — 2026-11-04
+
+Follow-up to the entry above (its §4.2 and §4.3). Branch `feat/provider-action-logging`, commit `518d0bed`.
+Handoff: `claude-shared\handoffs\code-report-legacy-holds-and-provider-logging-2026-11-04.md`.
+
+### Production count: 0 held card deposits
+Read on 2026-11-04 at about 15:10 CET, with the owner's explicit go-ahead, using the **production**
+kubeconfig against database `pena_e_arte_prod`. A throwaway pod read the connection string from the k8s
+secret inside the pod (never printed), set the session `READ ONLY`, ran fixed queries and was deleted.
+Counts, dates and `StudioId` only.
+
+- `payments` with `Status = 'Captured' AND Method = 'Card' AND DeletedAt IS NULL`: **0** (oldest/newest NULL).
+- Whole table, for scale: **3** rows, all `Refunded / Card` (the C-11 production tests), so the zero is
+  not a wrong-database artifact.
+
+**Conclusion.** No legacy hold exists in production, and since C-4 none can be created, so
+`CancellationOutcome`'s `ReleaseHold`, `CaptureWhole` and `CaptureKeptShare` are unreachable in practice.
+Keep them: they are cheap and tested. **The held-deposit cancellation-wording question is closed and no
+copy slice is recommended.** It reopens only if holds come back, for example if `CaptureImmediately` is
+ever turned off.
+
+### Provider-action logging
+`PokPaymentProvider` (the single choke point, not the call sites) now writes one `Information` line per
+mutating POK call that returns normally: `capture`, `partial-capture`, `refund`, `cancel`. Properties:
+`Action`, `PaymentId`, `StudioId`, `OrderRef` (the first 8 characters of the POK order id, never the full
+id), `Amount`, `Currency`, `Outcome` (`captured` / `refunded` / `canceled`, or `already-captured` on an
+accepted 409 and `not-found` on an accepted cancel 404). No PII. Failures and warnings are unchanged. No
+request, order or condition sent to POK changed: the diff only keeps the `SendAsync` return values that
+used to be discarded.
+
+- **`PaymentId` comes from POK's echo**, because the capture, refund and cancel signatures carry no payment
+  id. It is the order's `merchantCustomReference`, which this app sets at creation: the Payment id for
+  deposits, the gift-card or package-purchase id for those orders. A full capture reads it from the GET it
+  already makes. Partial capture, refund and cancel read it from POK's response. It is logged only if it
+  parses as a GUID, so free text on an order made elsewhere never reaches the log. It is null if POK does
+  not echo it. POK's refund echo carrying the reference was observed on 23 Oct; capture and cancel echoes
+  are assumed to have the same shape but have not been read.
+- **Deviation:** `GetStatusAsync` already had an `Information` diagnostics line before this change (order
+  flags and amounts, truncated ref, added at the release gate). It is left untouched. The new test asserts
+  that status polling writes no provider-action line, not "nothing at Information". The reconciliation job
+  runs daily at 02:00, plus debounced on demand, so that line is low volume. Whether to demote it to
+  `Debug` is the owner's call.
+- Tests: 13 new cases in `PokPaymentProviderTests`. The truncation guard was mutation-checked: logging the
+  full id fails 8 of 9 cases.
+- Help: none. Server logging has no user-visible surface, and no Help or manual text says what is or isn't
+  logged.
