@@ -54,8 +54,8 @@ public class GetConversationsHandlerTests
         _db.Conversations.AddRange(older, newer);
         await _db.SaveChangesAsync();
 
-        older.RecordLastMessage(_userA, "old message");
-        newer.RecordLastMessage(_userA, "new message");
+        older.RecordLastMessage(_userA, "old message", null);
+        newer.RecordLastMessage(_userA, "new message", null);
         typeof(Conversation).GetProperty(nameof(Conversation.LastMessageAt))!
             .SetValue(older, DateTime.UtcNow.AddDays(-1));
         await _db.SaveChangesAsync();
@@ -92,6 +92,42 @@ public class GetConversationsHandlerTests
         List<ConversationResponse> result = await CreateSut().Handle(new GetConversationsQuery(), default);
 
         result.Single().OtherDisplayName.Should().Be("Marco Ink");
+    }
+
+    [Fact]
+    public async Task Handle_RowWhoseLastMessageIsAboutAnAppointment_ReturnsItsIdAndLabel()
+    {
+        Guid artistUserId = SeedArtist();
+        DateTime startsAt = new(2026, 12, 3, 14, 30, 0, DateTimeKind.Utc);
+        Service service = new() { StudioId = _studioId, Name = "Touch-up", DurationMinutes = 60, IsActive = true };
+        Client client = new() { StudioId = _studioId, UserId = _userA, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid():N}@c.test" };
+        _db.Services.Add(service);
+        _db.Clients.Add(client);
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ClientId = client.Id,
+            ServiceId = service.Id,
+            Date = startsAt,
+            EndDate = startsAt.AddHours(1),
+            DurationMinutes = 60,
+        };
+        _db.Appointments.Add(appointment);
+        Conversation about = Conversation.Create(_studioId, _userA, "client", artistUserId, "artist");
+        Conversation plain = Conversation.Create(_studioId, _userA, "client", Guid.NewGuid(), "artist");
+        about.RecordLastMessage(_userA, "About my booking", appointment.Id);
+        plain.RecordLastMessage(_userA, "hello", null);
+        _db.Conversations.AddRange(about, plain);
+        await _db.SaveChangesAsync();
+
+        List<ConversationResponse> result = await CreateSut().Handle(new GetConversationsQuery(), default);
+
+        ConversationResponse aboutRow = result.Single(c => c.Id == about.Id);
+        aboutRow.LastMessageAppointmentId.Should().Be(appointment.Id);
+        aboutRow.LastMessageAppointment.Should().Be(new MessageAppointmentLabelResponse(appointment.Id, startsAt, "Touch-up"));
+        ConversationResponse plainRow = result.Single(c => c.Id == plain.Id);
+        plainRow.LastMessageAppointmentId.Should().BeNull();
+        plainRow.LastMessageAppointment.Should().BeNull();
     }
 
     private Guid SeedArtist(string firstName = "Art", string lastName = "Ist")

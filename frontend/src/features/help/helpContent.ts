@@ -476,7 +476,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Client],
     title: "Message your artist or the studio",
     route: "/messages",
-    keywords: ["messages", "chat", "message artist", "contact studio", "inbox", "text artist"],
+    keywords: ["messages", "chat", "message artist", "contact studio", "inbox", "text artist", "which appointment", "appointment label"],
     summary: "Send a real-time message to your assigned or booked artist, or to the studio owner, without leaving the app.",
     steps: [
       "Open Messages from the menu.",
@@ -487,8 +487,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "You can only start a thread with an artist you've had an appointment with or who's assigned to you — you can always reach the studio owner.",
       "If the recipient is offline, they get a one-time email so a burst of messages doesn't flood their inbox.",
+      "A message you send from an appointment's page is linked to that appointment. In the thread it shows a small label above the message with the appointment's day, time and service (in the studio's local time); click it to open that appointment's page. The label appears once at the start of a run of messages about the same appointment, not on every one.",
+      "In the conversation list, a conversation whose latest message is about an appointment shows the same label under the preview. If you reschedule, the label shows the new date and time.",
     ],
-    relatedArticleIds: ["client-book-appointment"],
+    relatedArticleIds: ["client-book-appointment", "client-appointment-page"],
   },
   {
     id: "client-referrals",
@@ -737,7 +739,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Artist],
     title: "Message a client or the studio owner",
     route: "/messages",
-    keywords: ["messages", "chat", "message client", "contact owner", "inbox", "text client"],
+    keywords: ["messages", "chat", "message client", "contact owner", "inbox", "text client", "which appointment", "appointment label"],
     summary: "Send a real-time message to a client you have an appointment with or who's assigned to you, or to the studio owner.",
     steps: [
       "Open Messages from the menu, or click \"Message [client name]\" from an appointment's detail page.",
@@ -748,6 +750,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "You can only message clients you have an appointment with or who are assigned to you — you can always reach the studio owner.",
       "If the recipient is offline, they get a one-time email so a burst of messages doesn't flood their inbox.",
+      "When a client writes from their appointment's page, their message carries a small label with that appointment's day, time and service (in your studio's local time) — so you know which booking they mean. Click it to open the appointment's detail page. It appears once at the start of a run of messages about the same appointment, and in the conversation list when the latest message is about one. After a reschedule it shows the new date.",
     ],
     relatedArticleIds: ["artist-schedule"],
   },
@@ -1696,7 +1699,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Message any artist or client",
     route: "/messages",
-    keywords: ["messages", "chat", "message artist", "message client", "inbox"],
+    keywords: ["messages", "chat", "message artist", "message client", "inbox", "which appointment", "appointment label"],
     summary: "Send a real-time message to any artist or client at your studio.",
     steps: [
       "Open Messages from the menu, or click \"Message [client name]\" from an appointment's detail page.",
@@ -1704,7 +1707,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Or continue an existing thread from the conversation list.",
       "Reply in real time — new messages arrive without reloading the page.",
     ],
-    tips: ["As the owner, you're the only role with no messaging restrictions — you can start a thread with anyone at your studio."],
+    tips: [
+      "As the owner, you're the only role with no messaging restrictions — you can start a thread with anyone at your studio.",
+      "When a client writes from their appointment's page, their message carries a small label with that appointment's day, time and service (in your studio's local time). Click it to open the appointment's detail page. It also shows in the conversation list when the latest message is about an appointment, and follows any reschedule.",
+    ],
   },
   // ── Admin ──────────────────────────────────────────────────────────────
   {

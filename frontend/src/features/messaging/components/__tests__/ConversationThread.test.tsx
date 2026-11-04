@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 
 import authReducer from "@/features/auth/authSlice";
 import { messagingApi } from "../../messagingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { ConversationThread } from "../ConversationThread";
 import type { ConversationResponse, ChatMessageResponse } from "../../messaging.types";
 import { Role } from "@/shared/types/roles";
@@ -43,6 +45,9 @@ const server = setupServer(
   http.get("http://localhost/api/v1/conversations/:id/messages", () =>
     HttpResponse.json(MESSAGES),
   ),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "t1", timezone: "Europe/Tirane" }),
+  ),
   http.post("http://localhost/api/v1/conversations/:id/read", () =>
     new HttpResponse(null, { status: 204 }),
   ),
@@ -59,21 +64,27 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => { server.resetHandlers(); cleanup(); });
 afterAll(() => server.close());
 
-function makeStore() {
+function makeStore(role: Role = Role.Client) {
   return configureStore({
-    reducer: { auth: authReducer, [messagingApi.reducerPath]: messagingApi.reducer },
-    middleware: (gd) => gd().concat(messagingApi.middleware),
+    reducer: {
+      auth: authReducer,
+      [messagingApi.reducerPath]: messagingApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
+    },
+    middleware: (gd) => gd().concat(messagingApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role: Role.Client } as any,
+      auth: { user: { id: "u1", email: "client@test.com" }, token: "fake", tenantId: "t1", role } as any,
     },
   });
 }
 
-function renderThread() {
+function renderThread(role: Role = Role.Client) {
   return render(
-    <Provider store={makeStore()}>
-      <ConversationThread conversation={CONVERSATION} />
+    <Provider store={makeStore(role)}>
+      <MemoryRouter>
+        <ConversationThread conversation={CONVERSATION} />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -124,5 +135,72 @@ describe("ConversationThread", () => {
 
     await waitFor(() => expect((textarea as HTMLTextAreaElement).value).toBe(""));
     expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("ConversationThread — which appointment a message is about", () => {
+  const ABOUT_A = { appointmentId: "appt-a", startsAt: "2026-12-03T13:30:00Z", serviceName: "Fine line" };
+  const ABOUT_B = { appointmentId: "appt-b", startsAt: "2026-12-10T08:00:00Z", serviceName: null };
+  const msg = (id: string, sender: "u1" | "u2", about: typeof ABOUT_A | typeof ABOUT_B | null): ChatMessageResponse => ({
+    id, conversationId: "conv-1", senderUserId: sender, senderRole: sender === "u1" ? "client" : "artist",
+    body: `body ${id}`, createdAt: "2026-11-01T10:00:00Z", readAt: null,
+    appointmentId: about?.appointmentId ?? null, appointment: about,
+  });
+  const THREAD: ChatMessageResponse[] = [
+    msg("m1", "u1", ABOUT_A), msg("m2", "u1", ABOUT_A), msg("m3", "u2", null), msg("m4", "u1", ABOUT_B),
+  ];
+
+  function useThread(messages: ChatMessageResponse[]) {
+    server.use(http.get("http://localhost/api/v1/conversations/:id/messages", () => HttpResponse.json(messages)));
+  }
+
+  it("shows the label in the studio's timezone, once per run about the same appointment", async () => {
+    useThread(THREAD);
+    renderThread();
+
+    // Studio-local (Tirana, UTC+1): the timezone loads after the messages, hence findBy.
+    expect(await screen.findByText("Thu 3 Dec, 14:30 · Fine line")).toBeInTheDocument();
+    expect(screen.getAllByText("Thu 3 Dec, 14:30 · Fine line")).toHaveLength(1);
+    // No service: the date and time alone, no empty segment.
+    expect(await screen.findByText("Thu 10 Dec, 09:00")).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+  });
+
+  it("links a client to their own appointment page — never the staff route", async () => {
+    useThread(THREAD);
+    renderThread(Role.Client);
+
+    const link = await screen.findByRole("link", { name: /Thu 3 Dec, 14:30/ });
+
+    expect(link).toHaveAttribute("href", "/my-appointments/appt-a");
+    for (const l of screen.getAllByRole("link")) {
+      expect(l.getAttribute("href")).not.toMatch(/^\/appointments\//);
+    }
+  });
+
+  it.each([Role.Artist, Role.Owner])("links %s to the staff appointment page, whoever sent the message", async (role) => {
+    // The messages were sent by the client; the destination follows the reader's role.
+    useThread(THREAD);
+    renderThread(role);
+
+    const link = await screen.findByRole("link", { name: /Thu 3 Dec, 14:30/ });
+
+    expect(link).toHaveAttribute("href", "/appointments/appt-a");
+  });
+
+  it("renders no label, link or id for messages that aren't about an appointment", async () => {
+    renderThread();
+    await screen.findByText("Hey there");
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByText(/appointment:/i)).not.toBeInTheDocument();
+  });
+
+  it("never renders the raw appointment id", async () => {
+    useThread(THREAD);
+    const { container } = renderThread();
+    await screen.findByText("Thu 3 Dec, 14:30 · Fine line");
+
+    expect(container.textContent).not.toMatch(/appt-a|appt-b/);
   });
 });

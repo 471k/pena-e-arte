@@ -38,7 +38,7 @@ public class SendChatMessageHandler(
         ChatMessage message = ChatMessage.Create(
             tenant.StudioId, conversation.Id, user.UserId, user.Role, command.Request.Body, appointmentId);
         db.ChatMessages.Add(message);
-        conversation.RecordLastMessage(user.UserId, message.Body);
+        conversation.RecordLastMessage(user.UserId, message.Body, appointmentId);
 
         await db.SaveChangesAsync(ct);
 

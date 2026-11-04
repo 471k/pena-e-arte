@@ -13,6 +13,12 @@ public class Conversation : TenantEntity
     public string? LastMessagePreview { get; private set; }
     public Guid? LastMessageSenderUserId { get; private set; }
 
+    /// <summary>The appointment the last message is about, if any — denormalized for the inbox
+    /// row like the preview fields. Only the id is stored: the label (date, service) is resolved
+    /// from the appointment on every read, because a reschedule changes it and a cached label
+    /// would go stale.</summary>
+    public Guid? LastMessageAppointmentId { get; private set; }
+
     public ICollection<ChatMessage> Messages { get; private set; } = [];
 
     public static Conversation Create(
@@ -43,11 +49,13 @@ public class Conversation : TenantEntity
 
     /// <summary>Denormalized preview fields for the inbox list — avoids a join/subquery per
     /// row just to show the last line and timestamp. Truncated to 140 chars; the full body
-    /// lives only on the ChatMessage row.</summary>
-    public void RecordLastMessage(Guid senderUserId, string body)
+    /// lives only on the ChatMessage row. The appointment id is overwritten on every message,
+    /// so a later message with no appointment clears it.</summary>
+    public void RecordLastMessage(Guid senderUserId, string body, Guid? appointmentId)
     {
         LastMessageAt = DateTime.UtcNow;
         LastMessageSenderUserId = senderUserId;
         LastMessagePreview = body.Length <= 140 ? body : body[..140];
+        LastMessageAppointmentId = appointmentId;
     }
 }

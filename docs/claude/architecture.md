@@ -426,7 +426,7 @@ Frontend:    VerifiedSocialBadge (shared/components/) — same badge variant as
 | 35 | Manual Client Reminders | `ManualReminder` | Hangfire + Twilio (reused) + Redis (quota) | Per-tenant |
 | 36 | Social Media Verification | `SocialAccountLink` (polymorphic Artist/Studio subject, no tenant filter — same shape as `InstagramConnection`) | `ISocialOAuthProvider`/`ISocialOAuthProviderFactory` (5 platforms), `ISocialBioChecker`/`ISocialBioCheckerFactory` (4 of 5 — TikTok has no suitable public-read API), `ISocialOAuthStateSigner` (separate key from `IInstagramStateSigner`) | Per-tenant (Artist subject resolves the artist's real tenant; Studio subject is self-referential — `StudioId == SubjectId`) |
 | 37 | Client Conduct Reports | `ConductReport` (non-tenant, no query filter — same shape as `Review`/`FeedbackReport`/`AuditLogEntry`) | None — direct email alert for High severity, same `INotificationService.SendEmailAsync` path as the contact form | Per-tenant (owner read), Per-user (artist read, reporter identity redacted), Admin-level (cross-tenant read + High-severity resolution) |
-| 38 | In-App Messaging | `Conversation`, `ChatMessage` (both `TenantEntity`, `DesignRevision`-shaped — ordinary per-studio query filter, not a `FeedbackReport`-style exception) | `ChatHub` SignalR hub (per-user `user:{id}` groups, no join-by-id), `IRealtimeNotifier.NotifyUserAsync`, `IJobScheduler.EnqueueNewMessageEmail` (Hangfire, debounced — see `IgnoreQueryFilters()` row #36) | Per-tenant (client↔artist, client↔owner, artist↔owner only — no admin) |
+| 38 | In-App Messaging | `Conversation`, `ChatMessage` (both `TenantEntity`, `DesignRevision`-shaped — ordinary per-studio query filter, not a `FeedbackReport`-style exception). `ChatMessage.AppointmentId` (slice 2) and `Conversation.LastMessageAppointmentId` (2026-11-04) store only the appointment *id*; the inbox row and thread resolve a studio-local date + service label from it on every read (`MessageAppointmentLabels`) — see the 2026-11-04 "which appointment a message is about" entry | `ChatHub` SignalR hub (per-user `user:{id}` groups, no join-by-id), `IRealtimeNotifier.NotifyUserAsync`, `IJobScheduler.EnqueueNewMessageEmail` (Hangfire, debounced — see `IgnoreQueryFilters()` row #36) | Per-tenant (client↔artist, client↔owner, artist↔owner only — no admin) |
 | 39 | Solo/Independent Artist Signup | `Studio.IsSolo`/`IsPublished` (Phase 1); `StudioJoinInvite` (Phase 6, admin-shaped, no tenant filter) | `RegisterSoloArtistCommand` (auto-provisions `Studio`+`Subscription` on `Free` plan, no NIPT/city/coords); `IPlanLimitService` (existing `MaxArtists` enforcement, unchanged); `IIdentityService` role-swap for studio-join acceptance | Per-tenant (solo signup, publish-on-real-location); cross-tenant (Phase 6 studio-join invite/accept, dual-consent) |
 | 40 | Client Account Deletion Hardening | `Client.ArchivedAt`; fixed `ClientDataErasure` fan-out | `ClientAccountExtensions.FindAllClientRecordsForUserAsync` (approved usage #29) | Per-tenant (archive/restore), cross-tenant (erasure/export/cancel fan-out, same person) |
 | 41 | Lek next to euro for Albanian EUR studios (2026-10-26) | `ExchangeRate` (global, no tenant filter: one Bank of Albania EUR/ALL official rate per business day); five nullable reference columns on `Payment`, `GiftCard`, `PackagePurchase` (`IHasReferenceAmount`) | `BankOfAlbaniaRateFetcher` (named HttpClient "BankOfAlbania", regex parse, no new package) + `ExchangeRateFetchJob` (Hangfire, weekdays 12:40/14:00/17:00 Europe/Tirane, 09:00 stale check); `IReferenceAmountSnapshotter`; anonymous `GET /api/v1/public/exchange-rates/eur-all`; frontend `<Money>` | Platform-wide rate, per-tenant snapshots |
@@ -5743,3 +5743,110 @@ light page backgrounds, with a 4.5:1 bar.
   - Tours target `data-tour` selectors, which were untouched.
 - WCAG 2.1 AA is the floor for this category (Fresha, Vagaro, Boulevard, GlossGenius and Booksy all
   claim it). The public-page fixes matter most. This is not a feature claim.
+
+## Which appointment a message is about — inbox row and thread label — built — 2026-11-04
+
+Built from `docs/claude/overnight-prompt-messages-inbox-appointment-label-2026-11-04.md` on base
+`5d01df15`. Slice 2 began writing `ChatMessage.AppointmentId` (validated: the appointment is in this
+studio and belongs to the client participant); nothing read it. This is the read side only. No new
+endpoint, no new package, no change to `SendChatMessageCommand`'s authorization block,
+`ConversationAccessGuard` or the unread-streak email logic.
+
+### Denormalize the id, resolve the text
+- `Conversation.LastMessageAppointmentId` (nullable `char(36)`, migration
+  `AddConversationLastMessageAppointmentId`) is set by `RecordLastMessage`, whose signature gained a
+  required `Guid? appointmentId` (single call site: `SendChatMessageHandler`). A later message with
+  no appointment clears it. Same precedent as the preview fields: the inbox needs no subquery into
+  `chat_messages` per row.
+- **Only the id is stored.** The label (`MessageAppointmentLabelResponse`: `AppointmentId`,
+  `StartsAt` UTC, `ServiceName` or null) is read from the appointment row on every request by
+  `Application/Messaging/MessageAppointmentLabels`. A reschedule or service change therefore shows
+  straight away; a cached string would keep telling the client a date that no longer exists.
+- Proven, not asserted: `MessageAppointmentLabelIntegrationTests.TheLabelFollowsTheAppointment_IncludingAfterAReschedule`
+  moves the appointment with the real `RescheduleAppointmentHandler` and reads both surfaces again.
+  With the resolver temporarily caching labels, it failed ("expected 19 Nov 13:00, but 14 Nov 13:00
+  was off by 5d"); reverted, it passes.
+- No second authorization path: the write-side check is the invariant (a stored id belongs to the
+  conversation's client and this studio), so anyone who may read the conversation may see the
+  label. The tenant query filter still applies; an id whose appointment was soft-deleted resolves to
+  no label (the UI then shows nothing, never the id).
+- Resolved in `GetConversationsQuery` (every row), `GetConversationMessagesQuery` (every message on
+  the page) and `CreateConversationHandler.MapAsync` (get-or-create may return an existing
+  conversation). The send response and the `MessageReceived` push carry the id only: the client
+  refetches the thread after both, so it never renders from them (documented on the contract).
+- Contracts: `ConversationResponse` gained `LastMessageAppointmentId` + `LastMessageAppointment`;
+  `ChatMessageResponse` gained `Appointment`. Both trailing and optional.
+
+### N+1 evidence
+One statement for all labels however many rows (`WHERE Id IN (…)` with a left join to the service),
+and none when no row references an appointment. `TheInbox_QueryCountDoesNotScaleWithConversations`
+counts commands with a `DbCommandInterceptor` (same pattern as slice 2's readiness guard): 1
+conversation and 8 conversations, each with an appointment label and a different artist, issue the
+same number of commands.
+
+### Per-role link rule (D3)
+`appointmentHrefForViewer(role, id)` keys on the **reader's** role from the auth state, never the
+sender's: client → `/my-appointments/:id`, artist/owner/admin → `/appointments/:id`, unknown or
+missing role → no link. A client is never given the staff route; unit and component tests assert it
+explicitly (every link a client sees is checked against `^/appointments/`). Verified in a real
+browser on the dev stack: the client's link opened the client appointment page; the artist's pointed
+at the staff route.
+
+### Rendering
+- Text: studio-local `Thu 3 Dec, 14:30 · Fine line`, or `Thu 3 Dec, 14:30` with no service; the year
+  only when it isn't the current one. `withStudioTimeZone` (D4). The label waits for the studio's
+  timezone (`useGetMyStudioQuery`, skipped when nothing on screen has a label) instead of falling back
+  to the browser's zone.
+- Pill: `bg-muted text-muted-foreground`, `CalendarDays` icon `aria-hidden`. Screen readers get one
+  sr-only string, "Appointment: …"; the visible copy is `aria-hidden` so the two don't run together.
+  Painted in the After Hours scope: 5.18:1 light, 7.07:1 dark. Contrast guard unchanged, no
+  allow-list entry.
+- **Thread-repeat choice:** the label sits above the bubble (context, not part of the message), on
+  the first message about an appointment and again wherever the reference changes — a different
+  appointment, or the same one after messages about nothing. A run about one appointment shows it
+  once (`showsAppointmentLabel`).
+- Inbox row: the label of the **last** message's appointment, under the preview. Rows without one
+  have the same DOM as before. The row's `aria-label` would hide the label, so it is the row's
+  `aria-describedby`.
+
+### Deviations (flagged)
+- **The inbox label is not a link; the thread label is.** The inbox row is already a `<button>`, and
+  a link inside a button is invalid nested interactive content (and a small second tap target inside
+  a list row is a mis-tap hazard on mobile). Opening the row shows the thread, where the same label
+  links per D3. The alternative — restructuring every row into a stretched-link card — changes the
+  DOM of rows with no appointment, which §3.3 rules out. A component test asserts no link sits inside
+  a row.
+- The prompt's commit trailer named "Claude Opus 5" and another session's `Claude-Session` URL; the
+  commit uses this session's model attribution instead.
+
+### §1b debt
+Not due: this slice adds no `AlertDialog` or `DropdownMenu` (messaging still renders neither).
+Carried forward again.
+
+### Tests
+- Backend unit (+10): `MessageAppointmentLabelsTests` (with service; without — null, empty, blank;
+  no appointment → null, not empty; unresolved id; batch resolution; no ids), a domain test for
+  set-then-clear, handler tests for both read queries, and the send handler now asserts the
+  denormalized id.
+- Backend integration (+4): label follows a reschedule; no references → null throughout; a later
+  plain message clears the inbox label while the earlier message keeps its own; the N+1 guard.
+- Frontend (+22): `appointmentLabel.test.ts` (format, studio timezone vs browser, fallback, year,
+  per-role href incl. the explicit client assertion, run rule), `ConversationThread` (label once per
+  run, links by viewer role, nothing for plain messages, no raw id), `MessagesInboxPage` (label per
+  role, accessible description, plain rows unchanged, no link in a row). Timezone-dependent
+  assertions use `findBy*`; every format names its zone, so the runner's zone is irrelevant.
+- Results: `dotnet build` 0 errors; unit 3,518 (3,508 before), integration 663 (659 before); scoped
+  `dotnet format --verify-no-changes` clean; lint 0 errors; build green; full vitest 2,917 of 2,922 passed (2,900 before; +22). The 5 failures are `StudioProfilePage` timeouts, the known flake: a different set fails on each run (5, 1, 3), the file imports nothing this slice touched, and it passes 40/40 alone with `--testTimeout=60000`.
+
+### Help (rule 7) and benchmark (rule 6)
+- `helpContent.ts`: `client-messaging`, `artist-messaging`, `owner-messaging` (staff see the label
+  with the staff link). Manual (`frontend/public/user-manual/index.html`, the served copy): the same
+  three sections. Tours: no change — they point at the Messages nav item, whose description is still
+  accurate; the label is context inside an existing screen.
+- No verified competitor precedent was found for showing the related appointment in an inbox row or
+  thread, so none is claimed. The justification is internal: slice 2 already stores the id in
+  production and Phi named this the priority gap.
+
+### Rollback
+`dotnet ef database update AddChatMessageAppointmentId` (drops the nullable column), then revert the
+commit. Additive and nullable: the previous build runs fine against the new column.

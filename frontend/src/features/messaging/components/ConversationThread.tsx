@@ -7,12 +7,15 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
 import { cn } from "@/shared/utils/cn";
 import { useAppSelector } from "@/app/hooks";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import {
   useGetMessagesQuery,
   useSendMessageMutation,
   useMarkConversationReadMutation,
 } from "../messagingApi";
 import type { ConversationResponse } from "../messaging.types";
+import { showsAppointmentLabel } from "../appointmentLabel";
+import { MessageAppointmentLabel } from "./MessageAppointmentLabel";
 
 const MAX_BODY_LENGTH = 2000;
 
@@ -36,6 +39,10 @@ export function ConversationThread({ conversation }: ConversationThreadProps) {
   const { data: messages, isLoading } = useGetMessagesQuery({ conversationId: conversation.id });
   const [sendMessage, { isLoading: isSending }] = useSendMessageMutation();
   const [markRead] = useMarkConversationReadMutation();
+  // Appointment labels render in the studio's timezone, so they wait for it (never browser-local).
+  const hasAppointmentLabels = messages?.some((m) => m.appointment) ?? false;
+  const { data: studio } = useGetMyStudioQuery(undefined, { skip: !hasAppointmentLabels });
+  const studioTimezone = studio?.timezone;
 
   useEffect(() => {
     markRead(conversation.id);
@@ -84,26 +91,35 @@ export function ConversationThread({ conversation }: ConversationThreadProps) {
           </p>
         )}
 
-        {!isLoading && messages?.map((m) => {
+        {!isLoading && messages?.map((m, i) => {
           const isMine = m.senderUserId === currentUserId;
+          // Shown once where the appointment reference changes, above the bubble — context for
+          // the message, not part of it (see showsAppointmentLabel).
+          const label = showsAppointmentLabel(m, messages[i - 1]) ? m.appointment : null;
           return (
-            <div
-              key={m.id}
-              className={cn(
-                "rounded-md px-3 py-2 text-sm max-w-[75%]",
-                isMine ? "bg-primary text-primary-foreground ml-auto" : "bg-muted",
+            <div key={m.id} className="space-y-1">
+              {label && studioTimezone && (
+                <div className={cn("flex max-w-[75%] pt-1", isMine ? "ml-auto justify-end" : "justify-start")}>
+                  <MessageAppointmentLabel label={label} studioTimezone={studioTimezone} asLink />
+                </div>
               )}
-            >
-              <p className="whitespace-pre-wrap">{m.body}</p>
-              <p className={cn(
-                "text-[10px] mt-1 flex items-center gap-1",
-                isMine ? "text-primary-foreground/70 justify-end" : "text-muted-foreground",
-              )}>
-                {fmt(m.createdAt)}
-                {isMine && lastMine?.id === m.id && m.readAt && (
-                  <CheckCheck className="h-3 w-3" aria-label="Read" />
+              <div
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm max-w-[75%]",
+                  isMine ? "bg-primary text-primary-foreground ml-auto" : "bg-muted",
                 )}
-              </p>
+              >
+                <p className="whitespace-pre-wrap">{m.body}</p>
+                <p className={cn(
+                  "text-[10px] mt-1 flex items-center gap-1",
+                  isMine ? "text-primary-foreground/70 justify-end" : "text-muted-foreground",
+                )}>
+                  {fmt(m.createdAt)}
+                  {isMine && lastMine?.id === m.id && m.readAt && (
+                    <CheckCheck className="h-3 w-3" aria-label="Read" />
+                  )}
+                </p>
+              </div>
             </div>
           );
         })}

@@ -46,11 +46,15 @@ public class CreateConversationHandler(
         (string displayName, string? avatarUrl) = await ResolveDisplayAsync(db, identity, otherId, otherRole, ct);
         int unread = await db.ChatMessages.CountAsync(m =>
             m.ConversationId == c.Id && m.SenderUserId != callerUserId && m.ReadAt == null, ct);
+        // An existing conversation returned by get-or-create may already have one (no query if not).
+        Dictionary<Guid, MessageAppointmentLabelResponse> labels =
+            await MessageAppointmentLabels.ResolveAsync(db, [c.LastMessageAppointmentId], ct);
 
         return new ConversationResponse(
             c.Id, otherId, otherRole, displayName, avatarUrl,
             c.LastMessageAt, c.LastMessagePreview,
-            c.LastMessageSenderUserId == callerUserId, unread, c.CreatedAt);
+            c.LastMessageSenderUserId == callerUserId, unread, c.CreatedAt,
+            c.LastMessageAppointmentId, MessageAppointmentLabels.For(labels, c.LastMessageAppointmentId));
     }
 
     /// <summary>Fallback shown when the other participant's row can't be resolved (e.g. deleted
