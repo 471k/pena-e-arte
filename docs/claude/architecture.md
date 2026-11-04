@@ -6069,3 +6069,43 @@ A per-practitioner "today" view and form-completion tracking are category norms 
 GlossGenius), and Fresha's choice not to hard-block an appointment on forms is why preparation never blocks
 here either. Nothing here goes beyond the benchmark set. The benchmark tools also send automated form
 reminders, which this slice deliberately does not (Phi's parked gap).
+
+## Artists can read colleagues' appointment detail — accepted product decision, not an oversight — 2026-11-05
+
+Found while building E04a and recorded here so it is not rediscovered later as a bug.
+
+**The fact:** `GET /api/v1/appointments/{id}` is `ArtistAndAbove` and carries **no artist-ownership
+check** — verified at `ce4bcfe2`. Any artist in a studio can open any appointment in that studio,
+including sessions assigned to a colleague. Tenant isolation holds; this is strictly within one
+studio.
+
+**Deliberately left as-is**, on Phi's call, 4 Nov:
+- **The category does not agree on one answer.** Fresha, for example, lets a studio choose whether
+  team members see colleagues' calendars. So this is a product/configuration decision, not a
+  defect with an obvious fix.
+- **Locking it down is not a one-line change.** Artists reach that route today from Clients,
+  Messages and notifications; scoping it without reworking those entry points would break links
+  they currently use.
+
+**What was fixed instead**, because it had no such defence (PR #335, `ce4bcfe2`):
+`GET /api/v1/payments/appointment/{id}` had no artist scoping and returned `SessionSplits`, so any
+artist could read any payment in the studio **including other artists' session splits** — financial
+data about a colleague, which is a different category from seeing a colleague's booking. An artist
+now gets 404 (never 403) unless the session is assigned to them, matching the session-preparation
+read. Owner, admin and client behaviour is unchanged. Whether an artist should see splits on their
+**own** sessions stays with DEC10.
+
+**Revisit when:** a studio asks for per-artist calendar privacy, or the appointment detail page
+starts carrying money or client data an artist should not see across sessions. Until then the
+asymmetry is intentional: schedule detail is shared within a studio, payment detail is not.
+
+### Two pre-existing bugs this slice also fixed
+- **Neither staff read loaded `Intake`**, so brief, placement and safety notes were **always null**
+  on every staff screen, including the staff appointment page's own "What they want" block. Artists
+  could not see what a client had asked for. One `Include` in each of `GetAppointmentsQuery` and
+  `GetAppointmentQuery`.
+- **An artist with no `Artist` row saw every unassigned request**, because a null id compared as
+  `IS NULL`. They now get no sessions.
+
+### Noted, not fixed
+The client archive dialog reads "Archive MultiStudio ?" when a client has no last name.
