@@ -308,7 +308,12 @@ describe("PlanManagementPage", () => {
     await screen.findByText("Starter");
     const deleteBtn = screen.getByRole("button", { name: /delete starter plan/i });
     expect(deleteBtn.className).toMatch(/text-red-/);
-    expect(deleteBtn.className).not.toMatch(/text-destructive/);
+    // Never the destructive FILL token (too dark as text on the dark theme). The text token
+    // `text-destructive-text` is the light-mode colour since the 2026-11-04 contrast cleanup
+    // (red-500 measured 3.38:1 on white); dark mode keeps its red-400 twin.
+    expect(deleteBtn.className).not.toMatch(/text-destructive(?!-text)/);
+    expect(deleteBtn.className).toMatch(/(^|\s)text-destructive-text(\s|$)/);
+    expect(deleteBtn.className).toMatch(/(^|\s)dark:text-red-400(\s|$)/);
   });
 
   it("edit link does NOT have destructive color (it stays neutral)", async () => {

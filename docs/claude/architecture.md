@@ -5728,8 +5728,12 @@ light page backgrounds, with a 4.5:1 bar.
   - `e2e/accessibility.spec.ts`: 20/20 against the branch's production build, light and dark.
   - lint: 0 errors.
   - `tsc -b` and build: green.
-  - Full vitest: green apart from the known pre-existing `StudioProfilePage` timeout flake under
-    full load.
+  - Full vitest: 2,879 of 2,900 passed (2,856 before this slice). The 21 failures:
+    - 20 `StudioProfilePage` timeouts under full load, the known pre-existing flake; the file passes
+      on its own.
+    - One `PlanManagementPage` assertion that matched `text-destructive-text` while meaning the
+      `text-destructive` FILL token. It is narrowed to the fill token and now also asserts the text
+      token and the `dark:text-red-400` twin. Both files pass 75/75 together.
 
 ### Help (rule 7) and benchmark (rule 6)
 - Help and tours: no change.
