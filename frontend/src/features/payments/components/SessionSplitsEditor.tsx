@@ -97,7 +97,7 @@ export function SessionSplitsEditor({ paymentId, paymentAmount, currency, curren
                   <div className="text-right shrink-0">
                     <Money amount={split.amount} currency={currency} frozen={frozen} className="text-sm font-medium" />
                     {split.paidAt && (
-                      <p className="text-xs text-green-600">Paid</p>
+                      <p className="text-xs text-success-text">Paid</p>
                     )}
                   </div>
                 </CardContent>

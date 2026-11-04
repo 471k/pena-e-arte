@@ -79,7 +79,7 @@ export function SetupChecklist() {
               <div className="flex items-center gap-2">
                 {item.done ? (
                   <Check
-                    className="h-4 w-4 text-emerald-500 shrink-0"
+                    className="h-4 w-4 text-success-text shrink-0"
                     aria-hidden="true"
                   />
                 ) : (

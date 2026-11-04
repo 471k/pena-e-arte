@@ -51,6 +51,10 @@
   /* Semantic status text/icons only, not fills. */
   --color-success-text: hsl(142 72% 29%);
   --color-warning-text: hsl(26 90% 37%);
+  /* Informational status text/icons (accessibility cleanup, 2026-11-04). Replaces the
+     hard-coded blue-500/600/700 status text colours, which measured 3.34:1 (blue-500 on white)
+     and 2.42-3.16:1 in dark mode. 7.95:1 on white; 6.65:1 on the blue-500/15 badge tint. */
+  --color-info-text: hsl(221 83% 40%);
   --radius: 0.5rem;
   --font-sans: "Fraunces", sans-serif;
 }
@@ -103,6 +107,7 @@
     --color-rule: hsl(240 3.7% 15.9%);
     --color-success-text: hsl(142 69% 58%);
     --color-warning-text: hsl(43 96% 56%);
+    --color-info-text: hsl(213 94% 68%);    /* 7.90:1 on the dark background */
   }
 }
 
@@ -166,6 +171,7 @@ body:has([data-theme="after-hours"]) [data-sonner-toaster] {
   --color-rule: #B6ABBF;                  /* decorative only (1.95 / 2.16 — not a boundary) */
   --color-success-text: #285A2D;          /* 7.19 canvas, 7.97 surface */
   --color-warning-text: #785017;          /* 6.30 canvas, 6.98 surface */
+  --color-info-text: #2B4C7E;             /* 7.64 canvas, 8.47 surface (added 2026-11-04) */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -200,6 +206,7 @@ body:has([data-theme="after-hours"]) [data-sonner-toaster] {
     --color-rule: #514758;                /* decorative only (2.04 / 1.89) */
     --color-success-text: #C3DFBF;        /* 12.46 canvas, 11.53 surface */
     --color-warning-text: #E8C994;        /* 11.26 canvas, 10.42 surface */
+    --color-info-text: #BCCFEF;           /* 11.34 canvas, 10.49 surface (added 2026-11-04) */
   }
 }
 
@@ -212,6 +219,48 @@ body:has([data-theme="after-hours"]) [data-sonner-toaster] {
   body:has([data-theme="after-hours"]) [data-sonner-toaster] {
     color: var(--color-foreground);
   }
+}
+
+/* ── Toasts (Sonner 2.0.8) — themed through Sonner's own custom properties (2026-11-04) ──
+   Why not Tailwind classes: Sonner injects its stylesheet at runtime with NO @layer, and
+   unlayered CSS beats every cascade layer — including all of Tailwind v4's utilities —
+   regardless of specificity. So the bg/text/border classes ui/sonner.tsx used to pass through
+   `toastOptions.classNames` never painted anything, on main as much as in After Hours. Sonner
+   paints every toast from the variables below instead (`background: var(--normal-bg)` etc.).
+
+   One rule covers both schemes and both scopes: the values point at app tokens, and the
+   toaster element already receives the scoped tokens (it is matched by the After Hours
+   selectors above), so the same var() resolves to the unscoped light/dark values outside the
+   scope and to the After Hours values inside it.
+
+   `:root` is there for specificity against Sonner's own `[data-sonner-toaster]
+   [data-sonner-theme=…]` variable rules (0,2,0). Its <style> is appended to <head> when the
+   module loads — before index.css in dev, after the built stylesheet <link> in production —
+   so source order cannot decide the tie. This raises specificity on custom-property
+   declarations, not on painted properties, and Sonner's layout CSS is untouched.
+
+   success/info/warning/error only paint with `richColors`, which the app does not enable;
+   they are set so that turning it on later cannot bring back Sonner's untokened palette.
+   Contrast for every pair, both schemes, in and out of scope: toastTheme.test.ts. */
+:root [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--color-popover);
+  --normal-text: var(--color-popover-foreground);
+  --normal-border: var(--color-border);
+  --normal-bg-hover: var(--color-accent);
+  --normal-border-hover: var(--color-border);
+  --success-bg: var(--color-popover);
+  --success-text: var(--color-success-text);
+  --success-border: var(--color-success-text);
+  --info-bg: var(--color-popover);
+  --info-text: var(--color-info-text);
+  --info-border: var(--color-info-text);
+  --warning-bg: var(--color-popover);
+  --warning-text: var(--color-warning-text);
+  --warning-border: var(--color-warning-text);
+  --error-bg: var(--color-popover);
+  --error-text: var(--color-destructive-text);
+  --error-border: var(--color-destructive-text);
+  --border-radius: var(--radius);
 }
 
 :root {

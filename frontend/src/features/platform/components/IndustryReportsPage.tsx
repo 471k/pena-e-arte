@@ -142,7 +142,7 @@ function GenerateTriggerButton() {
   if (queued) {
     return (
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Check className="h-3.5 w-3.5 text-green-500" />
+        <Check className="h-3.5 w-3.5 text-success-text" />
         Queued — report will appear shortly
       </div>
     );
@@ -181,7 +181,7 @@ function DimensionCell({ current, max }: { current: number; max: number | null }
   }
   const pct = max > 0 ? current / max : 0;
   return (
-    <span className={cn("tabular-nums", pct >= 0.8 && "text-amber-600 dark:text-amber-400 font-medium")}>
+    <span className={cn("tabular-nums", pct >= 0.8 && "text-warning-text dark:text-amber-400 font-medium")}>
       {current} / {max}
     </span>
   );

@@ -84,7 +84,7 @@ export function SignConsentFormPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4 px-6">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+          <CheckCircle aria-hidden="true" className="h-12 w-12 text-green-500 mx-auto" />
           <p className="text-base font-medium">Consent form signed!</p>
           <p className="text-sm text-muted-foreground">
             Your signature has been recorded. A PDF copy has been generated and attached to your appointment.

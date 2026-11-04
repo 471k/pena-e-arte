@@ -15,7 +15,7 @@ export function PasswordMatchIndicator({ password, confirm }: PasswordMatchIndic
     <p
       className={cn(
         "flex items-center gap-1.5 text-xs",
-        matches ? "text-emerald-600 dark:text-emerald-400" : "text-destructive-text"
+        matches ? "text-success-text dark:text-emerald-400" : "text-destructive-text"
       )}
       aria-live="polite"
     >

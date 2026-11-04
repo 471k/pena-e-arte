@@ -123,8 +123,8 @@ interface StatusConfig {
 function statusConfig(status: SubscriptionResponse["status"]): StatusConfig {
   switch (status) {
     case "Trialing":    return { label: "Trial",          color: "text-blue-700 dark:text-blue-400", icon: <Zap className="h-3.5 w-3.5" /> };
-    case "Active":      return { label: "Active",         color: "text-green-500",         icon: <Zap className="h-3.5 w-3.5" /> };
-    case "GracePeriod": return { label: "Grace Period",   color: "text-amber-500",         icon: <AlertTriangle className="h-3.5 w-3.5" /> };
+    case "Active":      return { label: "Active",         color: "text-success-text",      icon: <Zap className="h-3.5 w-3.5" /> };
+    case "GracePeriod": return { label: "Grace Period",   color: "text-warning-text",      icon: <AlertTriangle className="h-3.5 w-3.5" /> };
     case "PastDue":     return { label: "Payment Failed", color: "text-red-700 dark:text-red-400", icon: <AlertTriangle className="h-3.5 w-3.5" /> };
     case "Cancelled":   return { label: "Cancelled",      color: "text-muted-foreground",  icon: <RefreshCw className="h-3.5 w-3.5" /> };
   }
@@ -154,7 +154,7 @@ function UsageRow({ label, dim, unit }: UsageRowConfig) {
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className={cn("font-medium tabular-nums", isNearCap && "text-amber-600 dark:text-amber-400")}>
+        <span className={cn("font-medium tabular-nums", isNearCap && "text-warning-text dark:text-amber-400")}>
           {isUnlimited
             ? `${formatUsageValue(dim.current)}${unit ?? ""} · Unlimited`
             : `${formatUsageValue(dim.current)} / ${dim.max}${unit ?? ""}`}
@@ -333,12 +333,12 @@ export function BillingPage() {
         {studio && !studio.isActive && (
           <Card className="border-red-500/50">
             <CardContent className="p-4 flex items-start gap-3 bg-red-500/10 rounded-lg">
-              <ShieldX className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+              <ShieldX className="h-5 w-5 text-destructive-text shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-red-700 dark:text-red-400">
                   Studio suspended
                 </p>
-                <p className="text-xs text-red-600/80 dark:text-red-400/80">
+                <p className="text-xs text-destructive-text dark:text-red-400/80">
                   Your studio has been suspended by the platform administrator. Your billing
                   subscription below remains active, but your studio is not accessible to
                   clients until the suspension is lifted. Contact{" "}
@@ -371,9 +371,9 @@ export function BillingPage() {
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                  sub.status === "Active"      && "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
-                  sub.status === "Trialing"    && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
-                  sub.status === "GracePeriod" && "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                  sub.status === "Active"      && "border-green-500/20 bg-green-500/10 text-success-text dark:text-green-400",
+                  sub.status === "Trialing"    && "border-blue-500/20 bg-blue-500/10 text-info-text dark:text-blue-400",
+                  sub.status === "GracePeriod" && "border-amber-500/20 bg-amber-500/10 text-warning-text dark:text-amber-400",
                   sub.status === "PastDue"     && "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400",
                   sub.status === "Cancelled"   && "border-border bg-muted text-muted-foreground",
                 )}
@@ -388,7 +388,7 @@ export function BillingPage() {
               <div className="space-y-1">
                 {currentPlan && (
                   isFreePlan ? (
-                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Free</p>
+                    <p className="text-sm font-medium text-success-text dark:text-green-400">Free</p>
                   ) : (
                     <p className="text-sm font-medium">
                       {formatCurrency(currentPrice?.price ?? 0, currentPlan.currency)}
@@ -401,7 +401,7 @@ export function BillingPage() {
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5 shrink-0" />
                     {sub.cancelAtPeriodEnd
-                      ? <span className="text-amber-600 dark:text-amber-400">Cancels on {formatDate(sub.currentPeriodEnd)}</span>
+                      ? <span className="text-warning-text dark:text-amber-400">Cancels on {formatDate(sub.currentPeriodEnd)}</span>
                       : isCashBilled
                         ? <span>Active until {formatDate(sub.currentPeriodEnd)}</span>
                         : currentPlan
@@ -427,7 +427,7 @@ export function BillingPage() {
 
             {/* Grace period warning (GracePeriod) */}
             {sub.status === "GracePeriod" && (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400 space-y-0.5">
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-warning-text dark:text-amber-400 space-y-0.5">
                 <p className="font-medium">Trial expired — your studio is in read-only mode.</p>
                 <p>Subscribe before {formatDate(sub.gracePeriodEnd)} to restore full access.</p>
                 <p className="text-muted-foreground">
@@ -497,7 +497,7 @@ export function BillingPage() {
         {sub.status === "Active" && sub.cancelAtPeriodEnd && (
           <Card className="border-amber-500/20">
             <CardContent className="p-5 space-y-3">
-              <p className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <p className="text-sm font-medium flex items-center gap-2 text-warning-text dark:text-amber-400">
                 <AlertTriangle className="h-4 w-4" />
                 Subscription ending
               </p>

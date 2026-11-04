@@ -74,7 +74,7 @@ export function VerifyEmailPage() {
         )}
         {status === "success" && (
           <>
-            <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500" />
+            <CheckCircle2 aria-hidden="true" className="h-10 w-10 mx-auto text-emerald-500" />
             <p className="font-semibold">Email confirmed!</p>
             <p className="text-sm text-muted-foreground">You can now sign in.</p>
             <Button onClick={() => navigate("/login")} className="w-full">Sign in</Button>

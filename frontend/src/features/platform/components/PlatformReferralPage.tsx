@@ -152,7 +152,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
                 title={copied ? "Copied!" : "Copy link"}
               >
                 {copied
-                  ? <Check className="h-3.5 w-3.5 text-green-500" />
+                  ? <Check className="h-3.5 w-3.5 text-success-text" />
                   : <ClipboardCopy className="h-3.5 w-3.5" />}
               </Button>
 
@@ -249,7 +249,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
         {deleting && (
           <div className="pt-2 space-y-1 border-t">
             {code.redemptionCount > 0 ? (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
+              <p className="text-xs text-warning-text dark:text-amber-400">
                 This code has {code.redemptionCount}{" "}
                 {code.redemptionCount === 1 ? "redemption" : "redemptions"} —
                 it cannot be deleted. Deactivate it instead.

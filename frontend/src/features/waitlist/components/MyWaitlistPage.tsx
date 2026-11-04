@@ -74,7 +74,7 @@ export function MyWaitlistPage() {
                 {formatDate(entry.preferredDateFrom)} – {formatDate(entry.preferredDateTo)}
               </p>
               {entry.status === WaitlistStatus.Notified && (
-                <p className="text-xs text-blue-700 font-medium">
+                <p className="text-xs text-info-text font-medium">
                   A slot opened up — claim it within 24 hours of being notified.
                 </p>
               )}

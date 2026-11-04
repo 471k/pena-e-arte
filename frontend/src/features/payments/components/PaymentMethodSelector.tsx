@@ -196,7 +196,7 @@ function CardTab({
   if (data.status === "Captured" || data.status === "Paid") {
     return (
       <div className="rounded-lg border border-input bg-muted/50 p-4 text-sm space-y-1">
-        <p className="font-medium flex items-center gap-2 text-green-600 dark:text-green-400">
+        <p className="font-medium flex items-center gap-2 text-success-text dark:text-green-400">
           <CheckCircle2 className="h-4 w-4" />
           {data.status === "Paid" ? "Deposit already paid" : "Deposit already authorised"}
         </p>
@@ -260,7 +260,7 @@ function SavedCardOption({
           <p className="text-xs text-muted-foreground">Expires {method.expiryMonth}/{method.expiryYear}</p>
         )}
       </div>
-      {method.isDefault && <Star className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+      {method.isDefault && <Star className="h-3.5 w-3.5 shrink-0 text-warning-text" />}
     </button>
   );
 }

@@ -391,7 +391,7 @@ export function StudioProfilePage() {
           </CardHeader>
           <CardContent>
             {isSuccess && (
-              <p className="text-sm text-green-600 mb-4">Changes saved.</p>
+              <p className="text-sm text-success-text mb-4">Changes saved.</p>
             )}
             {serverError && (
               <p className="text-sm text-destructive-text mb-4">{serverError}</p>

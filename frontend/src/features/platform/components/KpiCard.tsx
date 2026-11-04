@@ -6,10 +6,10 @@ export type KpiAccent = "default" | "info" | "warning" | "success" | "danger";
 
 const ACCENT_ICON_COLOR: Record<KpiAccent, string> = {
   default: "text-muted-foreground",
-  info:    "text-blue-500",
-  warning: "text-amber-500",
-  success: "text-emerald-500",
-  danger:  "text-red-500",
+  info:    "text-info-text",
+  warning: "text-warning-text",
+  success: "text-success-text",
+  danger:  "text-destructive-text",
 };
 
 interface KpiCardProps {

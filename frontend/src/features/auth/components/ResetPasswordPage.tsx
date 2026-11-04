@@ -110,7 +110,7 @@ export function ResetPasswordPage() {
           <CardContent>
             {isSuccess ? (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+                <CheckCircle aria-hidden="true" className="h-8 w-8 text-green-500" />
                 <p className="text-sm">Password reset successfully.</p>
               </div>
             ) : !hasToken ? (

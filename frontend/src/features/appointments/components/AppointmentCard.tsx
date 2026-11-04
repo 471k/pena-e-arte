@@ -127,7 +127,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <AppointmentStatusBadge status={appointment.status} />
             {appointment.status === AppointmentStatus.Pending && appointment.artistId === null && (
               <span className="text-[10px] font-medium uppercase tracking-wide rounded-full
-                               bg-amber-500/15 text-amber-600 px-1.5 py-0.5">
+                               bg-amber-500/10 text-warning-text px-1.5 py-0.5">
                 Needs artist
               </span>
             )}

@@ -424,7 +424,7 @@ export function PaymentDetailPage() {
         </Card>
 
         {isAwaitingAction && isCash && (
-          <div className="rounded-lg border border-orange-200 bg-orange-50/30 p-4 text-sm text-orange-800">
+          <div className="rounded-lg border border-orange-200 bg-orange-50/30 dark:bg-orange-950/20 p-4 text-sm text-orange-800 dark:text-orange-200">
             Awaiting cash collection from client.
           </div>
         )}

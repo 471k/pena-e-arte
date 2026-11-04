@@ -93,7 +93,7 @@ export function HelpInsightsPage() {
 
             <div className="space-y-3 border-t pt-4">
               <div className="flex items-center gap-1.5">
-                <SearchX className="h-4 w-4 text-amber-500 dark:text-amber-400" aria-hidden="true" />
+                <SearchX className="h-4 w-4 text-warning-text dark:text-amber-400" aria-hidden="true" />
                 <p className="text-sm font-medium">Zero-result queries</p>
               </div>
               <QueryTable rows={data.zeroResultQueries} emptyLabel="No zero-result searches — nice." />

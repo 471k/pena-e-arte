@@ -225,7 +225,7 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
                 {showNoPlanWarning && (
                   <span
                     title="Active subscription has no linked plan — check billing data"
-                    className="inline-flex items-center ml-1 text-amber-500"
+                    className="inline-flex items-center ml-1 text-warning-text"
                   >
                     <AlertTriangle className="h-3 w-3" />
                   </span>

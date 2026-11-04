@@ -54,7 +54,7 @@ export function NotifyMeDialog({ studioSlug, artistId, preferredDate, isAuthenti
       <DialogContent>
         {isSuccess ? (
           <div className="py-4 text-center space-y-2">
-            <Bell className="h-8 w-8 mx-auto text-green-600" />
+            <Bell aria-hidden="true" className="h-8 w-8 mx-auto text-green-600" />
             <DialogTitle>You're on the waitlist</DialogTitle>
             <p className="text-sm text-muted-foreground">
               We'll email you the moment a matching slot opens up — you'll have 24 hours to claim it.

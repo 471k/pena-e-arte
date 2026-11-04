@@ -258,7 +258,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
 
         {submitted ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <CheckCircle className="h-10 w-10 text-green-500" />
+            <CheckCircle aria-hidden="true" className="h-10 w-10 text-green-500" />
             <p className="text-sm font-medium">Report submitted.</p>
             <p className="text-xs text-muted-foreground">
               Our platform team will review it. You won&apos;t see it listed anywhere in your
@@ -300,7 +300,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
                 )}
               />
               {isHighSeverity && (
-                <p className="flex items-start gap-1.5 text-xs text-amber-500">
+                <p className="flex items-start gap-1.5 text-xs text-warning-text">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                   This category is escalated immediately to our platform team.
                 </p>
@@ -345,7 +345,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
                 <Label htmlFor="report-reason">What happened?</Label>
                 <span className={cn(
                   "text-xs",
-                  reasonLength > 1800 ? "text-amber-500" : "text-muted-foreground"
+                  reasonLength > 1800 ? "text-warning-text" : "text-muted-foreground"
                 )}>
                   {reasonLength}/2000
                 </span>

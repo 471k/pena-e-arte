@@ -154,7 +154,7 @@ function AuthenticatedBookPage() {
                 type="button"
                 onClick={() => setDismissed(true)}
                 aria-label="Dismiss email verification reminder"
-                className="text-amber-700/60 hover:text-amber-700 dark:text-amber-400/60
+                className="text-warning-text/80 hover:text-warning-text dark:text-amber-400/60
                            dark:hover:text-amber-400 transition-colors"
               >
                 <X className="h-4 w-4" aria-hidden="true" />

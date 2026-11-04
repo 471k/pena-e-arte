@@ -179,7 +179,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
         {submitted ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <CheckCircle className="h-10 w-10 text-green-500" />
+            <CheckCircle aria-hidden="true" className="h-10 w-10 text-green-500" />
             <p className="text-sm font-medium">Thank you for your feedback!</p>
             <p className="text-xs text-muted-foreground">
               We&apos;ve received your message and will review it soon.
@@ -229,7 +229,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
                 <Label htmlFor="feedback-body">Description</Label>
                 <span className={cn(
                   "text-xs",
-                  bodyLength > 1800 ? "text-amber-500" : "text-muted-foreground"
+                  bodyLength > 1800 ? "text-warning-text" : "text-muted-foreground"
                 )}>
                   {bodyLength}/2000
                 </span>

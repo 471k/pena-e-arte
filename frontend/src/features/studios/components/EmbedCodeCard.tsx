@@ -53,7 +53,7 @@ export function EmbedCodeCard() {
             onClick={handleCopy}
             aria-label="Copy embed code"
           >
-            {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? <Check className="h-3.5 w-3.5 text-success-text" /> : <Copy className="h-3.5 w-3.5" />}
           </Button>
         </div>
         <div className="flex items-center gap-2">

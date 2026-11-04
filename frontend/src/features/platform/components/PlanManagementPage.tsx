@@ -92,7 +92,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
             </p>
             <div className="space-y-0.5 mt-1">
               {isFree ? (
-                <p className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400">Free</p>
+                <p className="text-sm font-mono font-medium text-success-text dark:text-emerald-400">Free</p>
               ) : (
                 <>
                   {monthly && (
@@ -110,7 +110,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                 </>
               )}
               {monthly && yearly && monthly.price > 0 && (
-                <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 font-medium">
+                <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-success-text dark:bg-emerald-900/20 dark:text-emerald-400 font-medium">
                   Save {Math.round((1 - yearly.price / (monthly.price * 12)) * 100)}% annually
                 </span>
               )}
@@ -144,7 +144,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="h-8 w-8 p-0 text-destructive-text dark:text-red-400 hover:text-destructive-text dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   onClick={() => setDeleting(true)}
                   aria-label={`Delete ${plan.name} plan`}
                   title="Delete"
@@ -160,7 +160,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
         {deleting && (
           <div className="border-t pt-3 space-y-2">
             {plan.subscriberCount > 0 ? (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
+              <p className="text-xs text-warning-text dark:text-amber-400">
                 <strong>{plan.subscriberCount} studio{plan.subscriberCount !== 1 ? "s" : ""}</strong>{" "}
                 {plan.subscriberCount === 1 ? "is" : "are"} on this plan.
                 Deleting it will prevent new signups — existing subscribers are not affected.

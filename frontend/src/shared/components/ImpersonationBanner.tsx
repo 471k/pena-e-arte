@@ -54,7 +54,7 @@ export function ImpersonationBanner() {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 bg-indigo-600 text-white text-sm">
         <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="font-medium">Viewing as {impersonation.studioName}</span>
-        <span className="text-indigo-200 text-xs tabular-nums">{remaining}</span>
+        <span className="text-white/80 text-xs tabular-nums">{remaining}</span>
         <span className="flex-1" />
         <button
           type="button"
@@ -68,7 +68,7 @@ export function ImpersonationBanner() {
       </div>
 
       {scopeError && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-amber-700 dark:text-amber-400 text-sm">
+        <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-warning-text dark:text-amber-400 text-sm">
           <span className="flex-1">{scopeError}</span>
           <button
             type="button"

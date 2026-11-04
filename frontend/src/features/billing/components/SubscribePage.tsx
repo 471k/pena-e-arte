@@ -84,12 +84,12 @@ function PlanCard({
         </div>
         <div className="text-right shrink-0">
           {unavailable ? null : price.price === 0 ? (
-            <p className="font-semibold text-green-600 dark:text-green-400">Free</p>
+            <p className="font-semibold text-success-text dark:text-green-400">Free</p>
           ) : (
             <p className="font-semibold">{formatCurrency(price.price, plan.currency)}<span className="text-xs font-normal text-muted-foreground">/{isYearly ? "yr" : "mo"}</span></p>
           )}
           {!unavailable && isYearly && price.price > 0 && (
-            <p className="text-xs text-green-600 dark:text-green-400">
+            <p className="text-xs text-success-text dark:text-green-400">
               {formatCurrency(perMonth, plan.currency)}/mo{label ? ` · ${label}` : ""}
             </p>
           )}
@@ -333,7 +333,7 @@ export function SubscribePage() {
                 >
                   {cycle}
                   {cycle === "Yearly" && yearlyToggleBadge && (
-                    <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-xs font-normal text-green-600 dark:text-green-400">
+                    <span className="rounded-full bg-green-500/10 px-1.5 py-0.5 text-xs font-normal text-success-text dark:text-green-400">
                       {yearlyToggleBadge.startsWith("Save")
                         ? yearlyToggleBadge
                         : yearlyToggleBadge.charAt(0).toUpperCase() + yearlyToggleBadge.slice(1)}

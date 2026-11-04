@@ -76,7 +76,7 @@ export function DeveloperSettingsCard() {
         </p>
 
         {!studio.allowApiAccess && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs text-warning-text dark:text-amber-400">
             Upgrade to the Pro plan to enable API access.
           </p>
         )}
