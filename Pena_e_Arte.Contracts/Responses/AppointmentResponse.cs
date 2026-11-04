@@ -46,8 +46,10 @@ public record AppointmentSelfServiceResponse(int NoticeWindowHours, bool IsWithi
 
 /// <summary>
 /// How many of the preparation requirements the appointment's service turns on are met (DEC03),
-/// derived when read and never stored. Filled in by GET /api/v1/appointments/mine and
-/// GET /api/v1/appointments/mine/{id}; null elsewhere. Required = 0 means the service configures none,
-/// and the client sees no checklist. The itemised list is on GET /api/v1/appointments/mine/{id} only.
+/// derived when read and never stored. Filled in by GET /api/v1/appointments/mine,
+/// GET /api/v1/appointments/mine/{id} and the staff list GET /api/v1/appointments (E04a), all from
+/// AppointmentReadinessReader; null elsewhere. Required = 0 means the service configures none, and
+/// neither the client nor the artist sees a checklist. The itemised list is
+/// GET /api/v1/appointments/mine/{id} for the client and GET /api/v1/appointments/{id}/preparation for staff.
 /// </summary>
 public record AppointmentReadinessSummaryResponse(int Required, int Satisfied);

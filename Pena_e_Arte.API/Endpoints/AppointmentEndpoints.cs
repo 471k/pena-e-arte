@@ -37,10 +37,12 @@ public static class AppointmentEndpoints
         DateTime? from,
         DateTime? to,
         Guid? artistId,
+        bool? assignedToMe,
         ISender mediator,
         CancellationToken ct)
     {
-        List<AppointmentResponse> result = await mediator.Send(new GetAppointmentsQuery(from, to, artistId), ct);
+        List<AppointmentResponse> result = await mediator.Send(
+            new GetAppointmentsQuery(from, to, artistId, assignedToMe ?? false), ct);
         return Results.Ok(result);
     }
 
