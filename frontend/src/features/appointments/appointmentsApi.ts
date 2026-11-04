@@ -13,6 +13,7 @@ import type {
   CreateAppointmentRequest,
   GetAppointmentsParams,
   RescheduleAppointmentRequest,
+  ReschedulePreviewResponse,
   SlotAvailabilityResponse,
 } from "./appointment.types";
 
@@ -119,10 +120,21 @@ export const appointmentsApi = createApi({
       invalidatesTags: ["Appointment"],
     }),
     checkSlotAvailability: builder.query<SlotAvailabilityResponse, CheckSlotAvailabilityParams>({
-      query: ({ artistId, date, durationMinutes }) => ({
+      query: ({ artistId, date, durationMinutes, excludeAppointmentId }) => ({
         url:    "appointments/check-slot",
-        params: { ...(artistId ? { artistId } : {}), date, durationMinutes },
+        params: {
+          ...(artistId ? { artistId } : {}),
+          date,
+          durationMinutes,
+          ...(excludeAppointmentId ? { excludeAppointmentId } : {}),
+        },
       }),
+      keepUnusedDataFor: 0,
+    }),
+    // Whether the appointment can be moved at all (E04b, A02), by the save's own rule. Never cached
+    // between dialog openings: the notice window moves with the clock.
+    getReschedulePreview: builder.query<ReschedulePreviewResponse, string>({
+      query: (id) => `appointments/${id}/reschedule-preview`,
       keepUnusedDataFor: 0,
     }),
     assignAppointmentArtist: builder.mutation<
@@ -154,5 +166,6 @@ export const {
   useMarkNoShowMutation,
   useRescheduleAppointmentMutation,
   useCheckSlotAvailabilityQuery,
+  useGetReschedulePreviewQuery,
   useAssignAppointmentArtistMutation,
 } = appointmentsApi;

@@ -140,11 +140,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Move one of your own upcoming appointments to a new date, time, or duration directly from My Bookings.",
     steps: [
       "Under \"My Bookings\", find the appointment and click \"Reschedule\" (or use \"Need to change or cancel?\" on the appointment's page).",
-      "Pick a new date & time and duration — a live availability check appears for the new slot.",
+      "The dialog first checks whether the appointment can still be moved. If it can't (for example it's less than the studio's notice window away), it tells you why before you pick a time.",
+      "Pick a new date & time and duration — a live availability check appears for the new slot. Your appointment's current time never counts against it, so moving it by an hour works even if the times overlap.",
       "Click \"Confirm reschedule\".",
     ],
     tips: [
-      "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
+      "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly. The dialog says how many hours the window is.",
       "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
     ],
   },
@@ -567,7 +568,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Message [client name]\" to start or continue a chat thread with the client, if they have a linked login.",
       "Click \"Add to Calendar\" to download an .ics file for the appointment.",
       "Click \"Confirm appointment\" or \"Mark as complete\" to advance its status.",
-      "Click \"Reschedule\" to pick a new date/time.",
+      "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The client isn't told automatically, so let them know.",
       "Click \"Mark no-show\" if the client didn't attend, or \"Cancel appointment\" and confirm if it needs to be cancelled.",
       "For a booking request you can't take, click \"Decline request\" instead and confirm. The client is told you can't take the request, not that an appointment was cancelled.",
     ],

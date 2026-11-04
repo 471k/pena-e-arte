@@ -289,4 +289,20 @@ export interface CheckSlotAvailabilityParams {
   artistId?:       string;
   date:            string;
   durationMinutes: number;
+  /** The appointment being rescheduled, so it doesn't block its own move. Only one the caller may move. */
+  excludeAppointmentId?: string;
+}
+
+/**
+ * GET /appointments/{id}/reschedule-preview — whether the appointment can be moved at all, decided by
+ * the same server rule the save applies (status, then the client notice window). Never recomputed here.
+ */
+export interface ReschedulePreviewResponse {
+  appointmentId:       string;
+  canReschedule:       boolean;
+  block:               "AppointmentClosed" | "InsideNoticeWindow" | null;
+  /** The exact refusal the save would return; null when allowed. */
+  message:             string | null;
+  noticeWindowHours:   number;
+  noticeWindowApplies: boolean;
 }

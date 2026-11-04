@@ -53,29 +53,20 @@ public class RescheduleAppointmentHandler(
                 throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
         }
 
-        if (appointment.Status is AppointmentStatus.Cancelled
-                                or AppointmentStatus.Completed
-                                or AppointmentStatus.NoShow)
-            throw new BusinessRuleViolationException(
-                $"Cannot reschedule a {appointment.Status} appointment.");
-
-        // Client self-reschedule is cutoff-gated by the same notice window as self-cancel
-        // (Phase 1/2) — reused rather than a second, separate "reschedule window" field.
-        // Staff reschedule is unaffected: no notice-window check at all for that path.
-        if (isClient)
-        {
-            DepositRule? rule = await db.DepositRules
+        // Status gate, then (client only) the notice window — decided by RescheduleEligibility, the same
+        // function the reschedule preview calls, so the dialog and the save can't disagree (E04b, A02).
+        // Staff reschedule is unaffected by the notice window. The rule is only read for a client, as before.
+        DepositRule? rule = isClient
+            ? await db.DepositRules
                 .Where(r => r.IsActive)
                 .OrderByDescending(r => r.UpdatedAt)
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(ct)
+            : null;
 
-            if (!ClientCancellationPolicy.IsWithinNoticeWindow(rule, appointment.Date, DateTime.UtcNow))
-            {
-                int windowHours = ClientCancellationPolicy.NoticeWindowHours(rule);
-                throw new BusinessRuleViolationException(
-                    $"This appointment is less than {windowHours} hours away — please contact the studio directly to reschedule.");
-            }
-        }
+        RescheduleEligibilityDecision eligibility = RescheduleEligibility.Decide(
+            appointment.Status, isClient, rule, appointment.Date, DateTime.UtcNow);
+        if (!eligibility.Allowed)
+            throw new BusinessRuleViolationException(RescheduleEligibility.Message(eligibility, appointment.Status)!);
 
         RescheduleAppointmentRequest req = command.Request;
         DateTime newEnd = req.NewDate.AddMinutes(req.NewDurationMinutes);

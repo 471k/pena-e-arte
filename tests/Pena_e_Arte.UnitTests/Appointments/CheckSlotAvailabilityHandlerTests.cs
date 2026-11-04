@@ -2,6 +2,7 @@ using FluentAssertions;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Queries;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.UnitTests.Helpers;
 
@@ -13,13 +14,15 @@ public class CheckSlotAvailabilityHandlerTests
     private readonly ICurrentTenant _tenant = Substitute.For<ICurrentTenant>();
     private readonly Guid _studioId = Guid.NewGuid();
     private readonly Guid _artistId = Guid.NewGuid();
+    private readonly ICurrentUser _staff = Substitute.For<ICurrentUser>();
 
     public CheckSlotAvailabilityHandlerTests()
     {
         _tenant.StudioId.Returns(_studioId);
+        _staff.Role.Returns("artist");
     }
 
-    private CheckSlotAvailabilityHandler CreateSut() => new(_db, _tenant);
+    private CheckSlotAvailabilityHandler CreateSut() => new(_db, _tenant, _staff);
 
     private void SeedSchedule(DayOfWeek day)
     {
@@ -155,6 +158,106 @@ public class CheckSlotAvailabilityHandlerTests
 
         result.Available.Should().BeFalse();
         result.Reason.Should().Be("No artist is available at that time.");
+    }
+
+    // ── E04b (A02): excluding the appointment being moved ──────────────────────
+
+    [Fact]
+    public async Task ExcludingTheAppointmentBeingMoved_LetsItMoveWithinItsOwnSlot()
+    {
+        DateTime day = NextDateForDay(DayOfWeek.Monday);
+        SeedSchedule(day.DayOfWeek);
+        SeedStudioHours(day.DayOfWeek);
+        Guid moving = SeedAppointment(day.AddHours(10), 120);
+
+        // An hour later, overlapping its own current 10:00–12:00 slot.
+        SlotAvailabilityResult without = await CreateSut().Handle(
+            new CheckSlotAvailabilityQuery(_artistId, day.AddHours(11), 120), default);
+        SlotAvailabilityResult with = await CreateSut().Handle(
+            new CheckSlotAvailabilityQuery(_artistId, day.AddHours(11), 120, moving), default);
+
+        without.Available.Should().BeFalse("without the exclusion the appointment blocks its own move");
+        with.Available.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExcludingTheAppointmentBeingMoved_StillRejectsARealOverlap()
+    {
+        DateTime day = NextDateForDay(DayOfWeek.Monday);
+        SeedSchedule(day.DayOfWeek);
+        SeedStudioHours(day.DayOfWeek);
+        Guid moving = SeedAppointment(day.AddHours(10), 60);
+        SeedAppointment(day.AddHours(14), 60);
+
+        SlotAvailabilityResult result = await CreateSut().Handle(
+            new CheckSlotAvailabilityQuery(_artistId, day.AddHours(14), 60, moving), default);
+
+        result.Available.Should().BeFalse();
+        result.Reason.Should().Be("That slot is already booked.");
+    }
+
+    [Fact]
+    public async Task AClient_CannotExcludeSomeoneElsesAppointment()
+    {
+        DateTime day = NextDateForDay(DayOfWeek.Monday);
+        Guid someoneElses = SeedAppointment(day.AddHours(10), 60);
+        ICurrentUser client = Substitute.For<ICurrentUser>();
+        client.Role.Returns("client");
+        client.UserId.Returns(Guid.NewGuid());
+        _db.Clients.Add(new Client { StudioId = _studioId, UserId = client.UserId, FirstName = "Me", LastName = "Client", Email = $"{Guid.NewGuid():N}@c.test" });
+        _db.SaveChanges();
+
+        Func<Task> act = () => new CheckSlotAvailabilityHandler(_db, _tenant, client).Handle(
+            new CheckSlotAvailabilityQuery(_artistId, day.AddHours(11), 60, someoneElses), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task AClient_CanExcludeTheirOwnAppointment()
+    {
+        DateTime day = NextDateForDay(DayOfWeek.Monday);
+        SeedSchedule(day.DayOfWeek);
+        SeedStudioHours(day.DayOfWeek);
+        ICurrentUser client = Substitute.For<ICurrentUser>();
+        client.Role.Returns("client");
+        client.UserId.Returns(Guid.NewGuid());
+        Guid mine = SeedAppointment(day.AddHours(10), 120, clientUserId: client.UserId);
+
+        SlotAvailabilityResult result = await new CheckSlotAvailabilityHandler(_db, _tenant, client).Handle(
+            new CheckSlotAvailabilityQuery(_artistId, day.AddHours(11), 120, mine), default);
+
+        result.Available.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExcludingAnAppointmentThatDoesNotExist_IsNotFound()
+    {
+        DateTime day = NextDateForDay(DayOfWeek.Monday);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new CheckSlotAvailabilityQuery(_artistId, day.AddHours(11), 60, Guid.NewGuid()), default);
+
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    private Guid SeedAppointment(DateTime start, int minutes, Guid? clientUserId = null)
+    {
+        Client owner = new() { StudioId = _studioId, UserId = clientUserId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid():N}@c.test" };
+        _db.Clients.Add(owner);
+        Appointment appointment = new()
+        {
+            StudioId = _studioId,
+            ArtistId = _artistId,
+            ClientId = owner.Id,
+            Date = start,
+            EndDate = start.AddMinutes(minutes),
+            DurationMinutes = minutes,
+            Status = Domain.Enums.AppointmentStatus.Confirmed,
+        };
+        _db.Appointments.Add(appointment);
+        _db.SaveChanges();
+        return appointment.Id;
     }
 
     private static DateTime NextDateForDay(DayOfWeek day)

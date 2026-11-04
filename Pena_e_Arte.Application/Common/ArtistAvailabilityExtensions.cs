@@ -160,10 +160,14 @@ public static class ArtistAvailabilityExtensions
     /// CheckPublicSlotAvailabilityQuery, where there is no subsequent lock/create step and the
     /// caller just wants a single yes/no/why preview. NOT used by CreateAppointmentCoreAsync's
     /// pre-lock check — see CheckArtistScheduleAsync's doc comment for why.
+    /// <paramref name="excludeAppointmentId"/> (E04b, A02): the appointment being moved, so it doesn't
+    /// conflict with its own current slot, exactly as RescheduleAppointmentHandler's save excludes it.
+    /// Null for every other caller. The caller must have checked that the excluded appointment is one
+    /// the requester may move (CheckSlotAvailabilityHandler does).
     /// </summary>
     public static async Task<(bool Available, string? Reason)> CheckArtistSlotAvailabilityAsync(
         this IAppDbContext db, Guid studioId, Guid artistId, DateTime date, int durationMinutes,
-        CancellationToken ct)
+        CancellationToken ct, Guid? excludeAppointmentId = null)
     {
         (bool available, string? reason) = await db.CheckArtistScheduleAsync(studioId, artistId, date, durationMinutes, ct);
         if (!available) return (available, reason);
@@ -173,6 +177,7 @@ public static class ArtistAvailabilityExtensions
         bool conflict = await db.Appointments.IgnoreQueryFilters().AnyAsync(a =>
             a.StudioId == studioId &&
             a.DeletedAt == null &&
+            (excludeAppointmentId == null || a.Id != excludeAppointmentId) &&
             a.ArtistId == artistId &&
             a.Date < end &&
             a.EndDate > start &&
