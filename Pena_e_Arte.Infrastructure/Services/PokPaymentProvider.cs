@@ -145,7 +145,10 @@ public sealed class PokPaymentProvider(
         // identical in practice, but FinalAmount is the field that stays correct if that changes.
         req.Content = JsonContent.Create(new { amount = order.FinalAmount });
 
-        await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow409: true);
+        CreateOrderResponse? result = await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow409: true);
+        // null = 409: POK says the order was already captured, which this full capture accepts.
+        LogProviderAction("capture", studioId, providerReferenceId, order,
+            order.FinalAmount, order.CurrencyCode, result is null ? "already-captured" : "captured");
     }
 
     public async Task CaptureAsync(Guid studioId, string providerReferenceId, decimal amount, string currency, CancellationToken ct)
@@ -165,7 +168,10 @@ public sealed class PokPaymentProvider(
 
         CreateOrderResponse? result = await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow409: true);
         if (result is not null)
+        {
+            LogProviderAction("partial-capture", studioId, providerReferenceId, result.Data?.SdkOrder, pokAmount, currency, "captured");
             return;
+        }
 
         // 409 = POK says the order was already captured, possibly IN FULL ("Capture deposit",
         // Complete, No-show or the POK dashboard; POK allows one capture per order). Accept it
@@ -173,7 +179,10 @@ public sealed class PokPaymentProvider(
         // record a released remainder that was in fact charged.
         SdkOrderDto? order = await GetOrderAsync(http, token, merchantId, providerReferenceId, studioId, ct);
         if (order?.CapturedAmount == pokAmount)
+        {
+            LogProviderAction("partial-capture", studioId, providerReferenceId, order, pokAmount, currency, "already-captured");
             return;
+        }
 
         string orderRef = providerReferenceId.Length > 8 ? providerReferenceId[..8] : providerReferenceId;
         logger.LogWarning(
@@ -191,7 +200,11 @@ public sealed class PokPaymentProvider(
         req.Headers.Authorization = new("Bearer", token);
         req.Content = JsonContent.Create(new { cancellationReason = "Hold expired or superseded" });
 
-        await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow404: true);
+        CreateOrderResponse? result = await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct, allow404: true);
+        // null = 404: POK no longer has the order, which a release accepts (nothing left to release).
+        SdkOrderDto? echoed = result?.Data?.SdkOrder;
+        LogProviderAction("cancel", studioId, providerReferenceId, echoed,
+            echoed?.FinalAmount, echoed?.CurrencyCode, result is null ? "not-found" : "canceled");
     }
 
     public async Task<PaymentProviderStatus?> GetStatusAsync(Guid studioId, string providerReferenceId, CancellationToken ct)
@@ -232,17 +245,45 @@ public sealed class PokPaymentProvider(
         using HttpRequestMessage req = new(
             HttpMethod.Post, $"{authClient.BaseUrl}/merchants/{merchantId}/sdk-orders/{providerReferenceId}/refund");
         req.Headers.Authorization = new("Bearer", token);
+        decimal pokAmount = ToPokAmount(amount, currency);
         req.Content = JsonContent.Create(new
         {
             refundReason = "Refunded by studio",
             // Always sent: POK production answers 400 to "refundAmount": null (28 Oct 2026).
-            refundAmount = ToPokAmount(amount, currency)
+            refundAmount = pokAmount
         });
 
-        await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct);
+        CreateOrderResponse? result = await authClient.SendAsync<CreateOrderResponse>(http, req, studioId, ct);
+        LogProviderAction("refund", studioId, providerReferenceId, result?.Data?.SdkOrder, pokAmount, currency, "refunded");
         // POK's refund response echoes the sdkOrder, not a distinct refund id — the order id
         // itself is the only stable handle available for this operation.
         return providerReferenceId;
+    }
+
+    /// <summary>
+    /// One Information line per mutating POK call that returned normally (capture, partial capture,
+    /// refund, cancel), so "did we call POK for this payment, and with what?" is answerable from our
+    /// own logs. Failures already throw and are logged where they are handled. Status polls
+    /// (GetStatusAsync) deliberately do not come through here.
+    /// <list type="bullet">
+    /// <item>The POK order id is cut to its first 8 characters: POK's unauthenticated public GET
+    /// serves the whole order (merchant contact details included) to anyone holding the full id.</item>
+    /// <item>The PaymentId is the merchantCustomReference POK echoes back: the id this app set when it
+    /// created the order (the Payment id for deposits; the gift-card or package-purchase id for
+    /// those). Logged only if it parses as a GUID, so free text on an order created elsewhere (POK's
+    /// dashboard, a probe) can never reach the log. Null when POK does not echo it.</item>
+    /// <item>No PII: nothing from the order body beyond its amount and currency.</item>
+    /// </list>
+    /// </summary>
+    private void LogProviderAction(
+        string action, Guid studioId, string providerReferenceId, SdkOrderDto? order,
+        decimal? amount, string? currency, string outcome)
+    {
+        string orderRef = providerReferenceId.Length > 8 ? providerReferenceId[..8] : providerReferenceId;
+        Guid? paymentId = Guid.TryParse(order?.MerchantCustomReference, out Guid parsed) ? parsed : null;
+        logger.LogInformation(
+            "POK {Action} done: payment {PaymentId}, studio {StudioId}, order {OrderRef}, amount {Amount} {Currency}, outcome {Outcome}",
+            action, paymentId, studioId, orderRef, amount, currency, outcome);
     }
 
     private async Task<SdkOrderDto?> GetOrderAsync(
@@ -349,6 +390,9 @@ public sealed class PokPaymentProvider(
         [JsonPropertyName("isConfirmed")] public bool? IsConfirmed { get; init; }
         [JsonPropertyName("isCaptured")] public bool? IsCaptured { get; init; }
         [JsonPropertyName("capturedAmount")] public decimal? CapturedAmount { get; init; }
+        // The reference we sent at creation (our PaymentId), echoed on the order (verified 2026-10-23
+        // on a refund response, evidence.md). Read only for LogProviderAction, never branched on.
+        [JsonPropertyName("merchantCustomReference")] public string? MerchantCustomReference { get; init; }
         // POK's own status string ("created", "expired", "paid", …) — diagnostics only, never branch on it.
         [JsonPropertyName("status")] public string? Status { get; init; }
     }

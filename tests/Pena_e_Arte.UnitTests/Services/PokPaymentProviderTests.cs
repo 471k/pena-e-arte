@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -47,7 +48,7 @@ public class PokPaymentProviderTests
     }
 
     private PokPaymentProvider CreateSut(FakeHttpMessageHandler handler, PokOptions? options = null, bool cardDepositsEnabled = true,
-        string appBaseUrl = "https://app.example.test", bool savedCardsEnabled = false)
+        string appBaseUrl = "https://app.example.test", bool savedCardsEnabled = false, ILogger<PokPaymentProvider>? logger = null)
     {
         IAppSettings appSettings = Substitute.For<IAppSettings>();
         appSettings.BaseUrl.Returns(appBaseUrl);
@@ -66,7 +67,7 @@ public class PokPaymentProviderTests
             authClient,
             Options.Create(new CardDepositOptions { CardDepositsEnabled = cardDepositsEnabled, SavedCardsEnabled = savedCardsEnabled }),
             appSettings,
-            NullLogger<PokPaymentProvider>.Instance);
+            logger ?? NullLogger<PokPaymentProvider>.Instance);
     }
 
     private async Task SeedConnectedStudioAsync()
@@ -557,6 +558,190 @@ public class PokPaymentProviderTests
         PaymentProviderStatus? result = await sut.GetStatusAsync(_studioId, "order-missing", default);
 
         result.Should().BeNull();
+    }
+
+    // --- Provider-action logging (2026-11-04) ----------------------------------------------
+    // A successful capture, refund or release writes one Information line, so "did we call POK for
+    // this payment" is answerable from our own logs. The full POK order id must never reach it.
+
+    private const string FullOrderId = "9dcc1d8d-4e5f-4a6b-8c7d-0123456789ab";
+    private const string OrderRef8 = "9dcc1d8d";
+    private static readonly Guid OurPaymentId = Guid.Parse("652d0d5c-1111-2222-3333-444455556666");
+
+    private static string OrderJson(string fields) => "{\"data\":{\"sdkOrder\":{" + fields + "}}}";
+
+    private static string EchoedOrderJson(string reference = "652d0d5c-1111-2222-3333-444455556666") => OrderJson(
+        $"\"id\":\"{FullOrderId}\",\"amount\":1234,\"finalAmount\":1234,\"currencyCode\":\"ALL\",\"capturedAmount\":1234,\"merchantCustomReference\":\"{reference}\"");
+
+    private async Task<(PokPaymentProvider Sut, CapturingLogger Logs)> CreateLoggingSutAsync(
+        Func<string, HttpResponseMessage>? onAction = null, string? orderJson = null)
+    {
+        await SeedConnectedStudioAsync();
+        string json = orderJson ?? EchoedOrderJson();
+        FakeHttpMessageHandler handler = new(req => req.RequestUri!.AbsolutePath switch
+        {
+            "/auth/sdk/login" => JsonResponse("""{"data":{"accessToken":"tok","expiresAt":"2099-01-01T00:00:00Z"}}"""),
+            var p when p.EndsWith("/capture") || p.EndsWith("/refund") || p.EndsWith("/cancel") =>
+                onAction?.Invoke(p) ?? JsonResponse(json),
+            _ => JsonResponse(json),
+        });
+        CapturingLogger logs = new();
+        return (CreateSut(handler, logger: logs), logs);
+    }
+
+    private static Task RunActionAsync(PokPaymentProvider sut, string action, Guid studioId) => action switch
+    {
+        "capture" => sut.CaptureAsync(studioId, FullOrderId, default),
+        "partial-capture" => sut.CaptureAsync(studioId, FullOrderId, 617m, "ALL", default),
+        "refund" => sut.RefundAsync(studioId, FullOrderId, 234m, "ALL", default),
+        "cancel" => sut.CancelAsync(studioId, FullOrderId, default),
+        _ => throw new ArgumentOutOfRangeException(nameof(action)),
+    };
+
+    [Theory]
+    [InlineData("capture", 1234, "captured")]
+    [InlineData("partial-capture", 617, "captured")]
+    [InlineData("refund", 234, "refunded")]
+    [InlineData("cancel", 1234, "canceled")]
+    public async Task MutatingAction_Succeeds_LogsOneInformationLineWithStructuredProperties(
+        string action, int expectedAmount, string expectedOutcome)
+    {
+        (PokPaymentProvider sut, CapturingLogger logs) = await CreateLoggingSutAsync();
+
+        await RunActionAsync(sut, action, _studioId);
+
+        LogEntry line = logs.Entries.Should().ContainSingle(e => e.Properties.ContainsKey("Action")).Subject;
+        line.Level.Should().Be(LogLevel.Information);
+        line.Properties["Action"].Should().Be(action);
+        line.Properties["PaymentId"].Should().Be(OurPaymentId);
+        line.Properties["StudioId"].Should().Be(_studioId);
+        line.Properties["OrderRef"].Should().Be(OrderRef8);
+        line.Properties["Amount"].Should().Be((decimal)expectedAmount);
+        line.Properties["Currency"].Should().Be("ALL");
+        line.Properties["Outcome"].Should().Be(expectedOutcome);
+        // Structured, not interpolated: the template keeps its placeholders.
+        line.Template.Should().Contain("{OrderRef}").And.Contain("{PaymentId}");
+    }
+
+    // The test worth having: fails if a full POK order id ever reaches the log, in the rendered
+    // message or in any structured property, on any mutating path.
+    [Theory]
+    [InlineData("capture")]
+    [InlineData("partial-capture")]
+    [InlineData("refund")]
+    [InlineData("cancel")]
+    public async Task MutatingAction_NeverLogsTheFullOrderIdOrTheMerchantId(string action)
+    {
+        (PokPaymentProvider sut, CapturingLogger logs) = await CreateLoggingSutAsync();
+
+        await RunActionAsync(sut, action, _studioId);
+
+        logs.Entries.Should().NotBeEmpty();
+        foreach (LogEntry entry in logs.Entries)
+        {
+            entry.Message.Should().NotContain(FullOrderId).And.NotContain(MerchantId);
+            entry.Properties.Values.Select(v => v?.ToString() ?? "")
+                .Should().NotContain(v => v.Contains(FullOrderId) || v.Contains(MerchantId));
+        }
+        logs.Entries.Should().Contain(e => e.Message.Contains(OrderRef8));
+    }
+
+    [Fact]
+    public async Task MutatingAction_ReferenceThatIsNotAGuid_IsNeverLogged()
+    {
+        // An order created outside the app (POK dashboard, a probe) can carry free text.
+        (PokPaymentProvider sut, CapturingLogger logs) =
+            await CreateLoggingSutAsync(orderJson: EchoedOrderJson(reference: "Jane Doe deposit"));
+
+        await sut.RefundAsync(_studioId, FullOrderId, 234m, "ALL", default);
+
+        LogEntry line = logs.Entries.Should().ContainSingle(e => e.Properties.ContainsKey("Action")).Subject;
+        line.Properties["PaymentId"].Should().BeNull();
+        logs.Entries.Should().NotContain(e => e.Message.Contains("Jane Doe"));
+    }
+
+    [Fact]
+    public async Task Cancel_OrderAlreadyGone_LogsNotFoundOutcome()
+    {
+        (PokPaymentProvider sut, CapturingLogger logs) =
+            await CreateLoggingSutAsync(onAction: _ => new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        await sut.CancelAsync(_studioId, FullOrderId, default);
+
+        LogEntry line = logs.Entries.Should().ContainSingle(e => e.Properties.ContainsKey("Action")).Subject;
+        line.Properties["Outcome"].Should().Be("not-found");
+        line.Properties["OrderRef"].Should().Be(OrderRef8);
+    }
+
+    [Fact]
+    public async Task PartialCapture_IdempotentRetry409_LogsAlreadyCaptured()
+    {
+        (PokPaymentProvider sut, CapturingLogger logs) = await CreateLoggingSutAsync(
+            onAction: _ => new HttpResponseMessage(HttpStatusCode.Conflict),
+            orderJson: OrderJson($"\"id\":\"{FullOrderId}\",\"capturedAmount\":617,\"merchantCustomReference\":\"{OurPaymentId}\""));
+
+        await sut.CaptureAsync(_studioId, FullOrderId, 617m, "ALL", default);
+
+        LogEntry line = logs.Entries.Should().ContainSingle(e => e.Properties.ContainsKey("Action")).Subject;
+        line.Properties["Outcome"].Should().Be("already-captured");
+        line.Properties["PaymentId"].Should().Be(OurPaymentId);
+    }
+
+    [Fact]
+    public async Task PartialCapture_Refused409_LogsNoSuccessLine()
+    {
+        // Already captured IN FULL: the call throws, so it must not also claim success.
+        (PokPaymentProvider sut, CapturingLogger logs) = await CreateLoggingSutAsync(
+            onAction: _ => new HttpResponseMessage(HttpStatusCode.Conflict),
+            orderJson: OrderJson($"\"id\":\"{FullOrderId}\",\"capturedAmount\":1234"));
+
+        Func<Task> act = () => sut.CaptureAsync(_studioId, FullOrderId, 617m, "ALL", default);
+
+        await act.Should().ThrowAsync<ServiceUnavailableException>();
+        logs.Entries.Should().NotContain(e => e.Properties.ContainsKey("Action"));
+        logs.Entries.Should().ContainSingle(e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_WritesNoProviderActionLine()
+    {
+        // Polled by the reconciliation jobs: not a mutating action. (Its own pre-existing
+        // order-flags diagnostic line, added at the release gate, is unchanged and not asserted here.)
+        (PokPaymentProvider sut, CapturingLogger logs) = await CreateLoggingSutAsync();
+
+        await sut.GetStatusAsync(_studioId, FullOrderId, default);
+
+        logs.Entries.Should().NotContain(e => e.Properties.ContainsKey("Action"));
+        logs.Entries.Should().NotContain(e => e.Message.Contains(FullOrderId));
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message, string Template, IReadOnlyDictionary<string, object?> Properties);
+
+    /// <summary>Records level, rendered message and the structured properties Serilog would receive.</summary>
+    private sealed class CapturingLogger : ILogger<PokPaymentProvider>
+    {
+        public List<LogEntry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Dictionary<string, object?> properties = [];
+            string template = "";
+            if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
+            {
+                foreach (KeyValuePair<string, object?> pair in pairs)
+                {
+                    if (pair.Key == "{OriginalFormat}")
+                        template = pair.Value?.ToString() ?? "";
+                    else
+                        properties[pair.Key] = pair.Value;
+                }
+            }
+            Entries.Add(new LogEntry(logLevel, formatter(state, exception), template, properties));
+        }
     }
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
