@@ -7,6 +7,7 @@ import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage } from "@/features/appointments";
+import { TodayPage } from "@/features/today";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, MyProfilePage, TattooRecordDetailPage } from "@/features/clients";
 import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage } from "@/features/designs";
@@ -91,7 +92,8 @@ export function getRoleRedirectPath(role: Role, impersonating = false): string {
   if (role === Role.Admin && impersonating) return "/dashboard";
   switch (role) {
     case Role.Client: return "/book";
-    case Role.Artist: return "/schedule";
+    // Today is the artist's daily entry point (E04a); the week view stays at /schedule.
+    case Role.Artist: return "/today";
     case Role.Owner: return "/dashboard";
     case Role.Admin: return "/platform";
   }
@@ -236,6 +238,13 @@ export const routes = [
               },
 
               // ── Artist + Owner ───────────────────────────────────────────────
+              // The viewer's own assigned sessions today (E04a). An owner who is also an artist sees
+              // their own work here; the studio-wide view is the schedule and the dashboard.
+              {
+                path: "today",
+                element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
+                children: [{ index: true, element: <ErrorBoundary><TodayPage /></ErrorBoundary> }],
+              },
               {
                 path: "schedule",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,

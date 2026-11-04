@@ -293,6 +293,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 08 | Platform Subscriptions | `Subscription`, `Plan` | Stripe Billing (separate from Connect) | Admin-level |
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
 | 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints. `GetPublicStudioQuery`/`/s/{slug}` filters `IsActive && IsPublished`; `GetPublicArtistQuery`/`/artist/{slug}` stays `IsActive`-only (see "IsActive vs IsPublished"). | Platform-wide |
+| 11 | Artist Today view (E04a, A01 + A03) | Reads `Appointment`, `BookingIntake`, `AppointmentAttachment`, `ConsentForm`, `IntakeForm`, `Payment` (outcome fields only) and the `Service` requirement flags; no new entity, nothing stored | None. `GET /appointments?assignedToMe=true` (readiness summary per row) and `GET /appointments/{id}/preparation` (staff-worded items, `ArtistAndAbove`); frontend `features/today`, route `/today` | Per-tenant; the viewer's own assigned sessions only |
 
 #### StudioPortfolioPage (`/s/{slug}`)
 
@@ -5956,3 +5957,103 @@ used to be discarded.
   full id fails 8 of 9 cases.
 - Help: none. Server logging has no user-visible surface, and no Help or manual text says what is or isn't
   logged.
+
+## After Hours E04a — the artist's Today view and session preparation (A01 + A03) — built — 2026-11-04
+
+Prompt: `docs/claude/overnight-prompt-after-hours-e04a-artist-today-2026-11-04.md`, base `00f9e152` (main
+after PR #333; the prompt's quotes matched). Two of E04's eight items; A02/A04/A08 are E04b, A05/A06 E04c,
+A07 is DEC10-blocked and not touched in any form (no earnings tile, figure or link; the Today page and the
+preparation read carry no money beyond one deposit's own status).
+
+### Artist-vs-client readiness framing (§4.2) — a separate staff record, not an extended client item
+`GET /api/v1/appointments/{id}/preparation` returns `AppointmentPreparationResponse` with its own
+`AppointmentPreparationItemResponse(Key, Label, Satisfied, State, FollowUp)`. The facts come from the
+unchanged `AppointmentReadinessReader.LoadAsync` + `AppointmentReadiness.Derive`, so client and artist can't
+disagree about an appointment; only the wording differs, and both wordings now sit side by side in the reader
+(`Itemise` for the client, new `ItemiseForStaff` for staff). **Why a separate record rather than extra fields on
+`AppointmentReadinessItemResponse`:** extending would ship the client's `ActionLabel`/`Destination` to artists
+and the artist's wording to clients, and nothing in the type would stop an artist screen rendering "Sign the
+consent form". A separate record makes that impossible by construction. `State` is third person ("Not signed
+yet"); `FollowUp` says what the client can still do ("The client can sign it from their appointment page"),
+and is null once satisfied or once the session is finished. The artist's affordance for an outstanding item is
+a message to the client through the existing conversation path with `ChatMessage.AppointmentId` set (slice 2),
+shown only for an upcoming session with something outstanding. No reminder or nudge mechanism was added.
+Tests assert the copy, not just the render: backend (no client action label, no imperative client verb, no
+second person in any staff string) and frontend (the same checks on the rendered page text).
+
+### "No requirements → empty, not zeroes"
+The summary record has one "nothing configured" value, `Required = 0`, documented on
+`AppointmentReadinessSummaryResponse` since slice 2. The staff list keeps that contract rather than returning
+`null`, which would make the staff and client paths disagree for the same appointment. "Empty" is honoured
+where it is visible: the itemised staff list is empty, and Today renders no preparation line at all, never
+"0 of 0" (both asserted).
+
+### Phase A — the staff list
+`GetAppointmentsQuery` gains `AssignedToMe` (`?assignedToMe=true`): the caller's own assigned sessions for any
+role, so an owner who is also an artist sees their own work (D2); without it an owner still sees the whole
+studio. Each row now carries the readiness summary (same reader), the client's login id, and the brief and
+placement. `SafetyNotes` is nulled on the list (A03: health details never in list previews); the staff
+appointment page still carries it. New `GetAppointmentsValidator` (`to` not before `from`; 422, like every
+validator here).
+
+### Drift found, and fixed in this slice
+- **Neither staff read loaded `Intake`.** `GetAppointmentsQuery` and `GetAppointmentQuery` both mapped
+  `a.Intake?.TattooDescription` etc. without `.Include(a => a.Intake)`, so the brief, placement and safety
+  notes were always null on staff screens: the staff appointment page's "What they want" and safety-note
+  blocks could never render. A unit test failed before the fix; after it, a real-MySQL API read returned the
+  brief and safety notes. One `Include` each; no change to `AppointmentDetailPage.tsx`.
+- **An artist with no Artist row saw every unassigned request.** The artist filter compared `ArtistId` to a
+  null id, which EF translates to `IS NULL`. The shared lookup now returns no sessions instead (tested for an
+  artist and for `assignedToMe`).
+
+### Drift found, not fixed (outside scope)
+- `GET /payments/appointment/{id}` is `ClientAndAbove` with no artist scoping and returns `SessionSplits`.
+  Today deliberately does not call it (A07 fence); the preparation read projects only the fields
+  `describeDeposit` needs (no splits, client name, provider reference or token). Scoping that endpoint is a
+  separate decision.
+- `GET /appointments/{id}` (staff detail) has no artist-ownership check: any artist in the studio can read any
+  appointment. Pre-existing. The new preparation read does scope (404 for an artist's session that isn't
+  theirs).
+- **No per-session design state exists.** `Design` links to client + artist, not to an appointment, so a
+  session's "design state" would be a new derivation in E04c's (A05) territory. Not built.
+
+### Route and folder
+`/today` (RoleGuard Artist/Owner/Admin) in a new `frontend/src/features/today/` folder: the page composes
+appointments, payments (`describeDeposit`) and messaging, so it reads better as its own feature than inside
+`appointments/components`. It is first in `artistNavSections` (`data-tour="artist-today-nav"`), so an owner's
+artist mode gets it too, and `isInArtistContext` treats `/today` as artist context. **Interpretation of D1
+("the daily entry point"):** an artist now lands on `/today` after sign-in (`getRoleRedirectPath`). The router
+and login tests that asserted `/schedule` were updated to the new expectation, not weakened. `SchedulePage` is
+untouched and linked from Today (with `?artistId` for an owner). `/today` is in the nginx noindex map.
+The studio day comes from a small `shared/utils/studioDay.ts` (Intl offsets, DST-safe; tested on both DST days
+and in a zone behind UTC). The query starts a day early and keeps sessions that end after the studio's
+midnight, so a 23:00–02:00 session from last night still shows. It is wall-clock only: no policy arithmetic.
+
+### N+1 evidence
+`StaffAppointmentReadinessIntegrationTests.TheStaffList_QueryCountDoesNotScaleWithSessions` counts every
+command on a real MySQL context: the staff list issues the same number of commands for 1 session as for 8
+(artist lookup, the list with its joins, one readiness statement). The preparation read is one session at a
+time, opened on demand.
+
+### §1b debt (AlertDialog / DropdownMenu)
+Not paid: Today renders neither primitive. Its only disclosure is the Radix `Accordion`, which renders inline
+(no portal). Carried forward a fifth time, to the first slice that renders either.
+
+### Browser check (real Chrome, local stack)
+Signed in as a seeded artist with two temporary sessions (removed afterwards; dev DB counts back to baseline).
+The artist landed on `/today`. The spans read "Wed 4 Nov, 14:00 – 16:00" and "Wed 4 Nov, 23:00 – Thu 5 Nov,
+02:00" in light and dark at 390 and 1100 px, with `scrollWidth == innerWidth` in all four and the After Hours
+scope present. The outstanding state painted `rgb(120,80,23)` on `rgb(255,253,247)` (light) and
+`rgb(232,201,148)` on `rgb(33,29,38)` (dark). A seeded safety-note marker appeared neither on the page nor in
+any list or preparation response, and no client instruction appeared anywhere on the page.
+
+### Help (rule 7) and benchmark (rule 6)
+New article `artist-today` (roles Artist, Owner); `artist-schedule` now has
+`relatedArticleIds: ["artist-today"]`. Manual: a new `#artist-today` section in
+`frontend/public/user-manual/index.html` (the served copy; `docs/user-manual.html` untouched), a nav entry, and
+the schedule section no longer calls itself the home screen. Tour: a Today step before the schedule step,
+covered by a new `artistTour.test.ts`.
+A per-practitioner "today" view and form-completion tracking are category norms (Fresha, Vagaro, Boulevard,
+GlossGenius), and Fresha's choice not to hard-block an appointment on forms is why preparation never blocks
+here either. Nothing here goes beyond the benchmark set. The benchmark tools also send automated form
+reminders, which this slice deliberately does not (Phi's parked gap).

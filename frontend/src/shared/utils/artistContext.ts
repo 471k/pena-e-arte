@@ -9,5 +9,7 @@ export function isInArtistContext(pathname: string, search: string, myArtistId: 
   if (!myArtistId) return false;
   if (pathname.startsWith(`/artists/${myArtistId}`)) return true;
   if (pathname === "/earnings") return true;
+  // Today is always the owner's own assigned work, never the studio's.
+  if (pathname === "/today") return true;
   return new URLSearchParams(search).get("artistId") === myArtistId;
 }
