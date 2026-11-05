@@ -27,7 +27,13 @@ public class ReschedulePreviewAgreementTests
     private readonly Guid _clientUserId = Guid.NewGuid();
     private readonly Guid _artistId = Guid.NewGuid();
 
-    public ReschedulePreviewAgreementTests() => _tenant.StudioId.Returns(_studioId);
+    public ReschedulePreviewAgreementTests()
+    {
+        _tenant.StudioId.Returns(_studioId);
+        // The save also checks the artist is working at the new time; this suite is about the status gate
+        // and the notice window, so the studio is open around the clock.
+        OpenSchedule.Seed(_db, _studioId, _artistId);
+    }
 
     public static TheoryData<string, AppointmentStatus, int> Cases()
     {

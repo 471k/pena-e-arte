@@ -106,6 +106,12 @@ public class AppointmentCommunicationIntegrationTests(DatabaseFixture fixture)
         Client client = new() { StudioId = studioId, FirstName = "C", LastName = "D", Email = $"{Guid.NewGuid():N}@c.test", Phone = "+351912345678" };
         ctx.Artists.Add(artist);
         ctx.Clients.Add(client);
+        // The reschedule save checks studio and artist hours (Phi, 2026-11-05): open around the clock.
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            ctx.StudioHours.Add(new StudioHours { StudioId = studioId, DayOfWeek = day, StartTime = TimeSpan.Zero, EndTime = new TimeSpan(23, 59, 0), IsOpen = true });
+            ctx.ArtistSchedules.Add(new ArtistSchedule { StudioId = studioId, ArtistId = artist.Id, DayOfWeek = day, StartTime = TimeSpan.Zero, EndTime = new TimeSpan(23, 59, 0), IsAvailable = true });
+        }
         await ctx.SaveChangesAsync();
         DateTime start = status == AppointmentStatus.Completed ? DateTime.UtcNow.AddHours(-3) : DateTime.UtcNow.AddDays(5);
         Appointment appointment = new()

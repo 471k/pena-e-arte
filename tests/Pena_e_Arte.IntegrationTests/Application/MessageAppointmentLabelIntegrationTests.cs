@@ -190,6 +190,9 @@ public class MessageAppointmentLabelIntegrationTests(DatabaseFixture fixture)
         Service service = new() { StudioId = studioId, Name = "Fine line", DurationMinutes = 60, IsActive = true };
         ctx.Clients.Add(client);
         ctx.Services.Add(service);
+        // The reschedule save checks studio and artist hours (Phi, 2026-11-05): open around the clock.
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+            ctx.StudioHours.Add(new StudioHours { StudioId = studioId, DayOfWeek = day, StartTime = TimeSpan.Zero, EndTime = new TimeSpan(23, 59, 0), IsOpen = true });
 
         List<Guid> conversationIds = [];
         List<Guid> appointmentIds = [];
@@ -209,6 +212,8 @@ public class MessageAppointmentLabelIntegrationTests(DatabaseFixture fixture)
                 IsActive = true,
             };
             ctx.Artists.Add(artist);
+            foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+                ctx.ArtistSchedules.Add(new ArtistSchedule { StudioId = studioId, ArtistId = artist.Id, DayOfWeek = day, StartTime = TimeSpan.Zero, EndTime = new TimeSpan(23, 59, 0), IsAvailable = true });
 
             DateTime start = DateTime.UtcNow.Date.AddDays(10 + i).AddHours(13);
             Appointment appointment = new()

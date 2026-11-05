@@ -71,6 +71,20 @@ public class RescheduleAppointmentHandler(
         RescheduleAppointmentRequest req = command.Request;
         DateTime newEnd = req.NewDate.AddMinutes(req.NewDurationMinutes);
 
+        // The artist must actually be working then: studio closures and hours, the artist's own hours
+        // and time off, the same schedule check booking makes before its lock and the reschedule preview
+        // shows (Phi, 2026-11-05). Until now the save checked only overlaps for an assigned artist, so an
+        // API caller (a client included) could move a session outside opening hours. Applies to staff as
+        // well; the dialog already refused such a time for everyone. An unassigned appointment is checked
+        // by IsAnyArtistAvailableAsync below, which already includes hours.
+        if (appointment.ArtistId is Guid scheduleArtistId)
+        {
+            (bool available, string? reason) = await db.CheckArtistScheduleAsync(
+                appointment.StudioId, scheduleArtistId, req.NewDate, req.NewDurationMinutes, ct);
+            if (!available)
+                throw new BusinessRuleViolationException(reason ?? "The artist is not available at that time.");
+        }
+
         // Moving an appointment into an artist's time is a booking too: the same artist booking lock
         // as CreateAppointmentCoreAsync, held from the overlap check until the move is saved, so two
         // concurrent requests can't both land in overlapping time. No artist yet: nothing to claim.
