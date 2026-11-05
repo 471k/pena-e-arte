@@ -4,6 +4,7 @@ import { baseQuery } from "@/shared/api/baseQuery";
 // inside callbacks that run after both modules have loaded.
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import type {
+  AppointmentCommunicationResponse,
   AppointmentPreparationResponse,
   AppointmentResponse,
   AssignAppointmentArtistRequest,
@@ -120,6 +121,12 @@ export const appointmentsApi = createApi({
       },
       invalidatesTags: ["Appointment"],
     }),
+    // Whether the client has been told about a reschedule, and whether aftercare went out (E04b, A08).
+    // Tagged "Appointment" so a reschedule or completion anywhere refetches it.
+    getAppointmentCommunication: builder.query<AppointmentCommunicationResponse, string>({
+      query: (id) => `appointments/${id}/communication`,
+      providesTags: ["Appointment"],
+    }),
     // What a no-show would do to the deposit, decided by the server (E04b, A04). Never cached between
     // openings: the payment can change, and the commit decides again anyway.
     getNoShowPreview: builder.query<NoShowPreviewResponse, string>({
@@ -183,6 +190,7 @@ export const {
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
   useGetNoShowPreviewQuery,
+  useGetAppointmentCommunicationQuery,
   useRescheduleAppointmentMutation,
   useCheckSlotAvailabilityQuery,
   useGetReschedulePreviewQuery,

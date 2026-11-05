@@ -293,6 +293,39 @@ export interface CheckSlotAvailabilityParams {
   excludeAppointmentId?: string;
 }
 
+/**
+ * GET /appointments/{id}/communication (E04b, A08). Only what the data proves: not sent, sent (handed to
+ * our provider or posted in the conversation) and failed. Never delivery or reading.
+ */
+export interface AppointmentCommunicationResponse {
+  appointmentId: string;
+  /** Null unless the appointment has been rescheduled. */
+  reschedule:    RescheduleCommunication | null;
+  /** Null unless the appointment is Completed. */
+  aftercare:     AftercareCommunication | null;
+}
+
+export interface RescheduleCommunication {
+  state:         "NotSent" | "Sent";
+  rescheduledAt: string;
+  /** The first staff message about this appointment since it was moved. */
+  messagedAt:    string | null;
+}
+
+export interface AftercareCommunication {
+  state:    "NotSent" | "Sent" | "Failed" | "NotRecorded";
+  /** When the aftercare step ran, or null. */
+  ranAt:    string | null;
+  channels: CommunicationChannel[];
+}
+
+export interface CommunicationChannel {
+  channel: "Email" | "Sms";
+  /** Our provider accepted it. Not a delivery receipt. */
+  sent:    boolean;
+  at:      string | null;
+}
+
 /** What a no-show does to the deposit (E04b, A04), decided by the server's NoShowOutcome. */
 export const NoShowOutcome = {
   NothingCollected:           "NothingCollected",

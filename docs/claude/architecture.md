@@ -6109,3 +6109,127 @@ asymmetry is intentional: schedule detail is shared within a studio, payment det
 
 ### Noted, not fixed
 The client archive dialog reads "Archive MultiStudio ?" when a client has no last name.
+
+
+## After Hours E04b — consequence before committing: reschedule, no-show, communication (A02 + A04 + A08) — built — 2026-11-05
+
+Prompt: `docs/claude/overnight-prompt-after-hours-e04b-consequences-2026-11-05.md`, base `ce4bcfe2`. The prompt's
+quotes matched the checkout. A07/earnings is untouched (DEC10).
+
+### Flagged for Phi, deliberately NOT changed (prompt §2)
+- **§2.1 Cash no-show semantics.** A declared cash deposit (`CashPending`) is still recorded as `Paid`, without
+  `PaidAt`, on a no-show, while cancellation treats the same payment as nothing collected. The new
+  `NoShowOutcome` reproduces this exactly (`DeclaredCashRecordedAsPaid`). The confirmation says it plainly:
+  "no cash was received… records this deposit as paid and kept anyway". Tests assert the current behaviour as
+  current, not as endorsed.
+- **§2.2 Unscoped no-show.** `PATCH {id}/no-show` still has no artist-ownership check. **The new
+  `GET {id}/no-show-preview` has the same authorization as the commit on purpose** (`ArtistAndAbove`,
+  unscoped). Scoping only the preview would disable confirm on a colleague's session in the UI, quietly making
+  the decision that is Phi's. The preview therefore also shows a colleague's deposit outcome to any artist; that
+  is part of the same question. If Phi scopes the commit, the preview takes the same one-line rule.
+
+### A04 — the no-show decision is shared, not forked
+`Domain/Services/NoShowOutcome.Decide(Payment?)` returns the payment action (`None`, `CaptureHold`,
+`RecordCashAsPaid`), a staff-facing outcome and the amount. `NoShowOutcome.IsAllowed` is the status gate.
+`MarkNoShowHandler.FindDepositPaymentAsync` is the one payment lookup ("first payment that isn't Refunded"). The
+handler and `GetNoShowPreviewQuery` both use all three. The handler's writes are unchanged, in the same order:
+the appointment's status and deposit status, then the capture call with the same arguments, then the payment
+writes. A diff of every `CaptureAsync`/`Status =`/`PaidAt`/`UpdatedAt`/`SaveChangesAsync`/`NotifyStudioAsync`
+line between `ce4bcfe2` and this branch shows the same sequence. Only two things were added after the save: a
+read-only currency lookup, and a richer return value. `PATCH no-show` now returns `NoShowResultResponse` (the
+appointment plus the outcome the commit applied), so the UI shows the server's actual result, never the
+projection. Its only consumers checked for success. The frontend's `markNoShow` also invalidates the
+payments slice now, as cancel already did.
+UI: `NoShowConfirmDialog` (an `AlertDialog`, inheriting the portal rule measured on 4 Nov, so no new browser
+check was owed) from both the schedule card and the appointment page.
+- It shows the server's outcome and amount.
+- Confirm is disabled until the preview loads, and on failure or an `Unknown` outcome.
+- "Keep the appointment" has initial focus.
+- It says plainly that a no-show can't be undone, and offers no undo.
+- The card's dialog stops click propagation, because React events bubble out of portals into the clickable card.
+
+### A02 — the reschedule rules are shared, and the slot check can exclude the moving appointment
+`Domain/Services/RescheduleEligibility.Decide` is the status gate, then the client notice window from
+`ClientCancellationPolicy`. `RescheduleEligibility.Message` is the save's exact refusal text. The save and the new
+`GET {id}/reschedule-preview` both call it, and 30 role × status × window cases assert they agree.
+**Slot-exclusion scoping rule:** `GET check-slot?excludeAppointmentId=` is optional, and every existing caller
+(booking, guest, public) is unchanged. An exclusion is accepted only for an appointment the caller may move, by
+the save path's own rule: a client their own (404 otherwise, never 403), staff any appointment in the studio.
+Only `CheckArtistSlotAvailabilityAsync` takes it, because the any-artist path never counts an unassigned
+appointment against itself.
+**Drift, flagged, not fixed:** for an appointment that has an artist, the reschedule save checks only for
+overlaps. It does not check studio hours, artist hours, closures or time off, which the preview does. So the
+preview is stricter than the save, and an API caller (a client included) can move a session outside opening
+hours. Making the save enforce hours is a behaviour change for staff, who may move sessions outside hours on
+purpose, so it is Phi's decision.
+
+### A08 — what communication state could honestly be shown, and what was refused
+**Drift found:** the prompt assumed reschedule and aftercare were logged in `NotificationLog`. Neither was.
+- A reschedule sends the client nothing (the dialog has always said so).
+- The aftercare step wrote no log row, and sets `Appointment.AftercareSentAt` even when every channel failed or
+  both were switched off. The staff page's old "Aftercare: Sent ✓" was therefore not reliable.
+
+**Built:**
+- **Reschedule task:** the latest `Appointment.Rescheduled` audit entry (studio explicit; the audit log has no
+  tenant filter), and whether staff have sent a message carrying this appointment's id since. States `NotSent` /
+  `Sent`. There's no failed state, because an in-app message is either stored or the send errors at the sender.
+- **Aftercare (deviation: one additive migration).** `NotificationLog.AppointmentId` (nullable, indexed,
+  `20261105001756_AddNotificationLogAppointmentId`). The aftercare step now writes one row per attempted channel
+  with `IsSuccess`, the way the other client notifications already log theirs. What it sends, and when, is
+  unchanged. States: `NotSent`, `Sent` (any channel accepted), `Failed` (all failed), `NotRecorded` (it ran but no
+  per-channel row: older rows, or both channels off). Old rows are never guessed.
+- `GET {id}/communication` is scoped like the preparation read: an artist only their own session (404
+  otherwise), owners and admins any session. A "Client communication" card on the staff appointment page replaces
+  the old aftercare row. It reuses E04a's message box, moved unchanged to
+  `features/messaging/components/MessageClientAboutAppointment.tsx`, and E04a's tests still pass 24/24.
+- **Visible side effect:** aftercare messages now appear in the owner's (and that client's) notification log, one
+  entry per channel. Help says so.
+
+**Refused:** "delivered", "received" and "read". A test fails if any communication-state string, or anything
+rendered in the card, contains them. "Sent" means our side handed it off.
+- `ChatMessage.ReadAt` does exist, a real read signal for in-app chat. It is not shown, per the prompt; whether
+  to surface it is a later product call.
+- **Copy fixed (prompt §9):** the `owner-notifications` article and the manual's notification log claimed each
+  entry showed "delivered successfully" or "delivery success". The log only ever recorded whether the provider
+  accepted the message; the copy now says "sent" and that delivery isn't tracked.
+- **Flagged, not changed:** the campaigns article's "delivered/total counts" mirrors what that screen itself
+  labels.
+- **Flagged, not changed:** the client appointment page's aftercare block shows the steps whenever
+  `AftercareSentAt` is set and the email preference is on, even if the email failed. The new per-channel rows
+  would let it check the email actually went out.
+
+### Help (rule 7), tour, benchmark (rule 6)
+Help ids touched:
+- `artist-appointment-detail`: reschedule, no-show, client communication, warnings.
+- `client-reschedule-booking`.
+- `owner-notifications`: delivery copy fixed, aftercare entries.
+- `artist-today`: Desktop's E04a request; artists now land here, and the week view is still under Schedule.
+
+The manual's matching sections are updated in `frontend/public/user-manual/index.html`, the served copy.
+`docs/user-manual.html` is untouched. **Tour: no new step.** These change what existing flows explain, not where
+anything lives.
+
+Benchmark: stating a deposit consequence before a destructive action is ordinary in the category (no-show fees
+across Fresha/Vagaro/Boulevard/Booksy; Zenoti's one-fee, one-window guidance). As the prompt says, I found no
+public evidence of a competitor showing a per-session projected no-show outcome, so this is not described as
+matching one. What justifies it is internal: the action forfeits a deposit irreversibly, and until now it said
+nothing first.
+
+### Tests and checks
+- **Backend:** unit 3561 → 3629 and integration 670 → 683, all green. The base is derived (E04a's measured 3555
+  plus #335's 6), not re-run at `ce4bcfe2`.
+- **Agreement tests on real MySQL:**
+  - `NoShowPreviewIntegrationTests`: preview equals commit for all seven deposit states, plus a payment that
+    changes in between, where the commit wins.
+  - `RescheduleSlotExclusionIntegrationTests`.
+  - `AppointmentCommunicationIntegrationTests`, which also proves the migration applies.
+- **Frontend:** the affected suites (today, appointments, messaging, payments, layouts, app, auth, help,
+  shared including the contrast guard, and SEO route coverage) pass 112 files / 1344 tests. A first run made in
+  parallel with the backend suites timed out ten unrelated slow jsdom tests; they all passed when re-run alone.
+  Lint has no errors, and the build is clean.
+- **Real Chrome, light and dark, 1100 px,** on seeded dev rows (removed afterwards; counts back to baseline):
+  - The no-show dialog shows the declared-cash wording with the amount, focus starts on "Keep the appointment",
+    and contrast is 5.76 (light) / 8.82 (dark). Backing out wrote nothing; the payment stayed `CashPending`.
+  - The reschedule slot check sent `excludeAppointmentId`.
+  - Aftercare read "Email: sent" and "Text message: failed to send", with no forbidden word.
+  - No overflow.

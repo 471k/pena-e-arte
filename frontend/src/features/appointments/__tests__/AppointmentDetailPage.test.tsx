@@ -80,6 +80,9 @@ const APPT_UNASSIGNED: AppointmentResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // E04b (A08): the client-communication card; nothing to show for these fixtures.
+  http.get("http://localhost/api/v1/appointments/:id/communication", ({ params }) =>
+    HttpResponse.json({ appointmentId: params.id, reschedule: null, aftercare: null })),
   // E04b (A02): the reschedule dialog asks whether the appointment can be moved before showing the form.
   http.get("http://localhost/api/v1/appointments/:id/reschedule-preview", ({ params }) => HttpResponse.json({
     appointmentId: params.id, canReschedule: true, block: null, message: null,

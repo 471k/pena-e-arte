@@ -1622,7 +1622,7 @@ ol.steps li { margin: 6px 0; }
 <p>The artist's home screen at <code>/today</code>, first in the menu and where an artist lands after signing in. It lists the sessions assigned to you on the studio's current day, including one that started last night and is still running. Each session shows its date and time in the studio's timezone (both dates when it runs past midnight, e.g. <em>Wed 4 Nov, 23:00 – Thu 5 Nov, 02:00</em>), the client, the status, a short line of the brief, the placement, how many reference images there are, the deposit status and a preparation count such as <em>Preparation: 2 of 4 done</em>. An owner who also works as an artist sees only their own assigned sessions here; requests that still need an artist stay on the schedule and the dashboard.</p>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Open <span class="step-title">Today</span> from the top of the menu.</li>
+<li>Open <span class="step-title">Today</span> from the top of the menu. Artists now land here when they sign in (it used to be the Schedule); the week view is still under <span class="step-title">Schedule</span>.</li>
 <li>Click <span class="step-title">Brief and preparation</span> on a session to open the full brief (long ones have <span class="step-title">Show more</span>), the area photo and reference images, and each preparation requirement: whether the client has done it (for example <em>Not signed yet</em>) and what they can still do about it.</li>
 <li>If something is outstanding, write to the client in the <span class="step-title">Message … about this session</span> box and click <span class="step-title">Send</span>. The message lands in your conversation with them and is labelled with this appointment.</li>
 <li>Click <span class="step-title">Open appointment</span> for the full record (notes, safety notes, forms), or <span class="step-title">Open schedule</span> for the week view.</li>
@@ -1666,7 +1666,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> Appointment detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and aftercare status once completed, plus every status-change action and a <strong>Send Reminder</strong> button.</p>
+<p>Full detail for one appointment at <code>/appointments/&lt;id&gt;</code>: client, time, duration, status, deposit, notes, any client-attached reference images, and a Client communication card (reschedule and aftercare), plus every status-change action and a <strong>Send Reminder</strong> button.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Appointment detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1697,6 +1697,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Reschedule</span> to move it. The dialog first checks whether the appointment can still be moved (a completed, cancelled or no-show appointment can't) and says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The client is not told automatically, so let them know.</li>
 </ol>
 <div class="callout callout-tip"><strong>Marking a no-show:</strong> the confirmation is worked out by the server from the deposit's real state, the same way the no-show itself decides, so what it says is what happens. A deposit already paid is kept; a deposit still held on the card is charged and kept; with no deposit paid, no money moves. If the client only said they would pay in cash and never did, the deposit is still recorded as paid and kept, and the confirmation says so. If the deposit's state can't be worked out or the check fails, it can't be confirmed until it can. Afterwards the dialog shows what was actually done.</div>
+<div class="callout callout-tip"><strong>Client communication:</strong> after a reschedule, this card shows whether a message about the appointment has been sent to the client. They aren't told automatically, so it has a box to write to them, and the message is labelled with this appointment. For a completed session it shows whether aftercare was sent or failed, per email and text message. "Sent" means TattooOS handed the message over or posted it in the conversation; it can't tell whether an email or text reached the client or whether they looked at it. An older session may say there's no record of a message going out.</div>
 <div class="callout callout-warn"><strong>Warning:</strong> cancelling an appointment or marking a no-show cannot be undone.</div>
 <div class="crosslinks">See also: <a href="#artist-schedule">Weekly schedule</a>, <a href="#owner-payment-detail">Owner: payment detail</a>, <a href="#ref-appointment-statuses">Appointment statuses</a>, <a href="#artist-messaging">Artist: messages</a>, <a href="#owner-messaging">Owner: messages</a></div>
 </section>
@@ -3444,7 +3445,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Notification log</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/notifications</code>: every email/SMS the app has sent on your studio's behalf, filterable by channel and date range, each showing delivery success or failure.</p>
+<p>At <code>/notifications</code>: every email/SMS the app has sent on your studio's behalf, filterable by channel and date range, each marked as sent or failed. "Sent" means the email or text provider accepted it; whether it reached the client isn't tracked. Aftercare messages appear here too, one entry per channel.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Notification log wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>

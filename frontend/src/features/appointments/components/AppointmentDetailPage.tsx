@@ -32,6 +32,7 @@ import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
 import { NoShowConfirmDialog } from "./NoShowConfirmDialog";
+import { ClientCommunicationCard } from "./ClientCommunicationCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import {
   useGetAppointmentQuery,
@@ -347,21 +348,12 @@ export function AppointmentDetailPage() {
                     <Row label="Cancellation reason" value={appt.cancellationReason} />
                   </>
                 )}
-                {appt.status === AppointmentStatus.Completed && (
-                  <>
-                    <Separator />
-                    <Row
-                      label="Aftercare"
-                      value={
-                        appt.aftercareSentAt
-                          ? <span className="text-success-text text-xs font-medium">Sent ✓</span>
-                          : <span className="text-muted-foreground text-xs">Pending</span>
-                      }
-                    />
-                  </>
-                )}
               </CardContent>
             </Card>
+
+            {/* A08: replaces the old "Aftercare: Sent ✓" row, which showed Sent whenever the aftercare
+                step had run, even if every message failed or none was enabled. */}
+            <ClientCommunicationCard appt={appt} />
 
             {canMessageClient && (
               <Button
