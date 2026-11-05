@@ -387,8 +387,13 @@ public class GetMyAppointmentHandlerTests
     {
         _db.NotificationLogs.Add(new NotificationLog
         {
-            StudioId = _studioId, AppointmentId = appointmentId, RecipientType = NotificationRecipientType.Client,
-            Channel = channel, Body = "aftercare", SentAt = at, IsSuccess = success,
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            RecipientType = NotificationRecipientType.Client,
+            Channel = channel,
+            Body = "aftercare",
+            SentAt = at,
+            IsSuccess = success,
         });
         _db.SaveChanges();
     }

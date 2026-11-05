@@ -128,7 +128,11 @@ public class TimeOffAffectedSessionsIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext ctx = fixture.CreateDbContext(studioId);
         ctx.Studios.Add(new Studio
         {
-            Id = studioId, Name = "TimeOff", Slug = studioId.ToString("N")[..8], CountryCode = "AL", Currency = "ALL",
+            Id = studioId,
+            Name = "TimeOff",
+            Slug = studioId.ToString("N")[..8],
+            CountryCode = "AL",
+            Currency = "ALL",
             Timezone = "Europe/Tirane",
         });
         Artist artist = new() { StudioId = studioId, UserId = artistUserId, FirstName = "Ari", LastName = "Kola", Email = $"{Guid.NewGuid():N}@a.test", IsActive = true };
