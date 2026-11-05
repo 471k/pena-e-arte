@@ -569,7 +569,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Add to Calendar\" to download an .ics file for the appointment.",
       "Click \"Confirm appointment\" or \"Mark as complete\" to advance its status.",
       "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The client isn't told automatically, so let them know.",
-      "Click \"Mark no-show\" if the client didn't attend, or \"Cancel appointment\" and confirm if it needs to be cancelled.",
+      "Click \"Mark no-show\" if the client didn't attend. Before anything happens, a confirmation shows what it will do to the deposit (for example that the studio keeps a deposit already paid, or that a deposit held on the card is charged), with the amount. Click \"Mark no-show\" there to confirm, or \"Keep the appointment\" to back out. Once confirmed, it shows what was actually done.",
+      "Click \"Cancel appointment\" and confirm if it needs to be cancelled.",
       "For a booking request you can't take, click \"Decline request\" instead and confirm. The client is told you can't take the request, not that an appointment was cancelled.",
     ],
     tips: [
@@ -577,8 +578,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "The back arrow, and cancelling, return you to the page you came from. If you opened the appointment from an email, a notification or a new tab, they take you to your Schedule instead.",
       "When you cancel or decline, the client gets an email naming your studio, your phone number and a link to book another time (replies reach your studio email), plus a text message if they gave a phone number. Any deposit they paid is refunded in full.",
       "On the Schedule, the trash icon on a request declines it; on a confirmed appointment it cancels it.",
+      "The no-show icon on a Schedule card opens the same confirmation. If the deposit's state can't be worked out, or the check fails, the confirmation can't be confirmed until it can; check the payment with the studio owner.",
+      "If the client only said they would pay the deposit in cash and never did, marking a no-show still records that deposit as paid and kept. The confirmation says so before you confirm.",
     ],
-    warnings: ["Cancelling an appointment or declining a request cannot be undone."],
+    warnings: ["Cancelling an appointment, declining a request or marking a no-show cannot be undone."],
     relatedArticleIds: ["artist-send-manual-reminder", "artist-messaging"],
   },
   {

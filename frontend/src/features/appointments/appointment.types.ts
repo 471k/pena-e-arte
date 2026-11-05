@@ -293,6 +293,39 @@ export interface CheckSlotAvailabilityParams {
   excludeAppointmentId?: string;
 }
 
+/** What a no-show does to the deposit (E04b, A04), decided by the server's NoShowOutcome. */
+export const NoShowOutcome = {
+  NothingCollected:           "NothingCollected",
+  ChargedDepositKept:         "ChargedDepositKept",
+  CashDepositKept:            "CashDepositKept",
+  HeldDepositCaptured:        "HeldDepositCaptured",
+  DeclaredCashRecordedAsPaid: "DeclaredCashRecordedAsPaid",
+  Unknown:                    "Unknown",
+} as const;
+export type NoShowOutcome = (typeof NoShowOutcome)[keyof typeof NoShowOutcome];
+
+/** GET /appointments/{id}/no-show-preview — a projection; the commit decides again. */
+export interface NoShowPreviewResponse {
+  appointmentId: string;
+  canMarkNoShow: boolean;
+  /** The commit's own refusal when it would refuse; null otherwise. */
+  message:       string | null;
+  outcome:       NoShowOutcome;
+  /** The money concerned; 0 when nothing was collected. */
+  amount:        number;
+  currency:      string;
+  isProjection:  boolean;
+}
+
+/** PATCH /appointments/{id}/no-show — what the commit actually did, never the earlier preview. */
+export interface NoShowResultResponse {
+  appointment:   AppointmentResponse;
+  outcome:       NoShowOutcome;
+  amount:        number;
+  currency:      string;
+  paymentStatus: string | null;
+}
+
 /**
  * GET /appointments/{id}/reschedule-preview — whether the appointment can be moved at all, decided by
  * the same server rule the save applies (status, then the client notice window). Never recomputed here.

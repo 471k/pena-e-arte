@@ -12,6 +12,8 @@ import type {
   ClientAppointmentDetailResponse,
   CreateAppointmentRequest,
   GetAppointmentsParams,
+  NoShowPreviewResponse,
+  NoShowResultResponse,
   RescheduleAppointmentRequest,
   ReschedulePreviewResponse,
   SlotAvailabilityResponse,
@@ -104,9 +106,25 @@ export const appointmentsApi = createApi({
       query: (id) => ({ url: `appointments/${id}/complete`, method: "PATCH" }),
       invalidatesTags: ["Appointment"],
     }),
-    markNoShow: builder.mutation<AppointmentResponse, string>({
+    // Returns what the commit actually did to the deposit (E04b). A no-show can capture a held deposit
+    // or change the payment row, so the payment screens refetch too.
+    markNoShow: builder.mutation<NoShowResultResponse, string>({
       query: (id) => ({ url: `appointments/${id}/no-show`, method: "PATCH" }),
+      async onQueryStarted(_id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(paymentsApi.util.invalidateTags(["Payment"]));
+        } catch {
+          // Mutation failed — nothing to invalidate.
+        }
+      },
       invalidatesTags: ["Appointment"],
+    }),
+    // What a no-show would do to the deposit, decided by the server (E04b, A04). Never cached between
+    // openings: the payment can change, and the commit decides again anyway.
+    getNoShowPreview: builder.query<NoShowPreviewResponse, string>({
+      query: (id) => `appointments/${id}/no-show-preview`,
+      keepUnusedDataFor: 0,
     }),
     rescheduleAppointment: builder.mutation<
       AppointmentResponse,
@@ -164,6 +182,7 @@ export const {
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
   useMarkNoShowMutation,
+  useGetNoShowPreviewQuery,
   useRescheduleAppointmentMutation,
   useCheckSlotAvailabilityQuery,
   useGetReschedulePreviewQuery,

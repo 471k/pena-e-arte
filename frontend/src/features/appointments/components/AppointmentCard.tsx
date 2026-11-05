@@ -19,8 +19,8 @@ import {
   useDeclineAppointmentMutation,
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
-  useMarkNoShowMutation,
 } from "../appointmentsApi";
+import { NoShowConfirmDialog } from "./NoShowConfirmDialog";
 import { Money } from "@/shared/components/Money";
 
 interface AppointmentCardProps {
@@ -52,13 +52,14 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const canOwner      = usePermission(Role.Owner);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  // A04: a no-show is confirmed in a dialog that first shows what it does to the deposit.
+  const [noShowOpen, setNoShowOpen] = useState(false);
 
   const [cancel,   { isLoading: cancelling  }] = useCancelAppointmentMutation();
   const [decline,  { isLoading: declining   }] = useDeclineAppointmentMutation();
   const { data: studio } = useGetMyStudioQuery();
   const [confirm,  { isLoading: confirming  }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing  }] = useCompleteAppointmentMutation();
-  const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
 
   const isTerminal       = TERMINAL_STATUSES.has(appointment.status);
   const isPending        = appointment.status === AppointmentStatus.Pending;
@@ -72,7 +73,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
     hasDeposit &&
     appointment.depositStatus === DepositStatus.Pending;
 
-  const anyLoading = cancelling || declining || confirming || completing || markingNoShow;
+  const anyLoading = cancelling || declining || confirming || completing;
   const removing   = cancelling || declining;
 
   // Attachments fall back to the deprecated flat imageUrls for pre-migration appointments.
@@ -98,12 +99,6 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
     const result = await complete(appointment.id);
     if ("data" in result) toast.success("Appointment marked complete.");
     else                  toast.error("Failed to complete appointment.");
-  }
-
-  async function handleNoShow() {
-    const result = await noShow(appointment.id);
-    if ("data" in result) toast.success("Appointment marked as no-show.");
-    else                  toast.error("Failed to mark appointment as no-show.");
   }
 
   return (
@@ -203,11 +198,12 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 variant="ghost"
                 size="sm"
                 disabled={anyLoading}
-                onClick={handleNoShow}
+                onClick={() => setNoShowOpen(true)}
                 className="h-7 px-2 text-xs gap-1 text-muted-foreground"
                 title="Mark no-show"
+                aria-label="Mark no-show"
               >
-                {markingNoShow ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserX className="h-3 w-3" />}
+                <UserX className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
 
@@ -269,6 +265,10 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
         open={rescheduleDialogOpen}
         onOpenChange={setRescheduleDialogOpen}
       />
+      {/* React events bubble out of portals: without this, a click in the dialog opens the appointment. */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <NoShowConfirmDialog appointment={appointment} open={noShowOpen} onOpenChange={setNoShowOpen} />
+      </div>
     </Card>
   );
 }

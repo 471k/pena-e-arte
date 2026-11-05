@@ -33,6 +33,9 @@ public static class AppointmentEndpoints
         group.MapGet("{id:guid}/cancellation-preview", GetCancellationPreview).RequireAuthorization("ClientAndAbove");
         // E04b: whether this appointment can be moved at all, by the same rule the save applies.
         group.MapGet("{id:guid}/reschedule-preview", GetReschedulePreview).RequireAuthorization("ClientAndAbove");
+        // E04b: what a no-show would do to the deposit. Same policy as PATCH {id}/no-show on purpose (see
+        // GetNoShowPreviewQuery): whoever may mark it may see what it will do.
+        group.MapGet("{id:guid}/no-show-preview", GetNoShowPreview).RequireAuthorization("ArtistAndAbove");
         // E04a: a session's preparation for the artist; an artist gets 404 for a session not assigned to them.
         group.MapGet("{id:guid}/preparation", GetAppointmentPreparation).RequireAuthorization("ArtistAndAbove");
     }
@@ -148,7 +151,16 @@ public static class AppointmentEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        AppointmentResponse result = await mediator.Send(new MarkNoShowCommand(id), ct);
+        NoShowResultResponse result = await mediator.Send(new MarkNoShowCommand(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetNoShowPreview(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        NoShowPreviewResponse result = await mediator.Send(new GetNoShowPreviewQuery(id), ct);
         return Results.Ok(result);
     }
 
