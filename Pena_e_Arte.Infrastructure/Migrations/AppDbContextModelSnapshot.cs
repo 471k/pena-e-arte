@@ -2288,6 +2288,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid?>("AppointmentId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("Body")
                         .IsRequired()
                         .HasColumnType("text");
@@ -2329,6 +2332,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_notification_logs");
+
+                    b.HasIndex("AppointmentId")
+                        .HasDatabaseName("ix_notification_logs_appointment_id");
 
                     b.HasIndex("RecipientType")
                         .HasDatabaseName("ix_notification_logs_recipient_type");

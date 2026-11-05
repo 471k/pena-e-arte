@@ -31,6 +31,13 @@ public static class AppointmentEndpoints
         // The client appointment page (DEC02): one of the caller's own appointments, 404 for anyone else's.
         group.MapGet("/mine/{id:guid}", GetMyAppointment).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}/cancellation-preview", GetCancellationPreview).RequireAuthorization("ClientAndAbove");
+        // E04b: whether this appointment can be moved at all, by the same rule the save applies.
+        group.MapGet("{id:guid}/reschedule-preview", GetReschedulePreview).RequireAuthorization("ClientAndAbove");
+        // E04b: what a no-show would do to the deposit. Same policy as PATCH {id}/no-show on purpose (see
+        // GetNoShowPreviewQuery): whoever may mark it may see what it will do.
+        group.MapGet("{id:guid}/no-show-preview", GetNoShowPreview).RequireAuthorization("ArtistAndAbove");
+        // E04b: whether the client has been told about a reschedule, and whether aftercare went out.
+        group.MapGet("{id:guid}/communication", GetAppointmentCommunication).RequireAuthorization("ArtistAndAbove");
         // E04a: a session's preparation for the artist; an artist gets 404 for a session not assigned to them.
         group.MapGet("{id:guid}/preparation", GetAppointmentPreparation).RequireAuthorization("ArtistAndAbove");
     }
@@ -146,7 +153,25 @@ public static class AppointmentEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        AppointmentResponse result = await mediator.Send(new MarkNoShowCommand(id), ct);
+        NoShowResultResponse result = await mediator.Send(new MarkNoShowCommand(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetAppointmentCommunication(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AppointmentCommunicationResponse result = await mediator.Send(new GetAppointmentCommunicationQuery(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetNoShowPreview(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        NoShowPreviewResponse result = await mediator.Send(new GetNoShowPreviewQuery(id), ct);
         return Results.Ok(result);
     }
 
@@ -170,6 +195,15 @@ public static class AppointmentEndpoints
     }
 
     // Advisory: what cancelling would do with the deposit. DELETE recomputes it at commit.
+    private static async Task<IResult> GetReschedulePreview(
+        Guid id,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ReschedulePreviewResponse result = await mediator.Send(new GetReschedulePreviewQuery(id), ct);
+        return Results.Ok(result);
+    }
+
     private static async Task<IResult> GetCancellationPreview(
         Guid id,
         ISender mediator,
@@ -193,11 +227,12 @@ public static class AppointmentEndpoints
         Guid? artistId,
         DateTime date,
         int durationMinutes,
+        Guid? excludeAppointmentId,
         ISender mediator,
         CancellationToken ct)
     {
         SlotAvailabilityResult result = await mediator.Send(
-            new CheckSlotAvailabilityQuery(artistId, date, durationMinutes), ct);
+            new CheckSlotAvailabilityQuery(artistId, date, durationMinutes, excludeAppointmentId), ct);
         return Results.Ok(new SlotAvailabilityResponse(result.Available, result.Reason));
     }
 }

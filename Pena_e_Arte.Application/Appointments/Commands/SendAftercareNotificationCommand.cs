@@ -60,18 +60,19 @@ public class SendAftercareNotificationHandler(
 
         if (emailEnabled)
         {
+            string subject = $"Tattoo aftercare instructions — {studio.Name}";
+            bool emailSent = true;
             try
             {
-                await notifications.SendEmailAsync(
-                    appointment.Client.Email,
-                    $"Tattoo aftercare instructions — {studio.Name}",
-                    body, ct);
+                await notifications.SendEmailAsync(appointment.Client.Email, subject, body, ct);
             }
             catch (Exception ex)
             {
+                emailSent = false;
                 logger.LogWarning(ex,
                     "Failed to send aftercare email for appointment {@AppointmentId}", appointment.Id);
             }
+            RecordAttempt(appointment, NotificationChannel.Email, subject, body, emailSent);
         }
 
         string smsBody =
@@ -83,18 +84,40 @@ public class SendAftercareNotificationHandler(
 
         if (smsEnabled && appointment.Client.Phone is not null)
         {
+            bool smsSent = true;
             try
             {
                 await notifications.SendSmsAsync(appointment.Client.Phone, smsBody, ct);
             }
             catch (Exception ex)
             {
+                smsSent = false;
                 logger.LogWarning(ex,
                     "Failed to send aftercare SMS for appointment {@AppointmentId}", appointment.Id);
             }
+            RecordAttempt(appointment, NotificationChannel.Sms, "Aftercare instructions", smsBody, smsSent);
         }
 
+        // AftercareSentAt still means "the aftercare step ran" (it is set even if a channel failed or
+        // both were off), exactly as before. Whether each message actually went out is the log rows above.
         appointment.AftercareSentAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }
+
+    // E04b (A08): one row per attempted channel, linked to the appointment, the way the other client
+    // notifications already log theirs, so the appointment can show "sent" or "failed" honestly.
+    // IsSuccess means the provider accepted the message; nothing records delivery or reading.
+    private void RecordAttempt(Appointment appointment, NotificationChannel channel, string subject, string body, bool success) =>
+        db.NotificationLogs.Add(new NotificationLog
+        {
+            StudioId = appointment.StudioId,
+            RecipientId = appointment.ClientId,
+            RecipientType = NotificationRecipientType.Client,
+            Channel = channel,
+            Subject = subject,
+            Body = body,
+            SentAt = DateTime.UtcNow,
+            IsSuccess = success,
+            AppointmentId = appointment.Id,
+        });
 }

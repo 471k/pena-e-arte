@@ -80,6 +80,14 @@ const APPT_UNASSIGNED: AppointmentResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // E04b (A08): the client-communication card; nothing to show for these fixtures.
+  http.get("http://localhost/api/v1/appointments/:id/communication", ({ params }) =>
+    HttpResponse.json({ appointmentId: params.id, reschedule: null, aftercare: null })),
+  // E04b (A02): the reschedule dialog asks whether the appointment can be moved before showing the form.
+  http.get("http://localhost/api/v1/appointments/:id/reschedule-preview", ({ params }) => HttpResponse.json({
+    appointmentId: params.id, canReschedule: true, block: null, message: null,
+    noticeWindowHours: 48, noticeWindowApplies: false,
+  })),
   http.get("http://localhost/api/v1/appointments/:id", ({ params }) => {
     if (params.id === "appt-001") return HttpResponse.json(APPT_PENDING);
     if (params.id === "appt-002") return HttpResponse.json(APPT_CONFIRMED);
@@ -463,7 +471,8 @@ describe("AppointmentDetailPage", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/reschedule appointment/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/new date/i)).toHaveValue(toDatetimeLocalValueForTest(FUTURE));
+    // The form appears once the server says the appointment can be moved (E04b).
+    expect(await screen.findByLabelText(/new date/i)).toHaveValue(toDatetimeLocalValueForTest(FUTURE));
   });
 
   it("dialog 'Cancel' button closes without calling the mutation", async () => {
@@ -480,7 +489,7 @@ describe("AppointmentDetailPage", () => {
     renderPage("appt-001", Role.Artist);
     await user.click(await screen.findByRole("button", { name: /^reschedule$/i }));
 
-    const durationTrigger = screen.getByLabelText(/duration/i);
+    const durationTrigger = await screen.findByLabelText(/duration/i);
     await user.click(durationTrigger);
     await user.click(await screen.findByRole("option", { name: /1 hour$/i }));
 

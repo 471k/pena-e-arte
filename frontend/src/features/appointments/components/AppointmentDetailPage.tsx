@@ -31,6 +31,8 @@ import { splitAppointmentImages } from "../appointmentImages";
 import { AppointmentStatusBadge } from "./AppointmentStatusBadge";
 import { DepositStatusBadge } from "./DepositStatusBadge";
 import { RescheduleDialog } from "./RescheduleDialog";
+import { NoShowConfirmDialog } from "./NoShowConfirmDialog";
+import { ClientCommunicationCard } from "./ClientCommunicationCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import {
   useGetAppointmentQuery,
@@ -38,7 +40,6 @@ import {
   useDeclineAppointmentMutation,
   useConfirmAppointmentMutation,
   useCompleteAppointmentMutation,
-  useMarkNoShowMutation,
   useAssignAppointmentArtistMutation,
 } from "../appointmentsApi";
 import { Money } from "@/shared/components/Money";
@@ -120,7 +121,8 @@ export function AppointmentDetailPage() {
   const [decline,  { isLoading: declining    }] = useDeclineAppointmentMutation();
   const [confirm,  { isLoading: confirming   }] = useConfirmAppointmentMutation();
   const [complete, { isLoading: completing   }] = useCompleteAppointmentMutation();
-  const [noShow,   { isLoading: markingNoShow }] = useMarkNoShowMutation();
+  // A04: a no-show is confirmed in a dialog that first shows what it does to the deposit.
+  const [noShowOpen, setNoShowOpen] = useState(false);
   const [assignArtist, { isLoading: assigning }] = useAssignAppointmentArtistMutation();
   const [createConversation, { isLoading: startingConversation }] = useCreateConversationMutation();
 
@@ -145,7 +147,7 @@ export function AppointmentDetailPage() {
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
   const isConfirmed = appt?.status === AppointmentStatus.Confirmed;
-  const anyLoading  = cancelling || declining || confirming || completing || markingNoShow;
+  const anyLoading  = cancelling || declining || confirming || completing;
   const removing    = cancelling || declining;
 
   // A request (Pending) is declined, so the client hears "the studio can't take your request";
@@ -173,11 +175,6 @@ export function AppointmentDetailPage() {
     else                  toast.error("Failed to complete appointment.");
   }
 
-  async function handleNoShow() {
-    const result = await noShow(appt!.id);
-    if ("data" in result) toast.success("Appointment marked as no-show.");
-    else                  toast.error("Failed to mark appointment as no-show.");
-  }
 
   async function handleAssignArtist(artistId: string) {
     const result = await assignArtist({ id: appt!.id, body: { artistId } });
@@ -351,21 +348,12 @@ export function AppointmentDetailPage() {
                     <Row label="Cancellation reason" value={appt.cancellationReason} />
                   </>
                 )}
-                {appt.status === AppointmentStatus.Completed && (
-                  <>
-                    <Separator />
-                    <Row
-                      label="Aftercare"
-                      value={
-                        appt.aftercareSentAt
-                          ? <span className="text-success-text text-xs font-medium">Sent ✓</span>
-                          : <span className="text-muted-foreground text-xs">Pending</span>
-                      }
-                    />
-                  </>
-                )}
               </CardContent>
             </Card>
+
+            {/* A08: replaces the old "Aftercare: Sent ✓" row, which showed Sent whenever the aftercare
+                step had run, even if every message failed or none was enabled. */}
+            <ClientCommunicationCard appt={appt} />
 
             {canMessageClient && (
               <Button
@@ -464,9 +452,9 @@ export function AppointmentDetailPage() {
                     variant="ghost"
                     className="w-full gap-2 text-muted-foreground"
                     disabled={anyLoading}
-                    onClick={handleNoShow}
+                    onClick={() => setNoShowOpen(true)}
                   >
-                    {markingNoShow ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
+                    <UserX className="h-4 w-4" aria-hidden="true" />
                     Mark no-show
                   </Button>
                 )}
@@ -519,6 +507,8 @@ export function AppointmentDetailPage() {
           onOpenChange={setRescheduleDialogOpen}
         />
       )}
+
+      {appt && <NoShowConfirmDialog appointment={appt} open={noShowOpen} onOpenChange={setNoShowOpen} />}
 
       {appt && (
         <ReminderDialog

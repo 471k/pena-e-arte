@@ -289,4 +289,86 @@ export interface CheckSlotAvailabilityParams {
   artistId?:       string;
   date:            string;
   durationMinutes: number;
+  /** The appointment being rescheduled, so it doesn't block its own move. Only one the caller may move. */
+  excludeAppointmentId?: string;
+}
+
+/**
+ * GET /appointments/{id}/communication (E04b, A08). Only what the data proves: not sent, sent (handed to
+ * our provider or posted in the conversation) and failed. Never delivery or reading.
+ */
+export interface AppointmentCommunicationResponse {
+  appointmentId: string;
+  /** Null unless the appointment has been rescheduled. */
+  reschedule:    RescheduleCommunication | null;
+  /** Null unless the appointment is Completed. */
+  aftercare:     AftercareCommunication | null;
+}
+
+export interface RescheduleCommunication {
+  state:         "NotSent" | "Sent";
+  rescheduledAt: string;
+  /** The first staff message about this appointment since it was moved. */
+  messagedAt:    string | null;
+}
+
+export interface AftercareCommunication {
+  state:    "NotSent" | "Sent" | "Failed" | "NotRecorded";
+  /** When the aftercare step ran, or null. */
+  ranAt:    string | null;
+  channels: CommunicationChannel[];
+}
+
+export interface CommunicationChannel {
+  channel: "Email" | "Sms";
+  /** Our provider accepted it. Not a delivery receipt. */
+  sent:    boolean;
+  at:      string | null;
+}
+
+/** What a no-show does to the deposit (E04b, A04), decided by the server's NoShowOutcome. */
+export const NoShowOutcome = {
+  NothingCollected:           "NothingCollected",
+  ChargedDepositKept:         "ChargedDepositKept",
+  CashDepositKept:            "CashDepositKept",
+  HeldDepositCaptured:        "HeldDepositCaptured",
+  DeclaredCashRecordedAsPaid: "DeclaredCashRecordedAsPaid",
+  Unknown:                    "Unknown",
+} as const;
+export type NoShowOutcome = (typeof NoShowOutcome)[keyof typeof NoShowOutcome];
+
+/** GET /appointments/{id}/no-show-preview — a projection; the commit decides again. */
+export interface NoShowPreviewResponse {
+  appointmentId: string;
+  canMarkNoShow: boolean;
+  /** The commit's own refusal when it would refuse; null otherwise. */
+  message:       string | null;
+  outcome:       NoShowOutcome;
+  /** The money concerned; 0 when nothing was collected. */
+  amount:        number;
+  currency:      string;
+  isProjection:  boolean;
+}
+
+/** PATCH /appointments/{id}/no-show — what the commit actually did, never the earlier preview. */
+export interface NoShowResultResponse {
+  appointment:   AppointmentResponse;
+  outcome:       NoShowOutcome;
+  amount:        number;
+  currency:      string;
+  paymentStatus: string | null;
+}
+
+/**
+ * GET /appointments/{id}/reschedule-preview — whether the appointment can be moved at all, decided by
+ * the same server rule the save applies (status, then the client notice window). Never recomputed here.
+ */
+export interface ReschedulePreviewResponse {
+  appointmentId:       string;
+  canReschedule:       boolean;
+  block:               "AppointmentClosed" | "InsideNoticeWindow" | null;
+  /** The exact refusal the save would return; null when allowed. */
+  message:             string | null;
+  noticeWindowHours:   number;
+  noticeWindowApplies: boolean;
 }

@@ -21,6 +21,10 @@ public class NotificationLogConfiguration : TenantEntityConfiguration<Notificati
         builder.Property(n => n.Subject).HasMaxLength(500);
         builder.Property(n => n.Body).HasColumnType("text").IsRequired();
 
+        // E04b (A08): look up an appointment's own messages (aftercare) without scanning the log.
+        builder.HasIndex(n => n.AppointmentId)
+               .HasDatabaseName("ix_notification_logs_appointment_id");
+
         builder.HasIndex(n => new { n.StudioId, n.RecipientId })
                .HasDatabaseName("ix_notification_logs_studio_recipient");
 

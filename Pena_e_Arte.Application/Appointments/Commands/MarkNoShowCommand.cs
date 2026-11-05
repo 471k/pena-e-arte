@@ -5,26 +5,36 @@ using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Commands;
 
-public record MarkNoShowCommand(Guid AppointmentId) : IRequest<AppointmentResponse>;
+public record MarkNoShowCommand(Guid AppointmentId) : IRequest<NoShowResultResponse>;
 
 public class MarkNoShowHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     IRealtimeNotifier realtime,
     IPaymentProvider paymentProvider)
-    : IRequestHandler<MarkNoShowCommand, AppointmentResponse>
+    : IRequestHandler<MarkNoShowCommand, NoShowResultResponse>
 {
-    public async Task<AppointmentResponse> Handle(MarkNoShowCommand command, CancellationToken ct)
+    /// <summary>
+    /// The deposit payment a no-show acts on. Shared with the no-show preview so both read the same row.
+    /// </summary>
+    internal static Task<Domain.Entities.Payment?> FindDepositPaymentAsync(
+        IAppDbContext db, Guid appointmentId, CancellationToken ct) =>
+        db.Payments.FirstOrDefaultAsync(p =>
+            p.AppointmentId == appointmentId &&
+            p.Status != PaymentStatus.Refunded, ct);
+
+    public async Task<NoShowResultResponse> Handle(MarkNoShowCommand command, CancellationToken ct)
     {
         Domain.Entities.Appointment appointment = await db.Appointments
             .Include(a => a.Attachments)
             .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
 
-        if (appointment.Status is AppointmentStatus.Cancelled or AppointmentStatus.Completed)
+        if (!NoShowOutcome.IsAllowed(appointment.Status))
             throw new BusinessRuleViolationException(
                 $"Cannot mark no-show for an appointment with status {appointment.Status}.");
 
@@ -32,28 +42,26 @@ public class MarkNoShowHandler(
         appointment.DepositStatus = DepositStatus.Forfeited;
         appointment.UpdatedAt = DateTime.UtcNow;
 
-        Domain.Entities.Payment? payment = await db.Payments
-            .FirstOrDefaultAsync(p =>
-                p.AppointmentId == appointment.Id &&
-                p.Status != PaymentStatus.Refunded, ct);
+        Domain.Entities.Payment? payment = await FindDepositPaymentAsync(db, appointment.Id, ct);
 
-        if (payment is not null)
+        // What to do with the deposit is decided by NoShowOutcome, the same function the no-show preview
+        // calls (E04b, A04). The writes below are exactly the ones this handler made before the decision
+        // was extracted, in the same order, including the cash branch's missing PaidAt (prompt §2.1:
+        // flagged for Phi, not changed).
+        NoShowDecision decision = NoShowOutcome.Decide(payment);
+        switch (decision.PaymentAction)
         {
-            if (payment.Method == ClientPaymentMethod.Card
-                && !string.IsNullOrEmpty(payment.ProviderReferenceId)
-                && payment.Status == PaymentStatus.Captured)
-            {
-                await paymentProvider.CaptureAsync(payment.StudioId, payment.ProviderReferenceId, ct);
+            case NoShowPaymentAction.CaptureHold:
+                await paymentProvider.CaptureAsync(payment!.StudioId, payment.ProviderReferenceId!, ct);
                 payment.Status = PaymentStatus.Paid;
                 payment.PaidAt = DateTime.UtcNow;       // revenue reports filter on PaidAt != null
                 payment.UpdatedAt = DateTime.UtcNow;
-            }
-            else if (payment.Status == PaymentStatus.CashPending)
-            {
+                break;
+            case NoShowPaymentAction.RecordCashAsPaid:
                 // Cash deposit declared but not yet confirmed — forfeit the record
-                payment.Status = PaymentStatus.Paid;
+                payment!.Status = PaymentStatus.Paid;
                 payment.UpdatedAt = DateTime.UtcNow;
-            }
+                break;
         }
 
         await db.SaveChangesAsync(ct);
@@ -62,6 +70,12 @@ public class MarkNoShowHandler(
         await realtime.NotifyStudioAsync(
             tenant.StudioId, "AppointmentNoShow", response, ct);
 
-        return response;
+        string currency = payment?.Currency is { Length: > 0 } paymentCurrency
+            ? paymentCurrency
+            : await db.Studios.Where(s => s.Id == appointment.StudioId).Select(s => s.Currency).FirstOrDefaultAsync(ct) ?? string.Empty;
+
+        // The server's actual result: the decision this commit applied, not the earlier projection.
+        return new NoShowResultResponse(
+            response, decision.Outcome.ToString(), decision.Amount, currency, payment?.Status.ToString());
     }
 }

@@ -205,4 +205,27 @@ describe("AppointmentCard", () => {
     renderCard({ ...APPT_PENDING, artistId: null }, Role.Artist);
     expect(screen.queryByRole("button", { name: /^confirm$/i })).not.toBeInTheDocument();
   });
+
+  // E04b (A04): the first click opens a review of what happens to the deposit; nothing is committed,
+  // and the click inside the dialog doesn't open the appointment behind it.
+  it("'Mark no-show' opens a review first and sends nothing until it is confirmed", async () => {
+    let patched = 0;
+    server.use(
+      http.get("http://localhost/api/v1/appointments/:id/no-show-preview", () => HttpResponse.json({
+        appointmentId: "appt-001", canMarkNoShow: true, message: null, outcome: "NothingCollected",
+        amount: 0, currency: "EUR", isProjection: true,
+      })),
+      http.patch("http://localhost/api/v1/appointments/:id/no-show", () => { patched += 1; return HttpResponse.json({}); }),
+    );
+    const user = userEvent.setup();
+    renderCard({ ...APPT_PENDING, status: "Confirmed" }, Role.Artist);
+
+    await user.click(screen.getByRole("button", { name: "Mark no-show" }));
+
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    expect(await screen.findByText(/no deposit was paid, so no money moves/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Keep the appointment" }));
+    expect(patched).toBe(0);
+    expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
+  });
 });

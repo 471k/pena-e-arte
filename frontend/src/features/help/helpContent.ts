@@ -140,11 +140,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Move one of your own upcoming appointments to a new date, time, or duration directly from My Bookings.",
     steps: [
       "Under \"My Bookings\", find the appointment and click \"Reschedule\" (or use \"Need to change or cancel?\" on the appointment's page).",
-      "Pick a new date & time and duration — a live availability check appears for the new slot.",
+      "The dialog first checks whether the appointment can still be moved. If it can't (for example it's less than the studio's notice window away), it tells you why before you pick a time.",
+      "Pick a new date & time and duration — a live availability check appears for the new slot. Your appointment's current time never counts against it, so moving it by an hour works even if the times overlap.",
       "Click \"Confirm reschedule\".",
     ],
     tips: [
-      "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly.",
+      "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly. The dialog says how many hours the window is.",
       "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
     ],
   },
@@ -523,7 +524,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["today", "today's sessions", "prepare", "preparation", "session preparation", "consent", "intake", "reference image", "deposit", "brief", "ready"],
     summary: "Today is the first page you see: the sessions assigned to you on the studio's current day, each with its date and time, the client, the brief, placement, reference images, deposit and how much of its preparation is done.",
     steps: [
-      "Open Today from the top of the menu. It is also where you land when you sign in.",
+      "Open Today from the top of the menu. Artists now land here when they sign in (it used to be the Schedule); the week view is still under Schedule.",
       "Each session shows its date and time in the studio's timezone. A session that runs past midnight shows both dates, for example \"Wed 4 Nov, 23:00 – Thu 5 Nov, 02:00\".",
       "\"Preparation: 2 of 4 done\" counts the things the session's service asks for (deposit, intake form, consent form, reference image). It isn't shown when the service asks for none.",
       "Click \"Brief and preparation\" to see the full brief, the images, and each requirement: whether the client has done it (for example \"Not signed yet\") and what they can still do about it.",
@@ -567,8 +568,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Message [client name]\" to start or continue a chat thread with the client, if they have a linked login.",
       "Click \"Add to Calendar\" to download an .ics file for the appointment.",
       "Click \"Confirm appointment\" or \"Mark as complete\" to advance its status.",
-      "Click \"Reschedule\" to pick a new date/time.",
-      "Click \"Mark no-show\" if the client didn't attend, or \"Cancel appointment\" and confirm if it needs to be cancelled.",
+      "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The client isn't told automatically, so let them know.",
+      "Click \"Mark no-show\" if the client didn't attend. Before anything happens, a confirmation shows what it will do to the deposit (for example that the studio keeps a deposit already paid, or that a deposit held on the card is charged), with the amount. Click \"Mark no-show\" there to confirm, or \"Keep the appointment\" to back out. Once confirmed, it shows what was actually done.",
+      "Click \"Cancel appointment\" and confirm if it needs to be cancelled.",
+      "Check \"Client communication\". After a reschedule it shows whether a message about the appointment has been sent to the client (they aren't told automatically) and has a box to write to them. For a completed session it shows whether aftercare was sent or failed, per email and text message.",
       "For a booking request you can't take, click \"Decline request\" instead and confirm. The client is told you can't take the request, not that an appointment was cancelled.",
     ],
     tips: [
@@ -576,8 +579,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "The back arrow, and cancelling, return you to the page you came from. If you opened the appointment from an email, a notification or a new tab, they take you to your Schedule instead.",
       "When you cancel or decline, the client gets an email naming your studio, your phone number and a link to book another time (replies reach your studio email), plus a text message if they gave a phone number. Any deposit they paid is refunded in full.",
       "On the Schedule, the trash icon on a request declines it; on a confirmed appointment it cancels it.",
+      "\"Sent\" in Client communication means TattooOS handed the message over, or posted it in your conversation with the client. It can't tell whether an email or text reached the client or whether they looked at it.",
+      "The no-show icon on a Schedule card opens the same confirmation. If the deposit's state can't be worked out, or the check fails, the confirmation can't be confirmed until it can; check the payment with the studio owner.",
+      "If the client only said they would pay the deposit in cash and never did, marking a no-show still records that deposit as paid and kept. The confirmation says so before you confirm.",
     ],
-    warnings: ["Cancelling an appointment or declining a request cannot be undone."],
+    warnings: ["Cancelling an appointment, declining a request or marking a no-show cannot be undone."],
     relatedArticleIds: ["artist-send-manual-reminder", "artist-messaging"],
   },
   {
@@ -1527,7 +1533,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Review sent notifications",
     route: "/notifications",
     keywords: ["email log", "sms log", "delivery status", "notification preferences", "turn off notifications", "hold ended"],
-    summary: "A log of every email and SMS notification your studio has sent to clients, showing whether each one was delivered successfully.",
+    summary: "A log of every email and SMS notification your studio has sent to clients, showing whether each one was sent successfully. \"Sent\" means our email or text provider accepted it; whether it reached the client isn't tracked.",
     steps: [
       "Go to Notifications to see the full log.",
       "Use the Channel dropdown to filter by Email or SMS.",
@@ -1535,6 +1541,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click any entry to see its full content.",
     ],
     tips: [
+      "Aftercare emails and texts appear here too, one entry per channel, each marked sent or failed.",
       "Choose which notifications are sent on the \"Notification preferences\" card in Studio Settings: one switch per event and channel. A dash means that event isn't sent by that channel.",
       "\"Card deposit hold ended\" goes to you, not the client: an email (and a bell notification) when POK ends a deposit's hold before you charged it, so you can ask for the deposit again.",
     ],
