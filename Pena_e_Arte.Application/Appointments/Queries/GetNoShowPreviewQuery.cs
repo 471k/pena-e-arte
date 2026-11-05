@@ -2,10 +2,12 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Application.Appointments.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
+using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Application.Appointments.Queries;
@@ -15,14 +17,13 @@ namespace Pena_e_Arte.Application.Appointments.Queries;
 /// A04). Reads the same payment row (MarkNoShowHandler.FindDepositPaymentAsync) and calls the same
 /// decision (NoShowOutcome) as the commit, so they cannot disagree. Advisory; it reserves nothing.
 ///
-/// Authorization deliberately matches the commit (ArtistAndAbove, no artist-ownership check): whoever may
-/// mark the no-show may see what it will do. The commit's own missing ownership check is flagged for Phi
-/// (E04b prompt §2.2) and not changed here; scoping only the preview would quietly block colleagues'
-/// no-shows in the UI, which is the very decision that is Phi's to make.
+/// Authorization matches the commit exactly, so whoever may mark the no-show may see what it will do and
+/// nobody else can: an artist only their own assigned session (404 otherwise), owners and admins any
+/// session (AssignedArtistAccess; Phi, 2026-11-05).
 /// </summary>
 public record GetNoShowPreviewQuery(Guid AppointmentId) : IRequest<NoShowPreviewResponse>;
 
-public class GetNoShowPreviewHandler(IAppDbContext db)
+public class GetNoShowPreviewHandler(IAppDbContext db, ICurrentUser currentUser)
     : IRequestHandler<GetNoShowPreviewQuery, NoShowPreviewResponse>
 {
     public async Task<NoShowPreviewResponse> Handle(GetNoShowPreviewQuery query, CancellationToken ct)
@@ -30,6 +31,9 @@ public class GetNoShowPreviewHandler(IAppDbContext db)
         Appointment appointment = await db.Appointments
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Appointment), query.AppointmentId);
+
+        if (!await AssignedArtistAccess.MayActOnAsync(db, currentUser, appointment.ArtistId, ct))
+            throw new NotFoundException(nameof(Appointment), query.AppointmentId);
 
         Payment? payment = await MarkNoShowHandler.FindDepositPaymentAsync(db, appointment.Id, ct);
         NoShowDecision decision = NoShowOutcome.Decide(payment);

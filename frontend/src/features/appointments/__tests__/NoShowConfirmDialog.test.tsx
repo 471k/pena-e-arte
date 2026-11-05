@@ -141,6 +141,14 @@ describe("NoShowConfirmDialog — before committing", () => {
     await waitFor(() => expect(confirmButton()).toBeEnabled());
   });
 
+  it("a session that isn't the artist's own (404): says who can mark it, and confirm stays disabled", async () => {
+    server.use(http.get("http://localhost/api/v1/appointments/:id/no-show-preview", () =>
+      HttpResponse.json({ message: "not found" }, { status: 404 })));
+    renderDialog();
+    expect(await screen.findByText(/only the artist assigned to this session, or the studio owner/i)).toBeInTheDocument();
+    expect(confirmButton()).toBeDisabled();
+  });
+
   it("an unknown outcome: confirm stays disabled — never a locally worked-out figure", async () => {
     server.use(previewReturns(preview("Unknown")));
     renderDialog();

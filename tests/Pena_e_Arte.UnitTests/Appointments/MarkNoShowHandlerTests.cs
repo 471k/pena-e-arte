@@ -22,7 +22,7 @@ public class MarkNoShowHandlerTests
         _tenant.StudioId.Returns(_studioId);
     }
 
-    private MarkNoShowHandler CreateSut() => new(_db, _tenant, _realtime, _paymentProvider);
+    private MarkNoShowHandler CreateSut() => new(_db, _tenant, _realtime, _paymentProvider, FakeCurrentUser.Owner());
 
     private Guid SeedAppointment(AppointmentStatus status = AppointmentStatus.Confirmed)
     {

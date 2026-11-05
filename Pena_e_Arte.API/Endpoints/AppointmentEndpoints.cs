@@ -33,8 +33,8 @@ public static class AppointmentEndpoints
         group.MapGet("{id:guid}/cancellation-preview", GetCancellationPreview).RequireAuthorization("ClientAndAbove");
         // E04b: whether this appointment can be moved at all, by the same rule the save applies.
         group.MapGet("{id:guid}/reschedule-preview", GetReschedulePreview).RequireAuthorization("ClientAndAbove");
-        // E04b: what a no-show would do to the deposit. Same policy as PATCH {id}/no-show on purpose (see
-        // GetNoShowPreviewQuery): whoever may mark it may see what it will do.
+        // E04b: what a no-show would do to the deposit. Same scope as PATCH {id}/no-show: an artist only
+        // their own session (404 otherwise), owners and admins any (see AssignedArtistAccess).
         group.MapGet("{id:guid}/no-show-preview", GetNoShowPreview).RequireAuthorization("ArtistAndAbove");
         // E04b: whether the client has been told about a reschedule, and whether aftercare went out.
         group.MapGet("{id:guid}/communication", GetAppointmentCommunication).RequireAuthorization("ArtistAndAbove");

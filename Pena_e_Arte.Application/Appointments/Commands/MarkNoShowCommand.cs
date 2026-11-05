@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Appointments.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Enums;
@@ -15,7 +16,8 @@ public class MarkNoShowHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     IRealtimeNotifier realtime,
-    IPaymentProvider paymentProvider)
+    IPaymentProvider paymentProvider,
+    ICurrentUser currentUser)
     : IRequestHandler<MarkNoShowCommand, NoShowResultResponse>
 {
     /// <summary>
@@ -33,6 +35,11 @@ public class MarkNoShowHandler(
             .Include(a => a.Attachments)
             .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
+
+        // A no-show moves money on the session, so an artist may only mark their own (Phi, 2026-11-05;
+        // E04b prompt §2.2). Owners and admins can mark any session in the studio. 404, never 403.
+        if (!await AssignedArtistAccess.MayActOnAsync(db, currentUser, appointment.ArtistId, ct))
+            throw new NotFoundException(nameof(Domain.Entities.Appointment), command.AppointmentId);
 
         if (!NoShowOutcome.IsAllowed(appointment.Status))
             throw new BusinessRuleViolationException(

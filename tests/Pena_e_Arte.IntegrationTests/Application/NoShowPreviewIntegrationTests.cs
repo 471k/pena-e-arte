@@ -105,7 +105,7 @@ public class NoShowPreviewIntegrationTests(DatabaseFixture fixture)
     private async Task<NoShowPreviewResponse> Preview(Seeded s)
     {
         await using AppDbContext db = fixture.CreateDbContext(s.StudioId);
-        return await new GetNoShowPreviewHandler(db).Handle(new GetNoShowPreviewQuery(s.AppointmentId), default);
+        return await new GetNoShowPreviewHandler(db, Owner()).Handle(new GetNoShowPreviewQuery(s.AppointmentId), default);
     }
 
     private async Task<NoShowResultResponse> Commit(Seeded s)
@@ -113,8 +113,16 @@ public class NoShowPreviewIntegrationTests(DatabaseFixture fixture)
         CurrentTenantService tenant = new();
         tenant.SetTenant(s.StudioId);
         await using AppDbContext db = fixture.CreateDbContext(s.StudioId);
-        return await new MarkNoShowHandler(db, tenant, Substitute.For<IRealtimeNotifier>(), _provider)
+        return await new MarkNoShowHandler(db, tenant, Substitute.For<IRealtimeNotifier>(), _provider, Owner())
             .Handle(new MarkNoShowCommand(s.AppointmentId), default);
+    }
+
+    private static ICurrentUser Owner()
+    {
+        ICurrentUser u = Substitute.For<ICurrentUser>();
+        u.Role.Returns("owner");
+        u.UserId.Returns(Guid.NewGuid());
+        return u;
     }
 
     private sealed record Seeded(Guid StudioId, Guid AppointmentId, Guid ClientId);
