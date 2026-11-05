@@ -19,7 +19,7 @@ import { Separator } from "@/shared/components/ui/separator";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
-import { useGetArtistsQuery } from "@/features/artists/artistsApi";
+import { useGetArtistsQuery, useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
@@ -116,6 +116,9 @@ export function AppointmentDetailPage() {
   });
 
   const { data: artists } = useGetArtistsQuery(undefined, { skip: !canOwner });
+  // An artist may only mark their own sessions as a no-show (Phi, 2026-11-05); the server enforces it
+  // (404 otherwise), so the button isn't offered on a colleague's session.
+  const { data: myArtist } = useGetMyArtistQuery(undefined, { skip: role !== Role.Artist });
 
   const [cancel,   { isLoading: cancelling   }] = useCancelAppointmentMutation();
   const [decline,  { isLoading: declining    }] = useDeclineAppointmentMutation();
@@ -146,6 +149,7 @@ export function AppointmentDetailPage() {
 
   const isTerminal  = appt ? TERMINAL_STATUSES.has(appt.status) : false;
   const isPending   = appt?.status === AppointmentStatus.Pending;
+  const canMarkNoShow = role !== Role.Artist || (!!myArtist && appt?.artistId === myArtist.id);
   const isConfirmed = appt?.status === AppointmentStatus.Confirmed;
   const anyLoading  = cancelling || declining || confirming || completing;
   const removing    = cancelling || declining;
@@ -447,7 +451,7 @@ export function AppointmentDetailPage() {
                   </Button>
                 )}
 
-                {!isPending && (
+                {!isPending && canMarkNoShow && (
                   <Button
                     variant="ghost"
                     className="w-full gap-2 text-muted-foreground"

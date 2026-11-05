@@ -80,6 +80,8 @@ const APPT_UNASSIGNED: AppointmentResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // The signed-in artist is the one assigned to these fixtures (a-001), so they may mark their no-shows.
+  http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json({ id: "a-001" })),
   // E04b (A08): the client-communication card; nothing to show for these fixtures.
   http.get("http://localhost/api/v1/appointments/:id/communication", ({ params }) =>
     HttpResponse.json({ appointmentId: params.id, reschedule: null, aftercare: null })),
@@ -316,6 +318,17 @@ describe("AppointmentDetailPage", () => {
 
   it("artist sees 'Mark no-show' for a Confirmed appointment", async () => {
     renderPage("appt-002", Role.Artist);
+    expect(await screen.findByRole("button", { name: /mark no-show/i })).toBeInTheDocument();
+  });
+
+  // Phi, 2026-11-05: an artist only marks their own sessions as a no-show (the server returns 404 otherwise).
+  it("an artist does NOT see 'Mark no-show' on a colleague's session; an owner does", async () => {
+    server.use(http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json({ id: "a-someone-else" })));
+    renderPage("appt-002", Role.Artist);
+    expect(await screen.findByRole("button", { name: /cancel appointment/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mark no-show/i })).not.toBeInTheDocument();
+    cleanup();
+    renderPage("appt-002", Role.Owner);
     expect(await screen.findByRole("button", { name: /mark no-show/i })).toBeInTheDocument();
   });
 

@@ -581,6 +581,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "On the Schedule, the trash icon on a request declines it; on a confirmed appointment it cancels it.",
       "\"Sent\" in Client communication means TattooOS handed the message over, or posted it in your conversation with the client. It can't tell whether an email or text reached the client or whether they looked at it.",
       "The no-show icon on a Schedule card opens the same confirmation. If the deposit's state can't be worked out, or the check fails, the confirmation can't be confirmed until it can; check the payment with the studio owner.",
+      "Only the artist assigned to the session, or the studio owner, can mark it as a no-show. On a colleague's session the button isn't shown; ask the owner, or have the session reassigned to you first.",
       "If the client only said they would pay the deposit in cash and never did, marking a no-show still records that deposit as paid and kept. The confirmation says so before you confirm.",
     ],
     warnings: ["Cancelling an appointment, declining a request or marking a no-show cannot be undone."],
