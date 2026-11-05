@@ -52,9 +52,8 @@ public class MarkNoShowHandler(
         Domain.Entities.Payment? payment = await FindDepositPaymentAsync(db, appointment.Id, ct);
 
         // What to do with the deposit is decided by NoShowOutcome, the same function the no-show preview
-        // calls (E04b, A04). The writes below are exactly the ones this handler made before the decision
-        // was extracted, in the same order, including the cash branch's missing PaidAt (prompt §2.1:
-        // flagged for Phi, not changed).
+        // calls (E04b, A04). A declared-but-unpaid cash deposit is closed as nothing collected, as
+        // cancellation closes it (Phi, 2026-11-05); every other branch is unchanged.
         NoShowDecision decision = NoShowOutcome.Decide(payment);
         switch (decision.PaymentAction)
         {
@@ -64,9 +63,10 @@ public class MarkNoShowHandler(
                 payment.PaidAt = DateTime.UtcNow;       // revenue reports filter on PaidAt != null
                 payment.UpdatedAt = DateTime.UtcNow;
                 break;
-            case NoShowPaymentAction.RecordCashAsPaid:
-                // Cash deposit declared but not yet confirmed — forfeit the record
-                payment!.Status = PaymentStatus.Paid;
+            case NoShowPaymentAction.CloseCashPromise:
+                // The client only declared cash and never paid: nothing was collected, so nothing is
+                // recorded as received (no Paid, no PaidAt). Same status CancellationOutcome gives it.
+                payment!.Status = PaymentStatus.Refunded;
                 payment.UpdatedAt = DateTime.UtcNow;
                 break;
         }

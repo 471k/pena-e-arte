@@ -9,7 +9,7 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// <param name="CanMarkNoShow">False for a Cancelled or Completed appointment; the commit would refuse.</param>
 /// <param name="Message">The commit's own refusal text when it would refuse; otherwise null.</param>
 /// <param name="Outcome">NothingCollected, ChargedDepositKept, CashDepositKept, HeldDepositCaptured,
-/// DeclaredCashRecordedAsPaid or Unknown.</param>
+/// DeclaredCashNotCollected or Unknown.</param>
 /// <param name="Amount">The money concerned (0 when nothing was collected).</param>
 /// <param name="Currency">The payment's currency, or the studio's when there is no payment.</param>
 public record NoShowPreviewResponse(

@@ -6267,3 +6267,23 @@ to enforce it for everyone.
   studio (`UnitTests/Helpers/OpenSchedule`, and inline seeding in two integration tests). Their assertions are
   unchanged.
 - Help (`client-reschedule-booking`, `artist-appointment-detail`) and the manual updated. No migration.
+
+## Cash no-show: a declared cash deposit is closed as nothing collected — Phi's decision on E04b §2.1 — 2026-11-05
+
+Phi approved (5 Nov) the recommendation in the E04b handoff §1.1. When a client who only *declared* they'd pay
+the deposit in cash (`CashPending`) doesn't turn up, marking the no-show now closes that payment as nothing
+collected: `Refunded`, no `PaidAt`. That is exactly what `CancellationOutcome` does for the same payment. Until
+now a no-show set it to `Paid` (without `PaidAt`), recording cash the studio never received, so revenue figures
+could count money that never came in.
+- **One place:** `NoShowOutcome.Decide`. The action is renamed `RecordCashAsPaid` → `CloseCashPromise`, and the
+  outcome `DeclaredCashRecordedAsPaid` → `DeclaredCashNotCollected`. The handler and the preview both follow it.
+  Every other branch, including the provider capture for a legacy hold, is unchanged.
+- **Unchanged:** the appointment is still marked `NoShow` with `DepositStatus = Forfeited`, as every no-show has
+  always set it, including those where nothing was paid. Whether "Kept" is the right label for a no-show with
+  nothing collected is a wording question, not part of this decision.
+- **Production checked first (read-only pod, Phi's go):** 3 payments in total, all refunded card payments. No cash
+  payment marked `Paid` without `PaidAt` on a no-show, no `CashPending` rows, and no no-show appointments. Nothing
+  needed correcting.
+- **Tests:** the agreement tests (unit and real MySQL) now assert `Refunded` with no `PaidAt`. A new test asserts
+  a cash no-show leaves the payment where a cancellation does. The dialog wording test is updated.
+- Help (`artist-appointment-detail`) and the manual updated. No migration.

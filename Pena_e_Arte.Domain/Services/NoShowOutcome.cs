@@ -10,8 +10,9 @@ public enum NoShowPaymentAction
     None,
     /// <summary>Capture a held card deposit through the provider; the payment becomes Paid with PaidAt.</summary>
     CaptureHold,
-    /// <summary>A declared-but-unconfirmed cash deposit is set to Paid, without PaidAt. See the §2.1 note on Decide.</summary>
-    RecordCashAsPaid,
+    /// <summary>A declared-but-unreceived cash deposit is closed as nothing collected (Refunded, no PaidAt),
+    /// exactly as cancellation closes it. Phi, 2026-11-05.</summary>
+    CloseCashPromise,
 }
 
 /// <summary>What happens to the deposit, for the person confirming.</summary>
@@ -25,13 +26,14 @@ public enum NoShowDepositOutcome
     CashDepositKept,
     /// <summary>A held card deposit (legacy, pre C-4): captured and kept.</summary>
     HeldDepositCaptured,
-    /// <summary>Cash the client only declared: recorded as paid although none was received (§2.1).</summary>
-    DeclaredCashRecordedAsPaid,
+    /// <summary>Cash the client only declared and never paid: nothing was collected, so nothing is kept.</summary>
+    DeclaredCashNotCollected,
     /// <summary>A payment in a state the platform can't act on (e.g. a hold with no provider reference).</summary>
     Unknown,
 }
 
-/// <param name="Amount">The payment's amount for an outcome involving money; 0 when nothing was collected.</param>
+/// <param name="Amount">The payment's amount for an outcome involving money; 0 when no payment was ever
+/// started. For DeclaredCashNotCollected it is the amount the client said they would pay, none of it received.</param>
 public sealed record NoShowDecision(
     NoShowPaymentAction PaymentAction,
     NoShowDepositOutcome Outcome,
@@ -43,10 +45,9 @@ public sealed record NoShowDecision(
 /// way CancellationOutcome serves cancellation, so the preview and the commit cannot drift apart.
 /// Pure: no database, no provider, no clock.
 ///
-/// It reproduces the handler's behaviour as of 2026-11-05 exactly, including one rule flagged for a
-/// Finance/product decision and deliberately NOT changed here (E04b prompt §2.1): a declared cash
-/// deposit (CashPending) is recorded as Paid on a no-show, without PaidAt, although no cash was received.
-/// Cancellation treats the same payment as nothing collected (CancellationOutcome).
+/// A declared cash deposit (CashPending) is closed as nothing collected on a no-show, the same way
+/// CancellationOutcome closes it (Phi, 2026-11-05, E04b §2.1). Until then a no-show recorded it as Paid,
+/// without PaidAt, although no cash was received. Production had no such rows when this changed.
 /// </summary>
 public static class NoShowOutcome
 {
@@ -65,7 +66,7 @@ public static class NoShowOutcome
             return new NoShowDecision(NoShowPaymentAction.CaptureHold, NoShowDepositOutcome.HeldDepositCaptured, payment.Amount);
 
         if (payment.Status == PaymentStatus.CashPending)
-            return new NoShowDecision(NoShowPaymentAction.RecordCashAsPaid, NoShowDepositOutcome.DeclaredCashRecordedAsPaid, payment.Amount);
+            return new NoShowDecision(NoShowPaymentAction.CloseCashPromise, NoShowDepositOutcome.DeclaredCashNotCollected, payment.Amount);
 
         if (payment.Status == PaymentStatus.Paid)
             return new NoShowDecision(

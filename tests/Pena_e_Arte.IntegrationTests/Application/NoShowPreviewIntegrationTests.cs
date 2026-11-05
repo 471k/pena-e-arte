@@ -17,7 +17,7 @@ namespace Pena_e_Arte.IntegrationTests.Application;
 /// E04b (A04) on real MySQL: the no-show preview and the real no-show share one decision (NoShowOutcome)
 /// and one payment lookup, so what the artist is shown before confirming is what then happens, for every
 /// deposit state, including a payment that changes between preview and commit (the commit wins).
-/// The declared-cash case is asserted as the code behaves today (prompt §2.1), not as endorsed.
+/// Declared cash is closed as nothing collected, as cancellation closes it (Phi, 2026-11-05, §2.1).
 /// </summary>
 [Collection("Database")]
 public class NoShowPreviewIntegrationTests(DatabaseFixture fixture)
@@ -32,7 +32,7 @@ public class NoShowPreviewIntegrationTests(DatabaseFixture fixture)
         { "charged card",        PaymentStatus.Paid,        ClientPaymentMethod.Card, "pok_1",    "ChargedDepositKept" },
         { "cash received",       PaymentStatus.Paid,        ClientPaymentMethod.Cash, null,       "CashDepositKept" },
         { "legacy held card",    PaymentStatus.Captured,    ClientPaymentMethod.Card, "pok_held", "HeldDepositCaptured" },
-        { "declared cash",       PaymentStatus.CashPending, ClientPaymentMethod.Cash, null,       "DeclaredCashRecordedAsPaid" },
+        { "declared cash",       PaymentStatus.CashPending, ClientPaymentMethod.Cash, null,       "DeclaredCashNotCollected" },
     };
 
     [Theory]
@@ -64,9 +64,9 @@ public class NoShowPreviewIntegrationTests(DatabaseFixture fixture)
                 payment!.Status.Should().Be(PaymentStatus.Paid);
                 payment.PaidAt.Should().NotBeNull();
                 break;
-            case "DeclaredCashRecordedAsPaid":
-                // §2.1, unchanged: recorded as Paid, with no PaidAt, although no cash was received.
-                payment!.Status.Should().Be(PaymentStatus.Paid);
+            case "DeclaredCashNotCollected":
+                // Phi, 2026-11-05: no cash was received, so nothing is recorded as received.
+                payment!.Status.Should().Be(PaymentStatus.Refunded);
                 payment.PaidAt.Should().BeNull();
                 await _provider.DidNotReceiveWithAnyArgs().CaptureAsync(default, default!, default);
                 break;
@@ -84,7 +84,7 @@ public class NoShowPreviewIntegrationTests(DatabaseFixture fixture)
         await SeedPayment(s, PaymentStatus.CashPending, ClientPaymentMethod.Cash, null);
 
         NoShowPreviewResponse preview = await Preview(s);
-        preview.Outcome.Should().Be("DeclaredCashRecordedAsPaid");
+        preview.Outcome.Should().Be("DeclaredCashNotCollected");
 
         // The studio confirms the cash before the artist confirms the no-show.
         await using (AppDbContext edit = fixture.CreateDbContext(s.StudioId))
