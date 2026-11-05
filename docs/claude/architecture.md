@@ -283,9 +283,9 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 
 | # | Feature | Domain Entities | Infrastructure | Scope |
 |---|---|---|---|---|
-| 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake` — `DepositRule.AmountFixed` and `Appointment.DepositAmount` carry no currency of their own, always read in `Studio.Currency` (2026-09-27) | Stripe (aggregator), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
+| 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake`; artist availability `ArtistSchedule`/`ArtistTimeOff` (studio-local; adding or removing time off first lists the booked sessions it covers via `GetTimeOffAffectedSessionsQuery` and never moves or cancels them, E04c 2026-11-05; edited at `/schedule/availability` or the artist profile's Availability tab) — `DepositRule.AmountFixed` and `Appointment.DepositAmount` carry no currency of their own, always read in `Studio.Currency` (2026-09-27) | Stripe (aggregator), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
 | 02 | Consultation & Consent Forms | `IntakeForm` (consent-stamped: `ConsentTemplateId`/`ConsentTextSnapshot`/`ConsentedAt`, kind `ConsentTemplateKind.IntakeFormConsent`), `ConsentForm`, `ConsentTemplate` | Cloudflare R2 (PDF storage) | Per-tenant |
-| 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` | Cloudflare R2 (images), SignalR | Per-tenant |
+| 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` (per revision: `DesignRevisionId`, `ClientNotes`, `ReviewedAt` = per-version history). No design status column: status and whose move it is (`WaitingOn` Artist/Client/Nobody) are derived from the latest revision in one place, `Application.Designs.DesignReviewState` (E04c, 2026-11-05). The API accepts a review of any revision; the UI offers it on the latest only (latest-only enforcement flagged, not done) | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
 | 05 | Payments & Session Splits | `Payment` (no `PlatformFeeAmount` — removed by ADR-0001 Amendment B, zero platform commission on Flow A, permanent; `Currency` set from `Studio.Currency` at creation, never recomputed — 2026-09-27), `GiftCard`/`PackagePurchase`/`BoothRentCharge` (each carry their own snapshotted `Currency` too), `SessionSplit` (studio-internal artist/owner split only, unrelated to platform revenue, uses its parent `Payment.Currency`) | `IPaymentProvider` (card; `PokPaymentProvider` is the real DI default since 2026-09-12, `NullPaymentProvider` is only the no-credentials fallback — `GET /api/v1/payments/capabilities` exposes `Capabilities.SupportsAuthCapture` plus `Currency`/`CardUnavailableReason` so the UI gates on real backend state, not just an env-var proxy; no `SupportsSplit` capability; card offered only when the provider's `SupportedCurrencies` includes the studio's currency; POK sandbox-verified 2026-10-14, runbook §3.1) + Cash (manual, works in any currency) | Per-tenant |
 | 06 | Automated Communication | `NotificationLog` | Hangfire + Twilio + Resend | Per-tenant |
@@ -6287,3 +6287,71 @@ could count money that never came in.
 - **Tests:** the agreement tests (unit and real MySQL) now assert `Refunded` with no `PaidAt`. A new test asserts
   a cash no-show leaves the payment where a cancellation does. The dialog wording test is updated.
 - Help (`artist-appointment-detail`) and the manual updated. No migration.
+
+## E04c: named design revisions, time off that shows what it covers, honest client aftercare — 2026-11-05
+
+The last part of E04 (A05 + A06, plus E04b §4.3). After it, E04 is complete except A07/earnings, still blocked
+on DEC10. Base `379a0a28`; three commits on `feature/after-hours-e04c-designs-availability`.
+
+**A05, design review (presentation only).** Approval was already per revision (`DesignApproval.DesignRevisionId`,
+`POST revisions/{id}/review`), so no entity, migration or review-contract change.
+- **Waiting-state derivation:** `Application.Designs.DesignReviewState.Derive` is now the one home for a design's
+  derived state. Only the latest revision (highest `VersionNumber`, not deleted) decides. No revisions → Draft,
+  waiting on the **artist**. Latest unreviewed or `Pending` → InReview, waiting on the **client**. Latest
+  `ChangesRequested` or `Expired` → ChangesRequested, waiting on the **artist**. Latest `Approved` → waiting on
+  **nobody**. A catalog template waits on nobody. `GetDesignsHandler.ComputeStatus` and `CreateDesignHandler.Map`
+  now go through it, and the Status strings are unchanged.
+- Additive response fields: `DesignResponse.WaitingOn/LatestVersionNumber/LatestUploadedAt` and
+  `DesignRevisionResponse.ReviewedAt`.
+- UI: the latest version leads, with its version and upload time in the studio timezone. The review controls sit
+  in a group labelled "Your review of version N, uploaded …". Earlier versions sit behind a hand-rolled
+  disclosure (button with `aria-expanded`, region `hidden` while collapsed, so nothing inside is tab-reachable),
+  with each version's dated outcome and feedback. Long notes go behind `shared/components/ShowMoreText`.
+  Lists sort the designs waiting on the viewer first.
+- **Latest-only is flagged, not enforced.** The API still accepts a review of any revision. The page now offers
+  review on the latest version only, which makes approving an outdated one harder without changing the API.
+
+**A06, time off.** `AddArtistTimeOffHandler` never looked at appointments.
+- New read `GET artists/{id}/time-off/affected-sessions` (`GetTimeOffAffectedSessionsQuery`, `ArtistAndAbove`),
+  authorised exactly like add: 404 for an unknown artist, 403 for another artist's row.
+- **Boundary handling:** time off is studio-local whole days, inclusive. The range becomes the UTC window
+  [local midnight of the first day, local midnight after the last), via the new
+  `TimezoneUtils.StudioLocalToUtcForRules`, the inverse of `ToStudioLocalForRules`; a local time inside a DST gap
+  moves forward. A Pending or Confirmed session is affected when it overlaps: `Date < windowEnd AND EndDate >
+  windowStart`. A session that starts the evening before and ends inside counts, and so does the reverse.
+  Touching a boundary exactly does not count. This is stricter than the booking check
+  (`CheckArtistScheduleAsync`), which only looks at the day a session starts. Proved in SQL on MySQL, not only
+  in memory.
+- Add and remove both show the list first, in an `AlertDialog` with the E04b shape. Confirm stays disabled until
+  the check resolves, a failed check says so, every session is listed with a link, and there is no bulk action.
+  The commit handlers are unchanged. An integration test snapshots every appointment column before and after
+  add and delete.
+- **Time-off delete scoping: not needed.** `DeleteArtistTimeOffHandler` already refuses an artist acting on
+  another artist's row (`ForbiddenException`), and `DeleteArtistTimeOffHandlerTests` already covers it.
+  Unchanged.
+- `CheckArtistSlotAvailabilityAsync` was not touched.
+- New route `/schedule/availability` (the same `ArtistScheduleEditor` for the viewer's own artist row), linked
+  from Schedule for an artist or an owner in artist view.
+- **Tour judgement:** this is a new reachable surface next to the schedule, so `artistTour` gets one step on the
+  Availability link (`route: "/schedule"`), right after the schedule step.
+
+**Phase C, client aftercare.** The block said "The studio sent you these instructions" whenever aftercare ran with
+email on, even if the email failed.
+- The per-channel reading moved verbatim from `GetAppointmentCommunicationHandler` into
+  `Appointments.Common.AftercareCommunicationReader`, shared by the staff card and the client page.
+- `ClientAppointmentAftercareResponse` gains `State`/`Channels` (additive). The page says "sent to your email",
+  or "tried … couldn't be sent", or makes no claim when nothing is recorded, plus a text-message line. The steps
+  are still shown.
+- The block now also appears when an email was attempted even if the setting was switched off since.
+
+**Deviations:**
+- (1) The prompt said to update the artist availability Help article, but none existed. `artist-availability`
+  is new.
+- (2) The E04b communication handler was edited only to move its aftercare reading into the shared reader. The
+  logic is identical and its tests are unchanged.
+- (3) The Feature Module Map had no availability row, so row 01 carries it.
+- (4) Only test code uses `IgnoreQueryFilters()` (the integration snapshot, so a test can't miss a soft-deleted
+  row). No new app-code use.
+- (5) Found, not changed: `GetDesignQuery`/`GetDesignRevisionsQuery` (`ClientAndAbove`) don't scope the caller,
+  though the list (`GetDesignsHandler`) does. Tenant isolation holds, but a client or artist who has another
+  client's design id in the same studio could read that design and its images. Reported in the handoff.
