@@ -6233,3 +6233,18 @@ nothing first.
   - The reschedule slot check sent `excludeAppointmentId`.
   - Aftercare read "Email: sent" and "Text message: failed to send", with no forbidden word.
   - No overflow.
+
+## No-show limited to the assigned artist — Phi's decision on E04b §2.2 — 2026-11-05
+
+Phi agreed (5 Nov) to the recommendation in the E04b handoff §1.2: marking a no-show moves money (it forfeits the
+deposit, and for a legacy hold, charges the card), so an artist may now only mark a session assigned to them.
+Owners and admins may mark any session in the studio. Anything else is 404, never 403, and changes nothing,
+including no provider call. This matches the payment read scoped in PR #335.
+- One rule, `Application/Appointments/Common/AssignedArtistAccess.MayActOnAsync`, used by `MarkNoShowHandler`
+  and `GetNoShowPreviewHandler`. The preview still has exactly the commit's authorization, as E04b promised.
+- An artist with no artist profile, or an unassigned request, counts as "not theirs".
+- The staff appointment page hides "Mark no-show" from an artist on a colleague's session. If the server answers
+  404 anyway, the dialog says who can mark it.
+- A covering artist asks the owner, or has the session reassigned to them first (reassigning is owner-only).
+- Not changed: reading a colleague's appointment detail stays allowed (the product decision recorded above).
+- Help (`artist-appointment-detail`) and the manual updated. No migration.

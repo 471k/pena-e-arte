@@ -20,6 +20,14 @@ import { previewCopy, resultCopy } from "./noShowCopy";
 // After the commit the dialog shows what the server says it actually did, not the projection.
 // No-show cannot be undone in the product, and no undo is offered.
 
+function errorStatus(error: unknown): number | undefined {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const status = (error as { status: unknown }).status;
+    return typeof status === "number" ? status : undefined;
+  }
+  return undefined;
+}
+
 interface NoShowConfirmDialogProps {
   appointment: AppointmentResponse;
   open: boolean;
@@ -61,6 +69,13 @@ export function NoShowConfirmDialog({ appointment, open, onOpenChange }: NoShowC
       <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Checking what would happen to the deposit…
+      </p>
+    );
+  } else if (preview.isError && errorStatus(preview.error) === 404) {
+    // Phi, 2026-11-05: an artist may only mark their own sessions as a no-show.
+    body = (
+      <p role="alert" className="text-sm text-destructive-text">
+        Only the artist assigned to this session, or the studio owner, can mark it as a no-show.
       </p>
     );
   } else if (preview.isError || !data) {

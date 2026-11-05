@@ -54,8 +54,8 @@ public class NoShowPreviewAgreementTests
         PaymentStatus? before = payment?.Status;
         DateTime? paidAtBefore = payment?.PaidAt;
 
-        NoShowPreviewResponse preview = await new GetNoShowPreviewHandler(_db).Handle(new GetNoShowPreviewQuery(id), default);
-        NoShowResultResponse result = await new MarkNoShowHandler(_db, _tenant, Substitute.For<IRealtimeNotifier>(), _provider)
+        NoShowPreviewResponse preview = await new GetNoShowPreviewHandler(_db, FakeCurrentUser.Owner()).Handle(new GetNoShowPreviewQuery(id), default);
+        NoShowResultResponse result = await new MarkNoShowHandler(_db, _tenant, Substitute.For<IRealtimeNotifier>(), _provider, FakeCurrentUser.Owner())
             .Handle(new MarkNoShowCommand(id), default);
 
         preview.CanMarkNoShow.Should().BeTrue(label);
@@ -109,8 +109,8 @@ public class NoShowPreviewAgreementTests
     {
         Guid id = SeedAppointment(status);
 
-        NoShowPreviewResponse preview = await new GetNoShowPreviewHandler(_db).Handle(new GetNoShowPreviewQuery(id), default);
-        Func<Task> commit = () => new MarkNoShowHandler(_db, _tenant, Substitute.For<IRealtimeNotifier>(), _provider)
+        NoShowPreviewResponse preview = await new GetNoShowPreviewHandler(_db, FakeCurrentUser.Owner()).Handle(new GetNoShowPreviewQuery(id), default);
+        Func<Task> commit = () => new MarkNoShowHandler(_db, _tenant, Substitute.For<IRealtimeNotifier>(), _provider, FakeCurrentUser.Owner())
             .Handle(new MarkNoShowCommand(id), default);
 
         preview.CanMarkNoShow.Should().BeFalse();
@@ -124,7 +124,7 @@ public class NoShowPreviewAgreementTests
         Guid id = SeedAppointment(AppointmentStatus.Confirmed);
         SeedPayment(id, PaymentStatus.Refunded, ClientPaymentMethod.Card, "pok_old");
 
-        NoShowPreviewResponse preview = await new GetNoShowPreviewHandler(_db).Handle(new GetNoShowPreviewQuery(id), default);
+        NoShowPreviewResponse preview = await new GetNoShowPreviewHandler(_db, FakeCurrentUser.Owner()).Handle(new GetNoShowPreviewQuery(id), default);
 
         preview.Outcome.Should().Be("NothingCollected");
     }
@@ -132,7 +132,7 @@ public class NoShowPreviewAgreementTests
     [Fact]
     public async Task AMissingAppointment_IsNotFound()
     {
-        Func<Task> act = () => new GetNoShowPreviewHandler(_db).Handle(new GetNoShowPreviewQuery(Guid.NewGuid()), default);
+        Func<Task> act = () => new GetNoShowPreviewHandler(_db, FakeCurrentUser.Owner()).Handle(new GetNoShowPreviewQuery(Guid.NewGuid()), default);
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
