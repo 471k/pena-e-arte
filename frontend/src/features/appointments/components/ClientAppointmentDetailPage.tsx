@@ -12,6 +12,7 @@ import {
 } from "@/shared/components/ui/accordion";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { aftercareIntro, aftercareTextLine } from "./clientAftercareCopy";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { useCreateConversationMutation, useSendMessageMutation } from "@/features/messaging/messagingApi";
 import { useGetMyAppointmentQuery } from "../appointmentsApi";
@@ -377,13 +378,20 @@ function Visit({ appt, visit }: { appt: AppointmentResponse; visit: ClientAppoin
   return <Section title="Your visit" labelledBy="visit-heading">{body}</Section>;
 }
 
+// E04c phase C: says per channel what actually went out (sent / couldn't be sent / no record), never that
+// it was emailed when it wasn't. The steps themselves are shown either way.
 function Aftercare({ aftercare, timezone }: { aftercare: ClientAppointmentAftercare; timezone: string | undefined }) {
-  const sent = new Date(aftercare.sentAt).toLocaleDateString("en-GB", withStudioTimeZone({
+  const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", withStudioTimeZone({
     day: "numeric", month: "long", year: "numeric",
   }, timezone));
+  const emailFailed = aftercare.channels?.some((c) => c.channel === "Email" && !c.sent) ?? false;
+  const textLine = aftercareTextLine(aftercare, when);
   return (
     <Section title="Aftercare" labelledBy="aftercare-heading">
-      <p className="text-xs text-muted-foreground">The studio sent you these instructions on {sent}.</p>
+      <p className={emailFailed ? "text-xs text-warning-text" : "text-xs text-muted-foreground"} data-testid="aftercare-intro">
+        {aftercareIntro(aftercare, when)}
+      </p>
+      {textLine && <p className="text-xs text-muted-foreground" data-testid="aftercare-text-line">{textLine}</p>}
       <ul className="list-disc space-y-1 pl-5 text-sm">
         {aftercare.steps.map((step) => <li key={step}>{step}</li>)}
       </ul>

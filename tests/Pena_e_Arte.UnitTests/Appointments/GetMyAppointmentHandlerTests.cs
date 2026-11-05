@@ -381,6 +381,76 @@ public class GetMyAppointmentHandlerTests
         (await Get(id)).Aftercare.Should().BeNull();
     }
 
+    // ── E04c phase C: the aftercare block says what each channel actually did ──
+
+    private void LogAftercare(Guid appointmentId, NotificationChannel channel, bool success, DateTime at)
+    {
+        _db.NotificationLogs.Add(new NotificationLog
+        {
+            StudioId = _studioId, AppointmentId = appointmentId, RecipientType = NotificationRecipientType.Client,
+            Channel = channel, Body = "aftercare", SentAt = at, IsSuccess = success,
+        });
+        _db.SaveChanges();
+    }
+
+    [Fact]
+    public async Task Aftercare_EmailFailed_IsStillShown_ButSaysTheEmailFailed()
+    {
+        _prefs.IsEnabledAsync(_studioId, NotificationType.Aftercare, NotificationChannel.Email, Arg.Any<CancellationToken>()).Returns(true);
+        Guid clientId = await SeedClient(_userId);
+        DateTime ran = DateTime.UtcNow.AddDays(-1);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: AppointmentStatus.Completed, aftercareSentAt: ran);
+        LogAftercare(id, NotificationChannel.Email, false, ran);
+        LogAftercare(id, NotificationChannel.Sms, true, ran.AddSeconds(2));
+
+        ClientAppointmentAftercareResponse aftercare = (await Get(id)).Aftercare!;
+
+        aftercare.Steps.Should().BeSameAs(AftercareInstructions.Steps);
+        aftercare.State.Should().Be("Sent", "the text message went out");
+        aftercare.Channels!.Select(c => (c.Channel, c.Sent)).Should().Equal(("Email", false), ("Sms", true));
+    }
+
+    [Fact]
+    public async Task Aftercare_EveryChannelFailed_IsFailed()
+    {
+        _prefs.IsEnabledAsync(_studioId, NotificationType.Aftercare, NotificationChannel.Email, Arg.Any<CancellationToken>()).Returns(true);
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: AppointmentStatus.Completed, aftercareSentAt: DateTime.UtcNow);
+        LogAftercare(id, NotificationChannel.Email, false, DateTime.UtcNow);
+
+        ClientAppointmentAftercareResponse aftercare = (await Get(id)).Aftercare!;
+
+        aftercare.State.Should().Be("Failed");
+        aftercare.Channels.Should().ContainSingle(c => c.Channel == "Email" && !c.Sent);
+    }
+
+    [Fact]
+    public async Task Aftercare_WithNoChannelRecord_IsNotRecorded_SoThePageClaimsNoSend()
+    {
+        _prefs.IsEnabledAsync(_studioId, NotificationType.Aftercare, NotificationChannel.Email, Arg.Any<CancellationToken>()).Returns(true);
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: AppointmentStatus.Completed, aftercareSentAt: DateTime.UtcNow);
+
+        ClientAppointmentAftercareResponse aftercare = (await Get(id)).Aftercare!;
+
+        aftercare.State.Should().Be("NotRecorded");
+        aftercare.Channels.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Aftercare_EmailAttempted_IsShown_EvenIfTheEmailSettingWasSwitchedOffSince()
+    {
+        _prefs.IsEnabledAsync(Arg.Any<Guid>(), Arg.Any<NotificationType>(), Arg.Any<NotificationChannel>(), Arg.Any<CancellationToken>()).Returns(false);
+        Guid clientId = await SeedClient(_userId);
+        Guid id = await SeedAppointment(clientId, DateTime.UtcNow.AddDays(-2), status: AppointmentStatus.Completed, aftercareSentAt: DateTime.UtcNow);
+        LogAftercare(id, NotificationChannel.Email, true, DateTime.UtcNow);
+
+        ClientAppointmentAftercareResponse aftercare = (await Get(id)).Aftercare!;
+
+        aftercare.State.Should().Be("Sent");
+        aftercare.Channels.Should().ContainSingle(c => c.Channel == "Email" && c.Sent);
+    }
+
     private async Task SetStudioAddress(string? line1, string? line2, string city, string? postalCode)
     {
         Studio studio = _db.Studios.Single(s => s.Id == _studioId);

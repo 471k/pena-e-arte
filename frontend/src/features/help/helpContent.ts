@@ -102,7 +102,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If you chose to pay your deposit in cash, it stays on the list until the studio confirms they've received it.",
       "If the studio hasn't entered its full address yet, the page says so; message or call them for directions.",
       "If messaging isn't available for your studio, the page shows its phone number and Instagram instead.",
-      "After a completed session, the page shows the aftercare instructions your studio emailed you.",
+      "After a completed session, the page shows your studio's aftercare instructions, with a line saying what actually went out: that they were sent to your email (and, if your studio uses it, a short text message), or that the email couldn't be sent, in which case the instructions are here for you instead.",
       "My Bookings shows how many things are left to do (\"2 things to do before your appointment\") on any upcoming booking with something outstanding.",
     ],
     relatedArticleIds: ["client-book-appointment", "client-cancel-booking", "client-reschedule-booking", "client-messaging"],

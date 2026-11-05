@@ -15,7 +15,9 @@ namespace Pena_e_Arte.Contracts.Responses;
 /// <param name="Visit">Where to go (DEC11). Null unless the appointment is Confirmed: an unconfirmed
 /// request never receives the studio's private address.</param>
 /// <param name="Aftercare">The aftercare the studio sent after the session (DEC11). Null unless the
-/// appointment is Completed and the studio's aftercare email actually went out.</param>
+/// appointment is Completed, aftercare ran, and the studio's aftercare email is on or was attempted. It
+/// says per channel what actually went out (E04c): the steps can be shown when the email failed, but
+/// the page must not imply they were emailed.</param>
 public record ClientAppointmentDetailResponse(
     AppointmentResponse Appointment,
     IReadOnlyList<AppointmentReadinessItemResponse> Readiness,
@@ -37,9 +39,19 @@ public record ClientAppointmentVisitResponse(
 
 /// <summary>
 /// The aftercare steps from the email the studio sent (Domain.Constants.AftercareInstructions, the one
-/// copy the email also renders from), and when it was sent.
+/// copy the email also renders from), and when the aftercare step ran.
 /// </summary>
-public record ClientAppointmentAftercareResponse(DateTime SentAt, IReadOnlyList<string> Steps);
+/// <param name="SentAt">When the aftercare step ran (UTC). Not proof that any message went out: see Channels.</param>
+/// <param name="State">E04c phase C, the same reading the staff card uses (AftercareCommunicationReader):
+/// "Sent" (at least one channel accepted), "Failed" (every attempted channel failed) or "NotRecorded"
+/// (no per-channel record: older appointments).</param>
+/// <param name="Channels">Each attempted channel (Email, Sms) and whether our provider accepted it. Never
+/// a delivery or read receipt.</param>
+public record ClientAppointmentAftercareResponse(
+    DateTime SentAt,
+    IReadOnlyList<string> Steps,
+    string State = "NotRecorded",
+    IReadOnlyList<CommunicationChannelResponse>? Channels = null);
 
 /// <summary>
 /// DEC06. The recipient is the appointment's artist when they can sign in to read it, otherwise the
