@@ -93,6 +93,22 @@ public class GetDesignRevisionsHandlerTests
         result.Should().ContainSingle(r => r.DesignId == designA);
     }
 
+    [Fact]
+    public async Task Handle_CarriesWhenEachRevisionWasReviewed_AsHistory()
+    {
+        // E04c (A05): per-revision history is a read of the existing approval row.
+        Guid designId = Guid.NewGuid();
+        await SeedRevision(designId, version: 1, approval: DesignApprovalStatus.ChangesRequested, approvalNotes: "Thinner lines");
+        await SeedRevision(designId, version: 2);
+
+        List<DesignRevisionResponse> result = await CreateSut()
+            .Handle(new GetDesignRevisionsQuery(designId), default);
+
+        result[0].ReviewedAt.Should().NotBeNull();
+        result[0].ApprovalNotes.Should().Be("Thinner lines");
+        result[1].ReviewedAt.Should().BeNull("v2 has never been reviewed");
+    }
+
     private async Task<Guid> SeedRevision(
         Guid designId,
         int version,

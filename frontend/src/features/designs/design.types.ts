@@ -1,5 +1,8 @@
 export type DesignStatus = "Draft" | "InReview" | "Approved" | "ChangesRequested";
 
+/** Whose move it is (E04c, A05), derived on the server from the latest revision. */
+export type DesignWaitingOn = "Artist" | "Client" | "Nobody";
+
 export interface DesignResponse {
   id:            string;
   studioId:      string;
@@ -11,6 +14,11 @@ export interface DesignResponse {
   status:        DesignStatus;
   isCatalogItem: boolean;
   price:         number | null;
+  /** Whose move it is; only the latest revision decides. */
+  waitingOn:           DesignWaitingOn;
+  /** The version the status is about; null with no revisions. */
+  latestVersionNumber: number | null;
+  latestUploadedAt:    string | null;
 }
 
 export interface MarkDesignAsCatalogItemRequest {
@@ -49,6 +57,8 @@ export interface DesignRevisionResponse {
   uploadedAt:     string;
   approvalStatus: string | null;
   approvalNotes:  string | null;
+  /** When this revision was approved, sent back or expired; null if never reviewed. */
+  reviewedAt?:    string | null;
 }
 
 export interface UploadRevisionRequest {

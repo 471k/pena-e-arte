@@ -631,3 +631,71 @@ describe("ClientAppointmentDetailPage — visit and aftercare", () => {
     expect(screen.queryByRole("region", { name: "Aftercare" })).not.toBeInTheDocument();
   });
 });
+
+// ── E04c phase C: the aftercare block says what each channel actually did ───────
+
+describe("ClientAppointmentDetailPage — aftercare per channel (E04c)", () => {
+  const FORBIDDEN_COPY = /\b(delivered|delivery|received|read)\b/i;
+  const RAN = "2030-12-10T15:00:00Z";
+  const steps = ["Keep it covered."];
+
+  async function aftercareRegion(aftercare: NonNullable<ClientAppointmentDetailResponse["aftercare"]>) {
+    server.use(detailReturns({ ...detail({ status: "Completed" }), aftercare }));
+    renderPage();
+    await loaded();
+    return screen.getByRole("region", { name: "Aftercare" });
+  }
+
+  it("email sent: says it was sent to their email, with the steps", async () => {
+    const region = await aftercareRegion({
+      sentAt: RAN, steps, state: "Sent", channels: [{ channel: "Email", sent: true, at: RAN }],
+    });
+    expect(within(region).getByTestId("aftercare-intro"))
+      .toHaveTextContent("The studio sent these instructions to your email on 10 December 2030.");
+    expect(within(region).getByText("Keep it covered.")).toBeInTheDocument();
+    expect(within(region).queryByTestId("aftercare-text-line")).not.toBeInTheDocument();
+  });
+
+  it("email failed: still shows the steps, and says the email couldn't be sent", async () => {
+    const region = await aftercareRegion({
+      sentAt: RAN, steps, state: "Sent",
+      channels: [{ channel: "Email", sent: false, at: RAN }, { channel: "Sms", sent: true, at: RAN }],
+    });
+    const intro = within(region).getByTestId("aftercare-intro");
+    expect(intro).toHaveTextContent("tried to email you these instructions on 10 December 2030, but the email couldn't be sent");
+    expect(intro).not.toHaveTextContent(/sent these instructions to your email/);
+    expect(within(region).getByTestId("aftercare-text-line"))
+      .toHaveTextContent("A short version was also sent to you by text message on 10 December 2030.");
+    expect(within(region).getByText("Keep it covered.")).toBeInTheDocument();
+  });
+
+  it("every channel failed: says so for each", async () => {
+    const region = await aftercareRegion({
+      sentAt: RAN, steps, state: "Failed",
+      channels: [{ channel: "Email", sent: false, at: RAN }, { channel: "Sms", sent: false, at: RAN }],
+    });
+    expect(within(region).getByTestId("aftercare-intro")).toHaveTextContent(/couldn't be sent/);
+    expect(within(region).getByTestId("aftercare-text-line")).toHaveTextContent("A short version by text message couldn't be sent.");
+  });
+
+  it("no channel record: shows the steps and makes no claim that anything was sent", async () => {
+    const region = await aftercareRegion({ sentAt: RAN, steps, state: "NotRecorded", channels: [] });
+    const intro = within(region).getByTestId("aftercare-intro");
+    expect(intro).toHaveTextContent("The studio's aftercare instructions, from 10 December 2030.");
+    expect(intro).not.toHaveTextContent(/sent|email/i);
+  });
+
+  it("never claims delivery or reading, in any state", async () => {
+    const variants: NonNullable<ClientAppointmentDetailResponse["aftercare"]>[] = [
+      { sentAt: RAN, steps, state: "Sent", channels: [{ channel: "Email", sent: true, at: RAN }, { channel: "Sms", sent: true, at: RAN }] },
+      { sentAt: RAN, steps, state: "Failed", channels: [{ channel: "Email", sent: false, at: RAN }, { channel: "Sms", sent: false, at: RAN }] },
+      { sentAt: RAN, steps, state: "NotRecorded", channels: [] },
+    ];
+    for (const aftercare of variants) {
+      const region = await aftercareRegion(aftercare);
+      expect(within(region).getByTestId("aftercare-intro").textContent).not.toMatch(FORBIDDEN_COPY);
+      expect(within(region).queryByTestId("aftercare-text-line")?.textContent ?? "").not.toMatch(FORBIDDEN_COPY);
+      cleanup();
+    }
+  });
+});

@@ -8,7 +8,7 @@ import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
 import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage } from "@/features/appointments";
 import { TodayPage } from "@/features/today";
-import { ArtistListPage, ArtistDetailPage, CreateArtistPage } from "@/features/artists";
+import { ArtistListPage, ArtistDetailPage, CreateArtistPage, AvailabilityPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, MyProfilePage, TattooRecordDetailPage } from "@/features/clients";
 import { DesignListPage, CreateDesignPage, UploadRevisionPage, DesignDetailPage } from "@/features/designs";
 import {
@@ -248,7 +248,11 @@ export const routes = [
               {
                 path: "schedule",
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
-                children: [{ index: true, element: <ErrorBoundary><SchedulePage /></ErrorBoundary> }],
+                children: [
+                  { index: true, element: <ErrorBoundary><SchedulePage /></ErrorBoundary> },
+                  // E04c (A06): the viewer's own working hours and time off, next to the schedule.
+                  { path: "availability", element: <ErrorBoundary><AvailabilityPage /></ErrorBoundary> },
+                ],
               },
 
               // ── Owner ───────────────────────────────────────────────────────

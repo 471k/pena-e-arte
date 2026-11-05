@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Application.Appointments.Common;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Messaging;
 using Pena_e_Arte.Application.Persistence;
@@ -102,17 +103,25 @@ public class GetMyAppointmentHandler(
             : new ClientAppointmentVisitResponse(false, null, null, null, null);
     }
 
-    // DEC11: the aftercare the studio actually sent: a completed session whose aftercare notification
-    // ran (AftercareSentAt) while the studio's aftercare email was on. The email is the only channel that
-    // carries these steps, so with it off the studio published none of this text and the page shows none.
+    // DEC11: the aftercare the studio published: a completed session whose aftercare notification ran
+    // (AftercareSentAt) with the studio's aftercare email on, or an email actually attempted. The email is
+    // the only channel that carries these steps, so with it off (and never tried) the studio published
+    // none of this text and the page shows none.
+    // E04c phase C: AftercareSentAt only means the step ran, so the block also carries what each channel
+    // actually did, from the same reader the staff card uses. The steps are shown even when the email
+    // failed (that's helpful); the page must not say they were emailed when they weren't.
     private async Task<ClientAppointmentAftercareResponse?> AftercareAsync(Appointment appointment, CancellationToken ct)
     {
         if (appointment.Status != AppointmentStatus.Completed || appointment.AftercareSentAt is not { } sentAt)
             return null;
 
-        bool emailOn = await prefs.IsEnabledAsync(
+        AftercareCommunicationResponse sent = await AftercareCommunicationReader.ReadAsync(db, appointment, ct);
+        bool emailAttempted = sent.Channels.Any(c => c.Channel == nameof(NotificationChannel.Email));
+        bool emailOn = emailAttempted || await prefs.IsEnabledAsync(
             appointment.StudioId, NotificationType.Aftercare, NotificationChannel.Email, ct);
-        return emailOn ? new ClientAppointmentAftercareResponse(sentAt, AftercareInstructions.Steps) : null;
+        return emailOn
+            ? new ClientAppointmentAftercareResponse(sentAt, AftercareInstructions.Steps, sent.State, sent.Channels)
+            : null;
     }
 
     // DEC06: the same people ConversationEligibility lets a client message: an active artist with a

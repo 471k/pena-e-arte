@@ -26,6 +26,8 @@ public static class ArtistEndpoints
         group.MapGet("{id:guid}/schedule", GetSchedule).RequireAuthorization("ClientAndAbove");
         group.MapPut("{id:guid}/schedule", UpsertSchedule).RequireAuthorization("ArtistAndAbove");
         group.MapPost("{id:guid}/time-off", AddTimeOff).RequireAuthorization("ArtistAndAbove");
+        // E04c (A06): which booked sessions a time-off range covers, before adding or removing it. Read only.
+        group.MapGet("{id:guid}/time-off/affected-sessions", GetTimeOffAffectedSessions).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}/time-off/{timeOffId:guid}", DeleteTimeOff).RequireAuthorization("ArtistAndAbove");
     }
 
@@ -142,6 +144,18 @@ public static class ArtistEndpoints
         Guid timeOffId = await mediator.Send(
             new AddArtistTimeOffCommand(id, body.StartDate, body.EndDate, body.Reason), ct);
         return Results.Created($"/api/v1/artists/{id}/time-off/{timeOffId}", new { id = timeOffId });
+    }
+
+    private static async Task<IResult> GetTimeOffAffectedSessions(
+        Guid id,
+        DateTime startDate,
+        DateTime endDate,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        TimeOffAffectedSessionsResponse result = await mediator.Send(
+            new GetTimeOffAffectedSessionsQuery(id, startDate, endDate), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> DeleteTimeOff(

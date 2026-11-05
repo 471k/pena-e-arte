@@ -47,7 +47,6 @@ public class CreateDesignHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
         return Map(design);
     }
 
-    internal static DesignResponse Map(Design d) =>
-        new(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt,
-            IsCatalogItem: d.IsCatalogItem, Price: d.Price);
+    // A new design has no revisions: Draft, waiting on the artist (DesignReviewState, the one derivation).
+    internal static DesignResponse Map(Design d) => Queries.GetDesignsHandler.Map(d);
 }

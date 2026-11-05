@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Appointments.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Constants;
@@ -46,7 +47,7 @@ public class GetAppointmentCommunicationHandler(IAppDbContext db, ICurrentUser c
         return new AppointmentCommunicationResponse(
             id,
             await RescheduleAsync(appointment, ct),
-            appointment.Status == AppointmentStatus.Completed ? await AftercareAsync(appointment, ct) : null);
+            appointment.Status == AppointmentStatus.Completed ? await AftercareCommunicationReader.ReadAsync(db, appointment, ct) : null);
     }
 
     private async Task<RescheduleCommunicationResponse?> RescheduleAsync(Appointment appointment, CancellationToken ct)
@@ -69,25 +70,6 @@ public class GetAppointmentCommunicationHandler(IAppDbContext db, ICurrentUser c
             .FirstOrDefaultAsync(ct);
 
         return new RescheduleCommunicationResponse(messagedAt is null ? "NotSent" : "Sent", movedAt, messagedAt);
-    }
-
-    private async Task<AftercareCommunicationResponse> AftercareAsync(Appointment appointment, CancellationToken ct)
-    {
-        List<CommunicationChannelResponse> channels = (await db.NotificationLogs
-                .Where(n => n.AppointmentId == appointment.Id && n.RecipientType == NotificationRecipientType.Client)
-                .OrderBy(n => n.SentAt)
-                .Select(n => new { n.Channel, n.IsSuccess, n.SentAt })
-                .ToListAsync(ct))
-            .Select(n => new CommunicationChannelResponse(n.Channel.ToString(), n.IsSuccess, n.SentAt))
-            .ToList();
-
-        string state = appointment.AftercareSentAt is null
-            ? "NotSent"
-            : channels.Count == 0
-                ? "NotRecorded"
-                : channels.Any(c => c.Sent) ? "Sent" : "Failed";
-
-        return new AftercareCommunicationResponse(state, appointment.AftercareSentAt, channels);
     }
 }
 

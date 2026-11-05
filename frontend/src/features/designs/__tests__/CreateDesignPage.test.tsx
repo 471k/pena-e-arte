@@ -61,6 +61,7 @@ const CREATED_DESIGN: DesignResponse = {
   status:      "Draft",
   isCatalogItem: false,
   price:       null,
+  waitingOn: "Artist", latestVersionNumber: null, latestUploadedAt: null,
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────

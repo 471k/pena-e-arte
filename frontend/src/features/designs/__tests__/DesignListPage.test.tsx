@@ -27,6 +27,7 @@ const DESIGN_A: DesignResponse = {
   status:      "Draft",
   isCatalogItem: false,
   price:       null,
+  waitingOn: "Artist", latestVersionNumber: null, latestUploadedAt: null,
 };
 
 const DESIGN_B: DesignResponse = {
@@ -40,6 +41,7 @@ const DESIGN_B: DesignResponse = {
   status:      "InReview",
   isCatalogItem: false,
   price:       null,
+  waitingOn: "Client", latestVersionNumber: 1, latestUploadedAt: "2024-01-15T10:00:00Z",
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
@@ -333,5 +335,45 @@ describe("DesignListPage", () => {
     // We can't reliably count SVG renders in JSDOM but we can assert the icon
     // is not given a duplicate aria role (it's aria-hidden throughout).
     expect(screen.getByText("2 designs").closest("span")).not.toBeNull();
+  });
+});
+
+// ── E04c (A05): which queue each design is in ──────────────────────────────────
+
+describe("DesignListPage — whose move it is (E04c)", () => {
+  // DESIGN_A is a Draft (waiting on the artist), DESIGN_B is in review (waiting on the client).
+  function titlesInOrder(): string[] {
+    return screen.getAllByRole("link").map((l) => l.textContent ?? "");
+  }
+
+  it("a client sees the designs waiting on them first, labelled", async () => {
+    server.use(http.get("http://localhost/api/v1/designs", () => HttpResponse.json([DESIGN_A, DESIGN_B])));
+    renderPage(Role.Client);
+    await screen.findByText("Dragon Sleeve");
+
+    expect(titlesInOrder()[0]).toContain(DESIGN_B.title);
+    expect(screen.getByText("Waiting on you")).toBeInTheDocument();
+    expect(screen.getByText("Waiting on your artist")).toBeInTheDocument();
+  });
+
+  it("an artist sees the designs waiting on them first, labelled", async () => {
+    server.use(http.get("http://localhost/api/v1/designs", () => HttpResponse.json([DESIGN_B, DESIGN_A])));
+    renderPage(Role.Artist);
+    await screen.findByText("Dragon Sleeve");
+
+    expect(titlesInOrder()[0]).toContain(DESIGN_A.title);
+    expect(screen.getByText("Waiting on you")).toBeInTheDocument();
+    expect(screen.getByText("Waiting on client")).toBeInTheDocument();
+  });
+
+  it("names the latest version on the card, and labels nothing that waits on nobody", async () => {
+    server.use(http.get("http://localhost/api/v1/designs", () => HttpResponse.json([
+      { ...DESIGN_B, status: "Approved", waitingOn: "Nobody", latestVersionNumber: 3 },
+    ])));
+    renderPage(Role.Owner);
+    await screen.findByText(DESIGN_B.title);
+
+    expect(screen.getByText(/Latest: v3/)).toBeInTheDocument();
+    expect(screen.queryByTestId("design-waiting-label")).not.toBeInTheDocument();
   });
 });

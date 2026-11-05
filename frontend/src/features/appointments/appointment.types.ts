@@ -139,8 +139,13 @@ export interface ClientAppointmentVisit {
 
 /** DEC11. The steps the studio's aftercare email sent — the server's one copy, never a frontend one. */
 export interface ClientAppointmentAftercare {
+  /** When the aftercare step ran. Not proof a message went out: see `channels`. */
   sentAt: string;
   steps:  string[];
+  /** E04c: the same reading the staff card uses. Absent from older responses. */
+  state?:    "Sent" | "Failed" | "NotRecorded";
+  /** Each attempted channel and whether our provider accepted it. Never a delivery or read receipt. */
+  channels?: CommunicationChannel[];
 }
 
 /**

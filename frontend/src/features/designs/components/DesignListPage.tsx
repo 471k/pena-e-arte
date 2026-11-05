@@ -9,7 +9,9 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { ResourceEmptyState } from "@/shared/components/ResourceEmptyState";
 import { Role } from "@/shared/types/roles";
+import { useAppSelector } from "@/app/hooks";
 import { useGetDesignsQuery } from "../designsApi";
+import type { DesignWaitingOn } from "../design.types";
 import { DesignCard } from "./DesignCard";
 
 function DesignCardSkeleton() {
@@ -34,6 +36,8 @@ export function DesignListPage() {
 
   const navigate = useNavigate();
   const canCreate = usePermission(Role.Artist);
+  const role = useAppSelector((st) => st.auth.role);
+  const viewerWaitsOn: DesignWaitingOn = role === Role.Client ? "Client" : "Artist";
   const [searchParams] = useSearchParams();
   const clientId = searchParams.get("clientId") ?? undefined;
   const artistId = searchParams.get("artistId") ?? undefined;
@@ -49,15 +53,17 @@ export function DesignListPage() {
       ? (designs ?? []).filter((d) => d.title.toLowerCase().includes(term))
       : (designs ?? []);
 
-    // Designs awaiting a new revision from the artist are the most time-sensitive —
-    // surface them first regardless of creation date.
+    // E04c (A05): designs waiting on the viewer come first, regardless of creation date. For a
+    // client that is a version awaiting their review; for staff it is work owed by the artist (a
+    // first version, requested changes, or an expired review). The server derives whose move it is.
+    const mine = viewerWaitsOn;
     return [...matching].sort((a, b) => {
-      const aUrgent = a.status === "ChangesRequested";
-      const bUrgent = b.status === "ChangesRequested";
+      const aUrgent = !a.isCatalogItem && a.waitingOn === mine;
+      const bUrgent = !b.isCatalogItem && b.waitingOn === mine;
       if (aUrgent === bUrgent) return 0;
       return aUrgent ? -1 : 1;
     });
-  }, [designs, search]);
+  }, [designs, search, viewerWaitsOn]);
 
   const hasDesigns = (designs?.length ?? 0) > 0;
 

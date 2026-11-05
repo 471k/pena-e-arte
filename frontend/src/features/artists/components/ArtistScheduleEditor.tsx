@@ -13,7 +13,10 @@ import {
   useAddArtistTimeOffMutation,
   useDeleteArtistTimeOffMutation,
   type ArtistScheduleEntry,
+  type ArtistTimeOffEntry,
 } from "../artistsApi";
+import { TimeOffImpactDialog } from "./TimeOffImpactDialog";
+import { formatLocalRange } from "../timeOffDates";
 
 const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DEFAULT_START = "09:00:00";
@@ -49,10 +52,6 @@ function buildInitialRows(entries: ArtistScheduleEntry[]): DayRow[] {
   });
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
 interface ArtistScheduleEditorProps {
   artistId: string;
   canEdit:  boolean;
@@ -84,6 +83,9 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
   const [endDate, setEndDate]     = useState("");
   const [reason, setReason]       = useState("");
   const [timeOffError, setTimeOffError] = useState<string | null>(null);
+  // E04c (A06): adding or removing time off first shows which booked sessions it concerns.
+  const [confirmAddOpen, setConfirmAddOpen] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<ArtistTimeOffEntry | null>(null);
 
   function updateRow(dayOfWeek: number, patch: Partial<DayRow>) {
     setRows((prev) => prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, ...patch } : r)));
@@ -112,7 +114,8 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
     setTimeOffFormOpen(false);
   }
 
-  async function handleAddTimeOff() {
+  // Validates the form, then shows the affected sessions; nothing is saved until that is confirmed.
+  function handleReviewTimeOff() {
     if (!startDate || !endDate || !reason.trim()) {
       setTimeOffError("All fields are required.");
       return;
@@ -121,11 +124,18 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
       setTimeOffError("End date must be on or after start date.");
       return;
     }
+    setTimeOffError(null);
+    setConfirmAddOpen(true);
+  }
+
+  async function handleAddTimeOff() {
     try {
       await addTimeOff({ artistId, body: { startDate, endDate, reason: reason.trim() } }).unwrap();
       toast.success("Time off added.");
+      setConfirmAddOpen(false);
       resetTimeOffForm();
     } catch (err: unknown) {
+      setConfirmAddOpen(false);
       const message =
         err && typeof err === "object" && "data" in err && err.data &&
         typeof err.data === "object" && "message" in err.data
@@ -141,6 +151,8 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
       toast.success("Time off removed.");
     } catch {
       toast.error("Failed to remove time off.");
+    } finally {
+      setPendingRemoval(null);
     }
   }
 
@@ -209,7 +221,7 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{t.reason}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(t.startDate)} – {formatDate(t.endDate)}
+                      {formatLocalRange(t.startDate, t.endDate)}
                     </p>
                   </div>
                   {canEdit && (
@@ -217,7 +229,7 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 shrink-0"
-                      onClick={() => handleDeleteTimeOff(t.id)}
+                      onClick={() => setPendingRemoval(t)}
                       disabled={deletingTimeOff}
                       aria-label={`Remove time off: ${t.reason}`}
                     >
@@ -266,7 +278,7 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
                 </div>
                 {timeOffError && <p className="text-xs text-destructive-text">{timeOffError}</p>}
                 <div className="flex items-center gap-2">
-                  <Button size="sm" onClick={handleAddTimeOff} disabled={addingTimeOff} className="gap-2">
+                  <Button size="sm" onClick={handleReviewTimeOff} disabled={addingTimeOff} className="gap-2">
                     {addingTimeOff && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     Add time off
                   </Button>
@@ -282,8 +294,39 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
               </Button>
             )
           )}
+          <p className="text-xs text-muted-foreground">
+            Before time off is added or removed you&apos;ll see which booked sessions fall inside it. It never
+            moves or cancels any of them.
+          </p>
         </CardContent>
       </Card>
+
+      {canEdit && confirmAddOpen && (
+        <TimeOffImpactDialog
+          mode="add"
+          artistId={artistId}
+          startDate={startDate}
+          endDate={endDate}
+          reason={reason.trim()}
+          open={confirmAddOpen}
+          onOpenChange={setConfirmAddOpen}
+          onConfirm={() => void handleAddTimeOff()}
+          confirming={addingTimeOff}
+        />
+      )}
+      {canEdit && pendingRemoval && (
+        <TimeOffImpactDialog
+          mode="remove"
+          artistId={artistId}
+          startDate={pendingRemoval.startDate}
+          endDate={pendingRemoval.endDate}
+          reason={pendingRemoval.reason}
+          open={!!pendingRemoval}
+          onOpenChange={(o) => { if (!o) setPendingRemoval(null); }}
+          onConfirm={() => void handleDeleteTimeOff(pendingRemoval.id)}
+          confirming={deletingTimeOff}
+        />
+      )}
     </div>
   );
 }
