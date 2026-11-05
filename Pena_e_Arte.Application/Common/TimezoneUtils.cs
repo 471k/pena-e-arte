@@ -48,6 +48,32 @@ public static class TimezoneUtils
         }
     }
 
+    /// <summary>
+    /// The UTC instant of a studio-local wall-clock time, for BUSINESS comparisons of studio-local
+    /// data with stored UTC instants (E04c, A06: a time-off day's local midnight against appointment
+    /// instants). The inverse of <see cref="ToStudioLocalForRules"/>, with the same fallback: an
+    /// unusable timezone treats the time as UTC. A local time skipped by a clock change (a midnight
+    /// DST gap in some zones) moves forward to the first instant that exists.
+    /// </summary>
+    public static DateTime StudioLocalToUtcForRules(DateTime local, string? timezone)
+    {
+        DateTime wall = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+        if (string.IsNullOrWhiteSpace(timezone))
+            return DateTime.SpecifyKind(wall, DateTimeKind.Utc);
+        try
+        {
+            TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById(timezone);
+            DateTime candidate = wall;
+            for (int i = 0; i < 4 && tz.IsInvalidTime(candidate); i++)
+                candidate = candidate.AddMinutes(30);
+            return TimeZoneInfo.ConvertTimeToUtc(candidate, tz);
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
+        {
+            return DateTime.SpecifyKind(wall, DateTimeKind.Utc);
+        }
+    }
+
     public static DateTime ToStudioLocal(DateTime utc, string timezone)
     {
         try

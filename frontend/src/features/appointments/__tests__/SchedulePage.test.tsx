@@ -558,3 +558,31 @@ describe("SchedulePage", () => {
     expect(capturedArtistId).toBeNull();
   });
 });
+
+// ── E04c (A06): availability is one step from the schedule ──────────────────────
+
+describe("SchedulePage — Availability link (E04c)", () => {
+  it("an artist gets a link to their working hours and time off", async () => {
+    renderPage(Role.Artist);
+    await screen.findByText("No appointments this week");
+
+    const link = screen.getByRole("link", { name: /availability/i });
+    expect(link).toHaveAttribute("href", "/schedule/availability");
+    expect(link).toHaveAttribute("data-tour", "artist-availability-link");
+  });
+
+  it("an owner in their own artist view keeps their artist on the link", async () => {
+    renderPage(Role.Owner, "/?artistId=my-own-artist-id");
+    await screen.findByText("No appointments this week");
+
+    expect(screen.getByRole("link", { name: /availability/i }))
+      .toHaveAttribute("href", "/schedule/availability?artistId=my-own-artist-id");
+  });
+
+  it("the plain owner view has no artist context, so no link", async () => {
+    renderPage(Role.Owner);
+    await screen.findByText("No appointments this week");
+
+    expect(screen.queryByRole("link", { name: /availability/i })).not.toBeInTheDocument();
+  });
+});

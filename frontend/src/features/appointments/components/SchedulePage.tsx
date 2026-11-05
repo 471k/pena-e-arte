@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { CalendarDays, ChevronLeft, ChevronRight, Download, MessageSquarePlus, PenLine } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Download, MessageSquarePlus, PenLine } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
@@ -161,6 +161,20 @@ export function SchedulePage() {
               aria-label="Quick reminder"
             >
               <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+          )}
+
+          {/* E04c (A06): working hours and time off, one step from the schedule. Shown to whoever has
+              their own artist row here: an artist, or an owner in their own artist view. */}
+          {canQuickRemind && (
+            <Button asChild variant="outline" size="sm" className="ml-2 text-xs gap-1.5">
+              <Link
+                to={isOwnerInArtistMode ? `/schedule/availability?artistId=${encodeURIComponent(artistId ?? "")}` : "/schedule/availability"}
+                data-tour="artist-availability-link"
+              >
+                <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+                Availability
+              </Link>
             </Button>
           )}
 

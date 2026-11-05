@@ -90,6 +90,31 @@ export interface ArtistAvailabilityResponse {
   timeOff:  ArtistTimeOffEntry[];
 }
 
+/** E04c (A06): a booked session inside a time-off range. Read only. */
+export interface TimeOffAffectedSession {
+  appointmentId: string;
+  date:          string; // UTC start
+  endDate:       string; // UTC end
+  clientName:    string;
+  status:        "Pending" | "Confirmed";
+}
+
+/** GET artists/{id}/time-off/affected-sessions: what a time-off range covers, before committing it.
+ * Adding or removing time off never moves or cancels any of these sessions. */
+export interface TimeOffAffectedSessionsResponse {
+  artistId:     string;
+  startDate:    string;
+  endDate:      string;
+  sessions:     TimeOffAffectedSession[];
+  isProjection: boolean;
+}
+
+export interface TimeOffRange {
+  artistId:  string;
+  startDate: string; // YYYY-MM-DD, studio-local
+  endDate:   string; // YYYY-MM-DD, studio-local, inclusive
+}
+
 export interface AddArtistTimeOffRequest {
   startDate: string;
   endDate:   string;
@@ -206,6 +231,13 @@ export const artistsApi = createApi({
       }),
       invalidatesTags: (_result, _err, { artistId }) => [{ type: "ArtistSchedule", id: artistId }],
     }),
+    getTimeOffAffectedSessions: builder.query<TimeOffAffectedSessionsResponse, TimeOffRange>({
+      query: ({ artistId, startDate, endDate }) => ({
+        url:    `artists/${artistId}/time-off/affected-sessions`,
+        params: { startDate, endDate },
+      }),
+      providesTags: (_result, _err, { artistId }) => [{ type: "ArtistSchedule", id: artistId }],
+    }),
     deleteArtistTimeOff: builder.mutation<void, { artistId: string; timeOffId: string }>({
       query: ({ artistId, timeOffId }) => ({
         url:    `artists/${artistId}/time-off/${timeOffId}`,
@@ -235,4 +267,5 @@ export const {
   useUpsertArtistScheduleMutation,
   useAddArtistTimeOffMutation,
   useDeleteArtistTimeOffMutation,
+  useGetTimeOffAffectedSessionsQuery,
 } = artistsApi;

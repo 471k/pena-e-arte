@@ -11,3 +11,4 @@ export type { ArtistResponse, CreateArtistRequest, CreateOwnArtistProfileRequest
 export { ArtistListPage } from "./components/ArtistListPage";
 export { ArtistDetailPage } from "./components/ArtistDetailPage";
 export { CreateArtistPage } from "./components/CreateArtistPage";
+export { AvailabilityPage } from "./components/AvailabilityPage";

@@ -12,6 +12,12 @@ export const artistTourSteps: TourStep[] = [
     body: "See your appointments for the week here, organized by day.",
   },
   {
+    targetSelector: '[data-tour="artist-availability-link"]',
+    title: "Your working hours and time off",
+    body: "Set your weekly hours and book time off here. Before time off is added you see which booked sessions fall inside it; it never moves or cancels them.",
+    route: "/schedule",
+  },
+  {
     targetSelector: '[data-tour="artist-clients-nav"]',
     title: "Your clients",
     body: "Find any client's profile, tattoo history, and forms here.",
