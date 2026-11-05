@@ -14,8 +14,8 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 /// <summary>
 /// E04b (A04): for every deposit state, the no-show preview names exactly the outcome the commit then
 /// applies and reports, and the commit's writes are the ones MarkNoShowHandler made before the decision
-/// was extracted. The declared-cash case is asserted AS IT BEHAVES TODAY (prompt §2.1): recorded as Paid
-/// without PaidAt. That is flagged for Phi, not endorsed.
+/// was extracted, except declared cash: since Phi's decision on §2.1 (2026-11-05) it is closed as nothing
+/// collected (Refunded, no PaidAt), as cancellation closes it, instead of being recorded as Paid.
 /// </summary>
 public class NoShowPreviewAgreementTests
 {
@@ -41,7 +41,7 @@ public class NoShowPreviewAgreementTests
         { "cash received",       PaymentStatus.Paid,         ClientPaymentMethod.Cash, null,       "CashDepositKept",            false },
         { "legacy held card",    PaymentStatus.Captured,     ClientPaymentMethod.Card, "pok_held", "HeldDepositCaptured",        true  },
         { "held, no reference",  PaymentStatus.Captured,     ClientPaymentMethod.Card, null,       "Unknown",                    false },
-        { "declared cash (§2.1)", PaymentStatus.CashPending, ClientPaymentMethod.Cash, null,       "DeclaredCashRecordedAsPaid", false },
+        { "declared cash (§2.1, decided)", PaymentStatus.CashPending, ClientPaymentMethod.Cash, null,       "DeclaredCashNotCollected", false },
     };
 
     [Theory]
@@ -84,9 +84,9 @@ public class NoShowPreviewAgreementTests
                     stored.Status.Should().Be(PaymentStatus.Paid);
                     stored.PaidAt.Should().NotBeNull();
                     break;
-                case "DeclaredCashRecordedAsPaid":
-                    // §2.1, as the code behaves today: Paid, and PaidAt still unset.
-                    stored.Status.Should().Be(PaymentStatus.Paid);
+                case "DeclaredCashNotCollected":
+                    // Phi, 2026-11-05: nothing collected, so never recorded as received.
+                    stored.Status.Should().Be(PaymentStatus.Refunded);
                     stored.PaidAt.Should().BeNull();
                     break;
                 default:
@@ -115,6 +115,25 @@ public class NoShowPreviewAgreementTests
 
         preview.CanMarkNoShow.Should().BeFalse();
         (await commit.Should().ThrowAsync<BusinessRuleViolationException>()).Which.Message.Should().Be(preview.Message);
+    }
+
+    // Phi, 2026-11-05 (§2.1): a declared cash deposit the client never paid ends up exactly where a
+    // cancellation leaves it, nothing collected, so a no-show no longer records cash that never came in.
+    [Fact]
+    public async Task DeclaredCash_IsClosedTheSameWayACancellationClosesIt()
+    {
+        Guid id = SeedAppointment(AppointmentStatus.Confirmed);
+        Payment payment = SeedPayment(id, PaymentStatus.CashPending, ClientPaymentMethod.Cash, null);
+
+        await new MarkNoShowHandler(_db, _tenant, Substitute.For<IRealtimeNotifier>(), _provider, FakeCurrentUser.Owner())
+            .Handle(new MarkNoShowCommand(id), default);
+
+        Payment stored = _db.Payments.Single(p => p.Id == payment.Id);
+        Domain.Services.CancellationDecision cancel = Domain.Services.CancellationOutcome.Decide(
+            new Payment { Status = PaymentStatus.CashPending, Method = ClientPaymentMethod.Cash, Amount = 80m, Currency = "EUR" }, 100);
+        stored.Status.Should().Be(cancel.ResultingPaymentStatus!.Value).And.Be(PaymentStatus.Refunded);
+        stored.PaidAt.Should().BeNull("no cash was received");
+        cancel.KeptAmount.Should().Be(0m);
     }
 
     [Fact]

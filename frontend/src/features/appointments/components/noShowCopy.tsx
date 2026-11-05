@@ -21,11 +21,11 @@ export function previewCopy(outcome: NoShowOutcome, amount: number, currency: st
       return <>The studio keeps the {money(amount, currency)} cash deposit it received. Nothing is refunded.</>;
     case NoShowOutcome.HeldDepositCaptured:
       return <>The {money(amount, currency)} held on the client&apos;s card will be charged now and kept.</>;
-    case NoShowOutcome.DeclaredCashRecordedAsPaid:
+    case NoShowOutcome.DeclaredCashNotCollected:
       return (
         <>
-          The client said they would pay {money(amount, currency)} in cash, but no cash was received. Marking a
-          no-show records this deposit as paid and kept anyway.
+          The client said they would pay {money(amount, currency)} in cash, but no cash was received, so there&apos;s
+          nothing to keep. The cash deposit is recorded as not collected.
         </>
       );
     case NoShowOutcome.Unknown:
@@ -45,8 +45,8 @@ export function resultCopy(result: NoShowResultResponse): ReactNode {
       return <>Marked as a no-show. The studio kept the {amt} deposit.</>;
     case NoShowOutcome.HeldDepositCaptured:
       return <>Marked as a no-show. {amt} was charged to the client&apos;s card and kept.</>;
-    case NoShowOutcome.DeclaredCashRecordedAsPaid:
-      return <>Marked as a no-show. The {amt} cash deposit is now recorded as paid, although no cash was received.</>;
+    case NoShowOutcome.DeclaredCashNotCollected:
+      return <>Marked as a no-show. No cash was received, so the {amt} cash deposit is recorded as not collected.</>;
     case NoShowOutcome.Unknown:
     default:
       return <>Marked as a no-show. What happened to the deposit isn&apos;t clear, so check the payment.</>;

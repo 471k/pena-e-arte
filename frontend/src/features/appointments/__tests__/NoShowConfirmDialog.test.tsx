@@ -118,7 +118,7 @@ describe("NoShowConfirmDialog — before committing", () => {
     ["ChargedDepositKept", /keeps the .*80.* deposit the client already paid by card/i],
     ["CashDepositKept", /keeps the .*80.* cash deposit it received/i],
     ["HeldDepositCaptured", /80.* held on the client's card will be charged now and kept/i],
-    ["DeclaredCashRecordedAsPaid", /no cash was received.*records this deposit as paid and kept anyway/i],
+    ["DeclaredCashNotCollected", /no cash was received, so there's nothing to keep.*recorded as not collected/i],
   ] as const)("%s: states the server's outcome with the amount, and enables confirm", async (outcome, words) => {
     server.use(previewReturns(preview(outcome)));
     renderDialog();
@@ -171,7 +171,7 @@ describe("NoShowConfirmDialog — after committing", () => {
     // Previewed as a declared cash deposit, but the studio confirmed the cash in between: the commit
     // reports the deposit as kept, and that is what is shown.
     server.use(
-      previewReturns(preview("DeclaredCashRecordedAsPaid")),
+      previewReturns(preview("DeclaredCashNotCollected")),
       http.patch("http://localhost/api/v1/appointments/:id/no-show", () => {
         commits += 1;
         return HttpResponse.json(result("CashDepositKept"));

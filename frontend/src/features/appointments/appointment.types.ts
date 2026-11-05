@@ -332,7 +332,7 @@ export const NoShowOutcome = {
   ChargedDepositKept:         "ChargedDepositKept",
   CashDepositKept:            "CashDepositKept",
   HeldDepositCaptured:        "HeldDepositCaptured",
-  DeclaredCashRecordedAsPaid: "DeclaredCashRecordedAsPaid",
+  DeclaredCashNotCollected:   "DeclaredCashNotCollected",
   Unknown:                    "Unknown",
 } as const;
 export type NoShowOutcome = (typeof NoShowOutcome)[keyof typeof NoShowOutcome];
