@@ -141,7 +141,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Under \"My Bookings\", find the appointment and click \"Reschedule\" (or use \"Need to change or cancel?\" on the appointment's page).",
       "The dialog first checks whether the appointment can still be moved. If it can't (for example it's less than the studio's notice window away), it tells you why before you pick a time.",
-      "Pick a new date & time and duration — a live availability check appears for the new slot. Your appointment's current time never counts against it, so moving it by an hour works even if the times overlap.",
+      "Pick a new date & time and duration — a live availability check appears for the new slot. Your appointment's current time never counts against it, so moving it by an hour works even if the times overlap. A time outside the studio's or your artist's hours, or on a day they're off, can't be chosen.",
       "Click \"Confirm reschedule\".",
     ],
     tips: [
@@ -568,7 +568,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Message [client name]\" to start or continue a chat thread with the client, if they have a linked login.",
       "Click \"Add to Calendar\" to download an .ics file for the appointment.",
       "Click \"Confirm appointment\" or \"Mark as complete\" to advance its status.",
-      "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The client isn't told automatically, so let them know.",
+      "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The new time has to be within the studio's and the artist's hours and not on a closure or day off; that applies to staff too. The client isn't told automatically, so let them know.",
       "Click \"Mark no-show\" if the client didn't attend. Before anything happens, a confirmation shows what it will do to the deposit (for example that the studio keeps a deposit already paid, or that a deposit held on the card is charged), with the amount. Click \"Mark no-show\" there to confirm, or \"Keep the appointment\" to back out. Once confirmed, it shows what was actually done.",
       "Click \"Cancel appointment\" and confirm if it needs to be cancelled.",
       "Check \"Client communication\". After a reschedule it shows whether a message about the appointment has been sent to the client (they aren't told automatically) and has a box to write to them. For a completed session it shows whether aftercare was sent or failed, per email and text message.",

@@ -6248,3 +6248,22 @@ including no provider call. This matches the payment read scoped in PR #335.
 - A covering artist asks the owner, or has the session reassigned to them first (reassigning is owner-only).
 - Not changed: reading a colleague's appointment detail stays allowed (the product decision recorded above).
 - Help (`artist-appointment-detail`) and the manual updated. No migration.
+
+## The reschedule save checks the artist's schedule — Phi's decision on the E04b finding — 2026-11-05
+
+E04b found that `RescheduleAppointmentHandler` checked only overlaps for an assigned artist, while the reschedule
+preview (`CheckArtistSlotAvailabilityAsync`) also checked studio closures and hours, the artist's own hours and
+time off. So an API caller, a client included, could move a session outside opening hours. Phi agreed (5 Nov)
+to enforce it for everyone.
+- The save now calls `CheckArtistScheduleAsync` before the booking lock, exactly as booking's
+  `CreateAppointmentCoreAsync` does, and refuses with the same `BusinessRuleViolationException` reason the
+  preview shows.
+- The overlap check stays after the lock, unchanged.
+- Unassigned appointments already went through `IsAnyArtistAvailableAsync`, which includes hours.
+- Staff are held to it too. The reschedule dialog already refused an unavailable time for everyone (confirm is
+  disabled when the slot check says no), so nothing changes in the app. Only direct API calls lose the old gap.
+- Tests: new `RescheduleScheduleCheckTests` (outside hours for owner, artist and client; day off; closure; within
+  hours; the preview and the save giving the same reason). Test suites that move appointments now seed an open
+  studio (`UnitTests/Helpers/OpenSchedule`, and inline seeding in two integration tests). Their assertions are
+  unchanged.
+- Help (`client-reschedule-booking`, `artist-appointment-detail`) and the manual updated. No migration.

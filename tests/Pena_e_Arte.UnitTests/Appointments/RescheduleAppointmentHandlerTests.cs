@@ -26,6 +26,8 @@ public class RescheduleAppointmentHandlerTests
     {
         _tenant.StudioId.Returns(_studioId);
         _currentUser.Role.Returns("artist");
+        // The save now checks the artist is working at the new time; these tests aren't about that.
+        OpenSchedule.Seed(_db, _studioId, _artistId);
     }
 
     private RescheduleAppointmentHandler CreateSut() => new(_db, _tenant, _currentUser, _realtime, _sender, _jobs);
