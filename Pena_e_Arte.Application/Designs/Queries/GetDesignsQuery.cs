@@ -1,9 +1,9 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Designs;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
-using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Designs.Queries;
@@ -52,26 +52,16 @@ public class GetDesignsHandler(IAppDbContext db, ICurrentUser currentUser)
         return designs.Select(Map).ToList();
     }
 
-    internal static DesignResponse Map(Design d) =>
-        new(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt, ComputeStatus(d),
-            d.IsCatalogItem, d.Price);
-
-    // A design has no status of its own — it's derived from its latest revision's
-    // approval. Expired approvals are treated the same as ChangesRequested since both
-    // mean the artist needs to upload a new revision next.
-    internal static string ComputeStatus(Design d)
+    internal static DesignResponse Map(Design d)
     {
-        DesignRevision? latest = d.Revisions.OrderByDescending(r => r.VersionNumber).FirstOrDefault();
-        if (latest is null) return "Draft";
-
-        return latest.Approval?.Status switch
-        {
-            null => "InReview",
-            DesignApprovalStatus.Pending => "InReview",
-            DesignApprovalStatus.Approved => "Approved",
-            DesignApprovalStatus.ChangesRequested => "ChangesRequested",
-            DesignApprovalStatus.Expired => "ChangesRequested",
-            _ => "InReview",
-        };
+        DesignProgress progress = DesignReviewState.Derive(d);
+        return new DesignResponse(d.Id, d.StudioId, d.ClientId, d.ArtistId, d.Title, d.Description, d.CreatedAt,
+            progress.Status, d.IsCatalogItem, d.Price,
+            progress.WaitingOn.ToString(), progress.Latest?.VersionNumber, progress.Latest?.UploadedAt);
     }
+
+    // A design has no status of its own; it's derived from its latest revision's approval, in one place
+    // (DesignReviewState, E04c). Expired approvals count as ChangesRequested since both mean the artist
+    // needs to upload a new revision next.
+    internal static string ComputeStatus(Design d) => DesignReviewState.Derive(d).Status;
 }

@@ -11,6 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { designsApi } from "@/features/designs/designsApi";
 import { clientsApi } from "@/features/clients/clientsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { DesignDetailPage } from "@/features/designs/components/DesignDetailPage";
 import type { DesignRevisionResponse, DesignResponse } from "@/features/designs/design.types";
 import { Role } from "@/shared/types/roles";
@@ -81,11 +82,15 @@ const DESIGN: DesignResponse = {
   status:      "InReview",
   isCatalogItem: false,
   price:       null,
+  waitingOn: "Client", latestVersionNumber: 1, latestUploadedAt: "2024-01-15T10:00:00Z",
 };
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", timezone: "UTC", currency: "EUR" }),
+  ),
   http.get("http://localhost/api/v1/designs/:designId", () =>
     HttpResponse.json(DESIGN),
   ),
@@ -130,8 +135,9 @@ function makeStore(role: Role = Role.Client) {
       ui:                       uiReducer,
       [designsApi.reducerPath]: designsApi.reducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(designsApi.middleware, clientsApi.middleware),
+    middleware: (gd) => gd().concat(designsApi.middleware, clientsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -392,12 +398,171 @@ describe("DesignDetailPage", () => {
   it("shows a 'changes requested' banner when the design status is ChangesRequested", async () => {
     server.use(
       http.get("http://localhost/api/v1/designs/:designId", () =>
-        HttpResponse.json({ ...DESIGN, status: "ChangesRequested" }),
+        HttpResponse.json({ ...DESIGN, status: "ChangesRequested", waitingOn: "Artist" }),
       ),
     );
 
     renderPage(Role.Artist);
 
     expect(await screen.findByText(/the client has requested changes/i)).toBeInTheDocument();
+  });
+});
+
+// ── E04c (A05): a review names the revision it acts on ────────────────────────
+
+const V1_CHANGES: DesignRevisionResponse = {
+  ...REV_CHANGES, id: "rev-v1", versionNumber: 1, uploadedAt: "2024-01-10T08:00:00Z",
+  approvalNotes: "Thinner lines please.", reviewedAt: "2024-01-12T09:15:00Z",
+};
+const V2_PENDING: DesignRevisionResponse = {
+  ...REV_PENDING, id: "rev-v2", versionNumber: 2, uploadedAt: "2024-01-15T10:00:00Z", notes: null, reviewedAt: null,
+};
+
+function serveRevisions(revisions: DesignRevisionResponse[], design: Partial<DesignResponse> = {}) {
+  server.use(
+    http.get("http://localhost/api/v1/designs/:designId/revisions", () => HttpResponse.json(revisions)),
+    http.get("http://localhost/api/v1/designs/:designId", () => HttpResponse.json({ ...DESIGN, ...design })),
+  );
+}
+
+describe("DesignDetailPage — named revisions (E04c)", () => {
+  it("names the version and its upload time (studio timezone) on the review the client is making", async () => {
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2, latestUploadedAt: V2_PENDING.uploadedAt });
+    renderPage(Role.Client);
+
+    const group = await screen.findByRole("group", { name: "Your review of version 2, uploaded 15 Jan 2024, 10:00" });
+    expect(within(group).getByRole("button", { name: /^approve$/i })).toBeInTheDocument();
+    expect(within(group).getByRole("button", { name: /request changes/i })).toBeInTheDocument();
+  });
+
+  it("approving sends the latest revision's id, and only the latest offers review", async () => {
+    const user = userEvent.setup();
+    let reviewed: string | undefined;
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    server.use(http.post("http://localhost/api/v1/designs/revisions/:revisionId/review", ({ params }) => {
+      reviewed = String(params.revisionId);
+      return HttpResponse.json({ ...V2_PENDING, approvalStatus: "Approved" });
+    }));
+    renderPage(Role.Client);
+
+    await screen.findByRole("group", { name: /your review of version 2/i });
+    // v1 is still not approved, but it is superseded: no second Approve anywhere on the page.
+    expect(screen.getAllByRole("button", { name: /^approve$/i, hidden: true })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: /^approve$/i }));
+    await vi.waitFor(() => expect(reviewed).toBe("rev-v2"));
+  });
+
+  it("the request-changes form names the version too", async () => {
+    const user = userEvent.setup();
+    serveRevisions([V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: /request changes/i }));
+    expect(screen.getByLabelText("What should change in version 2? (optional)")).toBeInTheDocument();
+  });
+
+  it("leads with the latest version; earlier ones sit behind a collapsed disclosure", async () => {
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Artist);
+
+    const toggle = await screen.findByRole("button", { name: "Earlier versions (1)" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const region = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(region).not.toBeNull();
+    expect(region).not.toBeVisible();
+    expect(region).toHaveAttribute("hidden");
+    // The first version label in the document is the latest.
+    expect(screen.getAllByText(/^v\d$/)[0]).toHaveTextContent("v2");
+    expect(within(region!).getByText("v1")).toBeInTheDocument();
+  });
+
+  it("the disclosure opens from the keyboard and nothing inside is tab-reachable while collapsed", async () => {
+    const user = userEvent.setup();
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Artist);
+
+    const toggle = await screen.findByRole("button", { name: "Earlier versions (1)" });
+    const region = document.getElementById(toggle.getAttribute("aria-controls") ?? "")!;
+
+    // Tab through the whole page while collapsed: focus never lands inside the region.
+    for (let i = 0; i < 30; i += 1) {
+      await user.tab();
+      expect(region.contains(document.activeElement)).toBe(false);
+    }
+
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(region).toBeVisible();
+    await user.keyboard(" ");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps each version's feedback history, with when it was given", async () => {
+    const user = userEvent.setup();
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Artist);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    const region = screen.getByRole("region", { name: "Earlier versions" });
+    expect(within(region).getByText("Changes requested on 12 Jan 2024, 09:15.")).toBeInTheDocument();
+    expect(within(region).getByText("Client feedback on version 1")).toBeInTheDocument();
+    expect(within(region).getByText("Thinner lines please.")).toBeInTheDocument();
+  });
+
+  it("an unreviewed older version says it was superseded rather than 'pending'", async () => {
+    const user = userEvent.setup();
+    const v1Unreviewed: DesignRevisionResponse = { ...V2_PENDING, id: "rev-old", versionNumber: 1 };
+    const v2: DesignRevisionResponse = { ...V2_PENDING, id: "rev-new", versionNumber: 2 };
+    serveRevisions([v1Unreviewed, v2], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    expect(within(screen.getByRole("region", { name: "Earlier versions" }))
+      .getByText("Not reviewed. Superseded by version 2.")).toBeInTheDocument();
+  });
+
+  it("long notes and feedback collapse behind an accessible Show more", async () => {
+    const user = userEvent.setup();
+    const long = `${"Fine-line peony with a soft gradient into the shoulder, ".repeat(8)}end.`;
+    serveRevisions([{ ...V2_PENDING, notes: long }], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Client);
+
+    const more = await screen.findByRole("button", { name: "Show more" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(long)).not.toBeInTheDocument();
+    await user.click(more);
+    expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(long)).toBeInTheDocument();
+  });
+});
+
+describe("DesignDetailPage — whose move it is (E04c)", () => {
+  it("awaiting the client's review and awaiting the artist's work render distinctly", async () => {
+    serveRevisions([V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2, latestUploadedAt: V2_PENDING.uploadedAt });
+    renderPage(Role.Artist);
+    const waitingClient = await screen.findByTestId("design-waiting-state");
+    expect(waitingClient).toHaveAttribute("data-waiting-on", "Client");
+    expect(waitingClient).toHaveTextContent("Waiting on the client: version 2, uploaded 15 Jan 2024, 10:00 is with them for review.");
+    cleanup();
+
+    serveRevisions([{ ...V2_PENDING, approvalStatus: "ChangesRequested" }], { status: "ChangesRequested", waitingOn: "Artist", latestVersionNumber: 2 });
+    renderPage(Role.Artist);
+    const waitingArtist = await screen.findByTestId("design-waiting-state");
+    expect(waitingArtist).toHaveAttribute("data-waiting-on", "Artist");
+    expect(waitingArtist).toHaveTextContent("The client has requested changes to version 2. Upload a new revision to continue.");
+  });
+
+  it("the client sees the same states from their side", async () => {
+    serveRevisions([V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2, latestUploadedAt: V2_PENDING.uploadedAt });
+    renderPage(Role.Client);
+    expect(await screen.findByTestId("design-waiting-state"))
+      .toHaveTextContent("Your artist is waiting for your feedback on version 2, uploaded 15 Jan 2024, 10:00.");
+    cleanup();
+
+    serveRevisions([], { status: "Draft", waitingOn: "Artist", latestVersionNumber: null, latestUploadedAt: null });
+    renderPage(Role.Client);
+    expect(await screen.findByTestId("design-waiting-state"))
+      .toHaveTextContent("Waiting on your artist: they haven't uploaded a version yet.");
   });
 });

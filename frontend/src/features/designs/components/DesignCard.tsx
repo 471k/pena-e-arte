@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
 import { usePermission } from "@/shared/hooks/usePermission";
+import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
 import type { DesignResponse } from "../design.types";
+import { waitingLabel, type DesignViewer } from "../designWaiting";
 import { DesignStatusBadge } from "./DesignStatusBadge";
 
 interface DesignCardProps {
@@ -22,6 +24,10 @@ function formatDate(dateStr: string): string {
 export function DesignCard({ design }: DesignCardProps) {
   const navigate   = useNavigate();
   const canUpload  = usePermission(Role.Artist);
+  const role       = useAppSelector((s) => s.auth.role);
+  const viewer: DesignViewer = role === Role.Client ? "client" : role === Role.Artist ? "artist" : "owner";
+  // E04c (A05): which queue the design is in, with the version it is about.
+  const waiting = design.isCatalogItem ? null : waitingLabel(design.waitingOn, viewer);
 
   return (
     <Card className="hover:bg-muted/40 transition-colors">
@@ -42,7 +48,11 @@ export function DesignCard({ design }: DesignCardProps) {
             {design.description && (
               <p className="text-xs text-muted-foreground truncate">{design.description}</p>
             )}
-            <p className="text-xs text-muted-foreground">{formatDate(design.createdAt)}</p>
+            <p className="text-xs text-muted-foreground">
+              {formatDate(design.createdAt)}
+              {design.latestVersionNumber != null && <> · Latest: v{design.latestVersionNumber}</>}
+              {waiting && <> · <span data-testid="design-waiting-label" className="font-medium text-foreground">{waiting}</span></>}
+            </p>
           </div>
 
           <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0 self-center" />

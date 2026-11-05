@@ -1148,7 +1148,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> My Designs</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/designs</code>, every design your artist has created for you, searchable by title, with designs awaiting your feedback ("Changes Requested") surfaced first regardless of date.</p>
+<p>At <code>/designs</code>, every design your artist has created for you, searchable by title. Each card names its latest version ("Latest: v3") and says whose move it is: <span class="step-title">Waiting on you</span> (a version is ready for your review) or <span class="step-title">Waiting on your artist</span> (they're working on the next one). Designs waiting on you are shown first, regardless of date.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="My Designs list wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1175,7 +1175,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Design detail &amp; approval</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own; can approve/request changes)</td></tr><tr><td>Artist</td><td>✓ (can upload revisions)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Shows every revision of one design, newest first, each with its own image, artist notes, and approval status. As a client this is where you approve a design or ask for changes.</p>
+<p>Shows one design's versions, latest first. The latest version leads, marked <span class="step-title">Latest</span>, with its version number and upload time (studio time); older versions sit behind <span class="step-title">Earlier versions</span>. As a client this is where you approve a version or ask for changes to it. Every review applies to one named version.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Design detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1192,11 +1192,12 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Design detail — newest revision shown first; older revisions scroll below</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Review the newest revision's image and any artist notes.</li>
-<li>Click <span class="step-title">Approve</span> if it's exactly what you want, or <span class="step-title">Request Changes</span> to leave written feedback for the next revision.</li>
-<li>Once approved, the design's status becomes locked-in for that revision; older revisions remain visible below for reference.</li>
+<li>Read the line under the title: it says whose move it is and names the version, e.g. "Your artist is waiting for your feedback on version 3, uploaded 5 Nov 2026, 10:30".</li>
+<li>Review the latest version's image and any artist notes (long notes have a <span class="step-title">Show more</span> button).</li>
+<li>Under <span class="step-title">Your review of version 3, uploaded …</span>, click <span class="step-title">Approve</span> if it's exactly what you want, or <span class="step-title">Request Changes</span> and say what should change in that version.</li>
+<li>Open <span class="step-title">Earlier versions</span> to see each older version and what happened to it: approved, changes requested (your feedback and its date), the review window closing, or "Not reviewed. Superseded by version N".</li>
 </ol>
-<div class="callout callout-tip"><strong>Tip:</strong> you'll see a banner reminder if a design is waiting on your feedback.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> the page only offers Approve and Request Changes on the latest version, and not once it's approved — so a review can't land on an outdated version by mistake.</div>
 <div class="crosslinks">See also: <a href="#artist-design-detail">Artist: design detail &amp; review</a>, <a href="#ref-design-statuses">Design statuses</a></div>
 </section>
 
@@ -1801,9 +1802,10 @@ ol.steps li { margin: 6px 0; }
 <rect x="32" y="120" width="70" height="14" rx="7" fill="#f59e0b" fill-opacity="0.5"/><text x="38" y="130" font-size="7">Changes Requested</text>
 </svg>
 </figure>
-<figcaption>Design list — designs awaiting client feedback surface first</figcaption>
+<figcaption>Design list — designs waiting on you surface first</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
+<li>Read each card's label: <span class="step-title">Waiting on you</span> (you owe a version: none yet, changes requested, or the client's review window closed) or <span class="step-title">Waiting on client</span> (your latest version is with them). Designs waiting on you are listed first, and each card names its latest version.</li>
 <li>Search by title.</li>
 <li>Click <span class="step-title">New Design</span> to start one.</li>
 <li>Click a row to open its detail and upload revisions.</li>
@@ -1888,7 +1890,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Click <span class="step-title">Upload Revision</span> to add a new image version.</li>
 <li>Per revision: click <span class="step-title">Share</span> to generate a public link, or the trash icon to delete it.</li>
-<li>Watch for the "changes requested" banner telling you the client is waiting on a new revision.</li>
+<li>Read the line under the title: "Waiting on the client: version 3 … is with them for review", or "The client has requested changes to version 3" (or that they didn't review it in time) when you owe a new version.</li>
+<li>Open <span class="step-title">Earlier versions</span> for older versions and the client's dated feedback on each.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-upload-revision">Upload revision</a>, <a href="#artist-share-design">Share a design</a>, <a href="#client-design-detail">Client: design detail &amp; approval</a></div>
 </section>
@@ -2464,6 +2467,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Design list — same screen the artist role sees</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
+<li>Read each card's label: <span class="step-title">Waiting on artist</span> or <span class="step-title">Waiting on client</span>, with the latest version number. Designs waiting on the artist are listed first.</li>
 <li>Search by title, click a row to open detail.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-design-detail">Design detail</a></div>
@@ -2485,7 +2489,8 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Design detail — read-only oversight view for owners</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Review revision history and current approval status.</li>
+<li>Read whose move it is (waiting on the artist or on the client), and which version it's about.</li>
+<li>Review the latest version, then <span class="step-title">Earlier versions</span> for the history: each version's status, the client's feedback, and when it was given.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#artist-design-detail">Artist: design detail &amp; review</a></div>
 </section>
@@ -4081,7 +4086,7 @@ ol.steps li { margin: 6px 0; }
 
 <section id="ref-design-statuses" data-role="reference">
 <h2>Reference — Design statuses</h2>
-<p>Every design revision moves through one of four states, shown as a colored badge wherever designs appear.</p>
+<p>A design's status follows its <strong>latest</strong> version, shown as a colored badge wherever designs appear. Each card and detail page also says whose move it is: <strong>waiting on the artist</strong> (Draft, Changes Requested, or a review window that closed unanswered) or <strong>waiting on the client</strong> (In Review). Each individual version keeps its own review result: Pending, Approved, Changes Requested, or "No answer in time".</p>
 <table class="access-table">
 <tr><th>Status</th><th>Meaning</th></tr>
 <tr><td><strong>Draft</strong></td><td>No revision uploaded yet, or the design was just created.</td></tr>

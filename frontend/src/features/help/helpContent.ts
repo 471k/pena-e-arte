@@ -244,7 +244,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Shows the tattoo design drafts your artist has uploaded for you to review.",
     steps: [
       "Use the search box to filter designs by title (only shown once you have designs).",
-      "Browse your design list — designs waiting on your feedback (\"Changes Requested\") are shown first.",
+      "Browse your design list. Each card says whose move it is: \"Waiting on you\" means a new version is ready for your review, \"Waiting on your artist\" means they're working on the next one. Designs waiting on you are shown first.",
+      "Each card also names its latest version (for example \"Latest: v3\").",
       "Click a design to open it and review its images.",
     ],
     tips: ["If the list is empty, your artist just hasn't uploaded anything yet — you don't need to do anything."],
@@ -258,12 +259,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["approve", "request changes", "reject design", "design revision"],
     summary: "Look at the artwork your artist uploaded and tell them whether it's ready or needs changes.",
     steps: [
-      "Open a design and review each version (revision) shown, including its image.",
-      "If a banner says your artist is waiting for feedback, review the latest version.",
-      "Click \"Approve\" to accept a version, or \"Request Changes\" to ask for edits.",
-      "If requesting changes, optionally describe what to change, then click \"Submit\".",
+      "Open a design. The latest version is shown first, marked \"Latest\", with its version number and when it was uploaded (in the studio's time).",
+      "The line under the title says whose move it is and names the version, for example \"Your artist is waiting for your feedback on version 3\".",
+      "Under the latest version, \"Your review of version 3, uploaded …\" holds the buttons: click \"Approve\" to accept that version, or \"Request Changes\" to ask for edits to it.",
+      "If requesting changes, optionally describe what should change in that version, then click \"Submit\".",
+      "Older versions are under \"Earlier versions\". Open it to see each one with what happened to it: approved, changes requested (with your feedback and the date), the review window closing, or \"Superseded\" if a newer version replaced it before you reviewed it.",
     ],
-    tips: ["Only versions that aren't already approved show the Approve / Request Changes buttons."],
+    tips: [
+      "Your review always applies to one named version. The page only offers Approve and Request Changes on the latest version, and not once it's approved.",
+      "Long notes and feedback are shortened; click \"Show more\" to read them in full.",
+    ],
     relatedArticleIds: ["client-designs"],
   },
   {
@@ -650,9 +655,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Open Designs from the menu.",
       "Use the search box to filter by design title.",
-      "Designs marked \"Changes Requested\" are automatically pulled to the top since they need your attention.",
-      "Click a design card to open it and see its revisions, or click \"New Design\" to start a new one.",
+      "Each card says whose move it is. \"Waiting on you\": you owe a version (none uploaded yet, the client asked for changes, or their review window closed without an answer). \"Waiting on client\": your latest version is with them for review. These designs are pulled to the top.",
+      "Each card names its latest version (for example \"Latest: v3\").",
+      "Click a design card to open it. The latest version leads; older versions and the client's feedback on each are under \"Earlier versions\".",
+      "Click \"New Design\" to start a new one.",
     ],
+    tips: ["A client's approval or feedback always belongs to one version, and the page shows which one and when."],
     relatedArticleIds: ["artist-create-design", "artist-upload-revision", "artist-flash-catalog"],
   },
   {
@@ -1083,9 +1091,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Shows every tattoo design uploaded across your studio, so you can track which ones are approved, pending, or need changes.",
     steps: [
       "Go to Designs to see all designs.",
-      "Designs the artist needs to revise (\"Changes Requested\") are automatically shown at the top.",
+      "Each card says whose move it is: \"Waiting on artist\" (no version yet, changes requested, or the review window closed) or \"Waiting on client\" (the latest version is with them for review). Designs waiting on the artist are shown at the top.",
       "Use the search box to find a design by title.",
-      "Click a design card to open its details, or \"New Design\" to upload one.",
+      "Click a design card to open its details: the latest version first, older versions and the client's feedback on each under \"Earlier versions\". Or click \"New Design\" to upload one.",
     ],
   },
   {
@@ -2177,7 +2185,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-design-statuses",
     roles: [Client, Artist, Owner],
     question: "What do the different design statuses mean?",
-    answer: "Pending means the client hasn't reviewed the latest version yet. Approved means the client accepted it. Changes Requested means the client asked for edits and it's waiting on the artist. Expired means it went unreviewed too long.",
+    answer: "Each version has its own status. Pending means the client hasn't reviewed it yet. Approved means the client accepted that version. Changes Requested means the client asked for edits to it. \"No answer in time\" (expired) means its review window closed unreviewed. The design as a whole follows its latest version and says whose move it is: waiting on the artist (no version yet, changes requested, or an expired review) or waiting on the client (the latest version awaits their review).",
     relatedArticleIds: ["client-design-approve", "artist-designs"],
   },
   {
