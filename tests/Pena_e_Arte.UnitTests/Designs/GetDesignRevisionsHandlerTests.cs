@@ -15,7 +15,25 @@ public class GetDesignRevisionsHandlerTests
     private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private GetDesignRevisionsHandler CreateSut() => new(_db, _r2);
+    private GetDesignRevisionsHandler CreateSut(FakeCurrentUser? user = null) => new(_db, _r2, user ?? FakeCurrentUser.Owner());
+
+    // The read now 404s for a design that doesn't exist, so every seeded revision gets its design.
+    private Guid EnsureDesign(Guid designId, Guid? clientId = null, Guid? artistId = null)
+    {
+        if (!_db.Designs.Any(d => d.Id == designId))
+        {
+            _db.Designs.Add(new Design
+            {
+                Id = designId,
+                StudioId = _studioId,
+                Title = "D",
+                ClientId = clientId ?? Guid.NewGuid(),
+                ArtistId = artistId ?? Guid.NewGuid(),
+            });
+            _db.SaveChanges();
+        }
+        return designId;
+    }
 
     [Fact]
     public async Task Handle_RevisionsExist_ReturnsInVersionOrder()
@@ -36,7 +54,7 @@ public class GetDesignRevisionsHandlerTests
     public async Task Handle_NoRevisions_ReturnsEmpty()
     {
         List<DesignRevisionResponse> result = await CreateSut()
-            .Handle(new GetDesignRevisionsQuery(Guid.NewGuid()), default);
+            .Handle(new GetDesignRevisionsQuery(EnsureDesign(Guid.NewGuid())), default);
 
         result.Should().BeEmpty();
     }
@@ -115,6 +133,7 @@ public class GetDesignRevisionsHandlerTests
         DesignApprovalStatus? approval = null,
         string? approvalNotes = null)
     {
+        EnsureDesign(designId);
         DesignRevision revision = new()
         {
             StudioId = _studioId,

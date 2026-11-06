@@ -6355,3 +6355,19 @@ email on, even if the email failed.
 - (5) Found, not changed: `GetDesignQuery`/`GetDesignRevisionsQuery` (`ClientAndAbove`) don't scope the caller,
   though the list (`GetDesignsHandler`) does. Tenant isolation holds, but a client or artist who has another
   client's design id in the same studio could read that design and its images. Reported in the handoff.
+
+## Design detail reads scoped to the design's own people — Phi's go on the E04c finding — 2026-11-06
+
+E04c found that `GET designs/{id}` (`GetDesignQuery`) and `GET designs/{id}/revisions` (`GetDesignRevisionsQuery`)
+checked only the tenant. The list (`GetDesignsHandler`) was already scoped. So any client or artist in the studio
+holding a design id could read the design and get presigned links to its images.
+- New `Application.Designs.DesignAccess.MayReadAsync`: the design's own client (via `FindClientForUserAsync`), the
+  artist who owns it, owners and admins. Both reads answer **404** otherwise, the same as for a design that doesn't
+  exist. The revisions read now also 404s for an unknown design id; it used to return an empty list.
+- Nothing changes in the app for normal use: every link into a design comes from the scoped list. Share links
+  (`GetSharedDesignQuery`) and the flash catalog are separate reads and unaffected. A catalog template opens for its
+  artist and staff only.
+- The page shows "This design isn't available" on a 404 instead of "Failed to load revisions".
+- Tests: `DesignReadScopingTests` (allowed: own client, own artist, owner, admin; refused: other client, other
+  artist, client without a record, artist without a profile). Existing revision tests now seed the design row.
+- Help (`client-designs`, `artist-designs`) and the manual's access table updated. No migration.

@@ -248,7 +248,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Each card also names its latest version (for example \"Latest: v3\").",
       "Click a design to open it and review its images.",
     ],
-    tips: ["If the list is empty, your artist just hasn't uploaded anything yet — you don't need to do anything."],
+    tips: [
+      "If the list is empty, your artist just hasn't uploaded anything yet — you don't need to do anything.",
+      "Only you, your artist and the studio can open your designs. A design link opened by anyone else says the design isn't available. To show a design to someone else, ask your artist for a share link.",
+    ],
     relatedArticleIds: ["client-design-approve"],
   },
   {
@@ -683,7 +686,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click a design card to open it. The latest version leads; older versions and the client's feedback on each are under \"Earlier versions\".",
       "Click \"New Design\" to start a new one.",
     ],
-    tips: ["A client's approval or feedback always belongs to one version, and the page shows which one and when."],
+    tips: [
+      "A client's approval or feedback always belongs to one version, and the page shows which one and when.",
+      "You can open only your own designs; the studio owner can open every design. Another artist's design link says the design isn't available.",
+    ],
     relatedArticleIds: ["artist-create-design", "artist-upload-revision", "artist-flash-catalog"],
   },
   {
