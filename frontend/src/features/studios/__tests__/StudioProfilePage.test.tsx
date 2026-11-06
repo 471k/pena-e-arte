@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
+import type { ComponentProps } from "react";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -84,6 +85,45 @@ vi.mock("@/features/studios/components/PokSettingsCard", () => ({
   PokSettingsCard: () => <div data-testid="pok-settings-card" />,
 }));
 
+// The two heavy pickers. Each is a Radix Select with hundreds of items (~420 timezones, ~240
+// calling codes), and Radix renders every item, plus a hidden native <select> with one <option>
+// per item, on every commit of this page whether the picker is open or not. Measured 2026-11-06
+// (isolated, median): they were ~60% of a mount (1.73 s -> 0.68 s without them) and ~65% of each
+// street-address or slug keystroke (the page re-commits on every one: 320 ms -> 110 ms). That
+// work, multiplied by worker contention, is what pushed this file past its timeouts; the budget
+// was never the problem. Tests that are not about the pickers get a stub; the describes that
+// ARE about them (timezone defaults, phone prefix, phone validation and E.164) switch the real
+// component back on. PhoneInput's own behaviour, including formatting key by key, is covered
+// by phone-input.test.tsx.
+//
+// The page also re-commits in full on every keystroke in the street-address and slug fields
+// (and the phone field re-renders its picker on every one), so tests whose assertions are about
+// the entered value, not about what happens between keys, enter it with user.paste: one change
+// event instead of one full-page render per character. The final value and every assertion are
+// the same.
+const realPickers = vi.hoisted(() => ({ timezone: false, phone: false }));
+
+vi.mock("@/shared/components/ui/timezone-select", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/components/ui/timezone-select")>();
+  return {
+    ...actual,
+    TimezoneSelect: (props: ComponentProps<typeof actual.TimezoneSelect>) =>
+      realPickers.timezone
+        ? <actual.TimezoneSelect {...props} />
+        : <div data-testid="timezone-select-stub" id={props.id} />,
+  };
+});
+vi.mock("@/shared/components/ui/phone-input", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/components/ui/phone-input")>();
+  return {
+    ...actual,
+    PhoneInput: (props: ComponentProps<typeof actual.PhoneInput>) =>
+      realPickers.phone
+        ? <actual.PhoneInput {...props} />
+        : <input data-testid="phone-input-stub" id={props.id} value={props.value} readOnly />,
+  };
+});
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const STUDIO = {
@@ -128,6 +168,8 @@ afterEach(() => {
   visitorGeo = { countryCode: null, timeZone: null };
   STUDIO.timezone = undefined;
   STUDIO.countryCode = "AL";
+  realPickers.timezone = false;
+  realPickers.phone = false;
 });
 afterAll(() => server.close());
 
@@ -154,9 +196,15 @@ function renderPage() {
   );
 }
 
-// Wait for the form to finish loading (studio data arrived + form populated)
+// Wait for the form to finish loading: studio data arrived AND the form populated. The field
+// appears in the first render that has the studio, but the page fills it with reset(...) in an
+// effect that runs after that render; under load that effect can land after a test has already
+// typed or picked something, wiping it (and isDirty) so a later Save never fires. So this waits
+// for the loaded value itself, not just the field.
 async function waitForForm() {
-  return screen.findByLabelText<HTMLInputElement>(/studio name/i);
+  const name = await screen.findByLabelText<HTMLInputElement>(/studio name/i);
+  await waitFor(() => expect(name).toHaveValue(STUDIO.name));
+  return name;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -169,6 +217,10 @@ describe("StudioProfilePage — loading state", () => {
 });
 
 describe("StudioProfilePage — location-aware defaults", () => {
+  beforeEach(() => {
+    realPickers.timezone = true;
+  });
+
   it("preselects the visitor's IP timezone, in a readable form, when the studio has none", async () => {
     visitorGeo = { countryCode: "AL", timeZone: "Europe/Tirane" };
     renderPage();
@@ -214,6 +266,8 @@ describe("StudioProfilePage — location-aware defaults", () => {
   });
 
   it("shows the phone prefix of the studio's country", async () => {
+    realPickers.timezone = false;
+    realPickers.phone = true;
     STUDIO.countryCode = "PT";
     renderPage();
     await waitForForm();
@@ -289,13 +343,13 @@ describe("StudioProfilePage — after data loads", () => {
     );
   });
 
-  it("dragging the pin to a spot with no resolvable road leaves a typed address untouched", async () => {
+  it("dragging the pin to a spot with no resolvable road leaves an entered address untouched", async () => {
     const user = userEvent.setup();
     renderPage();
     await waitForForm();
 
     await user.clear(screen.getByLabelText(/street address/i));
-    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    await user.paste("Rua Central 5");
     // "Pick location" mock fires streetAddress: "" — simulates a rural pin drop.
     await user.click(screen.getByTestId("mock-location-picker"));
 
@@ -354,7 +408,12 @@ describe("StudioProfilePage — save behaviour", () => {
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     await screen.findByText(/changes saved/i);
-    expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
+    // waitFor, not a bare getBy: "Changes saved." renders from the mutation's isSuccess, but the
+    // form only becomes clean (button disabled) when reset(values) runs after unwrap() resolves,
+    // which can land in a later render than the one the message appeared in.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled(),
+    );
   });
 
   it("shows the server error message when save fails with a 400", async () => {
@@ -391,6 +450,10 @@ describe("StudioProfilePage — save behaviour", () => {
 });
 
 describe("StudioProfilePage — phone number", () => {
+  beforeEach(() => {
+    realPickers.phone = true;
+  });
+
   it("typing an invalid phone number shows the phone error and disables further save via validation", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -402,12 +465,7 @@ describe("StudioProfilePage — phone number", () => {
     expect(await screen.findByText(/enter a valid phone number/i)).toBeInTheDocument();
   });
 
-  // Typing a full phone number (AsYouType formatting on every keystroke) is heavy enough
-  // that this sandbox's known CPU-contention flakiness (see src/test/setup.ts's
-  // asyncUtilTimeout comment) can push it past the 10s default under load even though
-  // nothing is actually broken; confirmed by re-running in isolation with a raised
-  // timeout and watching it pass, 2026-09-05.
-  it("typing a valid phone number saves with the correct E.164 value", async () => {
+  it("entering a valid phone number saves with the correct E.164 value", async () => {
     let capturedPhone: unknown;
     server.use(
       http.put("http://localhost/api/v1/studios/me", async ({ request }) => {
@@ -421,12 +479,13 @@ describe("StudioProfilePage — phone number", () => {
     await waitForForm();
 
     // The mock studio is Albanian, so the phone field starts on +355 (it follows the studio's country).
-    await user.type(screen.getByLabelText(/phone number/i), "691234567");
+    await user.click(screen.getByLabelText(/phone number/i));
+    await user.paste("691234567");
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     await screen.findByText(/changes saved/i);
     expect(capturedPhone).toBe("+355691234567");
-  }, 20000);
+  });
 });
 
 describe("StudioProfilePage — location picker", () => {
@@ -546,7 +605,7 @@ describe("StudioProfilePage — address", () => {
     expect(sessionStorage.getItem("address-banner-dismissed")).toBe("true");
   });
 
-  it("typing a new address saves it via updateMyStudio", async () => {
+  it("entering a new address saves it via updateMyStudio", async () => {
     let capturedAddress: unknown;
     server.use(
       http.put("http://localhost/api/v1/studios/me", async ({ request }) => {
@@ -559,12 +618,13 @@ describe("StudioProfilePage — address", () => {
     renderPage();
     await waitForForm();
 
-    await user.type(screen.getByLabelText(/street address/i), "Rua Central 5");
+    await user.click(screen.getByLabelText(/street address/i));
+    await user.paste("Rua Central 5");
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     await screen.findByText(/changes saved/i);
     expect(capturedAddress).toBe("Rua Central 5");
-  }, 20000);
+  });
 });
 
 describe("StudioProfilePage — slug editing", () => {
@@ -594,21 +654,16 @@ describe("StudioProfilePage — slug editing", () => {
     expect(screen.getByLabelText(/new studio url slug/i)).toBeInTheDocument();
   });
 
-  // Typing a long string char-by-char via userEvent (19 chars here) is heavy enough that
-  // this sandbox's known CPU-contention flakiness (see src/test/setup.ts's
-  // asyncUtilTimeout comment) can push it past the 10s default under load even though
-  // nothing is actually broken; confirmed by re-running in isolation with a raised
-  // timeout and watching it pass, 2026-09-05.
   it("shows validation error for invalid slug characters", async () => {
     const user = userEvent.setup();
     renderPage();
     await waitForForm();
     await user.click(screen.getByRole("button", { name: /edit/i }));
     await user.clear(screen.getByLabelText(/new studio url slug/i));
-    await user.type(screen.getByLabelText(/new studio url slug/i), "UPPERCASE INVALID!");
+    await user.paste("UPPERCASE INVALID!");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
     expect(screen.getByText(/lowercase letters, numbers, and hyphens/i)).toBeInTheDocument();
-  }, 20000);
+  });
 
   it("calls updateStudioSlug and shows success on valid slug", async () => {
     const patchSpy = vi.fn();
@@ -623,8 +678,8 @@ describe("StudioProfilePage — slug editing", () => {
     await waitForForm();
     await user.click(screen.getByRole("button", { name: /edit/i }));
     await user.clear(screen.getByLabelText(/new studio url slug/i));
-    await user.type(screen.getByLabelText(/new studio url slug/i), "new-slug");
+    await user.paste("new-slug");
     await user.click(screen.getByRole("button", { name: /^save$/i }));
     await waitFor(() => expect(patchSpy).toHaveBeenCalledWith({ newSlug: "new-slug" }));
-  }, 20000);
+  });
 });

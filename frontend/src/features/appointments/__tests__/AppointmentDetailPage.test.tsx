@@ -153,7 +153,6 @@ function toDatetimeLocalValueForTest(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeStore(role: Role = Role.Artist) {
   return configureStore({
     reducer: {

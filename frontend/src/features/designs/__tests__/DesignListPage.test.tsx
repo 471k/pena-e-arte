@@ -58,7 +58,6 @@ afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeStore(role: Role = Role.Owner) {
   return configureStore({
     reducer: {

@@ -98,7 +98,8 @@ describe("ConductReportInboxPage", () => {
   it("status filter narrows the list via the RTK Query params", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText(/poor service quality/i);
+    // A row-only text: "Poor service quality" is also a filter chip, so it is there before the list.
+    await screen.findAllByText(/reported by jane doe/i);
 
     await user.click(screen.getByRole("button", { name: /^resolved$/i }));
 
@@ -108,9 +109,15 @@ describe("ConductReportInboxPage", () => {
   it("category filter narrows the list via the RTK Query params", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText(/poor service quality/i);
+    // Wait on text only a report row renders. "Poor service quality" is also a filter chip, so
+    // waiting on it resolved at once, before the list; this test then passed only while the list
+    // was still missing, and failed whenever it had arrived (the chip and the matching row both
+    // matched the old regex). Reproduced 2026-11-06 by pausing 300 ms before the click.
+    await screen.findAllByText(/reported by jane doe/i);
 
-    await user.click(screen.getByRole("button", { name: /sexual misconduct or abuse/i }));
+    // Exact name: only the chip's accessible name is exactly the label; a row's name also holds
+    // the reporter and date.
+    await user.click(screen.getByRole("button", { name: "Sexual misconduct or abuse" }));
 
     await waitFor(() => expect(lastUrl?.searchParams.get("category")).toBe("SexualMisconduct"));
   });

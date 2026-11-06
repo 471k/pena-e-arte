@@ -57,12 +57,23 @@ function renderForm() {
 
 // FieldLabel appends a trailing "*" for required fields, so the accessible label text is
 // "First name*" not "First name" — regex matches avoid depending on that exact rendering.
+// These helpers enter each value with user.paste, not user.type: no test here asserts anything
+// about the state between keystrokes, and typing ~45 characters one key at a time re-rendered the
+// form (and the phone field's ~240-item calling-code picker) once per key. That work, not a small
+// budget, is why these tests needed 40 s overrides (measured 2026-11-06: up to 29 s under
+// coverage with 3 busy workers). The entered values and every assertion are unchanged.
+// PhoneInput's key-by-key formatting is covered by phone-input.test.tsx.
+async function enter(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, value: string) {
+  await user.click(field);
+  await user.paste(value);
+}
+
 async function fillIdentityFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText(/first name/i), "Jamie");
-  await user.type(screen.getByLabelText(/last name/i), "Guest");
-  await user.type(screen.getByLabelText(/^email/i), "jamie@example.com");
+  await enter(user, screen.getByLabelText(/first name/i), "Jamie");
+  await enter(user, screen.getByLabelText(/last name/i), "Guest");
+  await enter(user, screen.getByLabelText(/^email/i), "jamie@example.com");
   // Albanian mobile: the phone field defaults to Albania when the studio country is unknown.
-  await user.type(screen.getByLabelText(/^phone/i), "691234567");
+  await enter(user, screen.getByLabelText(/^phone/i), "691234567");
 }
 
 async function fillBookingFields(user: ReturnType<typeof userEvent.setup>) {
@@ -72,7 +83,7 @@ async function fillBookingFields(user: ReturnType<typeof userEvent.setup>) {
     screen.getByLabelText(/date.*time/i),
     new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16),
   );
-  await user.type(screen.getByLabelText(/what are you looking to get done/i), "A small rose");
+  await enter(user, screen.getByLabelText(/what are you looking to get done/i), "A small rose");
 }
 
 async function uploadImages(user: ReturnType<typeof userEvent.setup>) {
