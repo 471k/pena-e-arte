@@ -360,8 +360,12 @@ export function DesignDetailPage() {
     canonical: `/designs/${designId ?? ""}`,
   });
 
-  const { data: revisions, isLoading, isError } =
+  const { data: revisions, isLoading, isError, error } =
     useGetRevisionsQuery(designId ?? "", { skip: !designId });
+  // 404: the design doesn't exist, or it isn't one this person may open (only its client, its artist and
+  // the studio's owners can). The server deliberately answers the same for both.
+  const notAvailable = isError && typeof error === "object" && error !== null && "status" in error
+    && (error as { status: unknown }).status === 404;
 
   // Latest first; the server returns them oldest first.
   const ordered = [...(revisions ?? [])].sort((a, b) => b.versionNumber - a.versionNumber);
@@ -441,7 +445,13 @@ export function DesignDetailPage() {
           </div>
         )}
 
-        {isError && (
+        {notAvailable && (
+          <p className="text-center text-sm text-muted-foreground py-16" role="alert">
+            This design isn&apos;t available. It may have been removed, or it belongs to someone else.
+          </p>
+        )}
+
+        {isError && !notAvailable && (
           <p className="text-center text-sm text-destructive-text py-16">
             Failed to load revisions. Please try again.
           </p>

@@ -12,7 +12,7 @@ public class GetDesignHandlerTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
 
-    private GetDesignHandler CreateSut() => new(_db);
+    private GetDesignHandler CreateSut(FakeCurrentUser? user = null) => new(_db, user ?? FakeCurrentUser.Owner());
 
     [Fact]
     public async Task Handle_ExistingDesign_ReturnsDesignResponse()

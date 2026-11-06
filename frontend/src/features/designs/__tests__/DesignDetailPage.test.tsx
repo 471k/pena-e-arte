@@ -566,3 +566,16 @@ describe("DesignDetailPage — whose move it is (E04c)", () => {
       .toHaveTextContent("Waiting on your artist: they haven't uploaded a version yet.");
   });
 });
+
+describe("DesignDetailPage — a design the viewer may not open (2026-11-06)", () => {
+  it("a 404 says the design isn't available, not that loading failed", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/designs/:designId", () => HttpResponse.json({ message: "not found" }, { status: 404 })),
+      http.get("http://localhost/api/v1/designs/:designId/revisions", () => HttpResponse.json({ message: "not found" }, { status: 404 })),
+    );
+    renderPage(Role.Client);
+
+    expect(await screen.findByText(/this design isn't available/i)).toBeInTheDocument();
+    expect(screen.queryByText(/failed to load revisions/i)).not.toBeInTheDocument();
+  });
+});
