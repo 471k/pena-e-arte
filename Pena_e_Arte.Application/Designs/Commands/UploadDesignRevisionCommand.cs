@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Designs;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -35,7 +36,9 @@ public class UploadDesignRevisionHandler(
             if (!ownsDesign) throw new ForbiddenException();
         }
 
-        int nextVersion = await db.DesignRevisions.CountAsync(r => r.DesignId == req.DesignId, ct) + 1;
+        // Max + 1, not count + 1: after a middle version was deleted, count + 1 repeated an existing number
+        // and made "the latest version" ambiguous (2026-11-06, found while making review latest-only).
+        int nextVersion = await DesignReviewState.NextVersionNumberAsync(db, req.DesignId, ct);
 
         DesignRevision revision = new()
         {

@@ -23,6 +23,9 @@ public static class DesignEndpoints
         group.MapPost("{id:guid}/revisions", UploadRevision).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}/revisions/{revisionId:guid}", DeleteRevision).RequireAuthorization("ArtistAndAbove");
         group.MapPost("revisions/{revisionId:guid}/review", ReviewDesign).RequireAuthorization("ClientAndAbove");
+        // 2026-11-06: a client asks for an earlier version back; the artist brings it back as the newest.
+        group.MapPost("revisions/{revisionId:guid}/request-again", RequestVersionAgain).RequireAuthorization("ClientAndAbove");
+        group.MapPost("{id:guid}/revisions/{revisionId:guid}/restore", RestoreRevision).RequireAuthorization("ArtistAndAbove");
         group.MapPost("revisions/{revisionId:guid}/share-token", CreateShareToken).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("share-tokens/{id:guid}", RevokeShareToken).RequireAuthorization("ArtistAndAbove");
     }
@@ -103,6 +106,26 @@ public static class DesignEndpoints
     {
         await mediator.Send(new DeleteDesignRevisionCommand(id, revisionId), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> RequestVersionAgain(
+        Guid revisionId,
+        RequestDesignVersionAgainRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        DesignRevisionResponse result = await mediator.Send(new RequestDesignVersionAgainCommand(revisionId, request.Notes), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> RestoreRevision(
+        Guid id,
+        Guid revisionId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        DesignRevisionResponse result = await mediator.Send(new RestoreDesignRevisionCommand(id, revisionId), ct);
+        return Results.Created($"/api/v1/designs/{id}/revisions/{result.Id}", result);
     }
 
     private static async Task<IResult> ReviewDesign(

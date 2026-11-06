@@ -55,6 +55,23 @@ export const designsApi = createApi({
       }),
       invalidatesTags: ["Design"],
     }),
+    // 2026-11-06: the client asks for an earlier version back (recorded as changes requested on the latest).
+    requestVersionAgain: builder.mutation<DesignRevisionResponse, { revisionId: string; notes: string | null }>({
+      query: ({ revisionId, notes }) => ({
+        url:    `designs/revisions/${revisionId}/request-again`,
+        method: "POST",
+        body:   { notes },
+      }),
+      invalidatesTags: ["Design"],
+    }),
+    // The artist brings an earlier version back as the newest version.
+    restoreRevision: builder.mutation<DesignRevisionResponse, { designId: string; revisionId: string }>({
+      query: ({ designId, revisionId }) => ({
+        url:    `designs/${designId}/revisions/${revisionId}/restore`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Design"],
+    }),
     deleteRevision: builder.mutation<void, { designId: string; revisionId: string }>({
       query: ({ designId, revisionId }) => ({
         url:    `designs/${designId}/revisions/${revisionId}`,
@@ -87,6 +104,8 @@ export const designsApi = createApi({
 });
 
 export const {
+  useRequestVersionAgainMutation,
+  useRestoreRevisionMutation,
   useGetDesignsQuery,
   useGetDesignQuery,
   useCreateDesignMutation,

@@ -33,13 +33,13 @@ import type { DesignRevisionResponse } from "../design.types";
 import { formatStudioDateTime, waitingMessage, type DesignViewer } from "../designWaiting";
 import { DesignStatusBadge } from "./DesignStatusBadge";
 import { ShareDesignButton } from "./ShareDesignButton";
+import { AskForVersionBack, BringVersionBack } from "./VersionBackActions";
 
 // E04c (A05): every review decision names the revision it acts on (version number and upload time in
 // the studio's timezone). The latest version leads; earlier ones and their feedback history sit behind
-// a disclosure. Approval stays per revision on the server (POST revisions/{id}/review), and the API
-// still accepts a review of any revision: the page only offers review on the latest one, so approving
-// an outdated version takes deliberate effort outside the UI. Latest-only enforcement is NOT done here;
-// it needs API/product agreement (flagged in the E04c report).
+// a disclosure. Approval stays per revision on the server (POST revisions/{id}/review), and since
+// 2026-11-06 the server accepts a review of the LATEST version only (Phi). A client who prefers an earlier
+// version asks for it back, and the artist brings it back as the newest (VersionBackActions).
 
 const notesSchema = z.object({
   notes: z.string().max(2000, "Max 2000 characters").optional(),
@@ -109,12 +109,14 @@ function ReviewHistory({ revision, latestVersion, timeZone }: {
 interface RevisionCardProps {
   revision:      DesignRevisionResponse;
   latestVersion: number;
+  /** The latest version is approved: the design is settled, so no going back from the page. */
+  latestApproved: boolean;
   canReview:     boolean;
   canDelete:     boolean;
   timeZone:      string | undefined;
 }
 
-function RevisionCard({ revision, latestVersion, canReview, canDelete, timeZone }: RevisionCardProps) {
+function RevisionCard({ revision, latestVersion, latestApproved, canReview, canDelete, timeZone }: RevisionCardProps) {
   const [mode, setMode]           = useState<"idle" | "changes">("idle");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [review,  { isLoading }]  = useReviewRevisionMutation();
@@ -227,6 +229,14 @@ function RevisionCard({ revision, latestVersion, canReview, canDelete, timeZone 
 
         {/* What happened to this version's review, and the client's feedback on it */}
         <ReviewHistory revision={revision} latestVersion={latestVersion} timeZone={timeZone} />
+
+        {/* Going back to an earlier version: the client asks, the artist brings it back as the newest. */}
+        {!isLatest && !latestApproved && canReview && (
+          <AskForVersionBack revision={revision} latestVersion={latestVersion} />
+        )}
+        {!isLatest && canDelete && (
+          <BringVersionBack revision={revision} latestVersion={latestVersion} />
+        )}
 
         {/* Review actions (clients only, latest non-approved revision), naming the version */}
         {isReviewable && (
@@ -469,6 +479,7 @@ export function DesignDetailPage() {
               key={latest.id}
               revision={latest}
               latestVersion={latest.versionNumber}
+              latestApproved={latest.approvalStatus === "Approved"}
               canReview={canReview}
               canDelete={canUpload}
               timeZone={timeZone}
@@ -480,6 +491,7 @@ export function DesignDetailPage() {
                     key={r.id}
                     revision={r}
                     latestVersion={latest.versionNumber}
+                    latestApproved={latest.approvalStatus === "Approved"}
                     canReview={canReview}
                     canDelete={canUpload}
                     timeZone={timeZone}
