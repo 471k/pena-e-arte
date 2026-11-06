@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 
@@ -35,6 +37,23 @@ public readonly record struct DesignProgress(string Status, DesignWaitingOn Wait
 /// </summary>
 public static class DesignReviewState
 {
+    /// <summary>
+    /// The design's latest live revision (highest version number), or null with none: the one a client
+    /// may review (ReviewDesignHandler enforces latest-only since 2026-11-06) and the one asking for an
+    /// earlier version back is recorded against.
+    /// </summary>
+    public static Task<DesignRevision?> LatestRevisionAsync(IAppDbContext db, Guid designId, CancellationToken ct) =>
+        db.DesignRevisions
+            .Include(r => r.Approval)
+            .Where(r => r.DesignId == designId && r.DeletedAt == null)
+            .OrderByDescending(r => r.VersionNumber)
+            .FirstOrDefaultAsync(ct);
+
+    /// <summary>The number the next revision gets: one above the highest live version (never a count, which
+    /// repeats a number once a middle version has been deleted).</summary>
+    public static async Task<int> NextVersionNumberAsync(IAppDbContext db, Guid designId, CancellationToken ct) =>
+        (await db.DesignRevisions.Where(r => r.DesignId == designId && r.DeletedAt == null).MaxAsync(r => (int?)r.VersionNumber, ct) ?? 0) + 1;
+
     public static DesignProgress Derive(Design design)
     {
         DesignRevision? latest = design.Revisions

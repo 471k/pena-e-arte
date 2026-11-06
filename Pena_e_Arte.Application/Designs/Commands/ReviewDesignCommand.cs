@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Designs;
 using Pena_e_Arte.Application.Designs.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
@@ -41,6 +42,14 @@ public class ReviewDesignHandler(
             if (me is null || me.Id != revision.Design.ClientId)
                 throw new NotFoundException(nameof(DesignRevision), req.DesignRevisionId);
         }
+
+        // Latest-only (Phi, 2026-11-06): a review applies to the design's newest version. A client who prefers
+        // an earlier one asks for it back (RequestDesignVersionAgainCommand) and the artist brings it back as
+        // the newest version, so "the design follows its latest version" stays true.
+        DesignRevision? latest = await DesignReviewState.LatestRevisionAsync(db, revision.DesignId, ct);
+        if (latest is not null && latest.Id != revision.Id)
+            throw new BusinessRuleViolationException(
+                $"Version {latest.VersionNumber} is newer. Review version {latest.VersionNumber}, or ask for version {revision.VersionNumber} back.");
 
         if (revision.Approval?.Status == DesignApprovalStatus.Approved)
             throw new DesignAlreadyApprovedException();

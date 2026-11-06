@@ -267,9 +267,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Under the latest version, \"Your review of version 3, uploaded …\" holds the buttons: click \"Approve\" to accept that version, or \"Request Changes\" to ask for edits to it.",
       "If requesting changes, optionally describe what should change in that version, then click \"Submit\".",
       "Older versions are under \"Earlier versions\". Open it to see each one with what happened to it: approved, changes requested (with your feedback and the date), the review window closing, or \"Superseded\" if a newer version replaced it before you reviewed it.",
+      "Prefer an earlier version? Open \"Earlier versions\" and click \"Ask for version 2 back\" (for example) on it, optionally say why, and confirm. Your artist is asked to bring it back as the newest version, and you review it then. This counts as asking for changes to the latest version.",
     ],
     tips: [
-      "Your review always applies to one named version. The page only offers Approve and Request Changes on the latest version, and not once it's approved.",
+      "Your review always applies to the latest version: you can approve or request changes only on that one, and not once it's approved. To go back to an earlier version, ask for it back.",
+      "Once the latest version is approved the design is settled, so asking for an earlier version back isn't offered; message your artist instead.",
       "Long notes and feedback are shortened; click \"Show more\" to read them in full.",
     ],
     relatedArticleIds: ["client-designs"],
@@ -684,6 +686,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Each card says whose move it is. \"Waiting on you\": you owe a version (none uploaded yet, the client asked for changes, or their review window closed without an answer). \"Waiting on client\": your latest version is with them for review. These designs are pulled to the top.",
       "Each card names its latest version (for example \"Latest: v3\").",
       "Click a design card to open it. The latest version leads; older versions and the client's feedback on each are under \"Earlier versions\".",
+      "If the client asks for an earlier version back, their feedback on the latest version starts \"Asked for version 2 back.\" (for example). Open \"Earlier versions\" and click \"Bring back as version N\" on that version, then confirm: the same image is added as the newest version for the client to review, and the old version stays as it is.",
       "Click \"New Design\" to start a new one.",
     ],
     tips: [

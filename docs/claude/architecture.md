@@ -6371,3 +6371,32 @@ holding a design id could read the design and get presigned links to its images.
 - Tests: `DesignReadScopingTests` (allowed: own client, own artist, owner, admin; refused: other client, other
   artist, client without a record, artist without a profile). Existing revision tests now seed the design row.
 - Help (`client-designs`, `artist-designs`) and the manual's access table updated. No migration.
+
+## Going back to an earlier design version; review is latest-only — Phi's decision — 2026-11-06
+
+Phi (6 Nov): a client may go back to an earlier version they preferred, as option A in the E04c follow-up. The
+client asks for the version back, the artist brings it back as the newest version, and the client reviews that.
+So the design's state keeps following its latest version (`DesignReviewState`).
+- **Latest-only review:** `ReviewDesignHandler` refuses a review of any revision but the design's latest live
+  one, for every role, with `BusinessRuleViolationException` ("Version N is newer. Review version N, or ask for
+  version M back."). This closes what E04c flagged. The only shipped client already offered review on the latest
+  only, so nothing changes in the app.
+- **Ask for a version back:** `POST designs/revisions/{revisionId}/request-again` (`ClientAndAbove`; only the
+  design's own client, 404 otherwise). No new entity: it is sent as a `ReviewDesignCommand` "changes requested" on
+  the latest version, with feedback "Asked for version M back." plus the client's optional note (max 1900, so the
+  prefix fits the 2000 limit). So the artist gets the usual notification and the design moves to the artist's
+  queue. It is refused when the revision is already the latest, and when the latest is approved (the design is
+  settled).
+- **Bring a version back:** `POST designs/{id}/revisions/{revisionId}/restore` (`ArtistAndAbove`), sent as an
+  ordinary `UploadDesignRevisionCommand` of the same stored file with notes "Version M, brought back." Ownership,
+  the review-window job, the realtime event and numbering are exactly those of any upload. Deleting a revision
+  never deletes its file, so sharing the file is safe.
+- **Numbering fix found on the way:** uploads numbered the next version count + 1, which repeated an existing
+  number after a middle version was deleted and made "the latest" ambiguous. It is now max + 1 over live
+  revisions (`DesignReviewState.NextVersionNumberAsync`).
+- UI: on an earlier version, a client sees "Ask for version M back" (a dialog with an optional note), unless the
+  latest is approved; staff see "Bring back as version N" (confirmed in an AlertDialog). No Approve on an earlier
+  version.
+- Tests: `DesignVersionBackTests` (latest-only for clients and staff, a deleted newer version, the request body
+  and the refusals, restore, numbering; the numbering test fails against count + 1) and six frontend tests.
+- Help (`client-design-approve`, `artist-designs`) and the manual updated. No migration.

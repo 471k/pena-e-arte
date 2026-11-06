@@ -579,3 +579,89 @@ describe("DesignDetailPage — a design the viewer may not open (2026-11-06)", (
     expect(screen.queryByText(/failed to load revisions/i)).not.toBeInTheDocument();
   });
 });
+
+// ── Going back to an earlier version (Phi, 2026-11-06) ────────────────────────
+
+describe("DesignDetailPage — going back to an earlier version", () => {
+  it("a client asks for an earlier version back, with an optional note", async () => {
+    const user = userEvent.setup();
+    let sent: { revisionId: string; body: unknown } | undefined;
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    server.use(http.post("http://localhost/api/v1/designs/revisions/:revisionId/request-again", async ({ params, request }) => {
+      sent = { revisionId: String(params.revisionId), body: await request.json() };
+      return HttpResponse.json({ ...V2_PENDING, approvalStatus: "ChangesRequested" });
+    }));
+    renderPage(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    await user.click(within(screen.getByRole("region", { name: "Earlier versions" })).getByRole("button", { name: "Ask for version 1 back" }));
+    const dialog = screen.getByRole("dialog", { name: "Ask for version 1 back?" });
+    expect(within(dialog).getByText(/counts as asking for changes to version 2/i)).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/anything to tell your artist/i), "The first linework was better.");
+    await user.click(within(dialog).getByRole("button", { name: "Ask for version 1 back" }));
+
+    await vi.waitFor(() => expect(sent).toEqual({ revisionId: "rev-v1", body: { notes: "The first linework was better." } }));
+  });
+
+  it("shows the server's refusal inside the dialog", async () => {
+    const user = userEvent.setup();
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    server.use(http.post("http://localhost/api/v1/designs/revisions/:revisionId/request-again", () =>
+      HttpResponse.json({ message: "Version 2 is approved, so the design is settled. Message your artist to change it." }, { status: 422 })));
+    renderPage(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    await user.click(screen.getByRole("button", { name: "Ask for version 1 back" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ask for version 1 back" }));
+
+    expect(await within(screen.getByRole("dialog")).findByRole("alert")).toHaveTextContent(/design is settled/);
+  });
+
+  it("once the latest version is approved, the client is not offered going back", async () => {
+    const user = userEvent.setup();
+    serveRevisions([V1_CHANGES, { ...V2_PENDING, approvalStatus: "Approved" }], { status: "Approved", waitingOn: "Nobody", latestVersionNumber: 2 });
+    renderPage(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    expect(screen.queryByRole("button", { name: /ask for version 1 back/i })).not.toBeInTheDocument();
+  });
+
+  it("the client is never offered Approve on an earlier version, only asking for it back", async () => {
+    const user = userEvent.setup();
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    const region = screen.getByRole("region", { name: "Earlier versions" });
+    expect(within(region).queryByRole("button", { name: /^approve$/i })).not.toBeInTheDocument();
+    expect(within(region).getByRole("button", { name: "Ask for version 1 back" })).toBeInTheDocument();
+  });
+
+  it("the artist brings an earlier version back as the newest, after confirming", async () => {
+    const user = userEvent.setup();
+    let restoredPath: string | undefined;
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Artist", latestVersionNumber: 2 });
+    server.use(http.post("http://localhost/api/v1/designs/:designId/revisions/:revisionId/restore", ({ params }) => {
+      restoredPath = `${String(params.designId)}/${String(params.revisionId)}`;
+      return HttpResponse.json({ ...V1_CHANGES, id: "rev-v3", versionNumber: 3, approvalStatus: null, approvalNotes: null }, { status: 201 });
+    }));
+    renderPage(Role.Artist);
+
+    await user.click(await screen.findByRole("button", { name: "Earlier versions (1)" }));
+    await user.click(screen.getByRole("button", { name: "Bring back as version 3" }));
+    const dialog = screen.getByRole("alertdialog", { name: "Bring back version 1 as version 3?" });
+    expect(restoredPath).toBeUndefined();
+    await user.click(within(dialog).getByRole("button", { name: "Bring back" }));
+
+    await vi.waitFor(() => expect(restoredPath).toBe(`${DESIGN_ID}/rev-v1`));
+  });
+
+  it("the latest version itself offers neither action", async () => {
+    serveRevisions([V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2 });
+    renderPage(Role.Artist);
+
+    await screen.findByText("v2");
+    expect(screen.queryByRole("button", { name: /bring back/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /ask for version/i })).not.toBeInTheDocument();
+  });
+});
