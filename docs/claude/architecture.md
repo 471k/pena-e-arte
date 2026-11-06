@@ -6400,3 +6400,50 @@ So the design's state keeps following its latest version (`DesignReviewState`).
 - Tests: `DesignVersionBackTests` (latest-only for clients and staff, a deleted newer version, the request body
   and the refusals, restore, numbering; the numbering test fails against count + 1) and six frontend tests.
 - Help (`client-design-approve`, `artist-designs`) and the manual updated. No migration.
+
+## Frontend suite timeouts: too much work per test and an oversubscribed machine, not too small a budget — 2026-11-06
+
+The same timeouts appeared in four consecutive slice reports. `testTimeout` (5 s to 10 s) and `asyncUtilTimeout`
+(1 s to 3 s) had already been raised, plus 24 per-test overrides of 15–40 s across 7 files. This slice raised
+nothing and measured first (base `ebd28239`; i5-7300U, 2 physical / 4 logical cores; vitest 5.0.3, `forks`;
+default `maxWorkers` = logical cores − 1 = 3). The full measurement table is in
+`claude-shared\handoffs\code-report-frontend-test-stability-2026-11-06.md`.
+- **Baseline:** full suite, 8 failures plain (18m19s) and **23 with `--coverage`** (CI's command; 21m22s), every
+  one in `StudioProfilePage.test.tsx`, including tests that only mount the page. Isolated, all 40 passed.
+- **Cause 1, too much rendering per test** (React Profiler probe): a mount was 5 ms of synchronous render and
+  1.7 s of waiting, ~90% of it React rendering ~9 commits. Two Radix pickers, `TimezoneSelect` (~420 items)
+  and `PhoneInput`'s calling-code select (~240), render every item, plus a hidden native `<select>` with an
+  `<option>` each, on every commit, open or not: ~60% of a mount. The page also re-commits in full on every
+  keystroke in the street-address and slug fields (320 ms a key).
+- **Cause 2, an oversubscribed machine:** with cause 1 fixed, three runs on 3 workers still went 0 / 0 / 3
+  failures. On 2 physical cores the third worker bought ~10% of wall-clock time and made every test ~30% slower
+  (sum of test time 1818–1993 s on 3 workers against 1369 s on 2).
+- **Changed (tests and test config only; no application code, no assertion changed):**
+  - `StudioProfilePage.test.tsx` stubs the two pickers except in the 7 tests about them (`vi.hoisted` flags
+    per `describe`); enters text with `user.paste` in 5 tests whose assertions don't depend on the keystrokes;
+    `waitForForm()` waits for the loaded value, because the field renders before the page's `reset(...)`
+    effect fills it and under load that effect wiped what a test had just entered. Its four 20 s overrides
+    were removed.
+  - `GuestBookAppointmentForm.test.tsx`'s fill helpers paste. Its five 40 s overrides stay (11–12 s now under
+    coverage, from 15–29 s).
+  - Three timing races fixed, none of them about speed. `SessionSplitsEditor` (the toast fires while the
+    button still reads "Saving…": `findByRole`). `StudioProfilePage` "disabled again after a successful save"
+    (`isSuccess` renders before `reset(values)`: `waitFor`). `ConductReportInboxPage` waited on text that is
+    also a filter chip, so it resolved before the list and the test passed only while the list was still
+    missing; reproduced by pausing 300 ms, now waits on a row.
+  - `vite.config.ts`: `maxWorkers: process.env.CI ? undefined : "50%"` (≈ physical cores). CI keeps its default:
+    it runs ~3× faster and was not measured.
+  - The 5 unused `eslint-disable` directives in test files removed.
+- **Result:** three consecutive full runs with `--coverage` on the final code (`dc5d8243`): 3035/3035 each, zero
+  failures, zero timeouts (21m38s, 21m35s, 22m20s). StudioProfilePage under coverage 451 s → ~117 s, slowest
+  test 22.4 s → 6.1–7.3 s. CI on PR #343: green, unit step 3m47s against 6m30s on main the same day.
+- **Found, deliberately not fixed (application source):** (1) the Radix-based pickers re-render all their items
+  on every parent commit; memoizing the item lists, or rendering items only while open, would help real users
+  on slow phones too. (2) `StudioProfilePage` re-renders the whole page per keystroke in the address field
+  (`watch("addressLine1")` at page level, for geocoding) and the slug field (page-level `useState`). (3) Six
+  files still carry per-test overrides above 10 s, and 3–4 tests a run need them (HelpMenu tour relaunch 23 s,
+  GuestBook, ReminderDialog, SchedulePage quick reminder, phone-input); all but HelpMenu involve `PhoneInput`
+  typing. (4) The 13 remaining lint warnings are in application source (11 `react-hooks/incompatible-library`
+  on react-hook-form `watch()`, 2 `exhaustive-deps` in `PaymentListPage`). (5) `isolate: false` would save the
+  ~23% of run time spent creating a jsdom per file but shares module state between files; not tried.
+- Help (rule 7): no user-visible change, no Help change.
