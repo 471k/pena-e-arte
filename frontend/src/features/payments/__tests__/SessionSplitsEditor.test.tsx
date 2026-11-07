@@ -248,8 +248,10 @@ describe("SessionSplitsEditor", () => {
 
     // Toast error should appear
     expect(await screen.findByText(/failed to save splits/i)).toBeInTheDocument();
-    // Editor should remain open (save splits button still visible)
-    expect(screen.getByRole("button", { name: /save splits/i })).toBeInTheDocument();
+    // Editor should remain open (save splits button still visible). findBy, not getBy: the
+    // toast fires inside the mutation's catch, before React re-renders with isLoading=false,
+    // so at that instant the button can still be labelled "Saving…".
+    expect(await screen.findByRole("button", { name: /save splits/i })).toBeInTheDocument();
   });
 
   // ── Edit mode — Cancel ───────────────────────────────────────────────────────

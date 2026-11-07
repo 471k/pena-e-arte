@@ -53,5 +53,14 @@ export default defineConfig({
     // playwright.config.ts's existing `retries: process.env.CI ? 2 : 0` for the
     // identical reason.
     retry: process.env.CI ? 2 : 0,
+    // Locally, one worker per physical core instead of vitest's default (logical cores - 1).
+    // Measured 2026-11-06 on a 2-core / 4-thread laptop with --coverage, full suite: 3 workers
+    // took 19.7-20.7 min, with 16-19 tests over 10 s and 3 timeouts in one of three runs;
+    // 2 workers took 22.3 min, with 7 over 10 s (all in files that carry their own overrides)
+    // and every test ~30% faster (sum of test time 1818-1993 s -> 1369 s). The third worker bought
+    // ~10% of wall-clock time and slowed every test it shared the CPU with. "50%" of logical
+    // cores is roughly the physical cores on hyper-threaded machines. CI keeps the default: it
+    // runs the suite ~3x faster than that laptop and was not measured for this.
+    maxWorkers: process.env.CI ? undefined : "50%",
   },
 });
