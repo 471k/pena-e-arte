@@ -146,6 +146,52 @@ describe("PhoneInput country code keyboard", () => {
   });
 });
 
+describe("type-ahead by country name in the flag-prefixed lists", () => {
+  // Each item's visible text starts with a flag emoji, and Radix's type-ahead matches the start of
+  // an item's text, so these lists set textValue to the country name. Before that, typing a name
+  // never matched anything (2026-11-07).
+  it("PhoneInput: typing a country name on the closed trigger picks its calling code", () => {
+    const onChange = vi.fn();
+    render(<PhoneInput value="" onChange={onChange} />);
+    const trigger = screen.getByRole("combobox", { name: "Country code" });
+
+    trigger.focus();
+    typeAhead(trigger, "portu");
+
+    expect(trigger).toHaveTextContent("+351");
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  it("PhoneInput: typing inside the open list moves focus to the country, Enter picks it", async () => {
+    const user = userEvent.setup();
+    render(<PhoneInput value="" onChange={vi.fn()} />);
+    const trigger = screen.getByRole("combobox", { name: "Country code" });
+
+    trigger.focus();
+    await user.keyboard("{ArrowDown}");
+    const listbox = await openList();
+    await waitFor(() => expect(document.activeElement).toBe(selectedOf(listbox)[0]));
+    typeAhead(document.activeElement!, "germ");
+    await waitFor(() => expect(document.activeElement).toHaveTextContent("Germany (+49)"));
+    await user.keyboard("{Enter}");
+
+    expect(trigger).toHaveTextContent("+49");
+    expect(trigger).toHaveFocus();
+  });
+
+  it("country select: typing a country name on the closed trigger selects it", () => {
+    const onChange = vi.fn();
+    render(<ControlledCountry onChange={onChange} />);
+    const trigger = screen.getByRole("combobox", { name: "Country" });
+
+    trigger.focus();
+    typeAhead(trigger, "kos");
+
+    expect(onChange).toHaveBeenLastCalledWith("XK");
+    expect(trigger).toHaveTextContent("Kosovo");
+  });
+});
+
 describe("country select keyboard", () => {
   it("shows the selected country's name on a bare SelectValue and selects with arrows + Enter", async () => {
     const user = userEvent.setup();

@@ -44,9 +44,11 @@ function deriveState(value: string, fallback: PhoneCountryCode): { country: Phon
 // closed trigger's type-ahead and the hidden native <select> need them), and an inline map rebuilt
 // every one of them, plus its native <option>, on each commit of the form around it. Items still
 // re-render when the Select itself changes (value, open/closed), which is what moves the check mark.
+// textValue is the country name: Radix's type-ahead matches the start of an item's text, and the
+// visible text starts with a flag emoji, so without it typing a country's name never matched.
 const CallingCodeItems = memo(function CallingCodeItems() {
   return PHONE_COUNTRIES.map((c) => (
-    <SelectItem key={c.code} value={c.code}>
+    <SelectItem key={c.code} value={c.code} textValue={c.name}>
       {flagEmoji(c.code)} {c.name} (+{c.callingCode})
     </SelectItem>
   ));
