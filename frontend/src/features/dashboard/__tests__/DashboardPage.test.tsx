@@ -140,6 +140,16 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/stud-0001/hours", () =>
     HttpResponse.json([]),
   ),
+  // E05a (O02): the setup checklist's own read (the same partial setup the row mocks above described).
+  http.get("http://localhost/api/v1/studios/me/setup-readiness", () =>
+    HttpResponse.json({
+      areas: [
+        { area: "Artists",      state: "Reviewed",      reviewedAt: null },
+        { area: "DepositRules", state: "NotConfigured", reviewedAt: null },
+        { area: "Hours",        state: "NotConfigured", reviewedAt: null },
+      ],
+    }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));

@@ -72,6 +72,14 @@ public class Studio
     /// (appointments, clients, portfolio, payments) is retained, never deleted or copied.</summary>
     public DateTime? ClosedAt { get; set; }
 
+    /// <summary>When the owner last confirmed the studio's opening hours (E05a, O02): by saving
+    /// the hours form, or by saying the hours registration set for them are right. Null means
+    /// nobody has looked at them yet, so the setup checklist shows registration's default
+    /// Mon–Fri schedule as "set for you, not yet reviewed" rather than done. Hours rows' own
+    /// CreatedAt/UpdatedAt can't carry this: registration's rows get two separate
+    /// DateTime.UtcNow reads, so a never-touched row can already have UpdatedAt &gt; CreatedAt.</summary>
+    public DateTime? HoursReviewedAt { get; set; }
+
     public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt { get; set; }
     public string? StripeCustomerId { get; set; }
