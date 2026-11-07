@@ -12,7 +12,8 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { CountrySelectItems } from "@/shared/components/ui/country-select-items";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 import { useAddressGeocode } from "@/shared/hooks/useAddressGeocode";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -20,7 +21,6 @@ import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMuta
 import { useGetVisitorGeoQuery } from "@/features/public/publicApi";
 import { TimezoneSelect } from "@/shared/components/ui/timezone-select";
 import { defaultTimezoneId, suggestedTimezoneIds } from "@/shared/utils/timezones";
-import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
 import { CurrencySettingsCard } from "./CurrencySettingsCard";
 import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { DeveloperSettingsCard } from "./DeveloperSettingsCard";
@@ -515,11 +515,7 @@ export function StudioProfilePage() {
                         <SelectValue placeholder="Select a country" />
                       </SelectTrigger>
                       <SelectContent className="max-h-72" showScrollbar>
-                        {PHONE_COUNTRIES.map((c) => (
-                          <SelectItem key={c.code} value={c.code}>
-                            {flagEmoji(c.code)} {c.name}
-                          </SelectItem>
-                        ))}
+                        <CountrySelectItems />
                       </SelectContent>
                     </Select>
                   )}

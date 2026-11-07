@@ -30,9 +30,9 @@ import { LocationPicker } from "@/shared/components/ui/location-picker";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMeter";
 import { CurrencySelect } from "@/shared/components/ui/currency-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/shared/components/ui/select";
+import { CountrySelectItems } from "@/shared/components/ui/country-select-items";
 import { useAddressGeocode, type GeocodedLocation } from "@/shared/hooks/useAddressGeocode";
-import { PHONE_COUNTRIES, flagEmoji } from "@/shared/utils/phoneCountries";
 import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 import { useGetCountryDefaultCurrencyQuery, useGetVisitorGeoQuery } from "@/features/public/publicApi";
@@ -584,11 +584,7 @@ export function RegisterStudioPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-72" showScrollbar>
-                              {PHONE_COUNTRIES.map((c) => (
-                                <SelectItem key={c.code} value={c.code}>
-                                  {flagEmoji(c.code)} {c.name}
-                                </SelectItem>
-                              ))}
+                              <CountrySelectItems />
                             </SelectContent>
                           </Select>
                         </div>
@@ -743,11 +739,7 @@ export function RegisterStudioPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="max-h-72" showScrollbar>
-                            {PHONE_COUNTRIES.map((c) => (
-                              <SelectItem key={c.code} value={c.code}>
-                                {flagEmoji(c.code)} {c.name}
-                              </SelectItem>
-                            ))}
+                            <CountrySelectItems />
                           </SelectContent>
                         </Select>
                         {errors.countryCode && (
