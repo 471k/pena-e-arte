@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "./select";
@@ -15,6 +15,39 @@ function getAllTimezoneOptions(): TimezoneOption[] {
   allOptionsCache ??= buildTimezoneOptions(listTimezoneIds());
   return allOptionsCache;
 }
+
+interface TimezoneItemsProps {
+  extra: TimezoneOption | undefined;
+  suggested: TimezoneOption[];
+  rest: TimezoneOption[];
+}
+
+// The ~420 zones as Select items. Memoized on its lists, which TimezoneSelect keeps stable, so a
+// re-render of the form around the picker does not rebuild them: Radix Select keeps all items
+// mounted while the list is closed (the closed trigger's type-ahead and the hidden native <select>
+// need them), and building them inline redid every item, plus its native <option>, on each commit.
+// Items still re-render when the Select itself changes (value, open/closed).
+const TimezoneItems = memo(function TimezoneItems({ extra, suggested, rest }: TimezoneItemsProps) {
+  return (
+    <>
+      {extra && <SelectItem value={extra.id} textValue={extra.city}>{extra.label}</SelectItem>}
+      {suggested.length > 0 && (
+        <SelectGroup>
+          <SelectLabel>Suggested</SelectLabel>
+          {suggested.map((o) => (
+            <SelectItem key={o.id} value={o.id} textValue={o.city}>{o.label}</SelectItem>
+          ))}
+        </SelectGroup>
+      )}
+      <SelectGroup>
+        {suggested.length > 0 && <SelectLabel>All time zones</SelectLabel>}
+        {rest.map((o) => (
+          <SelectItem key={o.id} value={o.id} textValue={o.city}>{o.label}</SelectItem>
+        ))}
+      </SelectGroup>
+    </>
+  );
+});
 
 interface TimezoneSelectProps {
   /** IANA id, or undefined/"" while unset. */
@@ -53,12 +86,15 @@ export function TimezoneSelect({
   // Built separately from `all`: the browser's own list holds only canonical zones, so a country's
   // zone can be an alias that the list lacks (for example "Europe/Tirane").
   const suggested = useMemo(() => buildTimezoneOptions(suggestedIds), [suggestedIds]);
-  const rest = all.filter((o) => !suggestedIds.includes(o.id));
+  const rest = useMemo(() => all.filter((o) => !suggestedIds.includes(o.id)), [all, suggestedIds]);
 
   // A saved zone that is in neither list (an alias the studio already uses) still has to show,
   // and with the same readable label.
   const knownSelected = [...suggested, ...all].find((o) => o.id === value);
-  const extra = value && !knownSelected ? buildTimezoneOptions([value])[0] : undefined;
+  const extra = useMemo(
+    () => (value && !knownSelected ? buildTimezoneOptions([value])[0] : undefined),
+    [value, knownSelected],
+  );
   const selectedLabel = (knownSelected ?? extra)?.label;
 
   return (
@@ -72,21 +108,7 @@ export function TimezoneSelect({
         <SelectValue placeholder={placeholder ?? "Select a timezone"}>{selectedLabel}</SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-80" showScrollbar>
-        {extra && <SelectItem value={extra.id} textValue={extra.city}>{extra.label}</SelectItem>}
-        {suggested.length > 0 && (
-          <SelectGroup>
-            <SelectLabel>Suggested</SelectLabel>
-            {suggested.map((o) => (
-              <SelectItem key={o.id} value={o.id} textValue={o.city}>{o.label}</SelectItem>
-            ))}
-          </SelectGroup>
-        )}
-        <SelectGroup>
-          {suggested.length > 0 && <SelectLabel>All time zones</SelectLabel>}
-          {rest.map((o) => (
-            <SelectItem key={o.id} value={o.id} textValue={o.city}>{o.label}</SelectItem>
-          ))}
-        </SelectGroup>
+        <TimezoneItems extra={extra} suggested={suggested} rest={rest} />
       </SelectContent>
     </Select>
   );

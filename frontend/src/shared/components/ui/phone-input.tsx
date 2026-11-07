@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { AsYouType, getCountryCallingCode, getExampleNumber, parsePhoneNumberFromString } from "libphonenumber-js/min";
 import examples from "libphonenumber-js/mobile/examples";
 import { Input } from "./input";
@@ -38,6 +38,19 @@ function deriveState(value: string, fallback: PhoneCountryCode): { country: Phon
   // so whoever owns this record can see and correct it, rather than it silently vanishing.
   return { country: fallback, nationalText: value };
 }
+
+// The ~240 calling codes as Select items. Memoized with no props, so it renders once per picker and
+// not again on every keystroke: Radix Select keeps all items mounted while the list is closed (the
+// closed trigger's type-ahead and the hidden native <select> need them), and an inline map rebuilt
+// every one of them, plus its native <option>, on each commit of the form around it. Items still
+// re-render when the Select itself changes (value, open/closed), which is what moves the check mark.
+const CallingCodeItems = memo(function CallingCodeItems() {
+  return PHONE_COUNTRIES.map((c) => (
+    <SelectItem key={c.code} value={c.code}>
+      {flagEmoji(c.code)} {c.name} (+{c.callingCode})
+    </SelectItem>
+  ));
+});
 
 export function PhoneInput({
   id, value, onChange, onBlur, placeholder, defaultCountry, disabled, className,
@@ -112,11 +125,7 @@ export function PhoneInput({
           <SelectValue>{flagEmoji(country)} +{getCountryCallingCode(country)}</SelectValue>
         </SelectTrigger>
         <SelectContent className="max-h-72" showScrollbar>
-          {PHONE_COUNTRIES.map((c) => (
-            <SelectItem key={c.code} value={c.code}>
-              {flagEmoji(c.code)} {c.name} (+{c.callingCode})
-            </SelectItem>
-          ))}
+          <CallingCodeItems />
         </SelectContent>
       </Select>
       <Input

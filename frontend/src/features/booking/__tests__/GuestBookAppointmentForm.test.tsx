@@ -62,6 +62,7 @@ function renderForm() {
 // form (and the phone field's ~240-item calling-code picker) once per key. That work, not a small
 // budget, is why these tests needed 40 s overrides (measured 2026-11-06: up to 29 s under
 // coverage with 3 busy workers). The entered values and every assertion are unchanged.
+// What is left of those overrides is explained at FULL_FORM_TIMEOUT below.
 // PhoneInput's key-by-key formatting is covered by phone-input.test.tsx.
 async function enter(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, value: string) {
   await user.click(field);
@@ -93,6 +94,16 @@ async function uploadImages(user: ReturnType<typeof userEvent.setup>) {
   await user.upload(inputs[1], png);
   await waitFor(() => expect(screen.getAllByRole("img")).toHaveLength(2));
 }
+
+// The five tests that fill the whole form keep a per-test budget, halved from 40 s on 2026-11-07.
+// Since the calling-code picker's items are memoized, typing no longer re-renders them, and these
+// tests paste their text anyway. What is left is about 3.7 s isolated (measured stage by stage:
+// mount 0.4-1 s, opening and picking the artist ~0.9 s and the style ~1.1 s, the date typed key by
+// key ~0.4 s, two uploads ~0.35 s). The two Select picks are mostly jsdom role queries scanning the
+// whole form, including the hidden native <select> that Radix keeps for each picker in a form.
+// Under the full suite with coverage on a 2-core laptop that reached 10.1-10.4 s, just over the
+// 10 s default, so the override stays at a lower value rather than coming off.
+const FULL_FORM_TIMEOUT = 20_000;
 
 describe("GuestBookAppointmentForm", () => {
   it("renders the identity fields", () => {
@@ -163,12 +174,7 @@ describe("GuestBookAppointmentForm", () => {
     expect(screen.getByText("A photo of the area is required.")).toBeInTheDocument();
     expect(screen.getByText("At least one reference image is required.")).toBeInTheDocument();
     expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
-    // Same sandbox CPU-contention timeout class as the two tests below (src/test/setup.ts's
-    // asyncUtilTimeout comment) — this one's identity+artist-Select+datetime interaction
-    // sequence is heavy enough to occasionally cross the 10s default under load. Bumped
-    // 20000 -> 40000 (2026-09-05): 20s itself proved insufficient on a slower/more-loaded
-    // machine — not a hang, the same sequence just genuinely takes longer there.
-  }, 40000);
+  }, FULL_FORM_TIMEOUT);
 
   it("submits successfully once every field and both required images are filled", async () => {
     // The component's result branching checks `"data" in result` on the awaited mutation call
@@ -195,11 +201,7 @@ describe("GuestBookAppointmentForm", () => {
         }),
       }),
     );
-    // Longer per-test timeout: this is the most interaction-heavy test in the file (every
-    // field + an artist Select + two real image uploads + submit), and this sandbox's known
-    // CPU-contention flakiness (see src/test/setup.ts's asyncUtilTimeout comment) pushes it
-    // past the 10s default under load even though nothing is actually broken.
-  }, 40000);
+  }, FULL_FORM_TIMEOUT);
 
   it("includes the selected style in the booking payload, or null when unset", async () => {
     mockCreateGuestAppointment.mockReturnValue(
@@ -225,7 +227,7 @@ describe("GuestBookAppointmentForm", () => {
         }),
       }),
     );
-  }, 40000);
+  }, FULL_FORM_TIMEOUT);
 
   it("sends style: null when no style is selected", async () => {
     mockCreateGuestAppointment.mockReturnValue(
@@ -249,7 +251,7 @@ describe("GuestBookAppointmentForm", () => {
         }),
       }),
     );
-  }, 40000);
+  }, FULL_FORM_TIMEOUT);
 
   // Enumeration-resistance (2026-09-01, /code-review finding): the backend now returns the
   // exact same ack whether a new booking was created or the email collided with an existing
@@ -272,5 +274,5 @@ describe("GuestBookAppointmentForm", () => {
 
     expect(await screen.findByText("Check your email")).toBeInTheDocument();
     expect(screen.queryByText(/already exists/i)).not.toBeInTheDocument();
-  }, 40000);
+  }, FULL_FORM_TIMEOUT);
 });

@@ -108,11 +108,11 @@ describe("PhoneInput", () => {
     expect(isValidPhoneNumber(lastValue)).toBe(false);
   });
 
-  // Typing 10 digits then opening and searching a long country Select list is heavy
-  // enough that this sandbox's known CPU-contention flakiness (see src/test/setup.ts's
-  // asyncUtilTimeout comment) can push it past the 10s default under load even though
-  // nothing is actually broken; confirmed by re-running in isolation with a raised
-  // timeout and watching it pass, 2026-09-05.
+  // Keeps its per-test budget. Typing the 10 digits is cheap since the calling-code items are
+  // memoized (~0.2 s, measured 2026-11-07). What remains is opening the list, which mounts all
+  // ~245 options (~0.8 s), finding one by accessible name across them (~0.9 s) and closing it, which
+  // remounts them hidden (~0.7 s): ~2.5 s isolated, 10.7 s under the full suite with coverage on a
+  // 2-core laptop. That is the cost of opening the list, which memoizing does not change.
   it("re-emits onChange with the new country's calling code applied to already-typed digits", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

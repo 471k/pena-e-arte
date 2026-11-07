@@ -6447,3 +6447,63 @@ default `maxWorkers` = logical cores − 1 = 3). The full measurement table is i
   on react-hook-form `watch()`, 2 `exhaustive-deps` in `PaymentListPage`). (5) `isolate: false` would save the
   ~23% of run time spent creating a jsdom per file but shares module state between files; not tried.
 - Help (rule 7): no user-visible change, no Help change.
+
+## Picker item lists memoized, not rendered lazily — 2026-11-07
+
+Follow-up to the 2026-11-06 entry's finding (1). `PhoneInput` (245 calling codes), `TimezoneSelect` (419) and the
+studio country selects (245; `StudioProfilePage` once, `RegisterStudioPage` twice) built every Radix `SelectItem`
+inline, so each commit of the surrounding form re-rendered all of them. Radix Select (2.3.7) keeps the items mounted
+in a detached fragment while the list is closed. `CurrencySelect` has 2 items: unchanged.
+- **Lever: memoize, for all three.** Rendering items only while open was rejected after reading Radix's source. The
+  closed-state items are what make three things work: type-ahead on the closed trigger (it reads the item
+  collection); the selected text in a bare `<SelectValue />`, which the country selects use; and the options of
+  the hidden native `<select>` Radix adds inside a `<form>`. Without them, that select's sync effect fires
+  `onValueChange("")`, the quirk `StudioProfilePage`'s country select already guards against. So lazy rendering
+  would have broken keyboard behaviour and the value display, and it was not done. Instead the lists are memoized
+  components: `CallingCodeItems` (in `phone-input.tsx`), `TimezoneItems` (with `rest` and `extra` now `useMemo`ed so
+  its props stay stable) and a shared `CountrySelectItems` (`shared/components/ui/country-select-items.tsx`). Items
+  still re-render when the Select's own context changes (value, open), which moves the check mark.
+- **The hidden native `<select>` stays, with its options.** It is Radix's form/autofill shim, it is `aria-hidden`,
+  and its `<option>` elements are created once per item and are now not re-rendered per commit. Removing them needs
+  lazy items (above). DOM node count is therefore unchanged (1050 on the probe page).
+- **Deviation from the prompt's scope:** it named `CurrencySelect` and omitted the country selects, which my
+  2026-11-06 report listed. The country selects are the same pattern on the same pages, so they are included.
+- **Numbers.** jsdom probe on `StudioProfilePage`, pickers real, 25 mounts, median: wait-for-form 2019 → 1312 ms,
+  React render 1753 → 1077 ms (9 commits both), keystroke street address 235 → 62 ms, slug 299 → 63 ms, phone
+  250 → 47 ms (its render 199 → 4 ms), studio name 47 ms both. Real Chromium, production build, 4× CPU throttle:
+  street-address keystroke 613–689 → 51–77 ms (studio name, which doesn't commit the page: 16–28 ms both). Guest
+  booking form at 390 px: phone keystroke 125–133 → 17–26 ms (first name 16 ms).
+- **§4 (`StudioProfilePage` per-keystroke page commit): left alone.** After the fix, a page-committing keystroke
+  costs ~35 ms more than a plain one on a 4×-throttled CPU. The page-level `watch("addressLine1")` and slug
+  `useState` stay.
+- **Per-test overrides.** Of the 24 in the 2026-11-06 entry: 14 removed (ReminderDialog 6, CreateClientPage 7,
+  SchedulePage 1). GuestBook's 5 kept but halved, 40 → 20 s (`FULL_FORM_TIMEOUT`): ~3.7 s isolated, measured stage by
+  stage; the rest is two Select picks found by role across the whole form (jsdom role queries, including the hidden
+  native options) plus uploads. Under full-suite coverage load that reached 10.1–10.4 s once. phone-input's
+  "re-emits" test keeps 20 s: opening the list mounts all 245 options, `findByRole(name)` scans them, and closing
+  remounts them; memoizing does not change that path. HelpMenu's 4 are the onboarding tour's step polling,
+  unrelated. Also removed: RegisterStudioPage's 16 (a `STEP2_TIMEOUT` constant plus `20_000`/`15_000` literals),
+  which my 2026-11-06 count missed. Untouched, no picker involved: FeedbackDialog 2 × 15 s, DiscoverPage and
+  OnboardingTour 10 s (equal to the default).
+- **Tests.** `picker-render-cost.test.tsx` counts `SelectItem` element rebuilds via a spy, across parent re-renders
+  and phone typing. It fails on the old code (245 → 1960 calling codes, 419 → 1676 zones, 245 → 980 countries).
+  `picker-keyboard.test.tsx` covers closed and open type-ahead, Enter/arrows/Escape, focus return to the trigger,
+  `role="option"` count and `aria-selected`, and the bare `SelectValue` text. It passes on the old code and the new
+  code alike. Type-ahead keys are dispatched synchronously, because Radix resets a search 1 s after the last key and
+  `user.keyboard` under load spaced keys past that. The open list is read through role attributes, because
+  `getAllByRole` over 400 options timed out under load.
+- **Full suite, laptop, `--coverage`:** the first run (before the keyboard tests were made deterministic) had 8
+  failures: 4 in the new keyboard file, GuestBook 3 and phone-input 1, all timeouts at 10.1–10.7 s except one
+  type-ahead assertion. Those led to the decisions above. The final code ran 3045/3045 in 19m49s; sum of test time
+  1139 s, against 1369 s on the 2026-11-06 final code. The only test over 10 s is the HelpMenu tour relaunch.
+- **Real browser:** themed Selects on `/studios/me` (owner layout, `data-theme="after-hours"`) in light and dark.
+  The open list sits in the portal outside `#root` with the themed popover (light rgb(255,253,247) on
+  rgb(25,22,29); dark rgb(33,29,38) on rgb(245,241,232)) and the accent focus row.
+- **Found, not fixed:** (1) Type-ahead never matches in the calling-code and country lists, because each item's
+  text starts with a flag emoji (Radix matches on the start of the text). `TimezoneSelect` passes `textValue={city}`.
+  Fixing it is a behaviour change (`textValue={c.name}`), so it needs its own decision. Pre-existing. (2) Chrome on
+  Windows shows the flags as letter pairs (no flag emoji font). (3) Opening a long list still mounts every option,
+  and closing remounts them hidden (~0.8 s + ~0.7 s in jsdom for 245); only virtualization would change that. (4)
+  The 13 app-source lint warnings are unchanged.
+- Help (rule 7): no change in what anything does, no Help change. Rule 6: baseline hygiene for a form clients fill
+  on phones, not a feature.
