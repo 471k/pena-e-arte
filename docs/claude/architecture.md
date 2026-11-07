@@ -6507,3 +6507,15 @@ in a detached fragment while the list is closed. `CurrencySelect` has 2 items: u
   The 13 app-source lint warnings are unchanged.
 - Help (rule 7): no change in what anything does, no Help change. Rule 6: baseline hygiene for a form clients fill
   on phones, not a feature.
+
+## Country type-ahead in the flag-prefixed pickers — Phi's go on the picker-slice finding — 2026-11-07
+
+Typing a country's name never jumped to it in the phone calling-code list or the studio country selects: each
+item's visible text starts with a flag emoji, and Radix Select's type-ahead matches the start of an item's text
+(verified: typing "portugal" on the closed calling-code picker changed nothing). Phi said fix it. Both lists now set
+`textValue={c.name}` (`CallingCodeItems` in `phone-input.tsx`, `CountrySelectItems`), the same way `TimezoneSelect`
+uses `textValue={city}`. `textValue` feeds only the type-ahead; the visible text, the selected value and the hidden
+native options are unchanged. Three tests in `picker-keyboard.test.tsx` (closed-trigger and open-list type-ahead for
+`PhoneInput`, closed-trigger for the country select); they fail without the attribute. Help (`helpContent.ts`: guest
+booking, new client, studio settings) and the manual (guest booking, studio settings) now say that typing a
+country's first letters jumps to it.

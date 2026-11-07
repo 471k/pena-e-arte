@@ -34,7 +34,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["booking", "request", "artist", "schedule a tattoo", "new appointment", "reference images", "area photo", "upload photo", "let studio choose", "any artist", "studio picks artist", "tattoo description", "style", "tattoo style", "referral source", "how did you hear", "desired placement", "body map", "guest", "no account", "sign up", "promo code", "discount code", "service", "service catalog"],
     summary: "Request a tattoo appointment by picking an artist, a date, and how long the session should be — no account required to start.",
     steps: [
-      "You don't need an account first — open a studio's page and click \"Book\", or go straight to a booking link. If you're not signed in, fill in your name, email, and phone (the country code next to the phone field starts on the studio's own country — change it if your number is from elsewhere); an account is created for you automatically and you'll get an email to set a password afterward.",
+      "You don't need an account first — open a studio's page and click \"Book\", or go straight to a booking link. If you're not signed in, fill in your name, email, and phone (the country code next to the phone field starts on the studio's own country — change it if your number is from elsewhere; with the list focused, typing a country's first letters jumps to it); an account is created for you automatically and you'll get an email to set a password afterward.",
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
       "In the \"Book an appointment\" card, choose an artist and a date.",
       "If the studio offers a Service (e.g. \"New Tattoo Session\", \"Touch-Up\"), pick one — its duration is set automatically and can't be changed, and if it has its own deposit, that replaces the studio's regular deposit. Pick \"Custom\" instead to choose your own duration, same as before.",
@@ -1038,7 +1038,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to Clients and click \"New Client\".",
       "Enter the client's first and last name and email address.",
       "Select the Artist this client belongs to. (If you're an artist adding your own client, this step doesn't apply — it's assigned to you automatically.)",
-      "Optionally enter a phone number — the country dropdown next to the field starts on your studio's country (change it if the client is from elsewhere), then type the number without the country code.",
+      "Optionally enter a phone number — the country dropdown next to the field starts on your studio's country (change it if the client is from elsewhere; typing a country's first letters jumps to it), then type the number without the country code.",
       "Click \"Create Client\".",
     ],
   },
@@ -1414,7 +1414,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Edit your studio's public details — name, street address, phone, description, timezone — and your business tax ID (NIPT), which clients don't see but is used for invoicing and verification.",
     steps: [
       "Go to Studio Settings.",
-      "Click \"Edit\" and update your studio name, street address, phone number (its country prefix follows your studio's country; change it from the dropdown if needed, then type the number), description, timezone, or country. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
+      "Click \"Edit\" and update your studio name, street address, phone number (its country prefix follows your studio's country; change it from the dropdown if needed, then type the number), description, timezone, or country. In the country and phone-prefix dropdowns, typing a country's first letters jumps to it. The street address field and the map stay in sync — type an address to move the pin, or drag the pin to update the address.",
       "If you haven't added your NIPT yet, enter it in the Business tax ID field — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, this field becomes read-only; contact support to change it.",
       "Click \"Save\" to publish the changes.",
       "In the Currency card, choose the currency your studio prices and takes payments in: Albanian Lek (ALL) or Euro (EUR). It defaults to ALL (or to EUR if your country uses the euro); you can switch until your first payment, gift card, package sale or booth-rent charge is recorded — after that it's locked and only support can change it.",
