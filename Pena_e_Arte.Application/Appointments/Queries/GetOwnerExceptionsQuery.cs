@@ -163,7 +163,7 @@ public class GetOwnerExceptionsHandler(IAppDbContext db, ICurrentTenant tenant, 
 
     /// <summary>
     /// The payment as every deposit screen sees it, minus what the home screen has no use for: no
-    /// provider reference or client token, and no session splits (earnings are A07, blocked on DEC10).
+    /// provider reference or client token, and no session splits (earnings belong to A07, not the owner home).
     /// </summary>
     private static PaymentResponse Sanitize(Payment p) =>
         p.ToResponse([]) with { ProviderReferenceId = null, ClientToken = null, Splits = [] };
