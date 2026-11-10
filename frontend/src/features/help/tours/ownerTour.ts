@@ -4,7 +4,7 @@ export const ownerTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="owner-dashboard-nav"]',
     title: "Your dashboard",
-    body: "A snapshot of today's and this week's appointments, and any deposits still owed.",
+    body: "Starts with what needs you: requests with no artist, bookings to confirm, cash to confirm, unpaid deposits and sessions that aren't ready. Then today's and this week's appointments.",
   },
   {
     targetSelector: '[data-tour="owner-add-artist-nav"]',
