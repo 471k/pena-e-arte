@@ -166,6 +166,12 @@ describe("SetupChecklist", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("treats a response without an areas list as a failed read, never as set up", async () => {
+    server.use(http.get("http://localhost/api/v1/studios/me/setup-readiness", () => HttpResponse.json([])));
+    renderChecklist();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't check your studio setup just now.");
+  });
+
   it("'Set rule' button navigates to /deposit-rules/new", async () => {
     const user = userEvent.setup();
     renderChecklist();

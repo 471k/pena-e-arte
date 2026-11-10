@@ -185,7 +185,10 @@ export function OwnerExceptions() {
   const { data, isLoading, isError, refetch, isFetching } =
     useGetOwnerExceptionsQuery(undefined, { refetchOnMountOrArgChange: true });
   const { data: studio } = useGetMyStudioQuery();
-  const errorMessage = useSuspensionAwareError(isError, "We couldn't load what needs you.");
+  // A response without a groups list is treated like a failed read, never as "nothing needs you".
+  const malformed = !isLoading && !isError && data !== undefined && !Array.isArray(data.groups);
+  const errorMessage = useSuspensionAwareError(isError || malformed, "We couldn't load what needs you.");
+  const groups = data && Array.isArray(data.groups) ? data.groups : null;
 
   return (
     <Card data-testid="owner-exceptions">
@@ -212,7 +215,7 @@ export function OwnerExceptions() {
           </div>
         )}
 
-        {!isLoading && !isError && data && data.groups.length === 0 && (
+        {!isLoading && !errorMessage && groups && groups.length === 0 && (
           <div className="px-4 pb-6 pt-2 flex flex-col items-center gap-2 text-center" data-testid="exceptions-empty">
             <CheckCircle2 className="h-8 w-8 text-success-text" aria-hidden="true" />
             <p className="text-sm font-medium">Nothing needs you right now</p>
@@ -223,9 +226,9 @@ export function OwnerExceptions() {
           </div>
         )}
 
-        {!isLoading && !isError && data && data.groups.length > 0 && (
+        {!isLoading && !errorMessage && data && groups && groups.length > 0 && (
           <div className="divide-y divide-border">
-            {data.groups.map((g) => (
+            {groups.map((g) => (
               <Group key={g.kind} group={g} windowDays={data.windowDays} timeZone={studio?.timezone} />
             ))}
           </div>

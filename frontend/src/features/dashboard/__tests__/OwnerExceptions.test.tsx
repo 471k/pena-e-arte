@@ -112,6 +112,13 @@ describe("OwnerExceptions", () => {
     expect(screen.queryByText("Nothing needs you right now")).not.toBeInTheDocument();
   });
 
+  it("treats a response without a groups list as a failed read, never as 'nothing needs you'", async () => {
+    server.use(http.get("http://localhost/api/v1/dashboard/exceptions", () => HttpResponse.json([])));
+    renderPanel();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load what needs you.");
+    expect(screen.queryByText("Nothing needs you right now")).not.toBeInTheDocument();
+  });
+
   it("renders nothing to act on as a designed good state", async () => {
     renderPanel();
     const empty = await screen.findByTestId("exceptions-empty");

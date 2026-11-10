@@ -52,7 +52,9 @@ export function SetupChecklist() {
   // Nothing until the answer arrives: a loading checklist would flash "0/3" at a set-up studio.
   if (isLoading) return null;
 
-  if (isError || !data) {
+  // A response without an areas list (a broken proxy, a test's catch-all mock) is treated like a
+  // failed read: never as "nothing left to set up".
+  if (isError || !data || !Array.isArray(data.areas)) {
     // Never fall back to "complete": say we couldn't check, and let the owner retry.
     return (
       <Card data-testid="setup-checklist">

@@ -302,7 +302,8 @@ export function DashboardPage() {
   // here that could disagree with it.
   const { data: exceptions, isLoading: loadingExceptions } = useGetOwnerExceptionsQuery();
   const depositsDue =
-    exceptions?.groups.find((g) => g.kind === OwnerExceptionKind.UnpaidDeposit)?.total ?? 0;
+    (exceptions && Array.isArray(exceptions.groups) ? exceptions.groups : [])
+      .find((g) => g.kind === OwnerExceptionKind.UnpaidDeposit)?.total ?? 0;
 
   return (
     <div className="min-h-screen bg-background">
