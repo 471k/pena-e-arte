@@ -19,6 +19,7 @@ import type {
   ReschedulePreviewResponse,
   SlotAvailabilityResponse,
 } from "./appointment.types";
+import type { OwnerExceptionsResponse } from "@/features/dashboard/dashboard.types";
 
 export const appointmentsApi = createApi({
   reducerPath: "appointmentsApi",
@@ -41,6 +42,13 @@ export const appointmentsApi = createApi({
     // "Appointment" so a cancel, reschedule or completion anywhere refetches it.
     getAppointmentPreparation: builder.query<AppointmentPreparationResponse, string>({
       query: (id) => `appointments/${id}/preparation`,
+      providesTags: ["Appointment"],
+    }),
+    // Owner home (E05a, O01): what needs the owner, with real counts. Tagged "Appointment" so an
+    // assignment, confirmation, cancellation or cash confirmation (which invalidates this slice)
+    // refreshes it.
+    getOwnerExceptions: builder.query<OwnerExceptionsResponse, void>({
+      query: () => "dashboard/exceptions",
       providesTags: ["Appointment"],
     }),
     getAppointment: builder.query<AppointmentResponse, string>({
@@ -178,6 +186,7 @@ export const appointmentsApi = createApi({
 
 export const {
   useGetAppointmentsQuery,
+  useGetOwnerExceptionsQuery,
   useGetAppointmentQuery,
   useGetAppointmentPreparationQuery,
   useGetMyAppointmentsQuery,

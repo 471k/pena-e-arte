@@ -283,6 +283,7 @@ try
     app.MapPublicDesignEndpoints();
     app.MapAuthEndpoints();
     app.MapAppointmentEndpoints();
+    app.MapDashboardEndpoints();
     app.MapDepositRuleEndpoints();
     app.MapServiceEndpoints();
     app.MapPromoCodeEndpoints();

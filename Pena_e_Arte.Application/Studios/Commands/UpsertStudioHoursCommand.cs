@@ -62,6 +62,11 @@ public class UpsertStudioHoursHandler(IAppDbContext db, ICurrentTenant tenant)
             }
         }
 
+        // Saving the hours form is the owner reviewing them (E05a, O02), changed or not, so the
+        // setup checklist stops showing registration's default as "not yet reviewed".
+        Studio? studio = await db.Studios.FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct);
+        if (studio is not null) studio.HoursReviewedAt = DateTime.UtcNow;
+
         await db.SaveChangesAsync(ct);
     }
 }

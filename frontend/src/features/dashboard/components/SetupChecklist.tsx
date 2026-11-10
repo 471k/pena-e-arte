@@ -1,117 +1,152 @@
 import { useNavigate } from "react-router-dom";
-import { Check, Circle } from "lucide-react";
+import { toast } from "sonner";
+import { Check, Circle, CircleDashed } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
-import { useGetArtistsQuery } from "@/features/artists/artistsApi";
-import { useGetDepositRulesQuery } from "@/features/deposit-rules/depositRulesApi";
-import { useGetMyStudioQuery, useGetStudioHoursQuery } from "@/features/studios/studiosApi";
+import {
+  useConfirmStudioHoursMutation,
+  useGetSetupReadinessQuery,
+  type SetupAreaKey,
+  type SetupAreaState,
+} from "@/features/studios/studiosApi";
 
-interface ChecklistItem {
-  label:  string;
-  done:   boolean;
-  href:   string;
-  cta:    string;
+/**
+ * The owner's setup checklist (E05a, O02). Each area is one of three states from the server:
+ * not configured, set for you but not yet reviewed, or reviewed. It used to count rows, which called
+ * every new studio's hours done because registration seeds a Mon–Fri schedule. Only "Reviewed" counts
+ * as complete, so a studio with nothing but seeded rows is never shown as set up.
+ */
+
+interface AreaCopy {
+  label: string;
+  href:  string;
+  cta:   string;
   tourId?: string;
+}
+
+// Same labels, destinations and tour ids as before this change.
+const COPY: Record<SetupAreaKey, AreaCopy> = {
+  Artists:      { label: "Add your first artist", href: "/artists/new", cta: "Add artist" },
+  DepositRules: { label: "Set a deposit rule",    href: "/deposit-rules/new", cta: "Set rule", tourId: "owner-deposit-rules-nav" },
+  Hours:        { label: "Set your hours",        href: "/studios/me", cta: "Set hours", tourId: "owner-studio-profile-nav" },
+};
+
+function StateIcon({ state }: { state: SetupAreaState }) {
+  if (state === "Reviewed") {
+    return <Check className="h-4 w-4 text-success-text shrink-0" aria-hidden="true" />;
+  }
+  if (state === "DefaultUnreviewed") {
+    return <CircleDashed className="h-4 w-4 text-warning-text shrink-0" aria-hidden="true" />;
+  }
+  return <Circle className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />;
 }
 
 export function SetupChecklist() {
   const navigate = useNavigate();
-  const { data: artists = [], isLoading: artistsLoading }           = useGetArtistsQuery(undefined);
-  const { data: depositRules = [], isLoading: depositRulesLoading } = useGetDepositRulesQuery(undefined);
-  const { data: studio, isLoading: studioLoading }                  = useGetMyStudioQuery();
-  const { data: hours = [], isLoading: hoursLoading } =
-    useGetStudioHoursQuery(studio?.id ?? "", { skip: !studio?.id });
+  // Refetch on every dashboard visit: adding an artist or a deposit rule happens in other API slices,
+  // whose cache tags can't reach this one.
+  const { data, isLoading, isError, refetch } =
+    useGetSetupReadinessQuery(undefined, { refetchOnMountOrArgChange: true });
+  const [confirmHours, { isLoading: confirming }] = useConfirmStudioHoursMutation();
 
-  // All queries default to [] while their first request is in flight, which would
-  // otherwise render "0/3 complete" for a moment on every dashboard load — even for a
-  // fully-set-up studio — before the real data arrives. Wait for all to resolve at
-  // least once rather than flash a false "incomplete" state.
-  if (artistsLoading || depositRulesLoading || studioLoading || (studio?.id && hoursLoading)) return null;
+  // Nothing until the answer arrives: a loading checklist would flash "0/3" at a set-up studio.
+  if (isLoading) return null;
 
-  const items: ChecklistItem[] = [
-    {
-      label: "Add your first artist",
-      done:  artists.length > 0,
-      href:  "/artists/new",
-      cta:   "Add artist",
-    },
-    {
-      label:  "Set a deposit rule",
-      done:   depositRules.length > 0,
-      href:   "/deposit-rules/new",
-      cta:    "Set rule",
-      tourId: "owner-deposit-rules-nav",
-    },
-    {
-      // Simplification, explicitly noted: this tracks "hours rows exist," not "the owner
-      // has ever saved the hours form" — RegisterStudioHandler seeds a default Mon–Fri
-      // schedule at registration, so this item is done immediately for every new studio.
-      // There's no existing precedent elsewhere in this file for the stronger
-      // "has ever saved" distinction, so this mirrors the simpler rows-exist check the
-      // other two items already use.
-      label:  "Set your hours",
-      done:   hours.length > 0,
-      href:   "/studios/me",
-      cta:    "Set hours",
-      tourId: "owner-studio-profile-nav",
-    },
-  ];
+  // A response without an areas list (a broken proxy, a test's catch-all mock) is treated like a
+  // failed read: never as "nothing left to set up".
+  if (isError || !data || !Array.isArray(data.areas)) {
+    // Never fall back to "complete": say we couldn't check, and let the owner retry.
+    return (
+      <Card data-testid="setup-checklist">
+        <CardContent className="p-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground" role="alert">
+            We couldn't check your studio setup just now.
+          </p>
+          <Button size="sm" variant="outline" className="h-6 text-xs px-2 shrink-0" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const doneCount = items.filter((i) => i.done).length;
+  const doneCount = data.areas.filter((a) => a.state === "Reviewed").length;
+  if (doneCount === data.areas.length) return null;
 
-  if (doneCount === items.length) return null;
+  async function onConfirmHours() {
+    try {
+      await confirmHours().unwrap();
+      toast.success("Opening hours confirmed");
+    } catch {
+      toast.error("Couldn't confirm your hours. Please try again.");
+    }
+  }
 
   return (
     <Card data-testid="setup-checklist">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Studio setup</span>
+          <h2 className="text-sm font-medium">Studio setup</h2>
           <span className="text-xs text-muted-foreground">
-            {doneCount}/{items.length} complete
+            {doneCount}/{data.areas.length} complete
           </span>
         </div>
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between gap-3"
-            >
-              <div className="flex items-center gap-2">
-                {item.done ? (
-                  <Check
-                    className="h-4 w-4 text-success-text shrink-0"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Circle
-                    className="h-4 w-4 text-muted-foreground shrink-0"
-                    aria-hidden="true"
-                  />
+        <ul className="space-y-2">
+          {data.areas.map((area) => {
+            const copy = COPY[area.area];
+            const reviewed = area.state === "Reviewed";
+            const unreviewedDefault = area.state === "DefaultUnreviewed";
+            return (
+              <li
+                key={area.area}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                data-testid={`setup-area-${area.area}`}
+                data-state={area.state}
+              >
+                <div className="flex items-start gap-2 min-w-0">
+                  <span className="mt-0.5"><StateIcon state={area.state} /></span>
+                  <div className="min-w-0">
+                    <span className={reviewed ? "text-sm text-muted-foreground line-through" : "text-sm"}>
+                      {copy.label}
+                    </span>
+                    {unreviewedDefault && (
+                      <p className="text-xs text-muted-foreground">
+                        We've set opening hours for you. Check they're right.
+                      </p>
+                    )}
+                    <span className="sr-only">
+                      {reviewed ? " (done)" : unreviewedDefault ? " (set for you, not yet reviewed)" : " (not set up yet)"}
+                    </span>
+                  </div>
+                </div>
+                {!reviewed && (
+                  <div className="flex gap-2 shrink-0">
+                    {unreviewedDefault && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-xs px-2"
+                        disabled={confirming}
+                        onClick={() => void onConfirmHours()}
+                      >
+                        They're right
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-xs px-2"
+                      onClick={() => navigate(copy.href)}
+                      data-tour={copy.tourId}
+                    >
+                      {unreviewedDefault ? "Check hours" : copy.cta}
+                    </Button>
+                  </div>
                 )}
-                <span
-                  className={
-                    item.done
-                      ? "text-sm text-muted-foreground line-through"
-                      : "text-sm"
-                  }
-                >
-                  {item.label}
-                </span>
-              </div>
-              {!item.done && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-6 text-xs px-2 shrink-0"
-                  onClick={() => navigate(item.href)}
-                  data-tour={item.tourId}
-                >
-                  {item.cta}
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       </CardContent>
     </Card>
   );

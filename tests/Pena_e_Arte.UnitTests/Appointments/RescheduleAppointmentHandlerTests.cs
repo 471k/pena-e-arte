@@ -36,7 +36,9 @@ public class RescheduleAppointmentHandlerTests
     public async Task Handle_PendingAppointment_UpdatesDateAndDuration()
     {
         Guid id = await SeedAppointment(AppointmentStatus.Pending);
-        DateTime newDate = DateTime.UtcNow.AddDays(5);
+        // A fixed 10:00 UTC: "now + 5 days" ran past the studio's 23:59 closing (Europe/Tirane) whenever
+        // the suite ran after ~22:00 UTC.
+        DateTime newDate = DateTime.UtcNow.Date.AddDays(5).AddHours(10);
 
         var result = await CreateSut().Handle(
             new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, 90, null)), default);
@@ -49,7 +51,9 @@ public class RescheduleAppointmentHandlerTests
     public async Task Handle_ConfirmedAppointment_UpdatesDateAndDuration()
     {
         Guid id = await SeedAppointment(AppointmentStatus.Confirmed);
-        DateTime newDate = DateTime.UtcNow.AddDays(3);
+        // A fixed 10:00 UTC: "now + 3 days" ran past the studio's 23:59 closing (Europe/Tirane) whenever
+        // the suite ran after ~22:00 UTC.
+        DateTime newDate = DateTime.UtcNow.Date.AddDays(3).AddHours(10);
 
         var result = await CreateSut().Handle(
             new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, 60, "moved")), default);

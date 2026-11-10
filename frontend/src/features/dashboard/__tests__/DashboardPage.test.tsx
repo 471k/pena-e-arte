@@ -20,6 +20,7 @@ import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import type { PaymentResponse } from "@/features/payments/payment.types";
+import type { OwnerExceptionGroup, OwnerExceptionsResponse } from "@/features/dashboard/dashboard.types";
 
 // ── SignalR mock ──────────────────────────────────────────────────────────────
 
@@ -116,6 +117,22 @@ const CASH_PAYMENT: PaymentResponse = {
   currency:              "EUR",
 };
 
+// E05a (O01): the dashboard's exceptions read. The cash card and "Deposits Due" come from here now,
+// not from the first page of /payments or a client-side filter of the week's appointments.
+function exceptions(groups: OwnerExceptionGroup[]): OwnerExceptionsResponse {
+  return { generatedAt: NOW_ISO, windowDays: 7, maxItemsPerGroup: 10, groups };
+}
+
+const CASH_GROUP: OwnerExceptionGroup = {
+  kind:  "CashToConfirm",
+  total: 1,
+  items: [{
+    appointmentId: "appt-0001", appointmentDate: IN_1_DAY, clientName: "João Silva", artistName: "Ana Costa",
+    appointmentStatus: "Confirmed", readiness: null,
+    deposit: { amount: 75, currency: "EUR", payment: CASH_PAYMENT },
+  }],
+};
+
 // ── MSW server ────────────────────────────────────────────────────────────────
 
 const server = setupServer(
@@ -139,6 +156,19 @@ const server = setupServer(
   ),
   http.get("http://localhost/api/v1/studios/stud-0001/hours", () =>
     HttpResponse.json([]),
+  ),
+  http.get("http://localhost/api/v1/dashboard/exceptions", () =>
+    HttpResponse.json(exceptions([])),
+  ),
+  // E05a (O02): the setup checklist's own read (the same partial setup the row mocks above described).
+  http.get("http://localhost/api/v1/studios/me/setup-readiness", () =>
+    HttpResponse.json({
+      areas: [
+        { area: "Artists",      state: "Reviewed",      reviewedAt: null },
+        { area: "DepositRules", state: "NotConfigured", reviewedAt: null },
+        { area: "Hours",        state: "NotConfigured", reviewedAt: null },
+      ],
+    }),
   ),
 );
 
@@ -284,46 +314,65 @@ describe("DashboardPage", () => {
     expect(screen.getByTestId("schedule-page")).toBeInTheDocument();
   });
 
-  // ── Cash pending section ──────────────────────────────────────────────────
+  // ── Cash to confirm (was "Awaiting Cash") ─────────────────────────────────
+  // E05a: the card used to filter the first 50 payments (oldest first), so a studio with more
+  // payments than that lost its newest cash promises. It is now the exceptions' CashToConfirm group,
+  // counted by the server.
 
-  it("does not show the Awaiting Cash section when there are no CashPending payments", async () => {
+  it("does not show the cash group when there are no CashPending payments", async () => {
     renderPage();
     await screen.findByText("No appointments today.");
     expect(screen.queryByText("Awaiting Cash")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cash to confirm")).not.toBeInTheDocument();
   });
 
-  it("shows the Awaiting Cash section when CashPending payments exist", async () => {
+  it("shows the cash group when CashPending payments exist", async () => {
     server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([CASH_PAYMENT]),
+      http.get("http://localhost/api/v1/dashboard/exceptions", () =>
+        HttpResponse.json(exceptions([CASH_GROUP])),
       ),
     );
     renderPage();
-    expect(await screen.findByText("Awaiting Cash")).toBeInTheDocument();
+    expect(await screen.findByText("Cash to confirm")).toBeInTheDocument();
   });
 
   it("shows the client name and amount for each CashPending payment", async () => {
     server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([CASH_PAYMENT]),
+      http.get("http://localhost/api/v1/dashboard/exceptions", () =>
+        HttpResponse.json(exceptions([CASH_GROUP])),
       ),
     );
     renderPage();
-    await screen.findByText("Awaiting Cash");
-    expect(screen.getByText("João Silva")).toBeInTheDocument();
-    expect(screen.getByText(/€75/)).toBeInTheDocument();
+    await screen.findByText("Cash to confirm");
+    const group = screen.getByTestId("exception-group-CashToConfirm");
+    expect(within(group).getByText("João Silva")).toBeInTheDocument();
+    expect(within(group).getAllByText(/€75/).length).toBeGreaterThan(0);
   });
 
-  it("shows the count of CashPending payments in the section header", async () => {
+  it("shows the server's count of CashPending payments in the group header", async () => {
     server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([CASH_PAYMENT]),
+      http.get("http://localhost/api/v1/dashboard/exceptions", () =>
+        HttpResponse.json(exceptions([{ ...CASH_GROUP, total: 64 }])),
       ),
     );
     renderPage();
-    await screen.findByText("Awaiting Cash");
-    // The count badge sits right after the section label
-    expect(screen.getByText("1")).toBeInTheDocument();
+    await screen.findByText("Cash to confirm");
+    // The count is the server's total, not the number of rows the response carried.
+    expect(within(screen.getByTestId("exception-group-CashToConfirm")).getByText("(64)")).toBeInTheDocument();
+  });
+
+  it("no longer reads a page of /payments to build any figure", async () => {
+    let paymentsRequested = false;
+    server.use(
+      http.get("http://localhost/api/v1/payments", () => {
+        paymentsRequested = true;
+        return HttpResponse.json([CASH_PAYMENT]);
+      }),
+    );
+    renderPage();
+    await screen.findByText("No appointments today.");
+    await screen.findByTestId("exceptions-empty");
+    expect(paymentsRequested).toBe(false);
   });
 
   // ── Subscription banner — Active ───────────────────────────────────────────
@@ -622,19 +671,22 @@ describe("DashboardPage", () => {
     expect(within(todayCard).queryByText("0")).not.toBeInTheDocument();
   });
 
-  it("Deposits Due stat shows count of Pending-deposit appointments", async () => {
-    const pendingDepositAppt: AppointmentResponse = {
-      ...APPOINTMENT,
-      id:            "appt-deposit-pending",
-      depositStatus: "Pending",
-    };
+  it("Deposits Due stat shows the server's count of unpaid deposits in the next 7 days", async () => {
     server.use(
-      http.get("http://localhost/api/v1/appointments", () =>
-        HttpResponse.json([pendingDepositAppt]),
+      http.get("http://localhost/api/v1/dashboard/exceptions", () =>
+        HttpResponse.json(exceptions([{
+          kind: "UnpaidDeposit",
+          total: 1,
+          items: [{
+            appointmentId: "appt-deposit-pending", appointmentDate: IN_1_DAY, clientName: "João Silva",
+            artistName: "Ana Costa", appointmentStatus: "Confirmed", readiness: null,
+            deposit: { amount: 50, currency: "EUR", payment: null },
+          }],
+        }])),
       ),
     );
     renderPage();
-    await screen.findByText("Ana Costa");
+    await screen.findByText("Deposits not paid (next 7 days)");
     expect(within(screen.getByTestId("stat-deposits")).getByText("1")).toBeInTheDocument();
   });
 });

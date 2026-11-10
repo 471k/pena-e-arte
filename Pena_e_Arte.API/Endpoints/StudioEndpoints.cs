@@ -59,6 +59,10 @@ public static class StudioEndpoints
         group.MapGet("{id:guid}/hours", GetHours).RequireAuthorization("ClientAndAbove");
         group.MapPut("{id:guid}/hours", UpsertHours).RequireAuthorization("OwnerOnly");
 
+        // E05a (O02): where each setup area stands, and confirming the hours registration set.
+        group.MapGet("/me/setup-readiness", GetSetupReadiness).RequireAuthorization("OwnerOnly");
+        group.MapPost("/me/hours/confirm", ConfirmHours).RequireAuthorization("OwnerOnly");
+
         // Admin: list all studios + suspension controls
         group.MapGet("/", GetStudios).RequireAuthorization("AdminOnly");
         group.MapGet("{id:guid}", GetStudioById).RequireAuthorization("AdminOnly");
@@ -204,6 +208,18 @@ public static class StudioEndpoints
     {
         List<StudioHoursEntryResponse> result = await mediator.Send(new GetStudioHoursQuery(id), ct);
         return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetSetupReadiness(ISender mediator, CancellationToken ct)
+    {
+        SetupReadinessResponse result = await mediator.Send(new GetSetupReadinessQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ConfirmHours(ISender mediator, CancellationToken ct)
+    {
+        await mediator.Send(new ConfirmStudioHoursCommand(), ct);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> UpsertHours(

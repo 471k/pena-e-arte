@@ -137,18 +137,56 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
         ]),
       });
     });
-    await page.route("**/api/v1/payments*", async (route) => {
+    // E05a: the cash card is now the "Cash to confirm" group of GET /dashboard/exceptions (the
+    // dashboard no longer reads /payments), and the setup checklist reads its own endpoint. Both new
+    // surfaces are populated here so axe checks them: a seeded-hours checklist and two groups, one
+    // with more items than it shows (the disclosure button).
+    const soon = new Date(Date.now() + 86_400_000).toISOString();
+    const cashPayment = {
+      id: PAYMENT_ID, appointmentId: APPT_ID, clientName: "Ana Silva", amount: 50, currency: "EUR",
+      status: "CashPending", method: "Cash", paidAt: null, providerReferenceId: null, clientToken: null, cashNote: null,
+    };
+    const exceptionItem = (n: number) => ({
+      appointmentId: `${APPT_ID}-${n}`, appointmentDate: soon, clientName: `Client ${n}`, artistName: null,
+      appointmentStatus: "Pending", readiness: null, deposit: null,
+    });
+    await page.route("**/api/v1/dashboard/exceptions*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([
-          { id: PAYMENT_ID, clientName: "Ana Silva", amount: 50, currency: "EUR", status: "CashPending" },
-        ]),
+        body: JSON.stringify({
+          generatedAt: new Date().toISOString(), windowDays: 7, maxItemsPerGroup: 10,
+          groups: [
+            {
+              kind: "CashToConfirm", total: 1,
+              items: [{
+                appointmentId: APPT_ID, appointmentDate: soon, clientName: "Ana Silva", artistName: "Rafaela Costa",
+                appointmentStatus: "Confirmed", readiness: null,
+                deposit: { amount: 50, currency: "EUR", payment: cashPayment },
+              }],
+            },
+            { kind: "Unassigned", total: 5, items: [1, 2, 3, 4, 5].map(exceptionItem) },
+          ],
+        }),
+      });
+    });
+    await page.route("**/api/v1/studios/me/setup-readiness*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          areas: [
+            { area: "Artists", state: "Reviewed", reviewedAt: null },
+            { area: "DepositRules", state: "NotConfigured", reviewedAt: null },
+            { area: "Hours", state: "DefaultUnreviewed", reviewedAt: null },
+          ],
+        }),
       });
     });
 
     await loginAs(page, OWNER_TOKEN, "owner@tinta-alma.com", /\/dashboard/i);
-    await expect(page.getByText("Awaiting Cash")).toBeVisible();
+    await expect(page.getByText("Cash to confirm")).toBeVisible();
+    await expect(page.getByText("We've set opening hours for you. Check they're right.")).toBeVisible();
     await assertNoViolations(new AxeBuilder({ page }), page);
   });
 

@@ -294,6 +294,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 09 | Platform Branding Flag | `Studio.ShowPlatformBranding` (bool, default `true`) | None | Per-tenant |
 | 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints. `GetPublicStudioQuery`/`/s/{slug}` filters `IsActive && IsPublished`; `GetPublicArtistQuery`/`/artist/{slug}` stays `IsActive`-only (see "IsActive vs IsPublished"). | Platform-wide |
 | 11 | Artist Today view (E04a, A01 + A03) | Reads `Appointment`, `BookingIntake`, `AppointmentAttachment`, `ConsentForm`, `IntakeForm`, `Payment` (outcome fields only) and the `Service` requirement flags; no new entity, nothing stored | None. `GET /appointments?assignedToMe=true` (readiness summary per row) and `GET /appointments/{id}/preparation` (staff-worded items, `ArtistAndAbove`); frontend `features/today`, route `/today` | Per-tenant; the viewer's own assigned sessions only |
+| 12 | Owner home (E05a, O01 + O02) | Reads `Appointment`, `Payment` (deposit outcome fields; no splits), `Artist`, `StudioHours`, `DepositRule` and the DEC03 readiness facts; one new column, `Studio.HoursReviewedAt` (nullable: when the owner confirmed the opening hours) | None. `GET /dashboard/exceptions` (five decision groups with real counts, 10 SQL statements whatever the count), `GET /studios/me/setup-readiness` (NotConfigured / DefaultUnreviewed / Reviewed per area), `POST /studios/me/hours/confirm`; all OwnerOnly | Per-tenant |
 
 #### StudioPortfolioPage (`/s/{slug}`)
 
@@ -6519,3 +6520,66 @@ native options are unchanged. Three tests in `picker-keyboard.test.tsx` (closed-
 `PhoneInput`, closed-trigger for the country select); they fail without the attribute. Help (`helpContent.ts`: guest
 booking, new client, studio settings) and the manual (guest booking, studio settings) now say that typing a
 country's first letters jumps to it.
+
+## Owner home organised around decisions; setup readiness by review, not rows (E05a, O01 + O02) — 2026-11-10
+
+**O02 — mechanism: an explicit confirmation, not the timestamp derivation.** The prompt preferred deriving
+"reviewed" from a seeded hours row having `UpdatedAt > CreatedAt`, if the seeder set the two equal. It does not:
+`TenantEntity` initialises `CreatedAt` and `UpdatedAt` with two separate `DateTime.UtcNow` reads, and
+registration's rows (`RegisterStudioHandler`, `RegisterSoloArtistHandler`, `DataSeeder`) never set either. Measured
+on the local seed data (7 Nov): one of studio 1's six never-touched hours rows has `UpdatedAt` 1 µs after
+`CreatedAt`. A strict comparison would call that studio reviewed. So `Studio.HoursReviewedAt` (nullable,
+additive migration `AddStudioHoursReviewedAt`) records it: set by every save of the hours form
+(`UpsertStudioHoursHandler`, changed or not) and by `POST /studios/me/hours/confirm` ("They're right"), which keeps
+the first confirmation and refuses when the studio has no hours at all, so a missing area can't be confirmed away.
+The migration backfills it for studios whose owner already saved hours: a row updated more than a minute after it
+was created, or created more than a minute after the studio's first hours row (the form adding a day); the margin
+absorbs the µs drift. Pinned by `StudioHoursReviewedMigrationTests` on real MySQL.
+- Only hours can be "set for you, not yet reviewed": registration seeds hours but never an artist or a deposit
+  rule, so those two stay existence-based (an artist or rule existing means the owner made it). The derivation is
+  `Domain/Services/SetupReadiness.cs`; `GET /studios/me/setup-readiness` reads the facts in one statement.
+- No product question arose: "They're right" confirms a seeded default; it cannot silence an area that doesn't exist.
+
+**O01 — `GET /dashboard/exceptions` (OwnerOnly), composition of existing sources.** Five groups, each the
+server's real count plus at most 10 soonest items: requests with no artist; Pending with an artist (never both:
+`ConfirmAppointment` refuses an unassigned request); every `CashPending` deposit, any date; deposits due in the
+next 7 days that `AppointmentReadiness.IsDepositSecured` says aren't secured and aren't promised in cash; sessions
+in the next 7 days with a DEC03 item outstanding (`AppointmentReadinessReader` + `AppointmentReadiness.Derive`, the
+staff list's own derivation). The frontend words deposits with `describeDeposit`, and says "No payment started
+yet" when no payment row exists (a fact, not a status).
+- **Ordering rule (stated, not a commercial judgement):** the group whose soonest appointment comes first leads, so
+  anything overdue is first; ties keep the fixed order Unassigned, AwaitingConfirmation, CashToConfirm,
+  UnpaidDeposit, Preparation. Within a group, soonest first. Phi can change either.
+- **Query count, measured:** 10 SQL statements whatever the number of exceptions (count + items for three groups;
+  the 7-day window's rows; one readiness read; the shown unpaid deposits' payments; the studio currency).
+  `OwnerDashboardIntegrationTests` pins 10 and asserts 1-per-group and 12-per-group cost the same.
+- **The 50-payment card was worse than "implies completeness":** `GetPaymentsQuery` orders oldest first, so
+  `useGetPaymentsQuery({ pageSize: 50 })` showed the cash promises among a studio's **50 oldest** payments; past
+  50 payments, new cash promises never appeared. "Awaiting Cash" is now the CashToConfirm group. The dashboard no
+  longer reads `/payments` at all (asserted).
+- **"Deposits Due"** now shows the UnpaidDeposit total instead of filtering the week's appointments for
+  `DepositStatus.Pending` in the browser, so the stat and the group can't disagree. That changes what it counts:
+  cash promises are no longer included (they're in CashToConfirm), and nothing-due deposits never were meant to be.
+- Kept: the Today/This Week stat cards and Today's list (real counts, from the unpaged appointments read),
+  moved below "Needs you". No revenue or earnings tile (A07).
+- Disclosure: three visible per group, the rest behind a button with `aria-expanded`/`aria-controls` and a `hidden`
+  list (E04c's pattern); when the server sent fewer than its total, the group says how many more and where.
+- Known overlap, deliberate: a session whose service requires a deposit and whose deposit is unpaid appears in both
+  UnpaidDeposit and Preparation (the deposit is one of its preparation items). Past-dated Pending/unassigned
+  requests are left to the schedule and Today; cash is the one group with no date limit.
+
+**Benchmark (rule 6), searched 10 Nov, not repeated from the prompt.** Documented: Square Appointments lists pending
+booking requests on the Appointments Overview page under Notifications, with Accept/Decline there
+(`squareup.com/help/us/en/article/8444-accept-or-decline-appointments`); Wix Bookings shows Pending Booking Requests
+in the dashboard's Activity panel (`support.wix.com/en/article/wix-bookings-requiring-approval-for-appointment-bookings`).
+Boulevard's help centre was summarised as having an "Upcoming Events" snapshot with action items and past-due items,
+but I couldn't open the page, so treat that as unverified. For Fresha, Vagaro, Mangomint and GlossGenius I found
+no documentation of a home-screen exceptions panel or of a setup checklist that tells seeded defaults from
+reviewed ones. So "pending requests on the owner's overview" is documented precedent; the rest of the layout
+(unpaid deposits, preparation, the three-state checklist) is this project's own call, not a copied standard.
+
+Tests: backend unit `SetupReadinessTests` (13), `GetOwnerExceptionsHandlerTests` (9); integration
+`OwnerDashboardIntegrationTests` (3), `StudioHoursReviewedMigrationTests` (1); frontend `SetupChecklist` (13, one
+rewritten: "marks 'Set your hours' done once hours rows exist" asserted the O02 bug and now asserts the opposite),
+`OwnerExceptions` (14), `DashboardPage` cash tests re-pointed at the exceptions read (same assertions, plus "never
+reads /payments").

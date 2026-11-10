@@ -171,6 +171,20 @@ export interface UpsertStudioHoursRequest {
   entries: StudioHoursEntry[];
 }
 
+/** E05a (O02): where one setup area stands. Only Hours can be "DefaultUnreviewed" (registration seeds them). */
+export type SetupAreaKey = "Artists" | "DepositRules" | "Hours";
+export type SetupAreaState = "NotConfigured" | "DefaultUnreviewed" | "Reviewed";
+
+export interface SetupAreaResponse {
+  area:       SetupAreaKey;
+  state:      SetupAreaState;
+  reviewedAt: string | null;
+}
+
+export interface SetupReadinessResponse {
+  areas: SetupAreaResponse[];
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
@@ -339,10 +353,22 @@ export const studiosApi = createApi({
       }),
       invalidatesTags: ["StudioHours"],
     }),
+    // E05a (O02). Tagged StudioHours so saving or confirming hours refreshes it; artists and deposit
+    // rules live in other slices, so the checklist also refetches whenever the dashboard mounts.
+    getSetupReadiness: builder.query<SetupReadinessResponse, void>({
+      query: () => "studios/me/setup-readiness",
+      providesTags: ["StudioHours"],
+    }),
+    confirmStudioHours: builder.mutation<void, void>({
+      query: () => ({ url: "studios/me/hours/confirm", method: "POST" }),
+      invalidatesTags: ["StudioHours"],
+    }),
   }),
 });
 
 export const {
+  useGetSetupReadinessQuery,
+  useConfirmStudioHoursMutation,
   useRegisterStudioMutation,
   useGetStudioMapQuery,
   useGetMyStudioQuery,

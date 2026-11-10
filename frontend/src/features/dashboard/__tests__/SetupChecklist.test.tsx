@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -8,41 +8,51 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
-import { artistsApi } from "@/features/artists/artistsApi";
-import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
-import { studiosApi, type StudioHoursEntry } from "@/features/studios/studiosApi";
+import {
+  studiosApi,
+  type SetupAreaState,
+  type SetupReadinessResponse,
+} from "@/features/studios/studiosApi";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
-import type { ArtistResponse } from "@/features/artists/artistsApi";
 
-const ARTIST: ArtistResponse = {
-  id: "artist-0001", studioId: "stud-0001", firstName: "Ana", lastName: "Costa",
-  email: "ana@ink.test", specializations: [], hourlyRate: null, isActive: true,
-  avatarUrl: null, portfolioImages: [], slug: null, userId: null,
-  createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-01T00:00:00Z",
-};
+// E05a (O02): the checklist reads GET /studios/me/setup-readiness, which reports each area as
+// NotConfigured / DefaultUnreviewed / Reviewed. It no longer counts artist, deposit-rule or hours rows.
+function readiness(artists: SetupAreaState, depositRules: SetupAreaState, hours: SetupAreaState): SetupReadinessResponse {
+  return {
+    areas: [
+      { area: "Artists",      state: artists,      reviewedAt: null },
+      { area: "DepositRules", state: depositRules, reviewedAt: null },
+      { area: "Hours",        state: hours,        reviewedAt: hours === "Reviewed" ? "2026-11-07T12:00:00Z" : null },
+    ],
+  };
+}
 
-let artistsResponse: ArtistResponse[] = [];
-let depositRulesResponse: unknown[] = [];
-let studioHoursResponse: StudioHoursEntry[] = [];
+let readinessResponse: SetupReadinessResponse = readiness("NotConfigured", "NotConfigured", "NotConfigured");
+let readinessStatus = 200;
+let confirmCalls = 0;
 
 const server = setupServer(
-  http.get("http://localhost/api/v1/artists", () => HttpResponse.json(artistsResponse)),
-  http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json(depositRulesResponse)),
-  http.get("http://localhost/api/v1/studios/me", () =>
-    HttpResponse.json({ id: "stud-0001", timezone: "Europe/Tirane" }),
+  http.get("http://localhost/api/v1/studios/me/setup-readiness", () =>
+    readinessStatus === 200
+      ? HttpResponse.json(readinessResponse)
+      : HttpResponse.json({ title: "boom" }, { status: readinessStatus }),
   ),
-  http.get("http://localhost/api/v1/studios/stud-0001/hours", () =>
-    HttpResponse.json(studioHoursResponse),
-  ),
+  http.post("http://localhost/api/v1/studios/me/hours/confirm", () => {
+    confirmCalls += 1;
+    readinessResponse = {
+      areas: readinessResponse.areas.map((a) => (a.area === "Hours" ? { ...a, state: "Reviewed" } : a)),
+    };
+    return new HttpResponse(null, { status: 204 });
+  }),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   server.resetHandlers();
   cleanup();
-  artistsResponse = [];
-  depositRulesResponse = [];
-  studioHoursResponse = [];
+  readinessResponse = readiness("NotConfigured", "NotConfigured", "NotConfigured");
+  readinessStatus = 200;
+  confirmCalls = 0;
 });
 afterAll(() => server.close());
 
@@ -50,11 +60,9 @@ function renderChecklist() {
   const store = configureStore({
     reducer: {
       auth: authReducer,
-      [artistsApi.reducerPath]:      artistsApi.reducer,
-      [depositRulesApi.reducerPath]: depositRulesApi.reducer,
-      [studiosApi.reducerPath]:      studiosApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware, depositRulesApi.middleware, studiosApi.middleware),
+    middleware: (gd) => gd().concat(studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@ink.test" }, token: "fake-token", tenantId: "stud-0001", role: "owner", pendingReferralCode: null, impersonation: null } as any,
@@ -84,24 +92,84 @@ describe("SetupChecklist", () => {
     expect(screen.getByText("0/3 complete")).toBeInTheDocument();
   });
 
-  it("marks 'Add your first artist' done once an artist exists", async () => {
-    artistsResponse = [ARTIST];
+  it("marks 'Add your first artist' done once the server reports artists reviewed", async () => {
+    readinessResponse = readiness("Reviewed", "NotConfigured", "NotConfigured");
     renderChecklist();
     expect(await screen.findByText("1/3 complete")).toBeInTheDocument();
   });
 
-  it("marks 'Set your hours' done once hours rows exist", async () => {
-    studioHoursResponse = [{ dayOfWeek: 1, startTime: "09:00:00", endTime: "18:00:00", isOpen: true }];
+  // Replaces "marks 'Set your hours' done once hours rows exist", which asserted the O02 bug:
+  // registration seeds hours rows, so rows existing proves nothing about the owner reviewing them.
+  it("does NOT mark hours done for registration's seeded hours: it says they were set for the owner", async () => {
+    readinessResponse = readiness("NotConfigured", "NotConfigured", "DefaultUnreviewed");
     renderChecklist();
-    expect(await screen.findByText("1/3 complete")).toBeInTheDocument();
+    expect(await screen.findByText("0/3 complete")).toBeInTheDocument();
+    const hours = screen.getByTestId("setup-area-Hours");
+    expect(hours).toHaveAttribute("data-state", "DefaultUnreviewed");
+    expect(within(hours).getByText("We've set opening hours for you. Check they're right.")).toBeInTheDocument();
+    expect(within(hours).getByText(/set for you, not yet reviewed/)).toBeInTheDocument();
+    expect(within(hours).getByText("Set your hours")).not.toHaveClass("line-through");
+  });
+
+  it("never claims setup is complete while the hours are only the seeded default", async () => {
+    readinessResponse = readiness("Reviewed", "Reviewed", "DefaultUnreviewed");
+    renderChecklist();
+    expect(await screen.findByTestId("setup-checklist")).toBeInTheDocument();
+    expect(screen.getByText("2/3 complete")).toBeInTheDocument();
+    expect(screen.queryByText("3/3 complete")).not.toBeInTheDocument();
+  });
+
+  it("shows each of the three states distinctly", async () => {
+    readinessResponse = readiness("Reviewed", "NotConfigured", "DefaultUnreviewed");
+    renderChecklist();
+    await screen.findByTestId("setup-checklist");
+    expect(within(screen.getByTestId("setup-area-Artists")).getByText(/\(done\)/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("setup-area-DepositRules")).getByText(/not set up yet/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("setup-area-Hours")).getByText(/set for you, not yet reviewed/)).toBeInTheDocument();
+    expect(within(screen.getByTestId("setup-area-Artists")).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("'They're right' confirms the seeded hours, and the card goes once everything is reviewed", async () => {
+    const user = userEvent.setup();
+    readinessResponse = readiness("Reviewed", "Reviewed", "DefaultUnreviewed");
+    renderChecklist();
+    await user.click(await screen.findByRole("button", { name: "They're right" }));
+    expect(confirmCalls).toBe(1);
+    await waitFor(() => expect(screen.queryByTestId("setup-checklist")).not.toBeInTheDocument());
+  });
+
+  it("'Check hours' on seeded hours goes to Studio Settings", async () => {
+    const user = userEvent.setup();
+    readinessResponse = readiness("Reviewed", "Reviewed", "DefaultUnreviewed");
+    renderChecklist();
+    await user.click(await screen.findByRole("button", { name: "Check hours" }));
+    expect(screen.getByTestId("studio-settings-page")).toBeInTheDocument();
+  });
+
+  it("offers no 'They're right' for hours that don't exist: a missing area can't be confirmed away", async () => {
+    readinessResponse = readiness("Reviewed", "Reviewed", "NotConfigured");
+    renderChecklist();
+    expect(await screen.findByRole("button", { name: "Set hours" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "They're right" })).not.toBeInTheDocument();
   });
 
   it("renders null (no card) once every step is complete", async () => {
-    artistsResponse = [ARTIST];
-    depositRulesResponse = [{ id: "rule-1" }];
-    studioHoursResponse = [{ dayOfWeek: 1, startTime: "09:00:00", endTime: "18:00:00", isOpen: true }];
+    readinessResponse = readiness("Reviewed", "Reviewed", "Reviewed");
     renderChecklist();
     await waitFor(() => expect(screen.queryByTestId("setup-checklist")).not.toBeInTheDocument());
+  });
+
+  it("says it couldn't check, rather than hiding as if complete, when the read fails", async () => {
+    readinessStatus = 500;
+    renderChecklist();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't check your studio setup just now.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("treats a response without an areas list as a failed read, never as set up", async () => {
+    server.use(http.get("http://localhost/api/v1/studios/me/setup-readiness", () => HttpResponse.json([])));
+    renderChecklist();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't check your studio setup just now.");
   });
 
   it("'Set rule' button navigates to /deposit-rules/new", async () => {
@@ -122,5 +190,12 @@ describe("SetupChecklist", () => {
     await user.click(screen.getByRole("button", { name: "Set hours" }));
 
     expect(screen.getByTestId("studio-settings-page")).toBeInTheDocument();
+  });
+
+  it("'Add artist' button navigates to /artists/new", async () => {
+    const user = userEvent.setup();
+    renderChecklist();
+    await user.click(await screen.findByRole("button", { name: "Add artist" }));
+    expect(screen.getByTestId("new-artist-page")).toBeInTheDocument();
   });
 });
