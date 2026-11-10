@@ -11,18 +11,15 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
 import { cn } from "@/shared/utils/cn";
 import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
-import { useGetAppointmentsQuery } from "@/features/appointments/appointmentsApi";
-import { DepositStatus } from "@/features/appointments/appointment.types";
+import { useGetAppointmentsQuery, useGetOwnerExceptionsQuery } from "@/features/appointments/appointmentsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
-import { useGetPaymentsQuery } from "@/features/payments/paymentsApi";
-import { CashDepositConfirmButton } from "@/features/payments/components/CashDepositConfirmButton";
-import { PaymentStatus } from "@/features/payments/payment.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { SetupChecklist } from "./SetupChecklist";
-import { Money } from "@/shared/components/Money";
+import { OwnerExceptions } from "./OwnerExceptions";
+import { OwnerExceptionKind } from "../dashboard.types";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -244,48 +241,6 @@ function TodaySection({
   );
 }
 
-// ── cash-pending section ──────────────────────────────────────────────────
-
-function CashPendingSection() {
-  const { data: payments = [] } = useGetPaymentsQuery({ pageSize: 50 });
-
-  const pending = payments.filter((p) => p.status === PaymentStatus.CashPending);
-  if (pending.length === 0) return null;
-
-  return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-          <Banknote className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Awaiting Cash</span>
-          <span className="text-xs text-muted-foreground">{pending.length}</span>
-        </div>
-        <div className="px-4 pb-4 space-y-0">
-          {pending.map((p, i) => (
-            <div key={p.id}>
-              {i > 0 && <Separator />}
-              <div className="flex items-center justify-between py-2.5 gap-4">
-                <div className="text-sm">
-                  <span className="font-medium">{p.clientName}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    <Money amount={p.amount} currency={p.currency} frozen={p} />
-                  </span>
-                </div>
-                <CashDepositConfirmButton
-                  paymentId={p.id}
-                  clientName={p.clientName}
-                  amount={p.amount}
-                  currency={p.currency}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 // ── stat card ─────────────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -342,10 +297,12 @@ export function DashboardPage() {
   });
   const { data: artists = [] } = useGetArtistsQuery(undefined);
 
-  const pendingDeposits = useMemo(
-    () => weekAppts?.filter((a) => a.depositStatus === DepositStatus.Pending).length ?? 0,
-    [weekAppts],
-  );
+  // "Deposits Due" is the server's count of unpaid deposits in the next 7 days (E05a), the same
+  // number as the "Deposits not paid" group below, rather than a second derivation of deposit state
+  // here that could disagree with it.
+  const { data: exceptions, isLoading: loadingExceptions } = useGetOwnerExceptionsQuery();
+  const depositsDue =
+    exceptions?.groups.find((g) => g.kind === OwnerExceptionKind.UnpaidDeposit)?.total ?? 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -366,6 +323,9 @@ export function DashboardPage() {
         {sub && <SubscriptionBanner sub={sub} />}
         <SetupChecklist />
 
+        {/* E05a (O01): what needs a decision comes first; the counts and today's list follow. */}
+        <OwnerExceptions />
+
         {/* KPI stat cards */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard
@@ -384,9 +344,9 @@ export function DashboardPage() {
           />
           <StatCard
             label="Deposits Due"
-            value={pendingDeposits}
+            value={depositsDue}
             icon={<Banknote className="h-3.5 w-3.5" />}
-            isLoading={loadingWeekAppts}
+            isLoading={loadingExceptions}
             testId="stat-deposits"
           />
         </div>
@@ -397,8 +357,6 @@ export function DashboardPage() {
           isLoading={loadingAppts}
           isError={apptError}
         />
-
-        <CashPendingSection />
       </main>
     </div>
   );
