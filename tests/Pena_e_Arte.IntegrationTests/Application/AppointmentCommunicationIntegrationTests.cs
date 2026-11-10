@@ -62,7 +62,9 @@ public class AppointmentCommunicationIntegrationTests(DatabaseFixture fixture)
         {
             await new RescheduleAppointmentHandler(db, tenant, owner, Substitute.For<IRealtimeNotifier>(), Substitute.For<ISender>(), Substitute.For<IJobScheduler>())
                 .Handle(new RescheduleAppointmentCommand(s.AppointmentId,
-                    new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(20), 60, null)), default);
+                    // A fixed 10:00 UTC: "now + 20 days" failed whenever CI ran after ~22:00 UTC, because the
+                    // 60-minute session then ran past the studio's 23:59 closing in Europe/Tirane.
+                    new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(20).AddHours(10), 60, null)), default);
             db.AuditLogEntries.Add(AuditLogEntry.Create(Guid.NewGuid(), "owner", AuditActions.AppointmentRescheduled,
                 AuditTargetTypes.Appointment, s.AppointmentId, s.StudioId, "{}"));
             await db.SaveChangesAsync();
