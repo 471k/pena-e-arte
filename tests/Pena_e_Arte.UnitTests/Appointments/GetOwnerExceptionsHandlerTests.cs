@@ -231,8 +231,14 @@ public class GetOwnerExceptionsHandlerTests
     {
         _db.Payments.Add(new Payment
         {
-            StudioId = _studioId, AppointmentId = appointmentId, ClientId = _clientId,
-            Amount = 50m, Status = status, Method = method, Currency = "EUR", ClientToken = "secret-token",
+            StudioId = _studioId,
+            AppointmentId = appointmentId,
+            ClientId = _clientId,
+            Amount = 50m,
+            Status = status,
+            Method = method,
+            Currency = "EUR",
+            ClientToken = "secret-token",
         });
         await _db.SaveChangesAsync();
     }
@@ -241,8 +247,12 @@ public class GetOwnerExceptionsHandlerTests
     {
         Service s = new()
         {
-            StudioId = _studioId, Name = "Session", DurationMinutes = 120, IsActive = true,
-            RequiresConsentForm = consent, RequiresIntakeForm = intake,
+            StudioId = _studioId,
+            Name = "Session",
+            DurationMinutes = 120,
+            IsActive = true,
+            RequiresConsentForm = consent,
+            RequiresIntakeForm = intake,
         };
         _db.Services.Add(s);
         await _db.SaveChangesAsync();

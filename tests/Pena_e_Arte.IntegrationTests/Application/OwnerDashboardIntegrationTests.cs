@@ -125,9 +125,16 @@ public class OwnerDashboardIntegrationTests(DatabaseFixture fixture)
             DateTime start = DateTime.UtcNow.AddDays(daysOut).AddMinutes(++minute * 3);
             Appointment a = new()
             {
-                StudioId = studioId, ClientId = client.Id, ArtistId = artistId, ServiceId = serviceId,
-                Date = start, EndDate = start.AddHours(2), DurationMinutes = 120,
-                Status = status, DepositStatus = deposit, DepositAmount = 50m,
+                StudioId = studioId,
+                ClientId = client.Id,
+                ArtistId = artistId,
+                ServiceId = serviceId,
+                Date = start,
+                EndDate = start.AddHours(2),
+                DurationMinutes = 120,
+                Status = status,
+                DepositStatus = deposit,
+                DepositAmount = 50m,
             };
             ctx.Appointments.Add(a);
             ids.Add(a.Id);
@@ -141,8 +148,13 @@ public class OwnerDashboardIntegrationTests(DatabaseFixture fixture)
             Appointment cash = Add(20, artist.Id, AppointmentStatus.Confirmed, DepositStatus.Pending); // CashToConfirm
             ctx.Payments.Add(new Payment
             {
-                StudioId = studioId, AppointmentId = cash.Id, ClientId = client.Id, Amount = 50m,
-                Status = PaymentStatus.CashPending, Method = ClientPaymentMethod.Cash, Currency = "EUR",
+                StudioId = studioId,
+                AppointmentId = cash.Id,
+                ClientId = client.Id,
+                Amount = 50m,
+                Status = PaymentStatus.CashPending,
+                Method = ClientPaymentMethod.Cash,
+                Currency = "EUR",
             });
             Add(2, artist.Id, AppointmentStatus.Confirmed, DepositStatus.Pending);        // UnpaidDeposit
             Add(3, artist.Id, AppointmentStatus.Confirmed, DepositStatus.Paid, needsConsent.Id); // Preparation
