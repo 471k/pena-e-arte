@@ -18,6 +18,12 @@ internal static class PayModelRules
                && Enum.TryParse(value, ignoreCase: false, out arrangement);
     }
 
+    /// <summary>Only Commission reads a commission rate; under any other arrangement a stored rate is inert.</summary>
+    public static bool UsesCommissionRate(ArtistPayArrangement arrangement) => arrangement == ArtistPayArrangement.Commission;
+
+    /// <summary>Only FlatFeePerSession reads a fee; under any other arrangement a stored fee is inert.</summary>
+    public static bool UsesFlatFee(ArtistPayArrangement arrangement) => arrangement == ArtistPayArrangement.FlatFeePerSession;
+
     /// <summary>0–100 with at most 2 decimals, the precision of the decimal(5,2) column.</summary>
     public static IRuleBuilderOptions<T, decimal?> ValidCommissionRate<T>(this IRuleBuilder<T, decimal?> rule) =>
         rule.Must(r => r is null || (r.Value is >= 0m and <= 100m && decimal.Round(r.Value, 2) == r.Value))

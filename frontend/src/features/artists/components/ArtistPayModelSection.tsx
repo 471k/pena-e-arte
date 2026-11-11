@@ -8,6 +8,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { useEditBuffer } from "@/shared/hooks/useEditBuffer";
 import { useGetStudioPayModelQuery } from "@/features/studios/studiosApi";
 import {
   ARRANGEMENT_LABEL,
@@ -26,7 +27,8 @@ import { useGetArtistPayModelQuery, useUpdateArtistPayModelMutation, type Artist
  * owner can give one artist a different rate without changing their arrangement. Collapsed by default
  * with a hand-rolled `hidden` disclosure (E04c's pattern), so the text stays in the page for find-in-page.
  * Saved through its own owner-only endpoint, never through the artist profile form, which the artist
- * can submit themselves.
+ * can submit themselves. Only the value the effective arrangement uses is sent; the other goes as null so
+ * no hidden rate or fee is stored under an arrangement that ignores it.
  */
 
 const STUDIO_DEFAULT = "";
@@ -47,17 +49,13 @@ function toForm(data: ArtistPayModel): FormState {
 
 export function ArtistPayModelSection({ artistId }: { artistId: string }) {
   const [open, setOpen] = useState(false);
-  const { data, isLoading, isError, refetch, isFetching } = useGetArtistPayModelQuery(artistId, { skip: !open });
+  const { currentData, isLoading, isError, refetch, isFetching } = useGetArtistPayModelQuery(artistId, { skip: !open });
   const { data: studioTerms } = useGetStudioPayModelQuery(undefined, { skip: !open });
   const [save, { isLoading: saving }] = useUpdateArtistPayModelMutation();
-  const [form, setForm] = useState<FormState | null>(null);
-  const [synced, setSynced] = useState<ArtistPayModel | undefined>(undefined);
+  // Filled once per artist (and again after collapsing), never on a refetch, so typing survives one.
+  const [form, setForm, resetForm] = useEditBuffer<ArtistPayModel, FormState>(
+    currentData, currentData ? artistId : undefined, toForm);
   const ids = { region: useId(), arrangement: useId(), rate: useId(), fee: useId() };
-
-  if (data !== synced) {
-    setSynced(data);
-    if (data) setForm(toForm(data));
-  }
 
   const rate = parseRate(form?.rate ?? "");
   const fee = parseFee(form?.fee ?? "");
@@ -66,18 +64,23 @@ export function ArtistPayModelSection({ artistId }: { artistId: string }) {
   const studioDefaultLabel = studioArrangement ? `Studio's terms (${ARRANGEMENT_LABEL[studioArrangement]})` : "Studio's terms";
   const studioRate = studioTerms?.commissionRate ?? null;
   const studioFee = studioTerms?.flatFeePerSession ?? null;
+  // Which value the effective arrangement reads. While the studio's terms haven't loaded, `effective` is
+  // unknown and both fields are hidden: send them as loaded and let the server drop the unused one.
+  const usesRate = effective === null || effective === "Commission";
+  const usesFee = effective === null || effective === "FlatFeePerSession";
 
   async function onSave() {
-    if (!form || rate.error || fee.error) return;
+    if (!form || (usesRate && rate.error) || (usesFee && fee.error)) return;
     try {
-      await save({
+      const saved = await save({
         artistId,
         body: {
           arrangement:       form.arrangement === STUDIO_DEFAULT ? null : form.arrangement,
-          commissionRate:    rate.value,
-          flatFeePerSession: fee.value,
+          commissionRate:    usesRate ? rate.value : null,
+          flatFeePerSession: usesFee ? fee.value : null,
         },
       }).unwrap();
+      resetForm(saved);
       toast.success("Pay terms saved.");
     } catch {
       toast.error("Couldn't save this artist's pay terms. Please try again.");
@@ -116,7 +119,7 @@ export function ArtistPayModelSection({ artistId }: { artistId: string }) {
             </div>
           )}
 
-          {data && form && (
+          {currentData && form && (
             <>
               <div className="space-y-1.5">
                 <Label htmlFor={ids.arrangement}>Arrangement</Label>

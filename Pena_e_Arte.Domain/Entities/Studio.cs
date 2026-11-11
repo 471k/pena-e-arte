@@ -98,8 +98,8 @@ public class Studio
     /// Null means not set.</summary>
     public decimal? DefaultFlatFeePerSession { get; set; }
 
-    /// <summary>When the owner last confirmed how artists get paid (A07a): by saving the pay-model
-    /// form, or by saying the default is right. Null means nobody has looked at it, so the setup
+    /// <summary>When the owner last reviewed how artists get paid (A07a), by saving the pay-model
+    /// form. Null means nobody has looked at it, so the setup
     /// checklist shows it as "set for you, not yet reviewed". Same semantics as
     /// <see cref="HoursReviewedAt"/>.</summary>
     public DateTime? PayModelReviewedAt { get; set; }

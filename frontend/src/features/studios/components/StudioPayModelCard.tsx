@@ -7,6 +7,7 @@ import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { cn } from "@/shared/utils/cn";
+import { useEditBuffer } from "@/shared/hooks/useEditBuffer";
 import { useGetStudioPayModelQuery, useUpdateStudioPayModelMutation, type StudioPayModel } from "../studiosApi";
 import {
   ARRANGEMENT_HINT,
@@ -24,7 +25,8 @@ import {
  * How the studio's artists are paid unless an artist has their own terms (DEC10, A07a). Every studio
  * starts on commission with no rate, deliberately: there is no standard percentage, so a seeded one would
  * read as chosen when nobody chose it. Until the owner saves, the setup checklist shows this as "set for
- * you, not yet reviewed" and commission artists see no share on My Earnings.
+ * you, not yet reviewed" and commission artists see no share on My Earnings. Only the value the chosen
+ * arrangement uses is sent; the other goes as null, so no hidden rate or fee is stored.
  */
 
 interface FormState {
@@ -60,33 +62,33 @@ function ReviewState({ reviewedAt }: { reviewedAt: string | null }) {
 }
 
 export function StudioPayModelCard() {
-  const { data, isLoading, isError, refetch, isFetching } = useGetStudioPayModelQuery();
+  const { currentData: data, isLoading, isError, refetch, isFetching } = useGetStudioPayModelQuery();
   const [save, { isLoading: saving }] = useUpdateStudioPayModelMutation();
-  const [form, setForm] = useState<FormState | null>(null);
-  const [synced, setSynced] = useState<StudioPayModel | undefined>(undefined);
+  // Filled on first load only, never on a refetch, so typing survives one (A07a cleanup, finding 2).
+  const [form, setForm, resetForm] = useEditBuffer<StudioPayModel, FormState>(data, data ? "studio" : undefined, toForm);
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const ids = { arrangement: useId(), rate: useId(), fee: useId(), how: useId() };
-
-  // Sync the form from freshly fetched data during render (StudioHoursCard's pattern, no effect).
-  if (data !== synced) {
-    setSynced(data);
-    if (data) setForm(toForm(data));
-  }
 
   const rate = parseRate(form?.rate ?? "");
   const fee = parseFee(form?.fee ?? "");
   const needsRate = form?.arrangement === ArtistPayArrangement.Commission;
   const needsFee = form?.arrangement === ArtistPayArrangement.FlatFeePerSession;
-  const rateError = rate.error ?? (submitted && needsRate && rate.value === null ? "Set the commission rate." : null);
-  const feeError = fee.error ?? (submitted && needsFee && fee.value === null ? "Set the fee per session." : null);
+  // A hidden field's text never blocks a save: it isn't sent.
+  const rateError = needsRate ? rate.error ?? (submitted && rate.value === null ? "Set the commission rate." : null) : null;
+  const feeError = needsFee ? fee.error ?? (submitted && fee.value === null ? "Set the fee per session." : null) : null;
 
   async function onSave() {
     if (!form) return;
     setSubmitted(true);
-    if (rate.error || fee.error || (needsRate && rate.value === null) || (needsFee && fee.value === null)) return;
+    if ((needsRate && (rate.error || rate.value === null)) || (needsFee && (fee.error || fee.value === null))) return;
     try {
-      await save({ arrangement: form.arrangement, commissionRate: rate.value, flatFeePerSession: fee.value }).unwrap();
+      const saved = await save({
+        arrangement:       form.arrangement,
+        commissionRate:    needsRate ? rate.value : null,
+        flatFeePerSession: needsFee ? fee.value : null,
+      }).unwrap();
+      resetForm(saved);
       setSubmitted(false);
       toast.success("Artist pay saved.");
     } catch {
