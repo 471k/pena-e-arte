@@ -20,13 +20,33 @@ import {
 
 /**
  * "Needs you" (E05a, O01): the owner's home leads with what needs a decision, from GET
- * /dashboard/exceptions. Every count is the server's real count. Groups arrive in the server's order
- * (soonest appointment first, so anything overdue leads) and only when they have something in them;
- * nothing at all is the good state and says so.
+ * /dashboard/exceptions. Every count is the server's real count. Groups arrive in the server's fixed
+ * order by consequence (cash to confirm last) and only when they have something in them; nothing at
+ * all is the good state and says so. Cash isn't hidden by sitting last: each promise on a past session
+ * says how long ago the session was, and promises older than a week are marked.
  */
 
 /** How many items each group shows before the rest go behind "Show more". */
 export const VISIBLE_PER_GROUP = 3;
+
+/** A cash promise still unconfirmed this many days after its session is marked as aged. */
+export const CASH_PROMISE_AGED_DAYS = 7;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whole days since the session, measured against the server's clock (generatedAt), or null when the
+ * session hasn't happened yet: a promise for a future session isn't outstanding, it's just early.
+ */
+function daysSinceSession(appointmentDate: string, generatedAt: string): number | null {
+  const elapsed = new Date(generatedAt).getTime() - new Date(appointmentDate).getTime();
+  return elapsed < 0 ? null : Math.floor(elapsed / DAY_MS);
+}
+
+function describeAge(days: number): string {
+  if (days === 0) return "Session was less than a day ago";
+  return `Session was ${days} ${days === 1 ? "day" : "days"} ago`;
+}
 
 interface GroupCopy {
   title:    (windowDays: number) => string;
@@ -65,7 +85,7 @@ function formatWhen(iso: string, timeZone: string | undefined): string {
 }
 
 /** The line under the client's name that says what the decision is about. */
-function Detail({ kind, item }: { kind: OwnerExceptionKind; item: OwnerExceptionItem }) {
+function Detail({ kind, item, generatedAt }: { kind: OwnerExceptionKind; item: OwnerExceptionItem; generatedAt: string }) {
   if (kind === OwnerExceptionKind.Preparation && item.readiness) {
     return (
       <span className="text-warning-text">
@@ -80,10 +100,25 @@ function Detail({ kind, item }: { kind: OwnerExceptionKind; item: OwnerException
         Deposit <Money amount={d.amount} currency={d.currency} frozen={d.payment} />
         {" · "}
         {d.payment ? describeDeposit(d.payment).ownerDetail : "No payment started yet"}
+        {kind === OwnerExceptionKind.CashToConfirm && <PromiseAge item={item} generatedAt={generatedAt} />}
       </span>
     );
   }
   return <span>{item.artistName ?? "No artist assigned"}</span>;
+}
+
+function PromiseAge({ item, generatedAt }: { item: OwnerExceptionItem; generatedAt: string }) {
+  const days = daysSinceSession(item.appointmentDate, generatedAt);
+  if (days === null) return null;
+  const aged = days >= CASH_PROMISE_AGED_DAYS;
+  return (
+    <>
+      {" · "}
+      <span className={cn(aged && "text-warning-text font-medium")} data-testid="cash-promise-age" data-aged={aged}>
+        {describeAge(days)}
+      </span>
+    </>
+  );
 }
 
 function Action({ kind, item }: { kind: OwnerExceptionKind; item: OwnerExceptionItem }) {
@@ -112,7 +147,14 @@ function Action({ kind, item }: { kind: OwnerExceptionKind; item: OwnerException
   );
 }
 
-function ItemRow({ kind, item, timeZone }: { kind: OwnerExceptionKind; item: OwnerExceptionItem; timeZone: string | undefined }) {
+interface ItemRowProps {
+  kind:        OwnerExceptionKind;
+  item:        OwnerExceptionItem;
+  timeZone:    string | undefined;
+  generatedAt: string;
+}
+
+function ItemRow({ kind, item, timeZone, generatedAt }: ItemRowProps) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
       <div className="min-w-0 space-y-0.5">
@@ -122,7 +164,7 @@ function ItemRow({ kind, item, timeZone }: { kind: OwnerExceptionKind; item: Own
           <span className="font-medium">{item.clientName}</span>
         </p>
         <p className="text-xs text-muted-foreground break-words">
-          <Detail kind={kind} item={item} />
+          <Detail kind={kind} item={item} generatedAt={generatedAt} />
         </p>
       </div>
       <Action kind={kind} item={item} />
@@ -130,7 +172,32 @@ function ItemRow({ kind, item, timeZone }: { kind: OwnerExceptionKind; item: Own
   );
 }
 
-function Group({ group, windowDays, timeZone }: { group: OwnerExceptionGroup; windowDays: number; timeZone: string | undefined }) {
+/**
+ * How many listed cash promises are a week or more past their session. Items come oldest session
+ * first, so when every listed one is aged and the server holds more, there may be more aged ones.
+ */
+function AgedCashNote({ group, generatedAt }: { group: OwnerExceptionGroup; generatedAt: string }) {
+  const aged = group.items.filter((i) => {
+    const days = daysSinceSession(i.appointmentDate, generatedAt);
+    return days !== null && days >= CASH_PROMISE_AGED_DAYS;
+  }).length;
+  if (aged === 0) return null;
+  const atLeast = aged === group.items.length && group.total > group.items.length;
+  return (
+    <p className="text-xs text-warning-text" data-testid="cash-aged-note">
+      {atLeast ? "At least " : ""}{aged} still unconfirmed a week or more after the session
+    </p>
+  );
+}
+
+interface GroupProps {
+  group:       OwnerExceptionGroup;
+  windowDays:  number;
+  timeZone:    string | undefined;
+  generatedAt: string;
+}
+
+function Group({ group, windowDays, timeZone, generatedAt }: GroupProps) {
   const [open, setOpen] = useState(false);
   const headingId = useId();
   const regionId = useId();
@@ -144,9 +211,10 @@ function Group({ group, windowDays, timeZone }: { group: OwnerExceptionGroup; wi
       <h3 id={headingId} className="text-sm font-medium">
         {copy.title(windowDays)} <span className="text-muted-foreground font-normal tabular-nums">({group.total})</span>
       </h3>
+      {group.kind === OwnerExceptionKind.CashToConfirm && <AgedCashNote group={group} generatedAt={generatedAt} />}
       <ul className="divide-y divide-border">
         {visible.map((item, i) => (
-          <ItemRow key={`${item.appointmentId}-${i}`} kind={group.kind} item={item} timeZone={timeZone} />
+          <ItemRow key={`${item.appointmentId}-${i}`} kind={group.kind} item={item} timeZone={timeZone} generatedAt={generatedAt} />
         ))}
       </ul>
       {rest.length > 0 && (
@@ -164,7 +232,7 @@ function Group({ group, windowDays, timeZone }: { group: OwnerExceptionGroup; wi
           {/* `hidden` while collapsed, so nothing inside is focusable or announced (E04c's pattern). */}
           <ul id={regionId} hidden={!open} aria-label={`More: ${copy.title(windowDays)}`} className="divide-y divide-border border-t border-border">
             {rest.map((item, i) => (
-              <ItemRow key={`${item.appointmentId}-more-${i}`} kind={group.kind} item={item} timeZone={timeZone} />
+              <ItemRow key={`${item.appointmentId}-more-${i}`} kind={group.kind} item={item} timeZone={timeZone} generatedAt={generatedAt} />
             ))}
           </ul>
         </>
@@ -220,8 +288,8 @@ export function OwnerExceptions() {
             <CheckCircle2 className="h-8 w-8 text-success-text" aria-hidden="true" />
             <p className="text-sm font-medium">Nothing needs you right now</p>
             <p className="text-xs text-muted-foreground max-w-sm">
-              Requests with no artist, bookings waiting for confirmation, cash to confirm, unpaid deposits
-              and sessions that aren't ready will show up here.
+              Requests with no artist, bookings waiting for confirmation, unpaid deposits, sessions that
+              aren't ready and cash to confirm will show up here.
             </p>
           </div>
         )}
@@ -229,7 +297,7 @@ export function OwnerExceptions() {
         {!isLoading && !errorMessage && data && groups && groups.length > 0 && (
           <div className="divide-y divide-border">
             {groups.map((g) => (
-              <Group key={g.kind} group={g} windowDays={data.windowDays} timeZone={studio?.timezone} />
+              <Group key={g.kind} group={g} windowDays={data.windowDays} timeZone={studio?.timezone} generatedAt={data.generatedAt} />
             ))}
           </div>
         )}

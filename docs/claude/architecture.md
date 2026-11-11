@@ -6710,3 +6710,44 @@ The computation lives in **one** domain service taking the settings as inputs �
 `CancellationOutcome.Decide` and `NoShowOutcome.Decide` — never scattered across handlers or
 recomputed in the browser. The artist's share is a **liability**, not studio revenue; revenue
 reporting must not count it.
+
+## "Needs you" groups in a fixed order by consequence — reverses E05a's ordering rule — 2026-11-11
+
+**This reverses a rule E05a shipped and documented** (the 2026-11-10 entry above, `helpContent.ts`'s
+`owner-dashboard` tip and the manual's "How 'Needs you' is arranged"): "the group whose soonest appointment
+comes first leads, so anything overdue is at the top".
+
+**Why it was wrong.** Four of the five groups read from `upcoming`, which filters `a.Date >= now`, so they can
+never hold a past date. `CashToConfirm` is the only group with no date filter, by design. "Overdue first" could
+therefore only ever promote one group: it was "cash first, always", which nobody chose explicitly, and it was
+monotonic: the staler an unconfirmed promise got, the more firmly it pinned itself above everything else, so a
+promise abandoned months ago outranked tomorrow's unassigned request. E05a's intent (uncollected cash is real
+money risk) was defensible; the mechanism was not, because an old cash promise is cleanup, not a decision that
+unblocks a client. Desktop raised it in the patch spec answering E05a handoff §0.3; I checked it against the code
+(`GetOwnerExceptionsQuery.cs`: `upcoming` at line 59-61, the undated cash read at line 73) before implementing.
+
+**Decision.**
+- `OwnerExceptionKinds.All` is now `Unassigned, AwaitingConfirmation, UnpaidDeposit, Preparation, CashToConfirm`,
+  ordered by what happens if each is ignored, and it is the **only** sort. Dates never reorder groups; items inside
+  a group stay soonest-first (for cash, the oldest session first). The sort no longer allocates a list per
+  comparison.
+- Cash is demoted, not hidden: each cash promise on a session that has already happened says how long ago the
+  session was, and promises still unconfirmed 7 or more days after the session (`CASH_PROMISE_AGED_DAYS`) use
+  `text-warning-text`, with a count under the group title ("at least N" when every listed one is aged and the
+  server holds more). The age is measured against the response's `generatedAt` (the server clock). A promise for a
+  future session shows no age: it isn't outstanding yet. The patch spec's example wording was "promised 12 days
+  ago", but the appointment date says when the session was, not when the promise was made, so the copy says
+  "Session was 12 days ago".
+- The "Deposits Due" stat is now "Unpaid deposits (7 days)", with the window taken from the response. The count
+  is unchanged (unpaid, next 7 days, cash promises excluded, the same number as "Deposits not paid"), but the
+  old label read as a total of everything owed and understated what was outstanding.
+- Not built, the owner's call: whether owners also want one "total outstanding" figure across card and cash with
+  no window.
+- Considered and not built: a two-tier order that floats any group with an item inside 48 hours (cash excluded).
+  It costs predictability, and the spec said not to build both.
+
+Tests: `GetOwnerExceptionsHandlerTests`: `APastDatedCashPromise_DoesNotLead` and
+`GroupOrder_IsTheFixedOrderByConsequence_WhateverTheItemDates` (two date spreads, all five groups), all three cases
+red at `25c24715` and green after; the old `Groups_AreOrderedBySoonestAppointment_OverdueCashFirst` asserted the
+reversed rule and is replaced. Frontend: promise age, the warning token, no age for a future session, "at least",
+and the stat label naming its window.

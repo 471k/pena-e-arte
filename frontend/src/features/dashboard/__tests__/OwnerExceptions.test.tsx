@@ -156,6 +156,41 @@ describe("OwnerExceptions", () => {
     expect(within(g).getByRole("button", { name: "Mark cash received" })).toBeInTheDocument();
   });
 
+  // generatedAt is 2026-11-10T10:00:00Z (the server's clock), so these are 12 and 2 days before it.
+  it("CashToConfirm: a promise a week or more past its session shows its age in the warning token", async () => {
+    body = response([group("CashToConfirm", [
+      item({ appointmentId: "old", appointmentDate: "2026-10-29T10:00:00Z", deposit: { amount: 50, currency: "EUR", payment: CASH_PENDING } }),
+      item({ appointmentId: "new", clientName: "Arben Kola", appointmentDate: "2026-11-08T09:00:00Z", deposit: { amount: 50, currency: "EUR", payment: CASH_PENDING } }),
+    ])]);
+    renderPanel();
+    const g = await screen.findByTestId("exception-group-CashToConfirm");
+    const [old, recent] = within(g).getAllByTestId("cash-promise-age");
+    expect(old).toHaveTextContent("Session was 12 days ago");
+    expect(old).toHaveClass("text-warning-text");
+    expect(old).toHaveAttribute("data-aged", "true");
+    expect(recent).toHaveTextContent("Session was 2 days ago");
+    expect(recent).not.toHaveClass("text-warning-text");
+    expect(within(g).getByTestId("cash-aged-note")).toHaveTextContent("1 still unconfirmed a week or more after the session");
+    expect(within(g).getByTestId("cash-aged-note")).toHaveClass("text-warning-text");
+  });
+
+  it("CashToConfirm: a promise for a session that hasn't happened yet shows no age and no warning", async () => {
+    body = response([group("CashToConfirm", [item({ deposit: { amount: 50, currency: "EUR", payment: CASH_PENDING } })])]);
+    renderPanel();
+    const g = await screen.findByTestId("exception-group-CashToConfirm");
+    expect(within(g).queryByTestId("cash-promise-age")).not.toBeInTheDocument();
+    expect(within(g).queryByTestId("cash-aged-note")).not.toBeInTheDocument();
+  });
+
+  it("CashToConfirm: says 'at least' when every listed promise is aged and the server holds more", async () => {
+    const items = Array.from({ length: 10 }, (_, i) =>
+      item({ appointmentId: `c${i}`, appointmentDate: "2026-10-01T10:00:00Z", deposit: { amount: 50, currency: "EUR", payment: CASH_PENDING } }));
+    body = response([group("CashToConfirm", items, 14)]);
+    renderPanel();
+    const g = await screen.findByTestId("exception-group-CashToConfirm");
+    expect(within(g).getByTestId("cash-aged-note")).toHaveTextContent("At least 10 still unconfirmed");
+  });
+
   it("UnpaidDeposit: a started payment uses describeDeposit; a not-started one says no payment exists", async () => {
     body = response([group("UnpaidDeposit", [
       item({ appointmentId: "a", deposit: { amount: 50, currency: "EUR", payment: CARD_PENDING } }),

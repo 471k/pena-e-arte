@@ -2171,15 +2171,16 @@ ol.steps li { margin: 6px 0; }
 <text x="240" y="108" font-size="8" fill-opacity="0.6">◌ Set your hours — we've set opening hours for you. Check they're right.</text>
 <rect x="230" y="124" width="300" height="140" rx="6" fill="currentColor" fill-opacity="0.04"/>
 <text x="240" y="142" font-size="9" font-weight="700">Needs you</text>
-<text x="240" y="162" font-size="8" font-weight="700">Cash to confirm (1)</text>
-<text x="240" y="176" font-size="8" fill-opacity="0.6">Wed 5 Nov, 14:00 · Elena Martins · €50 to collect in cash</text><text x="456" y="176" font-size="8">Mark cash received</text>
-<text x="240" y="198" font-size="8" font-weight="700">Requests with no artist (4)</text>
-<text x="240" y="212" font-size="8" fill-opacity="0.6">Thu 13 Nov, 11:00 · Ard Kola · No artist assigned</text><text x="500" y="212" font-size="8">Assign</text>
-<text x="240" y="226" font-size="8" fill-opacity="0.6">Show 1 more</text>
-<text x="240" y="248" font-size="8" font-weight="700">Not ready yet (next 7 days) (2)</text>
+<text x="240" y="162" font-size="8" font-weight="700">Requests with no artist (4)</text>
+<text x="240" y="176" font-size="8" fill-opacity="0.6">Thu 13 Nov, 11:00 · Ard Kola · No artist assigned</text><text x="500" y="176" font-size="8">Assign</text>
+<text x="240" y="190" font-size="8" fill-opacity="0.6">Show 1 more</text>
+<text x="240" y="208" font-size="8" font-weight="700">Not ready yet (next 7 days) (2)</text>
+<text x="240" y="228" font-size="8" font-weight="700">Cash to confirm (1)</text>
+<text x="240" y="242" font-size="8" fill-opacity="0.6">Wed 5 Nov, 14:00 · Elena Martins</text><text x="456" y="242" font-size="8">Mark cash received</text>
+<text x="240" y="255" font-size="8" fill-opacity="0.6">€50 to collect in cash · Session was 6 days ago</text>
 <rect x="230" y="272" width="96" height="50" rx="6" fill="currentColor" fill-opacity="0.04"/><text x="238" y="290" font-size="8">Today</text><text x="238" y="310" font-size="16" font-weight="700">3</text>
 <rect x="332" y="272" width="96" height="50" rx="6" fill="currentColor" fill-opacity="0.04"/><text x="340" y="290" font-size="8">This Week</text><text x="340" y="310" font-size="16" font-weight="700">11</text>
-<rect x="434" y="272" width="96" height="50" rx="6" fill="currentColor" fill-opacity="0.04"/><text x="442" y="290" font-size="8">Deposits Due</text><text x="442" y="310" font-size="16" font-weight="700">2</text>
+<rect x="434" y="272" width="96" height="50" rx="6" fill="currentColor" fill-opacity="0.04"/><text x="442" y="286" font-size="8">Unpaid deposits</text><text x="442" y="296" font-size="8">(7 days)</text><text x="442" y="310" font-size="16" font-weight="700">2</text>
 <rect x="230" y="330" width="300" height="60" rx="6" fill="currentColor" fill-opacity="0.04"/>
 <text x="240" y="348" font-size="9" font-weight="700">Today</text>
 <text x="240" y="366" font-size="8" fill-opacity="0.6">10:00 · Confirmed · Elena Martins</text>
@@ -2194,17 +2195,18 @@ ol.steps li { margin: 6px 0; }
   <ul>
   <li><span class="step-title">Requests with no artist</span>: upcoming requests nobody is assigned to. <span class="step-title">Assign</span> opens the appointment.</li>
   <li><span class="step-title">Waiting for confirmation</span>: upcoming requests with an artist that nobody has confirmed or declined yet. <span class="step-title">Review</span> opens the appointment.</li>
-  <li><span class="step-title">Cash to confirm</span>: every deposit a client said they'd pay in cash and that hasn't been marked received, whatever the date. <span class="step-title">Mark cash received</span> once you have the money.</li>
   <li><span class="step-title">Deposits not paid (next 7 days)</span>: deposits due for sessions in the next 7 days that aren't paid and aren't promised in cash. It says whether the client has started paying.</li>
   <li><span class="step-title">Not ready yet (next 7 days)</span>: sessions where the client hasn't done everything the service asks for (forms, deposit, reference image), with how much is done.</li>
+  <li><span class="step-title">Cash to confirm</span>: every deposit a client said they'd pay in cash and that hasn't been marked received, whatever the date, oldest session first. For a session that has already happened, each one says how long ago the session was; any still unconfirmed a week or more after the session is highlighted, and the group says how many there are. <span class="step-title">Mark cash received</span> once you have the money.</li>
   </ul>
 </li>
-<li>Stat cards: <span class="step-title">Today</span>, <span class="step-title">This Week</span>, and <span class="step-title">Deposits Due</span> (the same number as "Deposits not paid").</li>
+<li>Stat cards: <span class="step-title">Today</span>, <span class="step-title">This Week</span>, and <span class="step-title">Unpaid deposits (7 days)</span> (the same number as "Deposits not paid"). It isn't everything you're owed: cash promises and deposits for sessions more than 7 days away aren't in it.</li>
 <li>Today's appointments, with a shortcut to <span class="step-title">Book Appointment</span> if there are none.</li>
 </ol>
 <h3>How "Needs you" is arranged</h3>
 <ul>
-<li>The group whose soonest appointment comes first is at the top, so anything already overdue (for example, cash still unconfirmed after the session) leads.</li>
+<li>Groups always appear in the same order, by what happens if you leave them: requests with no artist, then bookings waiting for confirmation, unpaid deposits, sessions that aren't ready, and last cash to confirm (bookkeeping for money already promised in person). Dates never move a group up or down.</li>
+<li>Inside each group, the soonest appointment comes first (for cash, the oldest session).</li>
 <li>Each group shows its three soonest items. <span class="step-title">Show more</span> reveals a few more; if there are more still, the group says how many and links to the schedule or Payments.</li>
 <li>When nothing needs you, the panel says "Nothing needs you right now". That's the good state.</li>
 </ul>

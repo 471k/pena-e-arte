@@ -117,7 +117,7 @@ const CASH_PAYMENT: PaymentResponse = {
   currency:              "EUR",
 };
 
-// E05a (O01): the dashboard's exceptions read. The cash card and "Deposits Due" come from here now,
+// E05a (O01): the dashboard's exceptions read. The cash card and the "Unpaid deposits" stat come from here now,
 // not from the first page of /payments or a client-side filter of the week's appointments.
 function exceptions(groups: OwnerExceptionGroup[]): OwnerExceptionsResponse {
   return { generatedAt: NOW_ISO, windowDays: 7, maxItemsPerGroup: 10, groups };
@@ -636,7 +636,7 @@ describe("DashboardPage", () => {
 
   // ── KPI stat cards ──────────────────────────────────────────────────────────
 
-  it("stat cards section renders Today, This Week, and Deposits Due labels", async () => {
+  it("stat cards section renders Today, This Week, and Unpaid deposits labels", async () => {
     renderPage();
     await screen.findByText("No appointments today.");
     expect(screen.getByTestId("stat-today")).toBeInTheDocument();
@@ -671,7 +671,7 @@ describe("DashboardPage", () => {
     expect(within(todayCard).queryByText("0")).not.toBeInTheDocument();
   });
 
-  it("Deposits Due stat shows the server's count of unpaid deposits in the next 7 days", async () => {
+  it("Unpaid deposits stat shows the server's count of unpaid deposits in the next 7 days", async () => {
     server.use(
       http.get("http://localhost/api/v1/dashboard/exceptions", () =>
         HttpResponse.json(exceptions([{
@@ -688,5 +688,15 @@ describe("DashboardPage", () => {
     renderPage();
     await screen.findByText("Deposits not paid (next 7 days)");
     expect(within(screen.getByTestId("stat-deposits")).getByText("1")).toBeInTheDocument();
+  });
+
+  // The count leaves out cash promises and anything past 7 days, so a bare "Deposits Due" read as
+  // everything owed. The label must keep naming the unpaid-only sense and the window.
+  it("Unpaid deposits stat's label names the unpaid-only sense and the window, never a bare total", async () => {
+    renderPage();
+    await screen.findByText("No appointments today.");
+    const card = screen.getByTestId("stat-deposits");
+    expect(card).toHaveTextContent(/Unpaid deposits \(7 days\)/);
+    expect(card).not.toHaveTextContent(/Deposits Due/i);
   });
 });
