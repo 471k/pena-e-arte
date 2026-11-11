@@ -35,6 +35,7 @@ const EARNINGS: ArtistEarningsResponse = {
       paymentId: "p-001",
       appointmentId: "a-001",
       appointmentDate: "2026-07-15T10:00:00Z",
+      paidAt: "2026-06-20T09:00:00Z",
       clientName: "Besa Klienti",
       clientPaidAmount: 380,
       artistAmount: 228,
@@ -124,7 +125,7 @@ describe("MyEarningsPage", () => {
     expect(screen.getByText("My Earnings")).toBeInTheDocument();
   });
 
-  it("renders the payment line date in the studio's timezone, not the test environment's local timezone", async () => {
+  it("renders the payment line dates in the studio's timezone, not the test environment's local timezone", async () => {
     server.use(
       http.get("http://localhost/api/v1/studios/me", () =>
         HttpResponse.json({ id: "s-001", timezone: "America/New_York", currency: "EUR" }),
@@ -132,9 +133,26 @@ describe("MyEarningsPage", () => {
     );
     renderPage();
 
-    const expected = new Date(EARNINGS.payments[0].appointmentDate!).toLocaleDateString(
+    const fmt = (iso: string) => new Date(iso).toLocaleDateString(
       "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "America/New_York" });
-    expect(await screen.findByText(expected)).toBeInTheDocument();
+    expect(await screen.findByText(fmt(EARNINGS.payments[0].appointmentDate!))).toBeInTheDocument();
+    expect(screen.getByText(fmt(EARNINGS.payments[0].paidAt))).toBeInTheDocument();
+  });
+
+  // A07a cleanup, finding 5: the list is filtered on the payment date, so each line says when it was
+  // paid and when the session is, each labelled.
+  it("shows when each payment was received and when its session is, both labelled", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Payments received (last 30 days)" })).toBeInTheDocument();
+    expect(screen.getByTestId("earnings-line-dates")).toHaveTextContent("Paid 20 Jun 2026 · Session 15 Jul 2026");
+    const times = screen.getByTestId("earnings-line-dates").querySelectorAll("time");
+    expect(Array.from(times, (t) => t.getAttribute("datetime"))).toEqual(["2026-06-20T09:00:00Z", "2026-07-15T10:00:00Z"]);
   });
 
   it("shows a loading skeleton while fetching", () => {

@@ -1,5 +1,8 @@
 namespace Pena_e_Arte.Contracts.Responses;
 
+/// <param name="AppointmentDate">When the session is or was, not when it was paid.</param>
+/// <param name="PaidAt">When the payment was received (UTC), the date the "last 30 days" list filters on
+/// and the one an artist reconciles against their bank or cash.</param>
 /// <param name="ClientPaidAmount">What the client paid, minus refunds.</param>
 /// <param name="ArtistAmount">The artist's share under their arrangement; null when <paramref name="ShareIsKnown"/> is false.</param>
 /// <param name="ShareIsKnown">False when the studio hasn't set what the arrangement needs (no rate, no fee).</param>
@@ -7,6 +10,7 @@ public record EarningsPaymentLine(
     Guid PaymentId,
     Guid AppointmentId,
     DateTime? AppointmentDate,
+    DateTime PaidAt,
     string ClientName,
     decimal ClientPaidAmount,
     decimal? ArtistAmount,

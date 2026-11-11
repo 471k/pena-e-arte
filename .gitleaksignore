@@ -11,3 +11,15 @@ e71069d621f6aa3f9398f734f7baeb526b847bc4:frontend/src/features/studios/__tests__
 # This file's own now-corrected comment (a93e558) briefly quoted the same
 # fake fixture value above, which self-triggered this ignore file's own scan.
 a93e558d05b4fd944585e41fa20bf26bf8df08c2:.gitleaksignore:generic-api-key:7
+
+# docs/payments/pok-postman-collection-2026-08-03.json:1930 and :2048
+# POK's own published Postman collection, saved as reference. Both values are the
+# sample bearer tokens POK ships in its example requests: JWTs whose exp claim is
+# 2023-04-07, long expired, and never one of ours. No live POK key is in the file.
+99678371008b24432d4b452603586172a83e3f4e:docs/payments/pok-postman-collection-2026-08-03.json:jwt:1930
+99678371008b24432d4b452603586172a83e3f4e:docs/payments/pok-postman-collection-2026-08-03.json:jwt:2048
+
+# tests/Pena_e_Arte.UnitTests/Auth/AuthenticationExtensionsTests.cs:47
+# A made-up string in a unit test that only checks the JWT signing-key length
+# guard accepts a 32-byte key. It signs nothing outside the test.
+f3bf5d37aab6c1508af583d24d777805107a7ed2:tests/Pena_e_Arte.UnitTests/Auth/AuthenticationExtensionsTests.cs:generic-api-key:47

@@ -2146,8 +2146,8 @@ ol.steps li { margin: 6px 0; }
 <text x="36" y="100" font-size="9" fill-opacity="0.7">Your share (last 12 months)</text>
 <polyline points="60,190 150,175 240,180 330,150 420,160 510,120 600,135 690,100" fill="none" stroke="#7c3aed" stroke-width="2"/>
 <rect x="20" y="236" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="36" y="258" font-size="10" font-weight="700">Payments (last 30 days)</text>
-<text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — 15 Jul 2026 · Client paid 380.00</text><text x="700" y="284" font-size="9" text-anchor="end">228.00</text>
+<text x="36" y="258" font-size="10" font-weight="700">Payments received (last 30 days)</text>
+<text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — Paid 20 Jun 2026 · Session 15 Jul 2026 · Client paid 380.00</text><text x="700" y="284" font-size="9" text-anchor="end">228.00</text>
 <text x="52" y="298" font-size="7" fill-opacity="0.5">Artist cut</text><text x="700" y="298" font-size="7" text-anchor="end" fill-opacity="0.5">300.00</text>
 <text x="52" y="310" font-size="7" fill-opacity="0.5">Studio fee</text><text x="700" y="310" font-size="7" text-anchor="end" fill-opacity="0.5">80.00</text>
 </svg>
@@ -2157,7 +2157,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Read your share for the last 30 days at the top, labelled with your arrangement, and what clients paid beside it.</li>
 <li>View the <span class="step-title">Your share (last 12 months)</span> chart — hover a point for that month's exact figure.</li>
-<li>Scroll to the <span class="step-title">Payments</span> list for the last 30 days, sorted most recent first: your share on the right, what the client paid underneath.</li>
+<li>Scroll to <span class="step-title">Payments received (last 30 days)</span>, most recent payment first: your share on the right, what the client paid underneath.</li>
+<li>Each payment shows two dates, labelled: when it was <strong>paid</strong> and when the <strong>session</strong> is, for example "Paid 9 Nov 2026 · Session 14 Dec 2026". A deposit can come in weeks before the session. The 30 days count from the paid date, and that's the date to check against your bank or cash.</li>
 <li>If a payment has a session split, its line items appear indented under that payment.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> only fully paid or partially-refunded-and-retained payments count — the same rule the studio's own revenue report uses.</div>
@@ -3338,7 +3339,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Open Studio Settings and find <span class="step-title">How artists get paid</span>.</li>
-<li>Pick the arrangement. The rate appears only for commission and the fee only for a flat fee.</li>
+<li>Pick the arrangement. The rate appears only for commission and the fee only for a flat fee. Saving keeps only the value the arrangement uses, so moving from commission to booth rent and saving clears the rate; enter it again if you move back. The same applies to an artist's own terms.</li>
 <li>Click <span class="step-title">Save artist pay</span>. Saving ticks <span class="step-title">Set how artists get paid</span> off your <a href="#owner-setup-checklist">setup checklist</a>.</li>
 <li>For an artist with a different deal, open their profile, expand <span class="step-title">How this artist gets paid</span>, set their own arrangement, rate or fee, and click <span class="step-title">Save pay terms</span>. Anything left empty uses the studio's terms.</li>
 </ol>

@@ -891,6 +891,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Every studio starts on commission with no rate. We don't fill in a percentage for you: there's no standard one, and a number we picked would look like one you chose. Until you set it, commission artists see a message instead of a total on My Earnings.",
       "An artist's own terms come first; anything they don't have uses the studio's.",
+      "Saving keeps only what the arrangement uses: a rate for commission, a fee for a flat fee. If you move from commission to booth rent and save, the rate is cleared, so enter it again if you move back.",
       "Shares are worked out on what the client paid, minus any refund, before the card fee.",
       "Nothing is paid out automatically. My Earnings shows each artist what they're owed; you pay them as you always have.",
       "Only you can see or change these terms. Artists see their own share and arrangement on My Earnings, not the studio's terms for anyone else.",
@@ -1751,11 +1752,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Go to My Earnings. The top card shows your share for the last 30 days, labelled with your arrangement (for example \"60% commission\"), and what clients paid in the same period beside it.",
       "If your studio hasn't set how artists get paid yet, the page says so and shows no total: it can't work out your share without a rate. Ask your studio owner to set it in Studio settings.",
       "Below, \"Your share (last 12 months)\" charts your share month by month.",
-      "\"Payments (last 30 days)\" lists each payment with your share and what the client paid. If the studio recorded a session split for a payment, it's listed under that payment exactly as the studio entered it.",
+      "\"Payments received (last 30 days)\" lists each payment that came in over the last 30 days, with your share and what the client paid. Each one shows two dates: when it was paid and when the session is, for example \"Paid 9 Nov 2026 · Session 14 Dec 2026\". A deposit can come in weeks before the session.",
+      "If the studio recorded a session split for a payment, it's listed under that payment exactly as the studio entered it.",
     ],
     tips: [
       "Your share uses your own terms if your studio owner set some for you, otherwise the studio's. Booth rent: you keep what clients pay (rent is charged separately). Flat fee: what the client paid minus the studio's fee per session. Salaried: nothing per session, so your share is 0.",
       "Your share is worked out on what the client paid (minus any refund), before the card fee. Nothing is paid out automatically: this page shows what you're owed, your studio pays you.",
+      "To check a payment against your bank or cash, go by the \"Paid\" date: that's the day the money came in, and the one the 30 days count from.",
       "Only fully paid or partially-refunded-and-retained deposits count — the same rule the studio's own revenue report uses.",
       "An owner who has also enabled their own artist profile gets this same page for their own bookings.",
       "Totals are in your studio's currency. Payments recorded in any other currency are never mixed into a total — the report tells you how many were left out.",

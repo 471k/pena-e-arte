@@ -166,6 +166,24 @@ public class GetMyEarningsHandlerTests
     }
 
     [Fact]
+    public async Task Handle_EachLine_CarriesWhenItWasPaid_AndWhenTheSessionIs()
+    {
+        // A07a cleanup, finding 5: the list is "last 30 days" by payment date, so each line must say when
+        // it was paid, not only when the session is. A deposit paid days ago for a session next month.
+        Guid artistId = await SeedArtistAsync();
+        DateTime session = DateTime.UtcNow.Date.AddDays(33).AddHours(14);
+        DateTime paid = DateTime.UtcNow.Date.AddDays(-2).AddHours(9);
+        Guid apptId = await SeedAppointment(artistId, session);
+        await SeedPayment(apptId, 50m, PaymentStatus.Paid, paid, "Client", "One");
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        EarningsPaymentLine line = result.Payments.Should().ContainSingle().Subject;
+        line.PaidAt.Should().Be(paid);
+        line.AppointmentDate.Should().Be(session);
+    }
+
+    [Fact]
     public async Task Handle_PaymentInAnotherCurrency_ExcludedFromTrendAndPayments()
     {
         Guid artistId = await SeedArtistAsync();
