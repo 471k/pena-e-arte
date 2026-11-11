@@ -30,6 +30,20 @@ public class GetMyEarningsHandlerTests
     private GetMyEarningsHandler CreateSut() =>
         new(_db, _currentUser, _tenant, NullLogger<GetMyEarningsHandler>.Instance);
 
+    // A07a phase 1: the live defect. An artist on 60% commission was shown the whole client payment
+    // as their earnings. Red at 25c24715 (it returns 10,000).
+    [Fact]
+    public async Task MyEarnings_DoesNotReportStudioGrossAsArtistEarnings()
+    {
+        Guid artistId = await SeedArtistAsync(commissionRate: 60m);
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        await SeedPayment(apptId, 10_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One");
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.PeriodTotal.Should().Be(6_000m);
+    }
+
     [Fact]
     public async Task Handle_NoArtistProfileForCaller_ThrowsNotFoundException()
     {
@@ -188,7 +202,7 @@ public class GetMyEarningsHandlerTests
         result.ExcludedOtherCurrencyCount.Should().Be(1);
     }
 
-    private async Task<Guid> SeedArtistAsync()
+    private async Task<Guid> SeedArtistAsync(decimal? commissionRate = null)
     {
         Artist artist = new()
         {
@@ -197,6 +211,7 @@ public class GetMyEarningsHandlerTests
             FirstName = "Luna",
             LastName = "Artista",
             Email = $"{Guid.NewGuid():N}@test.com",
+            CommissionRate = commissionRate,
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
