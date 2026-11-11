@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
+import { useEditBuffer } from "@/shared/hooks/useEditBuffer";
 import {
   useGetNotificationPreferencesQuery,
   useUpdateNotificationPreferencesMutation,
@@ -50,26 +50,29 @@ function buildMap(items: NotificationPreferenceItem[]): PreferenceMap {
   return map;
 }
 
+interface EditState {
+  local: PreferenceMap;
+  dirty: boolean;
+}
+
+function toEditState(data: { preferences: NotificationPreferenceItem[] }): EditState {
+  return { local: buildMap(data.preferences), dirty: false };
+}
+
 export function NotificationPreferencesCard() {
-  const { data, isLoading } = useGetNotificationPreferencesQuery();
+  const { currentData, isLoading } = useGetNotificationPreferencesQuery();
   const [update, { isLoading: saving }] = useUpdateNotificationPreferencesMutation();
 
-  const [local, setLocal] = useState<PreferenceMap>({});
-  const [dirty, setDirty] = useState(false);
-
-  useEffect(() => {
-    if (data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocal(buildMap(data.preferences));
-      setDirty(false);
-    }
-  }, [data]);
+  // Filled on first load only, never on a refetch, so unsaved toggles survive one (A07a cleanup,
+  // finding 2: this effect used to refill on every new `data` object).
+  const [edit, setEdit] = useEditBuffer(currentData, currentData ? "me" : undefined, toEditState);
+  const local = edit?.local ?? {};
+  const dirty = edit?.dirty ?? false;
 
   function toggle(type: NotificationType, channel: NotificationChannel) {
     const key = prefKey(type, channel);
     // Unsaved preferences show as on (`?? true` below), so flip from that, not from undefined.
-    setLocal((prev) => ({ ...prev, [key]: !(prev[key] ?? true) }));
-    setDirty(true);
+    setEdit((prev) => prev && { local: { ...prev.local, [key]: !(prev.local[key] ?? true) }, dirty: true });
   }
 
   async function handleSave() {
@@ -82,7 +85,7 @@ export function NotificationPreferencesCard() {
     );
     try {
       await update(preferences).unwrap();
-      setDirty(false);
+      setEdit((prev) => prev && { ...prev, dirty: false });
       toast.success("Notification preferences saved.");
     } catch {
       toast.error("Failed to save preferences.");

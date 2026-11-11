@@ -55,13 +55,15 @@ function makeStore() {
 }
 
 function renderEditor(canEdit = true) {
+  const store = makeStore();
   render(
-    <Provider store={makeStore()}>
+    <Provider store={store}>
       <MemoryRouter>
         <ArtistScheduleEditor artistId={ARTIST_ID} canEdit={canEdit} />
       </MemoryRouter>
     </Provider>,
   );
+  return store;
 }
 
 describe("ArtistScheduleEditor", () => {
@@ -274,5 +276,24 @@ describe("ArtistScheduleEditor — affected sessions (E04c)", () => {
     expect(deleteSpy).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: /^remove time off$/i }));
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith("timeoff-001"));
+  });
+
+  // A07a cleanup, finding 2: weekly hours and time off come from one query, so adding or removing time
+  // off refetches it with changed content. That refetch used to throw away hours edited but not saved.
+  it("keeps unsaved weekly hours when time off changes and the schedule is refetched", async () => {
+    let reads = 0;
+    let availability: ArtistAvailabilityResponse = EMPTY_AVAILABILITY;
+    server.use(http.get(`http://localhost/api/v1/artists/${ARTIST_ID}/schedule`, () => { reads++; return HttpResponse.json(availability); }));
+    const user = userEvent.setup();
+    const store = renderEditor();
+    await user.click(await screen.findByRole("switch", { name: /monday available/i }));
+
+    availability = { schedule: [], timeOff: [{ id: "t-9", startDate: "2026-12-24T00:00:00Z", endDate: "2026-12-26T00:00:00Z", reason: "Holiday" }] };
+    const before = reads;
+    store.dispatch(artistsApi.util.invalidateTags([{ type: "ArtistSchedule", id: ARTIST_ID }]));
+    await waitFor(() => expect(reads).toBe(before + 1));
+    await screen.findByRole("button", { name: "Remove time off: Holiday" }); // the refetch has rendered
+
+    expect(screen.getByRole("switch", { name: /monday available/i })).toHaveAttribute("aria-checked", "true");
   });
 });

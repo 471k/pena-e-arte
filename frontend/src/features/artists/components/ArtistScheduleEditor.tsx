@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEditBuffer } from "@/shared/hooks/useEditBuffer";
 import { Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
@@ -52,31 +53,26 @@ function buildInitialRows(entries: ArtistScheduleEntry[]): DayRow[] {
   });
 }
 
+function toRows(data: { schedule: ArtistScheduleEntry[] }): DayRow[] {
+  return buildInitialRows(data.schedule);
+}
+
 interface ArtistScheduleEditorProps {
   artistId: string;
   canEdit:  boolean;
 }
 
 export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditorProps) {
-  const { data, isLoading } = useGetArtistScheduleQuery(artistId);
+  const { data, currentData, isLoading } = useGetArtistScheduleQuery(artistId);
   const [upsertSchedule, { isLoading: saving }] = useUpsertArtistScheduleMutation();
   const [addTimeOff, { isLoading: addingTimeOff }] = useAddArtistTimeOffMutation();
   const [deleteTimeOff, { isLoading: deletingTimeOff }] = useDeleteArtistTimeOffMutation();
 
-  const [rows, setRows] = useState<DayRow[]>([]);
-  // Seeded with a sentinel distinct from `data`, not with `data` itself —
-  // otherwise data already present on the very first render (e.g. an RTK Query
-  // cache hit) would look "already synced" and never populate `rows` below.
-  const [syncedData, setSyncedData] = useState<typeof data | undefined>(undefined);
-
-  // Sync rows from freshly-fetched data. Adjusting state during render (rather
-  // than in an effect) avoids an extra post-effect render pass — React discards
-  // this in-progress render and immediately restarts with the new state — see
-  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
-  if (data !== syncedData) {
-    setSyncedData(data);
-    if (data) setRows(buildInitialRows(data.schedule));
-  }
+  // Weekly hours, filled once per artist and never on a refetch (A07a cleanup, finding 2). The same
+  // query carries time off, so adding or removing time off used to refetch it and throw away hours
+  // the artist had edited but not saved yet. After a save the rows already hold what was saved.
+  const [buffer, setRows] = useEditBuffer(currentData, currentData ? artistId : undefined, toRows);
+  const rows = buffer ?? [];
 
   const [timeOffFormOpen, setTimeOffFormOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -88,7 +84,7 @@ export function ArtistScheduleEditor({ artistId, canEdit }: ArtistScheduleEditor
   const [pendingRemoval, setPendingRemoval] = useState<ArtistTimeOffEntry | null>(null);
 
   function updateRow(dayOfWeek: number, patch: Partial<DayRow>) {
-    setRows((prev) => prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, ...patch } : r)));
+    setRows((prev) => prev && prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, ...patch } : r)));
   }
 
   async function handleSaveSchedule() {

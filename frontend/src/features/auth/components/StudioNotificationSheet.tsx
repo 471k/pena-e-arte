@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Loader2, Save }       from "lucide-react";
 import { toast }               from "sonner";
 import { Button }              from "@/shared/components/ui/button";
 import { ToggleSwitch }        from "@/shared/components/ui/toggle-switch";
+import { useEditBuffer }       from "@/shared/hooks/useEditBuffer";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/shared/components/ui/sheet";
@@ -39,6 +39,15 @@ function buildMap(items: ClientNotificationPreferenceItem[]): PreferenceMap {
   return map;
 }
 
+interface EditState {
+  local: PreferenceMap;
+  dirty: boolean;
+}
+
+function toEditState(data: { preferences: ClientNotificationPreferenceItem[] }): EditState {
+  return { local: buildMap(data.preferences), dirty: false };
+}
+
 interface Props {
   studioId:   string;
   studioName: string;
@@ -47,35 +56,22 @@ interface Props {
 }
 
 export function StudioNotificationSheet({ studioId, studioName, open, onClose }: Props) {
-  const { data, isLoading } = useGetClientStudioNotificationPreferencesQuery(
+  const { currentData, isLoading } = useGetClientStudioNotificationPreferencesQuery(
     { studioId },
     { skip: !open },
   );
   const [update, { isLoading: saving }] = useUpdateClientStudioNotificationPreferencesMutation();
 
-  const [local, setLocal] = useState<PreferenceMap>({});
-  const [dirty, setDirty] = useState(false);
-  // Seeded with a sentinel distinct from `data`, not with `data` itself —
-  // otherwise data already present on the very first render (e.g. an RTK Query
-  // cache hit) would look "already synced" and never populate `local` below.
-  const [syncedData, setSyncedData] = useState<typeof data | undefined>(undefined);
-
-  // Sync the local edit buffer from freshly-fetched data. Adjusting state during
-  // render (rather than in an effect) avoids an extra post-effect render pass —
-  // React discards this in-progress render and immediately restarts with the new
-  // state — see https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
-  if (data !== syncedData) {
-    setSyncedData(data);
-    if (data) {
-      setLocal(buildMap(data.preferences));
-      setDirty(false);
-    }
-  }
+  // Filled each time the sheet opens, never on a refetch, so a toggle survives one (A07a cleanup,
+  // finding 2). Closing the sheet drops unsaved toggles; the next open starts from what's saved.
+  const [edit, setEdit] = useEditBuffer(currentData, open && currentData ? studioId : undefined, toEditState);
+  const local = edit?.local ?? {};
+  const dirty = edit?.dirty ?? false;
 
   function toggle(type: string, channel: NotificationChannel) {
     const key = prefKey(type, channel);
-    setLocal((prev) => ({ ...prev, [key]: !prev[key] }));
-    setDirty(true);
+    // Unsaved preferences show as on (`?? true` below), so flip from that, not from undefined.
+    setEdit((prev) => prev && { local: { ...prev.local, [key]: !(prev.local[key] ?? true) }, dirty: true });
   }
 
   async function handleSave() {
@@ -89,7 +85,7 @@ export function StudioNotificationSheet({ studioId, studioName, open, onClose }:
       );
     try {
       await update({ studioId, preferences }).unwrap();
-      setDirty(false);
+      setEdit((prev) => prev && { ...prev, dirty: false });
       toast.success("Notification preferences saved.");
       onClose();
     } catch {

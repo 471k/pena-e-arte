@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch, type Resolver, type Control, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
 import { useNavigate, useParams, useBlocker, Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -207,8 +207,14 @@ export function PlanEditPage() {
     defaultValues: EMPTY_DEFAULTS,
   });
 
+  // Load the form once per plan, not on every refetch of the plans list, so a refetch with changed
+  // content can't replace an edit in progress (A07a cleanup, finding 2). onSubmit resets after a save.
+  const formLoadedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (plan) reset(planToFormValues(plan), { keepDirty: false });
+    if (plan && formLoadedFor.current !== plan.id) {
+      formLoadedFor.current = plan.id;
+      reset(planToFormValues(plan), { keepDirty: false });
+    }
   }, [plan, reset]);
 
   useDocumentMeta({

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
@@ -6,6 +5,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
+import { useEditBuffer } from "@/shared/hooks/useEditBuffer";
 import {
   useGetMyStudioQuery,
   useGetStudioHoursQuery,
@@ -49,28 +49,21 @@ function buildInitialRows(entries: StudioHoursEntry[]): DayRow[] {
 
 export function StudioHoursCard() {
   const { data: studio } = useGetMyStudioQuery();
-  const { data, isLoading } = useGetStudioHoursQuery(studio?.id ?? "", { skip: !studio?.id });
+  const { currentData, isLoading } = useGetStudioHoursQuery(studio?.id ?? "", { skip: !studio?.id });
   const [upsertHours, { isLoading: saving }] = useUpsertStudioHoursMutation();
 
-  const [rows, setRows] = useState<DayRow[]>([]);
-  // Seeded with a sentinel distinct from `data`, not with `data` itself — otherwise data
-  // already present on the very first render (e.g. an RTK Query cache hit) would look
-  // "already synced" and never populate `rows` below.
-  const [syncedData, setSyncedData] = useState<typeof data | undefined>(undefined);
-
-  // Sync rows from freshly-fetched data. Adjusting state during render (rather than in an
-  // effect) avoids an extra post-effect render pass.
-  if (data !== syncedData) {
-    setSyncedData(data);
-    if (data) setRows(buildInitialRows(data));
-  }
+  // Filled once per studio, never on a refetch, so an edit survives one (A07a cleanup, finding 2).
+  // After a save the rows already hold what was saved.
+  const [buffer, setRows] = useEditBuffer<StudioHoursEntry[], DayRow[]>(
+    currentData, currentData && studio ? studio.id : undefined, buildInitialRows);
+  const rows = buffer ?? [];
 
   function updateRow(dayOfWeek: number, patch: Partial<DayRow>) {
-    setRows((prev) => prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, ...patch } : r)));
+    setRows((prev) => prev && prev.map((r) => (r.dayOfWeek === dayOfWeek ? { ...r, ...patch } : r)));
   }
 
   async function handleSave() {
-    if (!studio) return;
+    if (!studio || buffer === null) return;
     const entries: StudioHoursEntry[] = rows.map((r) => ({
       dayOfWeek: r.dayOfWeek,
       startTime: `${r.startTime}:00`,
@@ -105,30 +98,34 @@ export function StudioHoursCard() {
         ) : (
           <>
             {rows.map((row) => (
-              <div key={row.dayOfWeek} className="flex items-center gap-3">
+              // Wraps the times onto their own line on a phone: day, switch and both times are
+              // ~420px in one row, wider than a 390px screen's card (A07a cleanup, finding 3).
+              <div key={row.dayOfWeek} className="flex flex-wrap items-center gap-x-3 gap-y-2" data-testid="studio-hours-row">
                 <span className="w-24 shrink-0 text-sm font-medium">{DAY_LABELS[row.dayOfWeek]}</span>
                 <ToggleSwitch
                   checked={row.isOpen}
                   onChange={() => updateRow(row.dayOfWeek, { isOpen: !row.isOpen })}
                   aria-label={`${DAY_LABELS[row.dayOfWeek]} open`}
                 />
-                <Input
-                  type="time"
-                  value={row.startTime}
-                  onChange={(e) => updateRow(row.dayOfWeek, { startTime: e.target.value })}
-                  disabled={!row.isOpen}
-                  aria-label={`${DAY_LABELS[row.dayOfWeek]} opening time`}
-                  className="w-28"
-                />
-                <span className="text-muted-foreground text-sm">–</span>
-                <Input
-                  type="time"
-                  value={row.endTime}
-                  onChange={(e) => updateRow(row.dayOfWeek, { endTime: e.target.value })}
-                  disabled={!row.isOpen}
-                  aria-label={`${DAY_LABELS[row.dayOfWeek]} closing time`}
-                  className="w-28"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={row.startTime}
+                    onChange={(e) => updateRow(row.dayOfWeek, { startTime: e.target.value })}
+                    disabled={!row.isOpen}
+                    aria-label={`${DAY_LABELS[row.dayOfWeek]} opening time`}
+                    className="w-28"
+                  />
+                  <span className="text-muted-foreground text-sm">–</span>
+                  <Input
+                    type="time"
+                    value={row.endTime}
+                    onChange={(e) => updateRow(row.dayOfWeek, { endTime: e.target.value })}
+                    disabled={!row.isOpen}
+                    aria-label={`${DAY_LABELS[row.dayOfWeek]} closing time`}
+                    className="w-28"
+                  />
+                </div>
               </div>
             ))}
 
