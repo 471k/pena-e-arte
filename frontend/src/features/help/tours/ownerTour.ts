@@ -56,7 +56,7 @@ export const ownerTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="owner-studio-profile-nav"]',
     title: "Your studio profile",
-    body: "Edit your studio's public details, branding, booking widget, QR code, referral code, API/webhook access, your studio's currency, and your POK account for card deposits here.",
+    body: "Edit your studio's public details, branding, booking widget, QR code, referral code, API/webhook access, your studio's currency, how artists get paid, and your POK account for card deposits here.",
   },
   {
     targetSelector: '[data-tour="owner-studio-hours-card"]',
@@ -68,6 +68,12 @@ export const ownerTourSteps: TourStep[] = [
     targetSelector: '[data-tour="owner-studio-currency-card"]',
     title: "Your currency",
     body: "Prices and payments use this currency. Set it before your first payment — it locks after that.",
+    route: "/studios/me",
+  },
+  {
+    targetSelector: '[data-tour="owner-studio-pay-model-card"]',
+    title: "How artists get paid",
+    body: "Choose commission, booth rent, a flat fee per session or salaried, so each artist's My Earnings shows their real share. It starts as commission with no rate until you set one.",
     route: "/studios/me",
   },
   {

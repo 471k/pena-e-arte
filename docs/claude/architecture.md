@@ -295,6 +295,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 | 10 | Public Portfolio Pages | Reads `Studio`, `Artist`, `PortfolioImage` (read-only, no tenant filter) | None — public SEO endpoints. `GetPublicStudioQuery`/`/s/{slug}` filters `IsActive && IsPublished`; `GetPublicArtistQuery`/`/artist/{slug}` stays `IsActive`-only (see "IsActive vs IsPublished"). | Platform-wide |
 | 11 | Artist Today view (E04a, A01 + A03) | Reads `Appointment`, `BookingIntake`, `AppointmentAttachment`, `ConsentForm`, `IntakeForm`, `Payment` (outcome fields only) and the `Service` requirement flags; no new entity, nothing stored | None. `GET /appointments?assignedToMe=true` (readiness summary per row) and `GET /appointments/{id}/preparation` (staff-worded items, `ArtistAndAbove`); frontend `features/today`, route `/today` | Per-tenant; the viewer's own assigned sessions only |
 | 12 | Owner home (E05a, O01 + O02) | Reads `Appointment`, `Payment` (deposit outcome fields; no splits), `Artist`, `StudioHours`, `DepositRule` and the DEC03 readiness facts; one new column, `Studio.HoursReviewedAt` (nullable: when the owner confirmed the opening hours) | None. `GET /dashboard/exceptions` (five decision groups with real counts, 10 SQL statements whatever the count), `GET /studios/me/setup-readiness` (NotConfigured / DefaultUnreviewed / Reviewed per area), `POST /studios/me/hours/confirm`; all OwnerOnly | Per-tenant |
+| 13 | Artist pay model + earnings truth (A07a, DEC10) | `ArtistPayArrangement` (Commission/BoothRent/FlatFeePerSession/Salaried); `Studio.DefaultPayArrangement`/`DefaultCommissionRate`/`DefaultFlatFeePerSession`/`PayModelReviewedAt`; `Artist.PayArrangement`/`CommissionRate`/`FlatFeePerSession` (rates are percents to the artist, 0-100). `Domain/Services/ArtistShare` (Resolve + Compute) is the one place a share is worked out; reads `Payment` (retained amount), never writes money. Fourth setup area `PayModel`. | None. Owner-only `GET/PUT /studios/me/pay-model`, `POST /studios/me/pay-model/confirm`, `GET/PUT /artists/{id}/pay-model`; `GET /reports/my-earnings` returns the share (null when unknown) beside what clients paid. Gross basis only; no payouts. | Per-tenant |
 
 #### StudioPortfolioPage (`/s/{slug}`)
 
@@ -6751,3 +6752,46 @@ Tests: `GetOwnerExceptionsHandlerTests`: `APastDatedCashPromise_DoesNotLead` and
 red at `25c24715` and green after; the old `Groups_AreOrderedBySoonestAppointment_OverdueCashFirst` asserted the
 reversed rule and is replaced. Frontend: promise age, the warning token, no age for a future session, "at least",
 and the stat label naming its window.
+
+## Artist pay models configurable per studio; My Earnings shows the artist's share (A07a) — 2026-11-11
+
+**What shipped.** DEC10 (the 2026-11-10 entry above) implemented:
+- Four arrangements, a studio default and per-artist terms, resolved field by field: the artist's own value, else the studio's.
+- `ArtistShare.Compute` is the single computation:
+  - Booth rent: the artist keeps the payment.
+  - Commission: the rate's percentage.
+  - Flat fee: the payment minus the fee, never below 0.
+  - Salaried: a known 0.
+  - A missing rate or fee, or a rate outside 0-100, is **unknown**: never guessed, clamped or replaced by the gross.
+- `GET /reports/my-earnings` now returns the artist's share per payment, per month and for the period, with what clients paid alongside. When the share is unknown, the total and the month points are null, and the page shows no total and says the studio hasn't set it.
+- Pay model is a fourth setup-readiness area.
+- **This fixes a live defect:** the handler summed `RetainedAmount()`, the whole client payment, under the label "My Earnings". The phase 1 test `MyEarnings_DoesNotReportStudioGrossAsArtistEarnings` failed at `25c24715` (expected 6000, found 10000) and passes now.
+
+**Gross basis only, and why.** The share is computed on what the client paid, minus refunds:
+- POK's fee (2.5% + 20 ALL) is knowable but stored nowhere.
+- The order-level `commissions{}` object is absent from POK's reads.
+- Partial refunds strand the fixed fee.
+
+So net is specified, not built (A07a §7 item 1), with Finance's question named. Offering a net option the system can't compute would be the dishonest choice.
+
+**Where the code disagreed with the prompt, and won:**
+- **`Artist.CommissionRate` stays a percent (0-100), not a fraction.** It was documented as a percent, and its `decimal(5,2)` column holds fractions only to whole percents (62.5% would store as 0.63). Widening it would be a non-additive ALTER. `Studio.DefaultCommissionRate` uses the same unit and type.
+- **Per-artist terms have their own owner-only endpoint.** `PUT /artists/{id}` is `ArtistAndAbove`, so an artist could set their own rate there. `ArtistResponse` is readable by clients, so the rate is never in it.
+- **Rounding uses `CurrencyCatalog.Round`** (minor units, midpoints away from zero), like every studio amount, not the prompt's 2 dp ToEven.
+- **`SetupReadiness.PayModel` takes only `reviewedAt`.** The prompt's `anyArtistOtherThanOwner`, `arrangement` and rate parameters changed no outcome it listed.
+
+**Judgement calls:**
+- Saving and confirming the studio's terms refuse terms that can't give a share, so Reviewed always means shares can be worked out. Registration's default (Commission, no rate) therefore can't be confirmed as is: the checklist row offers "Set pay model", with no "They're right".
+- A payment is one session: `Payment.AppointmentId` is unique, so a flat fee can't be deducted twice.
+- The artist sees their own arrangement and rate; the studio's terms for others stay owner-only.
+
+**Unchanged:**
+- Owner revenue (`GetRevenueSummaryQuery`): the artist's share is a liability, not studio revenue.
+- `RetainedAmount`, `SessionSplit`, booth rent, the payment commands and POK.
+- No new `IgnoreQueryFilters`.
+
+**Not built, specified (A07a §7):** net basis, tips (blocked on the owner's answer), per-service rates, payouts and guest-artist types.
+
+Tests:
+- Backend: `ArtistShareTests` (17); `PayModelTests` (readiness, save, confirm, artist terms, validators, OwnerOnly on all five endpoints); `GetMyEarningsHandlerTests` (phase 1 + unknown/booth rent/salaried/override/currency); `ArtistPayModelMigrationTests` (up and down on MySQL).
+- Frontend: `StudioPayModelCard`, `ArtistPayModelSection`, `SetupChecklist` pay-model rows, `MyEarningsPage` (no total when unknown).

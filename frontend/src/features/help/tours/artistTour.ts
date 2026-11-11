@@ -46,7 +46,7 @@ export const artistTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="artist-earnings-nav"]',
     title: "Your earnings",
-    body: "See what you've earned, month by month, and a breakdown of every payment behind it — including any session split the studio recorded.",
+    body: "See your share of each payment under how your studio pays you (commission, booth rent, a flat fee or salaried), month by month, with what the client paid beside it. If your studio hasn't set it yet, the page says so instead of guessing.",
   },
   {
     targetSelector: '[data-tour="artist-conduct-reports-nav"]',

@@ -172,7 +172,7 @@ export interface UpsertStudioHoursRequest {
 }
 
 /** E05a (O02): where one setup area stands. Only Hours can be "DefaultUnreviewed" (registration seeds them). */
-export type SetupAreaKey = "Artists" | "DepositRules" | "Hours";
+export type SetupAreaKey = "Artists" | "DepositRules" | "Hours" | "PayModel";
 export type SetupAreaState = "NotConfigured" | "DefaultUnreviewed" | "Reviewed";
 
 export interface SetupAreaResponse {
@@ -185,12 +185,28 @@ export interface SetupReadinessResponse {
   areas: SetupAreaResponse[];
 }
 
+/** GET /studios/me/pay-model (A07a, owner only). Rates are percentages to the artist (60 = 60%). */
+export interface StudioPayModel {
+  arrangement:       string;
+  commissionRate:    number | null;
+  flatFeePerSession: number | null;
+  /** When the owner saved or confirmed it; null = set for them, not yet reviewed. */
+  reviewedAt:        string | null;
+  currency:          string;
+}
+
+export interface UpdateStudioPayModelRequest {
+  arrangement:       string;
+  commissionRate:    number | null;
+  flatFeePerSession: number | null;
+}
+
 export const studiosApi = createApi({
   reducerPath: "studiosApi",
   baseQuery,
   tagTypes: [
     "Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours", "StudioApiKey",
-    "WebhookEndpoint", "WebhookDeliveries",
+    "WebhookEndpoint", "WebhookDeliveries", "StudioPayModel",
   ],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
@@ -357,11 +373,20 @@ export const studiosApi = createApi({
     // rules live in other slices, so the checklist also refetches whenever the dashboard mounts.
     getSetupReadiness: builder.query<SetupReadinessResponse, void>({
       query: () => "studios/me/setup-readiness",
-      providesTags: ["StudioHours"],
+      providesTags: ["StudioHours", "StudioPayModel"],
     }),
     confirmStudioHours: builder.mutation<void, void>({
       query: () => ({ url: "studios/me/hours/confirm", method: "POST" }),
       invalidatesTags: ["StudioHours"],
+    }),
+    // A07a: how the studio's artists are paid by default. Saving is the owner reviewing it.
+    getStudioPayModel: builder.query<StudioPayModel, void>({
+      query: () => "studios/me/pay-model",
+      providesTags: ["StudioPayModel"],
+    }),
+    updateStudioPayModel: builder.mutation<StudioPayModel, UpdateStudioPayModelRequest>({
+      query: (body) => ({ url: "studios/me/pay-model", method: "PUT", body }),
+      invalidatesTags: ["StudioPayModel"],
     }),
   }),
 });
@@ -369,6 +394,8 @@ export const studiosApi = createApi({
 export const {
   useGetSetupReadinessQuery,
   useConfirmStudioHoursMutation,
+  useGetStudioPayModelQuery,
+  useUpdateStudioPayModelMutation,
   useRegisterStudioMutation,
   useGetStudioMapQuery,
   useGetMyStudioQuery,

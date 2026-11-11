@@ -198,4 +198,42 @@ describe("SetupChecklist", () => {
     await user.click(await screen.findByRole("button", { name: "Add artist" }));
     expect(screen.getByTestId("new-artist-page")).toBeInTheDocument();
   });
+  // ── A07a: the pay model, a fourth area ──────────────────────────────────
+
+  function withPayModel(state: SetupAreaState): SetupReadinessResponse {
+    return {
+      areas: [
+        ...readiness("Reviewed", "Reviewed", "Reviewed").areas,
+        { area: "PayModel", state, reviewedAt: state === "Reviewed" ? "2026-11-11T10:00:00Z" : null },
+      ],
+    };
+  }
+
+  it("shows the pay model as set for the owner but not reviewed, with no 'They're right'", async () => {
+    readinessResponse = withPayModel("DefaultUnreviewed");
+    renderChecklist();
+    expect(await screen.findByText("3/4 complete")).toBeInTheDocument();
+    const payModel = screen.getByTestId("setup-area-PayModel");
+    expect(within(payModel).getByText("Set how artists get paid")).toBeInTheDocument();
+    expect(within(payModel).getByText(/no rate set, so artists can't see their share yet/)).toBeInTheDocument();
+    expect(within(payModel).getByText(/set for you, not yet reviewed/)).toBeInTheDocument();
+    // Registration's commission-with-no-rate default can't be confirmed (the server refuses it).
+    expect(within(payModel).queryByRole("button", { name: "They're right" })).not.toBeInTheDocument();
+    // And the hours copy doesn't leak onto it.
+    expect(within(payModel).queryByText(/opening hours/)).not.toBeInTheDocument();
+  });
+
+  it("'Set pay model' goes to Studio Settings", async () => {
+    const user = userEvent.setup();
+    readinessResponse = withPayModel("DefaultUnreviewed");
+    renderChecklist();
+    await user.click(await screen.findByRole("button", { name: "Set pay model" }));
+    expect(screen.getByTestId("studio-settings-page")).toBeInTheDocument();
+  });
+
+  it("goes once the pay model is reviewed too", async () => {
+    readinessResponse = withPayModel("Reviewed");
+    renderChecklist();
+    await waitFor(() => expect(screen.queryByTestId("setup-checklist")).not.toBeInTheDocument());
+  });
 });

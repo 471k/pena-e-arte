@@ -121,10 +121,24 @@ export interface AddArtistTimeOffRequest {
   reason:    string;
 }
 
+/** GET /artists/{id}/pay-model (A07a, owner only). A null field uses the studio's. */
+export interface ArtistPayModel {
+  artistId:          string;
+  arrangement:       string | null;
+  commissionRate:    number | null;
+  flatFeePerSession: number | null;
+}
+
+export interface UpdateArtistPayModelRequest {
+  arrangement:       string | null;
+  commissionRate:    number | null;
+  flatFeePerSession: number | null;
+}
+
 export const artistsApi = createApi({
   reducerPath: "artistsApi",
   baseQuery,
-  tagTypes: ["Artist", "ArtistSchedule"],
+  tagTypes: ["Artist", "ArtistSchedule", "ArtistPayModel"],
   endpoints: (builder) => ({
     getMyArtist: builder.query<ArtistResponse, void>({
       query: () => "artists/me",
@@ -245,6 +259,15 @@ export const artistsApi = createApi({
       }),
       invalidatesTags: (_result, _err, { artistId }) => [{ type: "ArtistSchedule", id: artistId }],
     }),
+    // A07a: one artist's own pay terms, owner only (never through updateArtist, which the artist can call).
+    getArtistPayModel: builder.query<ArtistPayModel, string>({
+      query: (artistId) => `artists/${artistId}/pay-model`,
+      providesTags: (_result, _err, artistId) => [{ type: "ArtistPayModel", id: artistId }],
+    }),
+    updateArtistPayModel: builder.mutation<ArtistPayModel, { artistId: string; body: UpdateArtistPayModelRequest }>({
+      query: ({ artistId, body }) => ({ url: `artists/${artistId}/pay-model`, method: "PUT", body }),
+      invalidatesTags: (_result, _err, { artistId }) => [{ type: "ArtistPayModel", id: artistId }],
+    }),
   }),
 });
 
@@ -268,4 +291,6 @@ export const {
   useAddArtistTimeOffMutation,
   useDeleteArtistTimeOffMutation,
   useGetTimeOffAffectedSessionsQuery,
+  useGetArtistPayModelQuery,
+  useUpdateArtistPayModelMutation,
 } = artistsApi;

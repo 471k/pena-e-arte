@@ -22,13 +22,27 @@ interface AreaCopy {
   href:  string;
   cta:   string;
   tourId?: string;
+  /** For an area that can be "set for you, not yet reviewed": what to tell the owner, and the button to check it. */
+  unreviewed?: { note: string; cta: string; canConfirm: boolean };
 }
 
-// Same labels, destinations and tour ids as before this change.
 const COPY: Record<SetupAreaKey, AreaCopy> = {
   Artists:      { label: "Add your first artist", href: "/artists/new", cta: "Add artist" },
   DepositRules: { label: "Set a deposit rule",    href: "/deposit-rules/new", cta: "Set rule", tourId: "owner-deposit-rules-nav" },
-  Hours:        { label: "Set your hours",        href: "/studios/me", cta: "Set hours", tourId: "owner-studio-profile-nav" },
+  Hours: {
+    label: "Set your hours", href: "/studios/me", cta: "Set hours", tourId: "owner-studio-profile-nav",
+    unreviewed: { note: "We've set opening hours for you. Check they're right.", cta: "Check hours", canConfirm: true },
+  },
+  // A07a. No "They're right" here: every studio starts on commission with no rate, which can't be
+  // confirmed (the server refuses terms that give artists no share), so the owner sets it in the form.
+  PayModel: {
+    label: "Set how artists get paid", href: "/studios/me", cta: "Set pay model",
+    unreviewed: {
+      note: "Every studio starts on commission with no rate set, so artists can't see their share yet.",
+      cta: "Set pay model",
+      canConfirm: false,
+    },
+  },
 };
 
 function StateIcon({ state }: { state: SetupAreaState }) {
@@ -109,10 +123,8 @@ export function SetupChecklist() {
                     <span className={reviewed ? "text-sm text-muted-foreground line-through" : "text-sm"}>
                       {copy.label}
                     </span>
-                    {unreviewedDefault && (
-                      <p className="text-xs text-muted-foreground">
-                        We've set opening hours for you. Check they're right.
-                      </p>
+                    {unreviewedDefault && copy.unreviewed && (
+                      <p className="text-xs text-muted-foreground">{copy.unreviewed.note}</p>
                     )}
                     <span className="sr-only">
                       {reviewed ? " (done)" : unreviewedDefault ? " (set for you, not yet reviewed)" : " (not set up yet)"}
@@ -121,7 +133,7 @@ export function SetupChecklist() {
                 </div>
                 {!reviewed && (
                   <div className="flex gap-2 shrink-0">
-                    {unreviewedDefault && (
+                    {unreviewedDefault && copy.unreviewed?.canConfirm && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -139,7 +151,7 @@ export function SetupChecklist() {
                       onClick={() => navigate(copy.href)}
                       data-tour={copy.tourId}
                     >
-                      {unreviewedDefault ? "Check hours" : copy.cta}
+                      {unreviewedDefault && copy.unreviewed ? copy.unreviewed.cta : copy.cta}
                     </Button>
                   </div>
                 )}

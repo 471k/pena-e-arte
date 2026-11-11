@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -18,19 +18,27 @@ import { Role } from "@/shared/types/roles";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
+// An artist on 60% commission: the client paid 380, the artist's share is 228.
 const EARNINGS: ArtistEarningsResponse = {
   monthlyTrend: [
-    { month: "2026-06", revenue: 240 },
-    { month: "2026-07", revenue: 380 },
+    { month: "2026-06", artistAmount: 144, clientPaid: 240, shareIsKnown: true },
+    { month: "2026-07", artistAmount: 228, clientPaid: 380, shareIsKnown: true },
   ],
-  periodTotal: 380,
+  periodTotal: 228,
+  clientPaidTotal: 380,
+  shareIsKnown: true,
+  arrangement: "Commission",
+  commissionRate: 60,
+  flatFeePerSession: null,
   payments: [
     {
       paymentId: "p-001",
       appointmentId: "a-001",
       appointmentDate: "2026-07-15T10:00:00Z",
       clientName: "Besa Klienti",
-      amount: 380,
+      clientPaidAmount: 380,
+      artistAmount: 228,
+      shareIsKnown: true,
       splits: [
         { id: "s-001", paymentId: "p-001", label: "Artist cut", amount: 300, paidAt: null },
         { id: "s-002", paymentId: "p-001", label: "Studio fee", amount: 80, paidAt: null },
@@ -42,8 +50,23 @@ const EARNINGS: ArtistEarningsResponse = {
 };
 
 const EMPTY_EARNINGS: ArtistEarningsResponse = {
-  monthlyTrend: [], periodTotal: 0, payments: [], currency: "EUR", excludedOtherCurrencyCount: 0,
+  monthlyTrend: [], periodTotal: 0, clientPaidTotal: 0, payments: [], currency: "EUR", excludedOtherCurrencyCount: 0,
+  shareIsKnown: true, arrangement: "Commission", commissionRate: 60, flatFeePerSession: null,
 };
+
+// Registration's default: Commission with no rate. The share can't be worked out.
+const UNKNOWN_SHARE: ArtistEarningsResponse = {
+  ...EARNINGS,
+  monthlyTrend: [{ month: "2026-07", artistAmount: null, clientPaid: 380, shareIsKnown: false }],
+  periodTotal: null,
+  shareIsKnown: false,
+  commissionRate: null,
+  payments: [{ ...EARNINGS.payments[0], artistAmount: null, shareIsKnown: false }],
+};
+
+function respondWith(body: ArtistEarningsResponse) {
+  server.use(http.get("http://localhost/api/v1/reports/my-earnings", () => HttpResponse.json(body)));
+}
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
@@ -168,9 +191,46 @@ describe("MyEarningsPage", () => {
     expect(screen.getByText("Studio fee")).toBeInTheDocument();
   });
 
-  it("formats the period total as currency", async () => {
+  it("headlines the artist's share, labelled with the arrangement, with what clients paid beside it", async () => {
     renderPage();
-    expect(await screen.findAllByText("€380")).not.toHaveLength(0);
+    const share = await screen.findByTestId("earnings-share");
+    expect(within(share).getByTestId("earnings-period-total")).toHaveTextContent("€228");
+    expect(within(share).getByText(/60% commission/)).toBeInTheDocument();
+    expect(within(share).getByTestId("earnings-client-paid-total")).toHaveTextContent("€380");
+    expect(screen.getByTestId("earnings-line-share")).toHaveTextContent("€228");
+    expect(screen.getByText("Client paid €380")).toBeInTheDocument();
+  });
+
+  // The defect A07a fixes: an unconfigured studio must never show a number as "your share".
+  it("shows no total at all when the share is unknown: not €0 and not what clients paid", async () => {
+    respondWith(UNKNOWN_SHARE);
+    renderPage();
+    const unknown = await screen.findByTestId("earnings-share-unknown");
+    expect(within(unknown).getByText(/Your studio hasn't set how artists get paid yet/)).toBeInTheDocument();
+    expect(screen.queryByTestId("earnings-period-total")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("earnings-share")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("earnings-line-share")).not.toBeInTheDocument();
+    expect(screen.queryByText("€0")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /revenue trend/i })).not.toBeInTheDocument();
+    // The payment itself is still listed, as what the client paid, never as the artist's.
+    expect(screen.getByText("Client paid €380")).toBeInTheDocument();
+  });
+
+  it("booth rent: the artist's share is the full amount, and the label says why", async () => {
+    respondWith({ ...EARNINGS, arrangement: "BoothRent", commissionRate: null, periodTotal: 380 });
+    renderPage();
+    const share = await screen.findByTestId("earnings-share");
+    expect(within(share).getByTestId("earnings-period-total")).toHaveTextContent("€380");
+    expect(within(share).getByText(/booth rent: you keep what clients pay/)).toBeInTheDocument();
+  });
+
+  it("salaried: a known zero, labelled, not the unknown state", async () => {
+    respondWith({ ...EARNINGS, arrangement: "Salaried", commissionRate: null, periodTotal: 0 });
+    renderPage();
+    const share = await screen.findByTestId("earnings-share");
+    expect(within(share).getByTestId("earnings-period-total")).toHaveTextContent("€0");
+    expect(within(share).getByText(/salaried: nothing is earned per session/)).toBeInTheDocument();
+    expect(screen.queryByTestId("earnings-share-unknown")).not.toBeInTheDocument();
   });
 
   it("shows a specific message and no futile retry when the caller has no artist profile", async () => {

@@ -477,6 +477,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="false">Studio settings</button>
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-studio-profile" data-nav-link>Studio profile</a></li>
+          <li><a href="#owner-artist-pay-model" data-nav-link>How artists get paid</a></li>
           <li><a href="#owner-publish-studio" data-nav-link>Publish your studio</a></li>
           <li><a href="#owner-social-verification" data-nav-link>Verify social media accounts</a></li>
           <li><a href="#owner-branding" data-nav-link>Branding</a></li>
@@ -2128,31 +2129,40 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-artist">Artist</span> My Earnings</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own earnings only)</td></tr><tr><td>Owner</td><td>✓ (only if they've also enabled their own artist profile — their own earnings only)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>At <code>/earnings</code>: your own earnings trend for the last 12 months, plus every payment from the last 30 days that contributed, with the client, appointment date, and amount. If the studio recorded a session split for a payment (for example, your cut vs. a studio fee), it's shown under that payment exactly as the studio entered it — this page doesn't guess which part of a split is "yours."</p>
+<p>At <code>/earnings</code>: your <strong>share</strong> of each payment under how your studio pays you, with what the client paid beside it. Your share uses your own terms if your studio owner set some for you, otherwise the studio's (see <a href="#owner-artist-pay-model">How artists get paid</a>):</p>
+<ul>
+<li><span class="step-title">Commission</span>: your percentage of what the client paid.</li>
+<li><span class="step-title">Booth rent</span>: you keep what the client paid; rent is charged separately.</li>
+<li><span class="step-title">Flat fee per session</span>: what the client paid minus the studio's fee.</li>
+<li><span class="step-title">Salaried</span>: nothing per session, so your share is 0.</li>
+</ul>
+<p>It's worked out on what the client paid (minus any refund), before the card fee. Nothing is paid out automatically. <strong>If your studio hasn't set how artists get paid yet, the page shows no total</strong> and says so: without a rate it can't work out your share, and it won't show a guess or the client's total in its place. If the studio recorded a session split for a payment, it's shown under that payment exactly as the studio entered it.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 420" role="img" aria-label="My Earnings wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="11" font-weight="700">My Earnings</text>
 <rect x="20" y="60" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="36" y="82" font-size="10" font-weight="700">Earnings trend (last 12 months)</text>
+<text x="36" y="82" font-size="10" font-weight="700">Your share (last 30 days) · 60% commission: 228.00 · What clients paid: 380.00</text>
+<text x="36" y="100" font-size="9" fill-opacity="0.7">Your share (last 12 months)</text>
 <polyline points="60,190 150,175 240,180 330,150 420,160 510,120 600,135 690,100" fill="none" stroke="#7c3aed" stroke-width="2"/>
 <rect x="20" y="236" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="36" y="258" font-size="10" font-weight="700">Payments (last 30 days)</text>
-<text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — 15 Jul 2026</text><text x="700" y="284" font-size="9" text-anchor="end">380.00</text>
+<text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — 15 Jul 2026 · Client paid 380.00</text><text x="700" y="284" font-size="9" text-anchor="end">228.00</text>
 <text x="52" y="298" font-size="7" fill-opacity="0.5">Artist cut</text><text x="700" y="298" font-size="7" text-anchor="end" fill-opacity="0.5">300.00</text>
 <text x="52" y="310" font-size="7" fill-opacity="0.5">Studio fee</text><text x="700" y="310" font-size="7" text-anchor="end" fill-opacity="0.5">80.00</text>
 </svg>
 </figure>
-<figcaption>My Earnings — earnings trend chart above, payment breakdown below</figcaption>
+<figcaption>My Earnings — your share and what clients paid, the 12-month chart, then each payment</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>View the <span class="step-title">Earnings trend</span> chart — hover a point for that month's exact figure.</li>
-<li>Scroll to the <span class="step-title">Payments</span> list for the last 30 days, sorted most recent first.</li>
+<li>Read your share for the last 30 days at the top, labelled with your arrangement, and what clients paid beside it.</li>
+<li>View the <span class="step-title">Your share (last 12 months)</span> chart — hover a point for that month's exact figure.</li>
+<li>Scroll to the <span class="step-title">Payments</span> list for the last 30 days, sorted most recent first: your share on the right, what the client paid underneath.</li>
 <li>If a payment has a session split, its line items appear indented under that payment.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> only fully paid or partially-refunded-and-retained payments count — the same rule the studio's own revenue report uses.</div>
 <div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, booth-rent amounts on this page (and your hourly rate on your artist profile) also show the amount in lek (≈), at the Bank of Albania's official rate. Earnings totals stay in euros, because they add up payments made at different rates.</div>
-<div class="crosslinks">See also: <a href="#owner-reports">Owner: revenue reports</a>, <a href="#owner-become-artist">Owner: enable your own artist profile</a></div>
+<div class="crosslinks">See also: <a href="#owner-artist-pay-model">Owner: how artists get paid</a>, <a href="#owner-reports">Owner: revenue reports</a>, <a href="#owner-become-artist">Owner: enable your own artist profile</a></div>
 </section>
 
 <section id="owner-dashboard" data-role="owner">
@@ -2217,11 +2227,11 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Setup checklist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>A card at the top of the Dashboard with three steps: <span class="step-title">Add your first artist</span>, <span class="step-title">Set a deposit rule</span> and <span class="step-title">Set your hours</span>. A step counts as done only once you've done it yourself, so a new studio is never shown as set up just because we filled something in for it. The card hides itself once all three are done.</p>
+<p>A card at the top of the Dashboard with four steps: <span class="step-title">Add your first artist</span>, <span class="step-title">Set a deposit rule</span>, <span class="step-title">Set your hours</span> and <span class="step-title">Set how artists get paid</span>. A step counts as done only once you've done it yourself, so a new studio is never shown as set up just because we filled something in for it. The card hides itself once all four are done.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Setup checklist wireframe">
-<rect x="200" y="130" width="360" height="140" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="216" y="156" font-size="11" font-weight="700">Studio setup</text><text x="490" y="156" font-size="9" fill-opacity="0.6">1/3 complete</text>
+<rect x="200" y="130" width="360" height="190" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="216" y="156" font-size="11" font-weight="700">Studio setup</text><text x="490" y="156" font-size="9" fill-opacity="0.6">1/4 complete</text>
 <text x="216" y="182" font-size="9">✓ <tspan text-decoration="line-through" fill-opacity="0.5">Add your first artist</tspan></text>
 <text x="216" y="206" font-size="9">○ Set a deposit rule</text>
 <rect x="470" y="194" width="70" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="482" y="208" font-size="8">Set rule</text>
@@ -2229,6 +2239,9 @@ ol.steps li { margin: 6px 0; }
 <text x="230" y="246" font-size="8" fill-opacity="0.6">We've set opening hours for you. Check they're right.</text>
 <rect x="390" y="236" width="70" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="398" y="250" font-size="8">They're right</text>
 <rect x="466" y="236" width="74" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="474" y="250" font-size="8">Check hours</text>
+<text x="216" y="280" font-size="9">◌ Set how artists get paid</text>
+<text x="230" y="294" font-size="8" fill-opacity="0.6">Starts on commission with no rate set.</text>
+<rect x="456" y="282" width="84" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="464" y="296" font-size="8">Set pay model</text>
 </svg>
 </figure>
 <figcaption>Setup checklist — three states: done (✓), not set up (○), set for you but not yet checked (◌)</figcaption>
@@ -2237,6 +2250,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Add artist</span> to go straight to the new-artist form.</li>
 <li>Click <span class="step-title">Set rule</span> to create your first deposit rule.</li>
 <li>Your opening hours start as the Mon–Fri, 9:00–18:00 schedule set when you registered. Click <span class="step-title">Check hours</span> to review them in Studio Settings (saving them there counts as checking), or <span class="step-title">They're right</span> if they already are.</li>
+<li>How artists get paid starts as commission with no rate, so commission artists can't see their share yet. Click <span class="step-title">Set pay model</span> and save your terms in Studio Settings (see <a href="#owner-artist-pay-model">How artists get paid</a>). There's no <span class="step-title">They're right</span> for this step: commission with no rate can't give anyone a share.</li>
 </ol>
 <p>If your studio has no opening hours at all, the step shows <span class="step-title">Set hours</span> and stays until you add some: clients can't book without them, so it can't be ticked off any other way.</p>
 <div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-create-deposit-rule">Create deposit rule</a></div>
@@ -3292,6 +3306,45 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully. Changing currency doesn't convert your prices — the numbers stay the same and are read in the new currency; review your services, deposit rules, packages and gift-card amounts after changing. Use your POK <em>production</em> credentials, not the staging/sandbox pair — sandbox keys will not process real payments, and your Key Secret is never shown again after you connect. POK only opens merchant accounts for businesses registered in Albania — if your studio isn't registered there, you won't be able to get POK credentials to connect, and should use Cash for deposits instead.</div>
 <div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#admin-audit-log">Admin: audit log</a>, <a href="#owner-studio-currency">Your studio's currency</a>, <a href="#owner-social-verification">Verify social media accounts</a>, <a href="#owner-payments">Payment list</a></div>
+</section>
+
+<section id="owner-artist-pay-model" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> How artists get paid</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗ (sees their own share and arrangement on My Earnings)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
+<p>The <span class="step-title">How artists get paid</span> card in Studio Settings sets how your artists are paid unless an artist has their own terms. It decides the share each artist sees on <a href="#artist-earnings">My Earnings</a>. Nothing is paid out automatically.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 360" role="img" aria-label="How artists get paid card wireframe">
+<rect x="200" y="40" width="360" height="270" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="216" y="66" font-size="11" font-weight="700">How artists get paid</text>
+<text x="216" y="88" font-size="8" fill-opacity="0.7">◌ Set for you, not reviewed yet. Every studio starts on commission with no rate.</text>
+<text x="216" y="114" font-size="9">Arrangement</text>
+<rect x="216" y="120" width="328" height="24" rx="4" fill="currentColor" fill-opacity="0.06"/><text x="224" y="136" font-size="9">Commission ▾</text>
+<text x="216" y="164" font-size="8" fill-opacity="0.6">The artist gets a percentage of what the client paid.</text>
+<text x="216" y="188" font-size="9">Artist's share (% of what the client paid)</text>
+<rect x="216" y="194" width="70" height="24" rx="4" fill="currentColor" fill-opacity="0.06"/><text x="224" y="210" font-size="9" fill-opacity="0.5">Not set</text><text x="292" y="210" font-size="9">%</text>
+<text x="216" y="240" font-size="8" fill-opacity="0.7" text-decoration="underline">How shares are worked out ▾</text>
+<rect x="216" y="258" width="100" height="26" rx="4" fill="currentColor" fill-opacity="0.12"/><text x="228" y="275" font-size="9">Save artist pay</text>
+</svg>
+</figure>
+<figcaption>How artists get paid — a new studio's default, before the owner sets a rate</figcaption>
+<h3>The four arrangements</h3>
+<ul>
+<li><span class="step-title">Commission</span>: the artist gets a percentage of what the client paid. Enter it as a percentage to the artist (60 means 60%).</li>
+<li><span class="step-title">Booth rent</span>: the artist keeps what the client paid. Rent itself is charged under <a href="#owner-booth-rent">Booth rent</a>.</li>
+<li><span class="step-title">Flat fee per session</span>: the studio keeps a fixed amount per session, in your studio's currency, and the artist gets the rest (never less than 0).</li>
+<li><span class="step-title">Salaried</span>: nothing is split per session, so an artist's share on My Earnings is 0.</li>
+</ul>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Open Studio Settings and find <span class="step-title">How artists get paid</span>.</li>
+<li>Pick the arrangement. The rate appears only for commission and the fee only for a flat fee.</li>
+<li>Click <span class="step-title">Save artist pay</span>. Saving ticks <span class="step-title">Set how artists get paid</span> off your <a href="#owner-setup-checklist">setup checklist</a>.</li>
+<li>For an artist with a different deal, open their profile, expand <span class="step-title">How this artist gets paid</span>, set their own arrangement, rate or fee, and click <span class="step-title">Save pay terms</span>. Anything left empty uses the studio's terms.</li>
+</ol>
+<div class="callout callout-tip"><strong>Why no rate is filled in:</strong> there's no standard percentage for tattoo artists, so we don't pick one for you; a number we chose would look like one you'd set. Until you set a rate, commission artists see a message on My Earnings instead of a total.</div>
+<div class="callout callout-tip"><strong>How shares are worked out:</strong> on what the client paid, minus any refund, before the card fee. An artist's own terms come first; anything they don't have uses the studio's.</div>
+<div class="crosslinks">See also: <a href="#artist-earnings">Artist: My Earnings</a>, <a href="#owner-setup-checklist">Setup checklist</a>, <a href="#owner-booth-rent">Booth rent</a></div>
 </section>
 
 <section id="owner-studio-currency" data-role="owner">

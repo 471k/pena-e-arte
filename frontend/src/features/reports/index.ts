@@ -6,6 +6,7 @@ export type {
   ArtistRevenuePoint,
   ArtistEarningsResponse,
   EarningsPaymentLine,
+  EarningsMonthPoint,
 } from "./report.types";
 export { ReportsPage } from "./components/ReportsPage";
 export { MyEarningsPage } from "./components/MyEarningsPage";
