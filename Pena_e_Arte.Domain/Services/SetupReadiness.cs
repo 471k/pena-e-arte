@@ -43,11 +43,11 @@ public static class SetupReadiness
 
     /// <summary>
     /// How artists get paid (A07a). Never <see cref="SetupAreaState.NotConfigured"/>: unlike hours, a
-    /// studio always has an arrangement (Commission from registration), it just may not be confirmed.
-    /// Reviewed once the owner saved the pay-model form or confirmed terms that give a share (the
-    /// confirm and save paths both refuse terms that don't, so Reviewed always means a share can be
-    /// worked out). Whether the studio has artists other than the owner doesn't change the state: a
-    /// solo owner can set or confirm it in one step, and it applies to them as soon as anyone joins.
+    /// studio always has an arrangement (Commission from registration), it just may not be reviewed.
+    /// Reviewed once the owner saved the pay-model form, which refuses terms that can't give a share,
+    /// so Reviewed always means a share can be worked out. Whether the studio has artists other than
+    /// the owner doesn't change the state: a solo owner sets it in one step, and it applies to them as
+    /// soon as anyone joins.
     /// </summary>
     public static SetupAreaState PayModel(DateTime? payModelReviewedAt) =>
         payModelReviewedAt is null ? SetupAreaState.DefaultUnreviewed : SetupAreaState.Reviewed;

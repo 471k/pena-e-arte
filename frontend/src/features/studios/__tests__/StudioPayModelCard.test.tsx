@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -23,10 +23,11 @@ const DEFAULT_TERMS: StudioPayModel = {
 let body: StudioPayModel = DEFAULT_TERMS;
 let status = 200;
 let saved: UpdateStudioPayModelRequest | null = null;
+let reads = 0;
 
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me/pay-model", () =>
-    status === 200 ? HttpResponse.json(body) : HttpResponse.json({ title: "boom" }, { status })),
+    ++reads && status === 200 ? HttpResponse.json(body) : HttpResponse.json({ title: "boom" }, { status })),
   http.put("http://localhost/api/v1/studios/me/pay-model", async ({ request }) => {
     saved = (await request.json()) as UpdateStudioPayModelRequest;
     body = { ...saved, reviewedAt: "2026-11-11T10:00:00Z", currency: "ALL" };
@@ -35,7 +36,7 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); body = DEFAULT_TERMS; status = 200; saved = null; });
+afterEach(() => { server.resetHandlers(); cleanup(); body = DEFAULT_TERMS; status = 200; saved = null; reads = 0; });
 afterAll(() => server.close());
 
 function renderCard() {
@@ -48,6 +49,7 @@ function renderCard() {
     },
   });
   render(<Provider store={store}><StudioPayModelCard /></Provider>);
+  return store;
 }
 
 describe("StudioPayModelCard", () => {
@@ -113,6 +115,46 @@ describe("StudioPayModelCard", () => {
     await user.click(screen.getByRole("button", { name: "Save artist pay" }));
     expect(await screen.findByTestId("pay-model-state")).toHaveAttribute("data-state", "Reviewed");
     expect(saved).toEqual({ arrangement: "Commission", commissionRate: 62.5, flatFeePerSession: null });
+  });
+
+  // A07a cleanup, finding 1: only the value the chosen arrangement uses is sent, whatever the hidden
+  // field still holds.
+  it.each([
+    ["Commission",        { arrangement: "Commission",        commissionRate: 60,   flatFeePerSession: null }],
+    ["FlatFeePerSession", { arrangement: "FlatFeePerSession", commissionRate: null, flatFeePerSession: 2500 }],
+    ["BoothRent",         { arrangement: "BoothRent",         commissionRate: null, flatFeePerSession: null }],
+    ["Salaried",          { arrangement: "Salaried",          commissionRate: null, flatFeePerSession: null }],
+  ])("under %s, sends null for the value that arrangement doesn't use", async (choice, expected) => {
+    body = { ...DEFAULT_TERMS, commissionRate: 60, flatFeePerSession: 2500, reviewedAt: "2026-11-01T10:00:00Z" };
+    const user = userEvent.setup();
+    renderCard();
+    await user.selectOptions(await screen.findByLabelText("Arrangement"), choice);
+    await user.click(screen.getByRole("button", { name: "Save artist pay" }));
+    await waitFor(() => expect(saved).not.toBeNull());
+    expect(saved).toEqual(expected);
+  });
+
+  it("isn't blocked by bad text left in a field the arrangement hides", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await user.type(await screen.findByLabelText(/Artist's share/), "abc");
+    await user.selectOptions(screen.getByLabelText("Arrangement"), "BoothRent");
+    await user.click(screen.getByRole("button", { name: "Save artist pay" }));
+    await waitFor(() => expect(saved).toEqual({ arrangement: "BoothRent", commissionRate: null, flatFeePerSession: null }));
+  });
+
+  // A07a cleanup, finding 2: a refetch whose content changed (the save's own, or another tab's) must
+  // not replace what the owner is typing.
+  it("keeps an edit in progress when the terms are refetched with changed content", async () => {
+    const user = userEvent.setup();
+    const store = renderCard();
+    await user.type(await screen.findByLabelText(/Artist's share/), "6");
+    body = { ...DEFAULT_TERMS, commissionRate: 55, reviewedAt: "2026-11-02T10:00:00Z" };
+    const before = reads;
+    store.dispatch(studiosApi.util.invalidateTags(["StudioPayModel"]));
+    await waitFor(() => expect(reads).toBe(before + 1));
+    await screen.findByText("Saved 2 Nov 2026"); // the refetch has rendered
+    expect(screen.getByLabelText(/Artist's share/)).toHaveValue("6");
   });
 
   it("keeps the explanation in the page, behind a real disclosure", async () => {

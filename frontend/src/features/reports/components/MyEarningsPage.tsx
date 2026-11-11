@@ -148,7 +148,7 @@ export function MyEarningsPage() {
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Payments (last 30 days)</CardTitle>
+                <CardTitle className="text-sm">Payments received (last 30 days)</CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
                 {data.payments.length === 0 ? (
@@ -167,8 +167,17 @@ export function MyEarningsPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                          <span>{formatDate(line.appointmentDate, studio?.timezone)}</span>
+                        {/* Both dates, labelled: the list is filtered on when the payment came in, which is the
+                            date an artist checks against their bank or cash; a deposit can come in weeks
+                            before the session (A07a cleanup, finding 5). */}
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                          <span data-testid="earnings-line-dates">
+                            Paid <time dateTime={line.paidAt}>{formatDate(line.paidAt, studio?.timezone)}</time>
+                            {" · "}
+                            Session {line.appointmentDate
+                              ? <time dateTime={line.appointmentDate}>{formatDate(line.appointmentDate, studio?.timezone)}</time>
+                              : "—"}
+                          </span>
                           <span className="tabular-nums">Client paid {formatCurrency(line.clientPaidAmount, data.currency)}</span>
                         </div>
                         {line.splits.length > 0 && (

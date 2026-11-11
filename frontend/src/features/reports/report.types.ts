@@ -21,7 +21,10 @@ export interface RevenueSummaryResponse {
 export interface EarningsPaymentLine {
   paymentId:        string;
   appointmentId:    string;
+  /** When the session is or was; not when it was paid. */
   appointmentDate:  string | null;
+  /** When the payment came in (UTC ISO). The "last 30 days" list filters on this. */
+  paidAt:           string;
   clientName:       string;
   /** What the client paid, minus refunds. */
   clientPaidAmount: number;

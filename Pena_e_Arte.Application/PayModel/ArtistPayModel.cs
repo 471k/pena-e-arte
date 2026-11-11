@@ -41,7 +41,12 @@ public class GetArtistPayModelHandler(IAppDbContext db) : IRequestHandler<GetArt
 
 // ── PUT /artists/{id}/pay-model (OwnerOnly) ──────────────────────────────────
 
-/// <summary>Sets one artist's own pay terms (A07a). Null fields fall back to the studio's.</summary>
+/// <summary>
+/// Sets one artist's own pay terms (A07a). Null fields fall back to the studio's. A value the artist's
+/// effective arrangement (their own, else the studio's) doesn't use is stored as null whatever the request
+/// carries. If the studio's arrangement changes later, an override already stored is kept, not cleared:
+/// it is only read while the effective arrangement uses it, and the next save of this form drops it.
+/// </summary>
 public record UpdateArtistPayModelCommand(Guid ArtistId, UpdateArtistPayModelRequest Request) : IRequest<ArtistPayModelResponse>;
 
 public class UpdateArtistPayModelValidator : AbstractValidator<UpdateArtistPayModelCommand>
@@ -66,20 +71,22 @@ public class UpdateArtistPayModelHandler(IAppDbContext db, ICurrentTenant tenant
         Artist artist = await db.Artists.FirstOrDefaultAsync(a => a.Id == command.ArtistId, ct)
             ?? throw new NotFoundException(nameof(Artist), command.ArtistId);
 
-        if (req.FlatFeePerSession is decimal fee)
-        {
-            string currency = await db.Studios.Where(s => s.Id == tenant.StudioId).Select(s => s.Currency).SingleAsync(ct);
-            if (!CurrencyCatalog.HasAtMostMinorUnits(fee, currency))
-                throw new BusinessRuleViolationException($"The fee has more decimal places than {currency} allows.");
-        }
+        var studio = await db.Studios
+            .Where(s => s.Id == tenant.StudioId)
+            .Select(s => new { s.Currency, s.DefaultPayArrangement })
+            .SingleAsync(ct);
+
+        if (req.FlatFeePerSession is decimal fee && !CurrencyCatalog.HasAtMostMinorUnits(fee, studio.Currency))
+            throw new BusinessRuleViolationException($"The fee has more decimal places than {studio.Currency} allows.");
 
         ArtistPayArrangement? arrangement = null;
         if (PayModelRules.TryParseArrangement(req.Arrangement, out ArtistPayArrangement parsed))
             arrangement = parsed;
+        ArtistPayArrangement effective = arrangement ?? studio.DefaultPayArrangement;
 
         artist.PayArrangement = arrangement;
-        artist.CommissionRate = req.CommissionRate;
-        artist.FlatFeePerSession = req.FlatFeePerSession;
+        artist.CommissionRate = PayModelRules.UsesCommissionRate(effective) ? req.CommissionRate : null;
+        artist.FlatFeePerSession = PayModelRules.UsesFlatFee(effective) ? req.FlatFeePerSession : null;
         artist.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 

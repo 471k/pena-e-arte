@@ -136,6 +136,7 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser, IC
                 p.Id,
                 p.AppointmentId,
                 appointmentDates.GetValueOrDefault(p.AppointmentId),
+                p.PaidAt!.Value,
                 $"{p.Client?.FirstName} {p.Client?.LastName}".Trim(),
                 p.RetainedAmount(),
                 shareIsKnown ? ShareOf(p) : null,

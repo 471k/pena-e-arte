@@ -201,8 +201,13 @@ export function StudioProfilePage() {
     pinDrivenAddressUpdate.current = false;
   }, [addressLine1Value]);
 
+  // Load the form once per studio, not on every refetch: the currency, branding and slug controls on
+  // this page invalidate the same query, and a refetch with changed content used to replace whatever
+  // the owner was typing here (A07a cleanup, finding 2). onSubmit resets the form after a save.
+  const formLoadedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (studio) {
+    if (studio && formLoadedFor.current !== studio.id) {
+      formLoadedFor.current = studio.id;
       reset({
         name:            studio.name,
         city:            studio.city,

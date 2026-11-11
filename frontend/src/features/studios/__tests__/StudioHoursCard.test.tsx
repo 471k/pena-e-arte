@@ -43,13 +43,15 @@ function makeStore() {
 }
 
 function renderCard() {
+  const store = makeStore();
   render(
-    <Provider store={makeStore()}>
+    <Provider store={store}>
       <MemoryRouter>
         <StudioHoursCard />
       </MemoryRouter>
     </Provider>,
   );
+  return store;
 }
 
 describe("StudioHoursCard", () => {
@@ -105,5 +107,25 @@ describe("StudioHoursCard", () => {
     expect(entries).toContainEqual(
       expect.objectContaining({ dayOfWeek: 1, isOpen: true }),
     );
+  });
+
+  // A07a cleanup, finding 2: a refetch whose content changed (saved from another tab, or the save's own
+  // invalidation landing mid-edit) must not throw away a day the owner has just switched on.
+  it("keeps an unsaved edit when the hours are refetched with changed content", async () => {
+    let reads = 0;
+    let hours: StudioHoursEntry[] = EMPTY_HOURS;
+    server.use(http.get(`http://localhost/api/v1/studios/${STUDIO_ID}/hours`, () => { reads++; return HttpResponse.json(hours); }));
+    const user = userEvent.setup();
+    const store = renderCard();
+    await user.click(await screen.findByRole("switch", { name: /monday open/i }));
+    expect(screen.getByRole("switch", { name: /monday open/i })).toHaveAttribute("aria-checked", "true");
+
+    hours = [{ dayOfWeek: 3, startTime: "10:00:00", endTime: "16:00:00", isOpen: true }];
+    const before = reads;
+    store.dispatch(studiosApi.util.invalidateTags(["StudioHours"]));
+    await waitFor(() => expect(reads).toBe(before + 1));
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(screen.getByRole("switch", { name: /monday open/i })).toHaveAttribute("aria-checked", "true");
   });
 });

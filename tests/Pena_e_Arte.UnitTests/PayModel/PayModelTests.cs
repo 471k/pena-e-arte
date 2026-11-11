@@ -22,8 +22,9 @@ using Pena_e_Arte.UnitTests.Helpers;
 namespace Pena_e_Arte.UnitTests.PayModel;
 
 /// <summary>
-/// A07a phase 4: the pay model as a fourth setup area, the studio's default terms (read, save,
-/// confirm), one artist's own terms, the input rules, and the owner-only policies.
+/// A07a phase 4: the pay model as a fourth setup area, the studio's default terms (read, save), one
+/// artist's own terms, the input rules, and the owner-only policies. The A07a cleanup removed the
+/// unreachable confirm endpoint and made saves drop any value the arrangement doesn't use.
 /// </summary>
 public class PayModelTests
 {
@@ -105,38 +106,48 @@ public class PayModelTests
         result.IsValid.Should().Be(valid);
     }
 
-    // ── confirming the studio's terms ───────────────────────────────────────
+    // ── values the arrangement doesn't use (A07a cleanup, finding 1) ────────
 
-    [Fact]
-    public async Task ConfirmingRegistrationsDefault_IsRefused_BecauseCommissionHasNoRate()
+    [Theory]
+    [InlineData("Commission", 60.0, 2500.0, 60.0, null)]
+    [InlineData("BoothRent", 70.0, 2500.0, null, null)]
+    [InlineData("Salaried", 70.0, 2500.0, null, null)]
+    [InlineData("FlatFeePerSession", 70.0, 2500.0, null, 2500.0)]
+    public async Task SavingTheStudiosTerms_DropsAValueTheArrangementDoesNotUse(
+        string arrangement, double sentRate, double sentFee, double? storedRate, double? storedFee)
     {
-        Func<Task> act = () => Confirm(Now);
+        StudioPayModelResponse r = await Save(new UpdateStudioPayModelRequest(arrangement, (decimal)sentRate, (decimal)sentFee));
 
-        (await act.Should().ThrowAsync<BusinessRuleViolationException>()).WithMessage("Set the commission rate first.");
-        Studio.PayModelReviewedAt.Should().BeNull("a reviewed pay model must always give artists a share");
+        Studio.DefaultCommissionRate.Should().Be((decimal?)storedRate);
+        Studio.DefaultFlatFeePerSession.Should().Be((decimal?)storedFee);
+        r.CommissionRate.Should().Be((decimal?)storedRate);
+        r.FlatFeePerSession.Should().Be((decimal?)storedFee);
     }
 
-    [Fact]
-    public async Task ConfirmingTermsThatGiveAShare_MarksThemReviewed_AndKeepsTheFirstConfirmation()
+    [Theory]
+    // The artist's own arrangement decides when they have one...
+    [InlineData("BoothRent", "Commission", null, null)]
+    [InlineData("Commission", "BoothRent", 70.0, null)]
+    [InlineData("FlatFeePerSession", "Commission", null, 3000.0)]
+    // ...and the studio's when they don't (null = use the studio's).
+    [InlineData(null, "BoothRent", null, null)]
+    [InlineData(null, "Commission", 70.0, null)]
+    [InlineData(null, "FlatFeePerSession", null, 3000.0)]
+    public async Task SavingAnArtistsTerms_DropsAValueTheirEffectiveArrangementDoesNotUse(
+        string? artistArrangement, string studioArrangement, double? storedRate, double? storedFee)
     {
-        Studio.DefaultPayArrangement = ArtistPayArrangement.BoothRent;
+        Studio.DefaultPayArrangement = Enum.Parse<ArtistPayArrangement>(studioArrangement);
+        Artist artist = new() { StudioId = _studioId, FirstName = "Ana", LastName = "Costa", Email = "a@a.test" };
+        _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
 
-        await Confirm(Now);
-        await Confirm(Now.AddDays(1));
+        ArtistPayModelResponse r = await new UpdateArtistPayModelHandler(_db, _tenant).Handle(
+            new UpdateArtistPayModelCommand(artist.Id, new UpdateArtistPayModelRequest(artistArrangement, 70m, 3000m)), default);
 
-        Studio.PayModelReviewedAt.Should().Be(Now.UtcDateTime);
-    }
-
-    [Fact]
-    public async Task ConfirmingAFlatFeeWithNoFee_IsRefused()
-    {
-        Studio.DefaultPayArrangement = ArtistPayArrangement.FlatFeePerSession;
-        await _db.SaveChangesAsync();
-
-        Func<Task> act = () => Confirm(Now);
-
-        (await act.Should().ThrowAsync<BusinessRuleViolationException>()).WithMessage("Set the fee per session first.");
+        r.CommissionRate.Should().Be((decimal?)storedRate);
+        r.FlatFeePerSession.Should().Be((decimal?)storedFee);
+        artist.CommissionRate.Should().Be((decimal?)storedRate);
+        artist.FlatFeePerSession.Should().Be((decimal?)storedFee);
     }
 
     // ── one artist's own terms ──────────────────────────────────────────────
@@ -183,7 +194,6 @@ public class PayModelTests
     [Theory]
     [InlineData("GET", "/api/v1/studios/me/pay-model")]
     [InlineData("PUT", "/api/v1/studios/me/pay-model")]
-    [InlineData("POST", "/api/v1/studios/me/pay-model/confirm")]
     [InlineData("GET", "/api/v1/artists/{id:guid}/pay-model")]
     [InlineData("PUT", "/api/v1/artists/{id:guid}/pay-model")]
     public void EveryPayModelEndpoint_IsOwnerOnly(string method, string pattern)
@@ -207,13 +217,27 @@ public class PayModelTests
         endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Should().ContainSingle(a => a.Policy == "OwnerOnly");
     }
 
+    [Fact]
+    public void ThereIsNoConfirmEndpoint_SavingTheFormIsTheReview()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Services.AddSingleton(Substitute.For<ISender>());
+        builder.Services.AddSingleton(Substitute.For<ICurrentTenant>());
+        builder.Services.AddSingleton(Substitute.For<ICurrentUser>());
+        builder.Services.AddAuthorization();
+        using WebApplication app = builder.Build();
+        app.MapStudioEndpoints();
+
+        ((IEndpointRouteBuilder)app).DataSources
+            .SelectMany(ds => ds.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Should().NotContain(e => e.RoutePattern.RawText != null && e.RoutePattern.RawText.Contains("pay-model/confirm"));
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private Task<StudioPayModelResponse> Save(UpdateStudioPayModelRequest request) =>
         new UpdateStudioPayModelHandler(_db, _tenant, new FixedTimeProvider(Now)).Handle(new UpdateStudioPayModelCommand(request), default);
-
-    private Task Confirm(DateTimeOffset at) =>
-        new ConfirmStudioPayModelHandler(_db, _tenant, new FixedTimeProvider(at)).Handle(new ConfirmStudioPayModelCommand(), default);
 
     private async Task<(string State, DateTime? ReviewedAt)> Readiness()
     {
