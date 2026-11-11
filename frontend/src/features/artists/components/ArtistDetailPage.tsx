@@ -61,6 +61,7 @@ import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
+import { ArtistPayModelSection } from "./ArtistPayModelSection";
 import { useAppSelector } from "@/app/hooks";
 import {
   useGetArtistByIdQuery,
@@ -688,6 +689,9 @@ export function ArtistDetailPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* A07a: owner only; the artist can't see or set their own terms here. */}
+              {canManage && <ArtistPayModelSection artistId={artist.id} />}
 
               {canManage && (
                 <p className="text-xs text-muted-foreground text-center">

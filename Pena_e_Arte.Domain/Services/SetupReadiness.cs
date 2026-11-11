@@ -17,9 +17,10 @@ public enum SetupAreaState
 }
 
 /// <summary>
-/// The setup checklist's derivation, kept pure so every state is unit-testable. Only opening hours
-/// can be in <see cref="SetupAreaState.DefaultUnreviewed"/>: registration seeds a Mon–Fri schedule
-/// but never an artist or a deposit rule, so an artist or a rule existing means the owner made it.
+/// The setup checklist's derivation, kept pure so every state is unit-testable. Two areas can be in
+/// <see cref="SetupAreaState.DefaultUnreviewed"/>: opening hours (registration seeds a Mon–Fri
+/// schedule) and the artist pay model (every studio starts on Commission with no rate, A07a).
+/// Registration never creates an artist or a deposit rule, so one existing means the owner made it.
 /// </summary>
 public static class SetupReadiness
 {
@@ -39,4 +40,15 @@ public static class SetupReadiness
         !anyHoursRows ? SetupAreaState.NotConfigured
         : hoursReviewedAt is null ? SetupAreaState.DefaultUnreviewed
         : SetupAreaState.Reviewed;
+
+    /// <summary>
+    /// How artists get paid (A07a). Never <see cref="SetupAreaState.NotConfigured"/>: unlike hours, a
+    /// studio always has an arrangement (Commission from registration), it just may not be confirmed.
+    /// Reviewed once the owner saved the pay-model form or confirmed terms that give a share (the
+    /// confirm and save paths both refuse terms that don't, so Reviewed always means a share can be
+    /// worked out). Whether the studio has artists other than the owner doesn't change the state: a
+    /// solo owner can set or confirm it in one step, and it applies to them as soon as anyone joins.
+    /// </summary>
+    public static SetupAreaState PayModel(DateTime? payModelReviewedAt) =>
+        payModelReviewedAt is null ? SetupAreaState.DefaultUnreviewed : SetupAreaState.Reviewed;
 }

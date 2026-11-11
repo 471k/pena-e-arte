@@ -1,3 +1,5 @@
+using Pena_e_Arte.Domain.Enums;
+
 namespace Pena_e_Arte.Domain.Entities;
 
 public class Studio
@@ -79,6 +81,28 @@ public class Studio
     /// CreatedAt/UpdatedAt can't carry this: registration's rows get two separate
     /// DateTime.UtcNow reads, so a never-touched row can already have UpdatedAt &gt; CreatedAt.</summary>
     public DateTime? HoursReviewedAt { get; set; }
+
+    /// <summary>How the studio's artists are paid unless an artist has their own arrangement
+    /// (DEC10, A07a). Commission by default, as the most common structure, but with no rate: see
+    /// <see cref="DefaultCommissionRate"/>.</summary>
+    public ArtistPayArrangement DefaultPayArrangement { get; set; } = ArtistPayArrangement.Commission;
+
+    /// <summary>The artist's share under Commission, as a percentage of what the client paid:
+    /// 60.00 means 60% to the artist (0–100, the same unit as <see cref="Artist.CommissionRate"/>).
+    /// Null by default and never seeded: the sources that quote 50/50 or 60/40 call those figures
+    /// illustrative, so a seeded number would read as configured when nobody chose it. While it is
+    /// null, a commission artist's share is unknown, never a guess.</summary>
+    public decimal? DefaultCommissionRate { get; set; }
+
+    /// <summary>The studio's cut per session under FlatFeePerSession, in the studio's currency.
+    /// Null means not set.</summary>
+    public decimal? DefaultFlatFeePerSession { get; set; }
+
+    /// <summary>When the owner last confirmed how artists get paid (A07a): by saving the pay-model
+    /// form, or by saying the default is right. Null means nobody has looked at it, so the setup
+    /// checklist shows it as "set for you, not yet reviewed". Same semantics as
+    /// <see cref="HoursReviewedAt"/>.</summary>
+    public DateTime? PayModelReviewedAt { get; set; }
 
     public void UpdateBranding(bool show) => ShowPlatformBranding = show;
     public DateTime TrialExpiresAt { get; set; }

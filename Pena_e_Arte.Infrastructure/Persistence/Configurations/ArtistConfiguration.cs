@@ -26,6 +26,8 @@ public class ArtistConfiguration : TenantEntityConfiguration<Artist>
 
         builder.Property(a => a.HourlyRate).HasColumnType("decimal(18,4)");
         builder.Property(a => a.CommissionRate).HasColumnType("decimal(5,2)");
+        builder.Property(a => a.PayArrangement).HasConversion<string>().HasMaxLength(32);
+        builder.Property(a => a.FlatFeePerSession).HasColumnType("decimal(18,4)");
         builder.Property(a => a.Slug).HasMaxLength(60).IsRequired(false);
         builder.Property(a => a.Bio).HasMaxLength(2000);
         builder.Property(a => a.IsActive).HasDefaultValue(true);

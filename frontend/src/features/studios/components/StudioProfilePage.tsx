@@ -30,6 +30,7 @@ import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
 import { StudioHoursCard } from "./StudioHoursCard";
+import { StudioPayModelCard } from "./StudioPayModelCard";
 import { StudioAuditLogCard } from "./StudioAuditLogCard";
 import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
@@ -599,6 +600,7 @@ export function StudioProfilePage() {
         <DeveloperSettingsCard />
         <WebhookSettingsCard />
         <StudioHoursCard />
+        <StudioPayModelCard />
         <StudioClosuresCard />
         <QrCodeSection />
         <EmbedCodeCard />

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 
 namespace Pena_e_Arte.Infrastructure.Persistence.Configurations;
 
@@ -29,6 +30,11 @@ public class StudioConfiguration : IEntityTypeConfiguration<Studio>
         builder.Property(s => s.PokMerchantId).HasMaxLength(64);
         builder.Property(s => s.CountryCode).HasMaxLength(2).IsFixedLength().IsRequired();
         builder.Property(s => s.Currency).HasMaxLength(3).IsFixedLength().IsRequired();
+        builder.Property(s => s.DefaultPayArrangement)
+               .HasConversion<string>().HasMaxLength(32).IsRequired()
+               .HasDefaultValue(ArtistPayArrangement.Commission);
+        builder.Property(s => s.DefaultCommissionRate).HasColumnType("decimal(5,2)");
+        builder.Property(s => s.DefaultFlatFeePerSession).HasColumnType("decimal(18,4)");
 
         builder.HasIndex(s => s.Slug).IsUnique().HasDatabaseName("ix_studios_slug");
         builder.HasIndex(s => s.IsActive).HasDatabaseName("ix_studios_is_active");

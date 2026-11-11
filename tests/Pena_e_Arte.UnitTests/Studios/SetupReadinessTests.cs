@@ -64,6 +64,7 @@ public class SetupReadinessTests
             ["Artists"] = "NotConfigured",
             ["DepositRules"] = "NotConfigured",
             ["Hours"] = "DefaultUnreviewed",
+            ["PayModel"] = "DefaultUnreviewed",
         });
         states.Values.Should().NotContain("Reviewed", "nothing here was done by the owner");
     }
@@ -144,7 +145,7 @@ public class SetupReadinessTests
     [Fact]
     public async Task AreasComeBackInAFixedOrder()
     {
-        (await Read()).Areas.Select(a => a.Area).Should().Equal("Artists", "DepositRules", "Hours");
+        (await Read()).Areas.Select(a => a.Area).Should().Equal("Artists", "DepositRules", "Hours", "PayModel");
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────

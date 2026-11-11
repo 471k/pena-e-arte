@@ -1,6 +1,7 @@
 using MediatR;
 using Pena_e_Arte.Application.ExternalApi.Commands;
 using Pena_e_Arte.Application.ExternalApi.Queries;
+using Pena_e_Arte.Application.PayModel;
 using Pena_e_Arte.Application.Studios.Commands;
 using Pena_e_Arte.Application.Studios.Queries;
 using Pena_e_Arte.Application.Studios.StudioJoinInvites;
@@ -62,6 +63,11 @@ public static class StudioEndpoints
         // E05a (O02): where each setup area stands, and confirming the hours registration set.
         group.MapGet("/me/setup-readiness", GetSetupReadiness).RequireAuthorization("OwnerOnly");
         group.MapPost("/me/hours/confirm", ConfirmHours).RequireAuthorization("OwnerOnly");
+
+        // A07a: how the studio's artists are paid by default.
+        group.MapGet("/me/pay-model", GetPayModel).RequireAuthorization("OwnerOnly");
+        group.MapPut("/me/pay-model", UpdatePayModel).RequireAuthorization("OwnerOnly");
+        group.MapPost("/me/pay-model/confirm", ConfirmPayModel).RequireAuthorization("OwnerOnly");
 
         // Admin: list all studios + suspension controls
         group.MapGet("/", GetStudios).RequireAuthorization("AdminOnly");
@@ -219,6 +225,24 @@ public static class StudioEndpoints
     private static async Task<IResult> ConfirmHours(ISender mediator, CancellationToken ct)
     {
         await mediator.Send(new ConfirmStudioHoursCommand(), ct);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetPayModel(ISender mediator, CancellationToken ct)
+    {
+        StudioPayModelResponse result = await mediator.Send(new GetStudioPayModelQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdatePayModel(UpdateStudioPayModelRequest request, ISender mediator, CancellationToken ct)
+    {
+        StudioPayModelResponse result = await mediator.Send(new UpdateStudioPayModelCommand(request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> ConfirmPayModel(ISender mediator, CancellationToken ct)
+    {
+        await mediator.Send(new ConfirmStudioPayModelCommand(), ct);
         return Results.NoContent();
     }
 

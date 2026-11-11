@@ -9,11 +9,56 @@ import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { RevenueTrendChart } from "./RevenueTrendChart";
 import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
+import { describeArtistArrangement } from "@/features/studios/payModel";
+import type { ArtistEarningsResponse } from "../report.types";
 
 function formatDate(iso: string | null, studioTimezone: string | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(
     "en-GB", withStudioTimeZone({ day: "numeric", month: "short", year: "numeric" }, studioTimezone));
+}
+
+/**
+ * A07a: the headline is the artist's share under their arrangement (their own, else the studio's), with
+ * what clients paid beside it. Before A07a this page showed the whole client payment as "earnings".
+ * When the studio hasn't set what the arrangement needs, there is no total at all: not 0, and not the
+ * client total with a caveat.
+ */
+function ShareUnknown() {
+  return (
+    <Card data-testid="earnings-share-unknown">
+      <CardContent className="py-8 flex flex-col items-center gap-2 text-center">
+        <Wallet className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+        <p className="text-sm font-medium">We can't work out your share yet</p>
+        <p className="text-xs text-muted-foreground max-w-sm">
+          Your studio hasn't set how artists get paid yet, so we can't work out your share. Ask your studio
+          owner to set it in Studio settings.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ShareHeadline({ data }: { data: ArtistEarningsResponse }) {
+  const label = describeArtistArrangement(data.arrangement, data.commissionRate, data.flatFeePerSession, data.currency);
+  return (
+    <Card data-testid="earnings-share">
+      <CardContent className="p-4 grid gap-3 sm:grid-cols-2">
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium text-muted-foreground">Your share (last 30 days) · {label}</p>
+          <p className="text-3xl font-bold tabular-nums" data-testid="earnings-period-total">
+            {formatCurrency(data.periodTotal ?? 0, data.currency)}
+          </p>
+        </div>
+        <div className="space-y-0.5 sm:text-right">
+          <p className="text-xs text-muted-foreground">What clients paid (last 30 days)</p>
+          <p className="text-lg tabular-nums text-muted-foreground" data-testid="earnings-client-paid-total">
+            {formatCurrency(data.clientPaidTotal, data.currency)}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function MyEarningsPage() {
@@ -79,25 +124,31 @@ export function MyEarningsPage() {
               </p>
             )}
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Earnings trend (last 12 months)</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {data.monthlyTrend.every((p) => p.revenue === 0) ? (
-                  <p className="h-[160px] flex items-center justify-center text-xs text-muted-foreground">
-                    No earnings recorded yet.
-                  </p>
-                ) : (
-                  <RevenueTrendChart data={data.monthlyTrend} currency={data.currency} />
-                )}
-              </CardContent>
-            </Card>
+            {data.shareIsKnown ? <ShareHeadline data={data} /> : <ShareUnknown />}
+
+            {data.shareIsKnown && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Your share (last 12 months)</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {data.monthlyTrend.every((p) => (p.artistAmount ?? 0) === 0) ? (
+                    <p className="h-[160px] flex items-center justify-center text-xs text-muted-foreground">
+                      No earnings recorded yet.
+                    </p>
+                  ) : (
+                    <RevenueTrendChart
+                      data={data.monthlyTrend.map((p) => ({ month: p.month, revenue: p.artistAmount ?? 0 }))}
+                      currency={data.currency}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Payments (last 30 days)</CardTitle>
-                <span className="text-sm font-semibold tabular-nums">{formatCurrency(data.periodTotal, data.currency)}</span>
               </CardHeader>
               <CardContent className="pt-0">
                 {data.payments.length === 0 ? (
@@ -110,10 +161,15 @@ export function MyEarningsPage() {
                       <li key={line.paymentId} className="px-3 py-2.5 space-y-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-medium truncate">{line.clientName}</span>
-                          <span className="text-xs tabular-nums font-semibold">{formatCurrency(line.amount, data.currency)}</span>
+                          {line.shareIsKnown && line.artistAmount !== null && (
+                            <span className="text-xs tabular-nums font-semibold" data-testid="earnings-line-share">
+                              {formatCurrency(line.artistAmount, data.currency)}
+                            </span>
+                          )}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {formatDate(line.appointmentDate, studio?.timezone)}
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                          <span>{formatDate(line.appointmentDate, studio?.timezone)}</span>
+                          <span className="tabular-nums">Client paid {formatCurrency(line.clientPaidAmount, data.currency)}</span>
                         </div>
                         {line.splits.length > 0 && (
                           <ul className="mt-1 space-y-0.5">

@@ -30,6 +30,20 @@ public class GetMyEarningsHandlerTests
     private GetMyEarningsHandler CreateSut() =>
         new(_db, _currentUser, _tenant, NullLogger<GetMyEarningsHandler>.Instance);
 
+    // A07a phase 1: the live defect. An artist on 60% commission was shown the whole client payment
+    // as their earnings. Red at 25c24715 (it returns 10,000).
+    [Fact]
+    public async Task MyEarnings_DoesNotReportStudioGrossAsArtistEarnings()
+    {
+        Guid artistId = await SeedArtistAsync(commissionRate: 60m);
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        await SeedPayment(apptId, 10_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One");
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.PeriodTotal.Should().Be(6_000m);
+    }
+
     [Fact]
     public async Task Handle_NoArtistProfileForCaller_ThrowsNotFoundException()
     {
@@ -46,9 +60,9 @@ public class GetMyEarningsHandlerTests
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
         result.MonthlyTrend.Should().HaveCount(12);
-        result.MonthlyTrend.Should().OnlyContain(p => p.Revenue == 0m);
+        result.MonthlyTrend.Should().OnlyContain(p => p.ClientPaid == 0m);
         result.Payments.Should().BeEmpty();
-        result.PeriodTotal.Should().Be(0m);
+        result.ClientPaidTotal.Should().Be(0m);
     }
 
     [Fact]
@@ -60,9 +74,9 @@ public class GetMyEarningsHandlerTests
 
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
-        result.MonthlyTrend.Last().Revenue.Should().Be(80m);
-        result.PeriodTotal.Should().Be(80m);
-        result.Payments.Should().ContainSingle(p => p.Amount == 80m && p.ClientName == "Client One");
+        result.MonthlyTrend.Last().ClientPaid.Should().Be(80m);
+        result.ClientPaidTotal.Should().Be(80m);
+        result.Payments.Should().ContainSingle(p => p.ClientPaidAmount == 80m && p.ClientName == "Client One");
     }
 
     [Fact]
@@ -75,7 +89,7 @@ public class GetMyEarningsHandlerTests
 
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
-        result.MonthlyTrend.Should().OnlyContain(p => p.Revenue == 0m);
+        result.MonthlyTrend.Should().OnlyContain(p => p.ClientPaid == 0m);
         result.Payments.Should().BeEmpty();
     }
 
@@ -88,7 +102,7 @@ public class GetMyEarningsHandlerTests
 
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
-        result.MonthlyTrend.Should().OnlyContain(p => p.Revenue == 0m);
+        result.MonthlyTrend.Should().OnlyContain(p => p.ClientPaid == 0m);
         result.Payments.Should().BeEmpty();
     }
 
@@ -101,9 +115,9 @@ public class GetMyEarningsHandlerTests
 
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
-        result.MonthlyTrend.Last().Revenue.Should().Be(60m);
-        result.PeriodTotal.Should().Be(60m);
-        result.Payments.Should().ContainSingle(p => p.Amount == 60m);
+        result.MonthlyTrend.Last().ClientPaid.Should().Be(60m);
+        result.ClientPaidTotal.Should().Be(60m);
+        result.Payments.Should().ContainSingle(p => p.ClientPaidAmount == 60m);
     }
 
     [Fact]
@@ -116,9 +130,9 @@ public class GetMyEarningsHandlerTests
 
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
-        result.MonthlyTrend.Sum(p => p.Revenue).Should().Be(90m);
+        result.MonthlyTrend.Sum(p => p.ClientPaid).Should().Be(90m);
         result.Payments.Should().BeEmpty();
-        result.PeriodTotal.Should().Be(0m);
+        result.ClientPaidTotal.Should().Be(0m);
     }
 
     [Fact]
@@ -182,13 +196,106 @@ public class GetMyEarningsHandlerTests
 
         ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
 
-        result.PeriodTotal.Should().Be(80m);
-        result.Payments.Should().ContainSingle(p => p.Amount == 80m);
+        result.ClientPaidTotal.Should().Be(80m);
+        result.Payments.Should().ContainSingle(p => p.ClientPaidAmount == 80m);
         result.Currency.Should().Be("EUR");
         result.ExcludedOtherCurrencyCount.Should().Be(1);
     }
 
-    private async Task<Guid> SeedArtistAsync()
+    // ── A07a phase 5: the artist's share ────────────────────────────────────
+
+    [Fact]
+    public async Task UnsetRate_ShowsNoTotal_NeverZeroOrTheGross()
+    {
+        // Registration's default: Commission with no rate, and no rate of the artist's own.
+        Guid artistId = await SeedArtistAsync();
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        await SeedPayment(apptId, 10_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One");
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.ShareIsKnown.Should().BeFalse();
+        result.PeriodTotal.Should().BeNull();
+        result.ClientPaidTotal.Should().Be(10_000m, "what clients paid is still shown, as what it is");
+        result.Payments.Should().ContainSingle(l => l.ArtistAmount == null && !l.ShareIsKnown && l.ClientPaidAmount == 10_000m);
+        result.MonthlyTrend.Last().Should().Be(new EarningsMonthPoint(result.MonthlyTrend.Last().Month, null, 10_000m, false));
+        result.MonthlyTrend.SkipLast(1).Should().OnlyContain(m => m.ShareIsKnown && m.ArtistAmount == 0m, "a month with no payments is a known zero");
+    }
+
+    [Fact]
+    public async Task BoothRent_ArtistSeesTheFullAmount()
+    {
+        await SetStudioTerms(ArtistPayArrangement.BoothRent);
+        Guid artistId = await SeedArtistAsync();
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        await SeedPayment(apptId, 10_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One");
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.Should().Match<ArtistEarningsResponse>(r => r.ShareIsKnown && r.PeriodTotal == 10_000m && r.Arrangement == "BoothRent");
+        result.MonthlyTrend.Last().ArtistAmount.Should().Be(10_000m);
+    }
+
+    [Fact]
+    public async Task Salaried_IsAKnownZero_NotUnknown()
+    {
+        await SetStudioTerms(ArtistPayArrangement.Salaried);
+        Guid artistId = await SeedArtistAsync();
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        await SeedPayment(apptId, 10_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One");
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.ShareIsKnown.Should().BeTrue();
+        result.PeriodTotal.Should().Be(0m);
+        result.ClientPaidTotal.Should().Be(10_000m);
+    }
+
+    [Fact]
+    public async Task AnArtistsOwnTerms_BeatTheStudios_AndTheResponseSaysWhich()
+    {
+        await SetStudioTerms(ArtistPayArrangement.Commission, rate: 50m);
+        Guid artistId = await SeedArtistAsync(commissionRate: 70m);
+        Guid apptId = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        await SeedPayment(apptId, 1_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One", refundedAmount: 200m);
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.PeriodTotal.Should().Be(560m, "70% of the 800 kept after the refund");
+        result.Arrangement.Should().Be("Commission");
+        result.CommissionRate.Should().Be(70m);
+        result.FlatFeePerSession.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task OtherCurrencyPayments_StayExcluded_FromTheShareToo()
+    {
+        await SetStudioTerms(ArtistPayArrangement.Commission, rate: 50m);
+        Guid artistId = await SeedArtistAsync();
+        Guid eurAppt = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-1));
+        Guid allAppt = await SeedAppointment(artistId, DateTime.UtcNow.AddDays(-2));
+        await SeedPayment(eurAppt, 80m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-1), "Client", "One");
+        Guid allPayment = await SeedPayment(allAppt, 5_000m, PaymentStatus.Paid, DateTime.UtcNow.AddHours(-2), "Client", "Two");
+        _db.Payments.Single(p => p.Id == allPayment).Currency = "ALL";
+        await _db.SaveChangesAsync();
+
+        ArtistEarningsResponse result = await CreateSut().Handle(new GetMyEarningsQuery(), default);
+
+        result.ExcludedOtherCurrencyCount.Should().Be(1);
+        result.PeriodTotal.Should().Be(40m);
+        result.ClientPaidTotal.Should().Be(80m);
+    }
+
+    private async Task SetStudioTerms(ArtistPayArrangement arrangement, decimal? rate = null, decimal? fee = null)
+    {
+        Studio studio = _db.Studios.Single(s => s.Id == _studioId);
+        studio.DefaultPayArrangement = arrangement;
+        studio.DefaultCommissionRate = rate;
+        studio.DefaultFlatFeePerSession = fee;
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedArtistAsync(decimal? commissionRate = null)
     {
         Artist artist = new()
         {
@@ -197,6 +304,7 @@ public class GetMyEarningsHandlerTests
             FirstName = "Luna",
             LastName = "Artista",
             Email = $"{Guid.NewGuid():N}@test.com",
+            CommissionRate = commissionRate,
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync();
