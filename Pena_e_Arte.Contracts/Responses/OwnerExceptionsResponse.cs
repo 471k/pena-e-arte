@@ -2,8 +2,8 @@ namespace Pena_e_Arte.Contracts.Responses;
 
 /// <summary>
 /// The owner's dashboard exceptions (E05a, O01): what needs the owner, grouped by the decision it
-/// asks for. Only groups with something in them are present, ordered by their soonest appointment
-/// (overdue first), with ties in the fixed order of <see cref="OwnerExceptionKinds"/>.
+/// asks for. Only groups with something in them are present, always in the fixed order of
+/// <see cref="OwnerExceptionKinds.All"/> (by consequence if ignored); items inside a group are soonest first.
 /// </summary>
 /// <param name="WindowDays">How far ahead the unpaid-deposit and preparation groups look (7 days).</param>
 /// <param name="MaxItemsPerGroup">How many items each group carries at most; Total is always the full count.</param>
@@ -56,6 +56,13 @@ public static class OwnerExceptionKinds
     /// <summary>Sessions in the next WindowDays with a preparation requirement still outstanding.</summary>
     public const string Preparation = "Preparation";
 
+    /// <summary>
+    /// The order groups are shown in, by what happens if each is ignored: no artist means no session;
+    /// a client waiting on the studio loses the booking; an unpaid deposit is money at risk this week;
+    /// preparation is still fixable near the date; cash to confirm is bookkeeping on money already
+    /// promised in person. Dates never reorder groups: only cash can be past-dated, so ordering by the
+    /// soonest date only ever promoted cash, and the staler a promise got the more firmly it led.
+    /// </summary>
     public static readonly IReadOnlyList<string> All =
-        [Unassigned, AwaitingConfirmation, CashToConfirm, UnpaidDeposit, Preparation];
+        [Unassigned, AwaitingConfirmation, UnpaidDeposit, Preparation, CashToConfirm];
 }

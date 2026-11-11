@@ -127,13 +127,12 @@ public class GetOwnerExceptionsHandler(IAppDbContext db, ICurrentTenant tenant, 
                 .ToList()),
         ];
 
-        // Ordering rule (stated, not a judgement of commercial importance): the group whose soonest
-        // appointment comes first leads, so anything overdue is at the top; equal dates keep the fixed
-        // order of OwnerExceptionKinds.All. Empty groups are left out.
+        // Fixed order by consequence (OwnerExceptionKinds.All explains it); dates never reorder groups,
+        // only the items inside one. Empty groups are left out.
+        List<string> order = OwnerExceptionKinds.All.ToList();
         List<OwnerExceptionGroupResponse> ordered = groups
             .Where(g => g.Total > 0 && g.Items.Count > 0)
-            .OrderBy(g => g.Items[0].AppointmentDate)
-            .ThenBy(g => OwnerExceptionKinds.All.ToList().IndexOf(g.Kind))
+            .OrderBy(g => order.IndexOf(g.Kind))
             .ToList();
 
         return new OwnerExceptionsResponse(now, WindowDays, MaxItemsPerGroup, ordered);

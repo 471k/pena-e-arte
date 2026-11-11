@@ -297,13 +297,15 @@ export function DashboardPage() {
   });
   const { data: artists = [] } = useGetArtistsQuery(undefined);
 
-  // "Deposits Due" is the server's count of unpaid deposits in the next 7 days (E05a), the same
-  // number as the "Deposits not paid" group below, rather than a second derivation of deposit state
-  // here that could disagree with it.
+  // The server's count of unpaid deposits in the next 7 days (E05a), the same number as the "Deposits
+  // not paid" group below, rather than a second derivation of deposit state here that could disagree
+  // with it. Cash promises are left out (they're "Cash to confirm"), so this is not everything owed,
+  // and the label names the window and the unpaid-only sense so it can't read as a total.
   const { data: exceptions, isLoading: loadingExceptions } = useGetOwnerExceptionsQuery();
   const depositsDue =
     (exceptions && Array.isArray(exceptions.groups) ? exceptions.groups : [])
       .find((g) => g.kind === OwnerExceptionKind.UnpaidDeposit)?.total ?? 0;
+  const depositWindowDays = exceptions?.windowDays ?? 7;
 
   return (
     <div className="min-h-screen bg-background">
@@ -344,7 +346,7 @@ export function DashboardPage() {
             testId="stat-week"
           />
           <StatCard
-            label="Deposits Due"
+            label={`Unpaid deposits (${depositWindowDays} days)`}
             value={depositsDue}
             icon={<Banknote className="h-3.5 w-3.5" />}
             isLoading={loadingExceptions}

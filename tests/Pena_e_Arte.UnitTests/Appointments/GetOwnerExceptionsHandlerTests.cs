@@ -11,7 +11,7 @@ namespace Pena_e_Arte.UnitTests.Appointments;
 
 /// <summary>
 /// E05a (O01): the owner's dashboard exceptions. Each source in isolation (none, one, several), the
-/// counts being real counts rather than the length of a page, and the stated ordering rule.
+/// counts being real counts rather than the length of a page, and the fixed order by consequence.
 /// </summary>
 public class GetOwnerExceptionsHandlerTests
 {
@@ -173,21 +173,46 @@ public class GetOwnerExceptionsHandlerTests
     // ── ordering ──────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Groups_AreOrderedBySoonestAppointment_OverdueCashFirst()
+    public async Task APastDatedCashPromise_DoesNotLead()
     {
-        await Appt(hoursFromNow: 50, status: AppointmentStatus.Pending, deposit: DepositStatus.Paid);   // awaiting, +50h
-        await Appt(hoursFromNow: 10, artist: false, status: AppointmentStatus.Pending, deposit: DepositStatus.Paid); // unassigned, +10h
-        Guid overdue = await Appt(hoursFromNow: -24, deposit: DepositStatus.Pending);
-        await Pay(overdue, PaymentStatus.CashPending, ClientPaymentMethod.Cash);                       // cash, -24h
+        // Only cash can carry a past date (every other group reads from now on), so ordering by the
+        // soonest date put an abandoned promise above tomorrow's unassigned request. It no longer does.
+        Guid monthOld = await Appt(hoursFromNow: -24 * 30, deposit: DepositStatus.Pending);
+        await Pay(monthOld, PaymentStatus.CashPending, ClientPaymentMethod.Cash);
+        await Appt(hoursFromNow: 24, artist: false, status: AppointmentStatus.Pending, deposit: DepositStatus.Paid);
+
+        OwnerExceptionsResponse r = await Read();
+
+        r.Groups[0].Kind.Should().Be(OwnerExceptionKinds.Unassigned);
+        r.Groups[^1].Kind.Should().Be(OwnerExceptionKinds.CashToConfirm);
+    }
+
+    [Theory]
+    // hours from now for: unassigned, awaiting, cash, unpaid deposit, preparation
+    [InlineData(150, 140, -24 * 30, 30, 5)]   // the reverse of the fixed order by date, cash a month old
+    [InlineData(160, 2, 100, 120, 60)]        // a different spread, cash promised for a future session
+    public async Task GroupOrder_IsTheFixedOrderByConsequence_WhateverTheItemDates(
+        double unassignedH, double awaitingH, double cashH, double unpaidH, double preparationH)
+    {
+        await Appt(hoursFromNow: unassignedH, artist: false, status: AppointmentStatus.Pending, deposit: DepositStatus.Paid);
+        await Appt(hoursFromNow: awaitingH, status: AppointmentStatus.Pending, deposit: DepositStatus.Paid);
+        Guid cash = await Appt(hoursFromNow: cashH, deposit: DepositStatus.Pending);
+        await Pay(cash, PaymentStatus.CashPending, ClientPaymentMethod.Cash);
+        await Appt(hoursFromNow: unpaidH, deposit: DepositStatus.Pending);
+        await Appt(hoursFromNow: preparationH, deposit: DepositStatus.Paid, serviceId: await Service(consent: true, intake: false));
 
         OwnerExceptionsResponse r = await Read();
 
         r.Groups.Select(g => g.Kind).Should().Equal(
-            OwnerExceptionKinds.CashToConfirm, OwnerExceptionKinds.Unassigned, OwnerExceptionKinds.AwaitingConfirmation);
+            OwnerExceptionKinds.Unassigned,
+            OwnerExceptionKinds.AwaitingConfirmation,
+            OwnerExceptionKinds.UnpaidDeposit,
+            OwnerExceptionKinds.Preparation,
+            OwnerExceptionKinds.CashToConfirm);
     }
 
     [Fact]
-    public async Task GroupsWithTheSameSoonestAppointment_KeepTheFixedKindOrder()
+    public async Task GroupsSharingAnAppointment_KeepTheFixedKindOrder()
     {
         // One unassigned request with an unpaid deposit and no service: Unassigned and UnpaidDeposit
         // share the same soonest appointment.

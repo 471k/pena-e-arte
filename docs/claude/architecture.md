@@ -6583,3 +6583,171 @@ Tests: backend unit `SetupReadinessTests` (13), `GetOwnerExceptionsHandlerTests`
 rewritten: "marks 'Set your hours' done once hours rows exist" asserted the O02 bug and now asserts the opposite),
 `OwnerExceptions` (14), `DashboardPage` cash tests re-pointed at the exceptions read (same assertions, plus "never
 reads /payments").
+
+## DEC10 answered — artist pay models are per-studio configuration, not a platform decision — 2026-11-10
+
+The owner's answer, 10 Nov: **implement every realistic arrangement and let each studio choose**, because
+every studio runs differently; surface it at registration so an owner sets their preference
+deliberately; and ship defaults that follow the category standard. This unblocks **A07/earnings**,
+which has been blocked since 2 November.
+
+### What the research actually supports — and what it does not
+
+Searched 2026-11-10. **The honest finding is that there is no industry-standard percentage**, and
+this project should stop implying there is one:
+
+- StyleSeat's guide to how tattoo artists get paid lists four arrangements — a percentage split,
+  booth rent, an hourly shop rate, and a flat per-piece fee ("common on guest spots and flash
+  days") — and notes most artists are 1099 independent contractors. It uses 50/50, 60/40 and 70/30
+  as examples but **explicitly labels them "illustrative arithmetic, not an industry benchmark."**
+- A tattoo-shop bookkeeping guide gives the accounting shape, which is more useful than any
+  percentage: under **booth rent** the artist is a tenant, the shop books rent as its own revenue,
+  client money belongs to the artist, and a shop collecting it through its own POS is a
+  **pass-through holding a liability owed to the artist**. Under **commission** the shop is merchant
+  of record, **only its share is revenue**, and the artist's share is "Due to Artist" — a liability,
+  not an expense.
+- **Neither source states who bears card-processing fees.** The bookkeeping example applies the
+  split to the full service price with no fee deduction, which points at *gross* — but it does not
+  say so, so this is weak evidence, not an established standard.
+- On tips, StyleSeat assumes a tip the shop does **not** split, and advises artists to *ask* whether
+  the split reaches the tip — so "tips are not split" is the common assumption, not a universal rule.
+
+Sources: `styleseat.com/blog/how-tattoo-artists-get-paid/`,
+`beancount.io/blog/2026/08/12/tattoo-shop-bookkeeping-booth-rental-commission-guide`.
+
+### The bounded option set — "all possible options" made finite
+
+"Every option" is unbounded and would become a rules engine. Scoped to four arrangements, which
+cover every case the sources describe:
+
+| Arrangement | Meaning |
+|---|---|
+| **Commission** | The artist receives a percentage of the service price. |
+| **Booth rent** | The artist pays fixed rent and keeps the service revenue. **Already modelled** — `BoothRentSchedule` (`AmountFixed`, `RentFrequency` Weekly/Monthly), `BoothRentCharge`. |
+| **Flat fee per session** | The shop takes a fixed amount per session. Covers the hourly-shop-rate and per-piece cases, which the sources tie to guest spots and flash days. |
+| **Salary / no per-session split** | Nothing is split per session. |
+
+Two studio-level settings, each with two values:
+
+- **Fee basis** — the artist's share is computed on **gross** (what the client paid) or **net**
+  (what arrived after provider fees). On a 100 ALL card payment POK keeps 22.50, so a 60% artist
+  gets 60 on gross and 46.50 on net.
+- **Tips** — **not split** (100% to the artist) or **split like the service**.
+
+Rate resolution, most-specific wins: **service → artist → studio default**. This answers "does the
+percentage vary" by making it configurable rather than deciding it.
+
+### Recommended defaults, and the one I deliberately refuse to invent
+
+- **Arrangement: Commission.** The most common structure in the sources.
+- **Rate: unset, not a number.** The sources disclaim their own percentages, so inventing 60% and
+  seeding it would be exactly the failure **O02** exists to fix: a seeded row that reads as
+  configured when nobody has chosen it. The rate stays empty and setup readiness reports it as
+  **not yet set**.
+- **Fee basis: gross.** Weak evidence (the bookkeeping example splits the full price), plus it
+  matches how a deal is described out loud — "you're on 60%" means 60% of the price agreed with the
+  client. Flagged as weak, not benchmark-driven.
+- **Tips: 100% to the artist, not split.** Follows StyleSeat's assumption.
+
+### Where the owner is asked
+
+**Not as a blocking registration step.** It becomes a **fourth setup-readiness area**, which
+**E05a phase 1 has already built** (`1ce70447`, authored 7 Nov but reaching `main` only on
+10 Nov via PR #349, merge commit `25c24715` — when this section was first written, that commit
+existed on a local feature branch that happened to be checked out in the shared working tree, and
+calling it "merged" was an error of mine, corrected here): `SetupAreaState` is already
+`NotConfigured | DefaultUnreviewed | Reviewed`, `Domain/Services/SetupReadiness.cs` holds the pure
+derivation, `Studio.HoursReviewedAt` records "the owner confirmed the default", and
+`POST /studios/me/hours/confirm` is the "they're right" path. The pay model adds a `PayModel` area
+and a `Studio.PayModelReviewedAt` on exactly that pattern — so an owner sees **"set for you, not yet
+reviewed"** until they confirm. That satisfies "tell them at registration" without interrogating a
+solo founder about commission splits before they have a second artist, and it needs no new mechanism.
+
+### The defect this unblocks — "My Earnings" currently overstates what an artist earns
+
+**`GetMyEarningsQuery` is shipped and shows the artist the full client payment, not their share.**
+`periodTotal` and the 12-month trend are both `Sum(p => p.RetainedAmount())`, which is
+`Amount - RefundedAmount` — the whole payment. The handler's own docstring is candid: it *"does not
+guess which split line is 'the artist's cut'."* `SessionSplit` rows are listed underneath but never
+subtracted, and `SessionSplit` has no artist link and no percentage.
+
+The surface makes it worse, not better: the page is titled **"My Earnings"** with "Earnings trend
+(last 12 months)", and `helpContent.ts`'s `artist-earnings` article promises *"a payment-by-payment
+breakdown of what you were paid"* under the keywords **"commission", "my cut", "how much did I
+make", "payout"**. So an artist on a 60% split who searches help for "my cut" is sent to a page
+showing them 100%. Compare the owner's `owner-reports` article, which *does* carry the honest caveat
+("Card amounts are what clients paid, before POK's card fee") — the artist page has no equivalent.
+
+It is correct for booth-rent artists, solo studios and 100%-to-artist deals, and overstated for
+every commission studio, **with nothing on screen to say which** — so an artist cannot tell whether
+their own number is right. That is the real severity: not merely wrong, but unfalsifiable from the
+artist's side. Treat A07 as fixing a live money-facing defect, not as adding a feature.
+
+### Why `gross` is the only basis that ships first — the fee is knowable but not stored
+From the POK reference (Part 11 §11.1, VERIFIED across eight measurements): every captured card
+payment costs **2.5% + 20.00 ALL (0.20 EUR)**, merchant-paid, and `transaction.receiverAmount` =
+amount − fee. So net *is* computable — but:
+- **Nothing persists it.** There is no fee field on `Payment` (no `ProviderFeeAmount`, no
+  `NetAmount`) and no fee capture anywhere in `Domain`, `Contracts` or `Infrastructure/Payments`.
+- The order-level `commissions{}` object is **absent from every order read since 14 Oct** (A6), so
+  the app's own provider reads don't carry it; it would have to come from the fee rule, from
+  `GET /merchants/{id}/commission-settings` (A4), or from the dashboard-API transaction record (C4).
+- **Partial refunds don't return the fixed fee** (C1/C2): POK returns the 2.5% share of the refunded
+  part but keeps the 20 ALL unless the payment is fully refunded. A net-based share therefore needs
+  a stated rule for who absorbs that stranded fixed fee.
+
+So **gross ships; net is specified but not built**, with persisting the fee named as its
+prerequisite and the stranded-fixed-fee question flagged for Finance. Offering both in the UI while
+only one is computable would be the dishonest option.
+
+### What already exists, so A07 is smaller than it looked
+`Artist.CommissionRate` (`decimal?`) and `Artist.HourlyRate` already exist and are unused for
+payouts; `BoothRentSchedule`/`BoothRentCharge`/`RentFrequency` are built; `SessionSplit` exists but
+is thin (`PaymentId`, `Label`, `Amount`, `PaidAt` — no artist link, no percentage, no tip handling).
+
+### Non-negotiable for whoever builds it
+The computation lives in **one** domain service taking the settings as inputs — the same shape as
+`CancellationOutcome.Decide` and `NoShowOutcome.Decide` — never scattered across handlers or
+recomputed in the browser. The artist's share is a **liability**, not studio revenue; revenue
+reporting must not count it.
+
+## "Needs you" groups in a fixed order by consequence — reverses E05a's ordering rule — 2026-11-11
+
+**This reverses a rule E05a shipped and documented** (the 2026-11-10 entry above, `helpContent.ts`'s
+`owner-dashboard` tip and the manual's "How 'Needs you' is arranged"): "the group whose soonest appointment
+comes first leads, so anything overdue is at the top".
+
+**Why it was wrong.** Four of the five groups read from `upcoming`, which filters `a.Date >= now`, so they can
+never hold a past date. `CashToConfirm` is the only group with no date filter, by design. "Overdue first" could
+therefore only ever promote one group: it was "cash first, always", which nobody chose explicitly, and it was
+monotonic: the staler an unconfirmed promise got, the more firmly it pinned itself above everything else, so a
+promise abandoned months ago outranked tomorrow's unassigned request. E05a's intent (uncollected cash is real
+money risk) was defensible; the mechanism was not, because an old cash promise is cleanup, not a decision that
+unblocks a client. Desktop raised it in the patch spec answering E05a handoff §0.3; I checked it against the code
+(`GetOwnerExceptionsQuery.cs`: `upcoming` at line 59-61, the undated cash read at line 73) before implementing.
+
+**Decision.**
+- `OwnerExceptionKinds.All` is now `Unassigned, AwaitingConfirmation, UnpaidDeposit, Preparation, CashToConfirm`,
+  ordered by what happens if each is ignored, and it is the **only** sort. Dates never reorder groups; items inside
+  a group stay soonest-first (for cash, the oldest session first). The sort no longer allocates a list per
+  comparison.
+- Cash is demoted, not hidden: each cash promise on a session that has already happened says how long ago the
+  session was, and promises still unconfirmed 7 or more days after the session (`CASH_PROMISE_AGED_DAYS`) use
+  `text-warning-text`, with a count under the group title ("at least N" when every listed one is aged and the
+  server holds more). The age is measured against the response's `generatedAt` (the server clock). A promise for a
+  future session shows no age: it isn't outstanding yet. The patch spec's example wording was "promised 12 days
+  ago", but the appointment date says when the session was, not when the promise was made, so the copy says
+  "Session was 12 days ago".
+- The "Deposits Due" stat is now "Unpaid deposits (7 days)", with the window taken from the response. The count
+  is unchanged (unpaid, next 7 days, cash promises excluded, the same number as "Deposits not paid"), but the
+  old label read as a total of everything owed and understated what was outstanding.
+- Not built, the owner's call: whether owners also want one "total outstanding" figure across card and cash with
+  no window.
+- Considered and not built: a two-tier order that floats any group with an item inside 48 hours (cash excluded).
+  It costs predictability, and the spec said not to build both.
+
+Tests: `GetOwnerExceptionsHandlerTests`: `APastDatedCashPromise_DoesNotLead` and
+`GroupOrder_IsTheFixedOrderByConsequence_WhateverTheItemDates` (two date spreads, all five groups), all three cases
+red at `25c24715` and green after; the old `Groups_AreOrderedBySoonestAppointment_OverdueCashFirst` asserted the
+reversed rule and is replaced. Frontend: promise age, the warning token, no age for a future session, "at least",
+and the stat label naming its window.
