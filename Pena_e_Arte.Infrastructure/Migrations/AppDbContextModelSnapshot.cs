@@ -405,6 +405,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
+                    b.Property<decimal?>("FlatFeePerSession")
+                        .HasColumnType("decimal(18,4)");
+
                     b.Property<decimal?>("HourlyRate")
                         .HasColumnType("decimal(18,4)");
 
@@ -417,6 +420,10 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PayArrangement")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<string>("ProfileImageUrl")
                         .HasColumnType("longtext");
@@ -3236,6 +3243,19 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasColumnType("char(3)")
                         .IsFixedLength();
 
+                    b.Property<decimal?>("DefaultCommissionRate")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal?>("DefaultFlatFeePerSession")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("DefaultPayArrangement")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasDefaultValue("Commission");
+
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
@@ -3278,6 +3298,9 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("PayModelReviewedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<Guid?>("PendingReferralCodeId")
                         .HasColumnType("char(36)");

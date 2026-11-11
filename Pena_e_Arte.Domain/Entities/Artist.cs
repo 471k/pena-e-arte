@@ -1,3 +1,5 @@
+using Pena_e_Arte.Domain.Enums;
+
 namespace Pena_e_Arte.Domain.Entities;
 
 public class Artist : TenantEntity
@@ -13,9 +15,21 @@ public class Artist : TenantEntity
     /// deposit rules. Null = not set.</summary>
     public decimal? HourlyRate { get; set; }
 
-    /// <summary>Booth-rent commission percent, informational only — not used in any charge
-    /// calculation tonight (booth rent is a fixed AmountFixed per BoothRentSchedule). Null = not set.</summary>
+    /// <summary>This artist's own commission rate, overriding the studio's
+    /// <see cref="Studio.DefaultCommissionRate"/> (A07a). A percentage of what the client paid that
+    /// goes to the artist: 60.00 means 60% (0–100). It was documented as a percent before A07a and
+    /// the column is decimal(5,2), so it stays a percent rather than becoming a fraction. Null =
+    /// use the studio's rate. Set only by the owner, through PUT /artists/{id}/pay-model; never
+    /// part of ArtistResponse, which clients can read.</summary>
     public decimal? CommissionRate { get; set; }
+
+    /// <summary>This artist's own arrangement, overriding <see cref="Studio.DefaultPayArrangement"/>.
+    /// Null = use the studio's.</summary>
+    public ArtistPayArrangement? PayArrangement { get; set; }
+
+    /// <summary>The studio's cut per session for this artist under FlatFeePerSession, overriding
+    /// <see cref="Studio.DefaultFlatFeePerSession"/>. Null = use the studio's.</summary>
+    public decimal? FlatFeePerSession { get; set; }
     public string? Slug { get; private set; }
     public string? Bio { get; set; }
     public string? ProfileImageUrl { get; set; }

@@ -127,6 +127,20 @@ first `Payment`, `GiftCard`, `PackagePurchase`, or `BoothRentCharge` row exists 
 
 ---
 
+## Artist Pay Model Columns (A07a, 2026-11-11)
+
+- `studios.DefaultPayArrangement` varchar(32), stored as the `ArtistPayArrangement` name, default `Commission`.
+- `studios.DefaultCommissionRate` and `artists.CommissionRate` are `decimal(5,2)` **percentages to the artist**
+  (60.00 = 60%, 0-100). `Artist.CommissionRate` was documented as a percent before A07a and its column is
+  `decimal(5,2)`, so it stays a percent rather than becoming a fraction (a fraction in that column could only
+  hold whole percents). Both are null by default and never seeded: null means the share is unknown.
+- `studios.DefaultFlatFeePerSession` and `artists.FlatFeePerSession` are `decimal(18,4)` in the studio currency
+  (price settings, no currency column).
+- `artists.PayArrangement` varchar(32), null = use the studio default. `studios.PayModelReviewedAt` has the same
+  semantics as `HoursReviewedAt`; it was backfilled to null for every studio.
+
+---
+
 ## Lek Reference Columns and Exchange Rates (2026-10-26)
 
 For Albanian studios that price in EUR, clients see the lek amount next to every euro amount
