@@ -1,6 +1,7 @@
 using MediatR;
 using Pena_e_Arte.Application.Artists.Commands;
 using Pena_e_Arte.Application.Artists.Queries;
+using Pena_e_Arte.Application.PayModel;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 
@@ -19,6 +20,9 @@ public static class ArtistEndpoints
         group.MapPost("me", CreateOwnArtistProfile).RequireAuthorization("OwnerOnly");
         group.MapGet("{id:guid}", GetArtist).RequireAuthorization("ClientAndAbove");
         group.MapPut("{id:guid}", UpdateArtist).RequireAuthorization("ArtistAndAbove");
+        // A07a: owner-only, never through PUT {id} (an artist can edit themselves there).
+        group.MapGet("{id:guid}/pay-model", GetPayModel).RequireAuthorization("OwnerOnly");
+        group.MapPut("{id:guid}/pay-model", UpdatePayModel).RequireAuthorization("OwnerOnly");
         group.MapPut("{id:guid}/portfolio-images", UpdatePortfolio).RequireAuthorization("ArtistAndAbove");
         group.MapDelete("{id:guid}", DeleteArtist).RequireAuthorization("OwnerOnly");
         group.MapPost("{id:guid}/resend-invite", ResendArtistInvite).RequireAuthorization("OwnerOnly");
@@ -82,6 +86,22 @@ public static class ArtistEndpoints
         CancellationToken ct)
     {
         ArtistResponse result = await mediator.Send(new UpdateArtistCommand(id, request), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetPayModel(Guid id, ISender mediator, CancellationToken ct)
+    {
+        ArtistPayModelResponse result = await mediator.Send(new GetArtistPayModelQuery(id), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdatePayModel(
+        Guid id,
+        UpdateArtistPayModelRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        ArtistPayModelResponse result = await mediator.Send(new UpdateArtistPayModelCommand(id, request), ct);
         return Results.Ok(result);
     }
 

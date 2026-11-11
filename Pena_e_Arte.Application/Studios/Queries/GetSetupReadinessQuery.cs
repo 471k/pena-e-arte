@@ -24,7 +24,7 @@ public class GetSetupReadinessValidator : AbstractValidator<GetSetupReadinessQue
 public class GetSetupReadinessHandler(IAppDbContext db, ICurrentTenant tenant)
     : IRequestHandler<GetSetupReadinessQuery, SetupReadinessResponse>
 {
-    private sealed record Facts(bool AnyArtist, bool AnyDepositRule, bool AnyHours, DateTime? HoursReviewedAt);
+    private sealed record Facts(bool AnyArtist, bool AnyDepositRule, bool AnyHours, DateTime? HoursReviewedAt, DateTime? PayModelReviewedAt);
 
     public async Task<SetupReadinessResponse> Handle(GetSetupReadinessQuery query, CancellationToken ct)
     {
@@ -35,7 +35,8 @@ public class GetSetupReadinessHandler(IAppDbContext db, ICurrentTenant tenant)
                 db.Artists.Any(),
                 db.DepositRules.Any(),
                 db.StudioHours.Any(),
-                s.HoursReviewedAt))
+                s.HoursReviewedAt,
+                s.PayModelReviewedAt))
             .FirstOrDefaultAsync(ct)
             ?? throw new NotFoundException(nameof(Domain.Entities.Studio), tenant.StudioId);
 
@@ -47,6 +48,10 @@ public class GetSetupReadinessHandler(IAppDbContext db, ICurrentTenant tenant)
                 "Hours",
                 SetupReadiness.Hours(facts.AnyHours, facts.HoursReviewedAt).ToString(),
                 facts.HoursReviewedAt),
+            new SetupAreaResponse(
+                "PayModel",
+                SetupReadiness.PayModel(facts.PayModelReviewedAt).ToString(),
+                facts.PayModelReviewedAt),
         ]);
     }
 }

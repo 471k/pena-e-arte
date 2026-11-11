@@ -63,7 +63,8 @@ public class OwnerDashboardIntegrationTests(DatabaseFixture fixture)
         SetupReadinessResponse r = await new GetSetupReadinessHandler(db, Tenant(bare)).Handle(new GetSetupReadinessQuery(), default);
 
         r.Areas.Select(a => (a.Area, a.State)).Should().Equal(
-            ("Artists", "NotConfigured"), ("DepositRules", "NotConfigured"), ("Hours", "DefaultUnreviewed"));
+            ("Artists", "NotConfigured"), ("DepositRules", "NotConfigured"), ("Hours", "DefaultUnreviewed"),
+            ("PayModel", "DefaultUnreviewed"));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
