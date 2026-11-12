@@ -15,6 +15,66 @@ public class R2ServiceTests
     private R2Service CreateSut() =>
         new(_s3, Options.Create(new R2Options { BucketName = "test-bucket" }));
 
+    private const string NewAddress = "https://media.example.com";
+    private const string OldAddress = "https://bucket.old-worker.example.dev/";
+
+    private R2Service CreateMovedSut(params string[] legacy) =>
+        new(_s3, Options.Create(new R2Options
+        {
+            BucketName = "test-bucket",
+            PublicUrl = NewAddress,
+            LegacyPublicUrls = legacy,
+        }));
+
+    [Theory]
+    [InlineData("https://media.example.com/s1/portfolio/a.jpg", true)]
+    [InlineData("https://bucket.old-worker.example.dev/s1/portfolio/a.jpg", true)]
+    [InlineData("https://MEDIA.example.com/s1/portfolio/a.jpg", true)]
+    [InlineData("https://media.example.com.evil.test/s1/portfolio/a.jpg", false)]
+    [InlineData("https://elsewhere.test/s1/portfolio/a.jpg", false)]
+    [InlineData("", false)]
+    public void IsR2Url_AcceptsTheCurrentAndOldAddresses_AndNothingThatOnlyStartsLikeThem(string url, bool expected)
+    {
+        CreateMovedSut(OldAddress).IsR2Url(url).Should().Be(expected);
+    }
+
+    [Fact]
+    public void IsR2Url_WithNoOldAddressConfigured_RejectsTheOldOne()
+    {
+        CreateMovedSut().IsR2Url("https://bucket.old-worker.example.dev/s1/a.jpg").Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetKnownPublicUrls_ListsTheCurrentAddressFirst_AndIgnoresBlankEntries()
+    {
+        // An unset GitHub secret arrives as an empty string.
+        IReadOnlyList<string> urls = CreateMovedSut("", OldAddress, "  ").GetKnownPublicUrls("s1/a.jpg");
+
+        urls.Should().Equal(
+            "https://media.example.com/s1/a.jpg",
+            "https://bucket.old-worker.example.dev/s1/a.jpg");
+    }
+
+    [Fact]
+    public void GetPublicUrl_GivesNewUploadsTheCurrentAddressOnly()
+    {
+        CreateMovedSut(OldAddress).GetPublicUrl("s1/a.jpg").Should().Be("https://media.example.com/s1/a.jpg");
+    }
+
+    [Theory]
+    [InlineData("https://media.example.com/consent/s1/f.pdf")]
+    [InlineData("https://bucket.old-worker.example.dev/consent/s1/f.pdf")]
+    public async Task GeneratePresignedReadUrlAsync_SignsTheSameObjectKey_WhicheverAddressTheRowHolds(string storedUrl)
+    {
+        _s3.GetPreSignedURL(Arg.Any<GetPreSignedUrlRequest>()).Returns("https://signed.example/x");
+
+        await CreateMovedSut(OldAddress).GeneratePresignedReadUrlAsync(storedUrl, default);
+        await CreateMovedSut(OldAddress).GeneratePresignedReadUrlAsync(storedUrl, TimeSpan.FromMinutes(5), default);
+
+        _s3.Received(2).GetPreSignedURL(Arg.Is<GetPreSignedUrlRequest>(r =>
+            r.BucketName == "test-bucket" && r.Key == "consent/s1/f.pdf" && r.Verb == HttpVerb.GET));
+    }
+
     [Fact]
     public async Task UploadAsync_SendsUnsignedPayload_BecauseR2RejectsStreamingSignatures()
     {

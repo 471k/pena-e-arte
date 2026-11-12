@@ -41,7 +41,10 @@ public class GuestPendingUploadCleanupJob(
         // AppointmentAttachment row this studio's ever had") rather than loading the whole
         // table and checking membership in memory — cost now scales with what this run is
         // actually sweeping, not with total platform history. Found via /code-review, 2026-09-01.
-        List<string> candidateUrls = candidates.Select(o => r2.GetPublicUrl(o.Key)).ToList();
+        // Every address a row may hold for each object, not just today's: a booking saved before
+        // the bucket moved to a new address keeps the old URL, and matching only the new one would
+        // delete files that are still in use (R2Options.LegacyPublicUrls).
+        List<string> candidateUrls = candidates.SelectMany(o => r2.GetKnownPublicUrls(o.Key)).ToList();
         HashSet<string> referencedUrls = (await db.AppointmentAttachments
             .IgnoreQueryFilters()
             .Where(a => candidateUrls.Contains(a.ImageUrl))
@@ -52,8 +55,7 @@ public class GuestPendingUploadCleanupJob(
         int deleted = 0;
         foreach (R2ObjectInfo obj in candidates)
         {
-            string publicUrl = r2.GetPublicUrl(obj.Key);
-            if (referencedUrls.Contains(publicUrl)) continue;
+            if (r2.GetKnownPublicUrls(obj.Key).Any(referencedUrls.Contains)) continue;
 
             try
             {
