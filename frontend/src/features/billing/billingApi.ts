@@ -1,6 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest, BillingPortalResponse, PlanUsageResponse, CancellationQuoteResponse } from "./billing.types";
+import type { SubscriptionResponse, PlanResponse, CreateSubscriptionRequest, BillingPortalResponse, PlanUsageResponse, CancellationQuoteResponse, ConfirmCancellationRequest } from "./billing.types";
 
 export interface PlanPriceRequest {
   interval:       string;
@@ -82,12 +82,14 @@ export const billingApi = createApi({
       invalidatesTags: ["Subscription"],
     }),
     // Cancellation quote + confirm — replaces Stripe-portal cancellation (A4). The quote is
-    // always computed by the same formula that actually issues the refund on confirm.
+    // always computed by the same formula that actually issues the refund on confirm, and the
+    // confirm sends that quote back: the server refuses (409 CANCELLATION_QUOTE_CHANGED) if it
+    // no longer matches (E05b-2, O07).
     getCancellationQuote: builder.query<CancellationQuoteResponse, void>({
       query: () => "billing/subscription/cancel/quote",
     }),
-    cancelSubscription: builder.mutation<SubscriptionResponse, void>({
-      query: () => ({ url: "billing/subscription/cancel", method: "POST" }),
+    cancelSubscription: builder.mutation<SubscriptionResponse, ConfirmCancellationRequest>({
+      query: (body) => ({ url: "billing/subscription/cancel", method: "POST", body }),
       invalidatesTags: ["Subscription"],
     }),
     keepSubscription: builder.mutation<SubscriptionResponse, void>({

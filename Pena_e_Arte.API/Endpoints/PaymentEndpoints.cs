@@ -29,6 +29,10 @@ public static class PaymentEndpoints
         group.MapGet("/",
             GetPayments).RequireAuthorization("OwnerOnly");
 
+        // E05b-2 (O06): what the reconciliation job hasn't settled. Read-only; the job stays the only decider.
+        group.MapGet("/unsettled",
+            GetUnsettledPayments).RequireAuthorization("OwnerOnly");
+
         group.MapGet("/appointment/{appointmentId:guid}",
             GetPaymentByAppointment).RequireAuthorization("ClientAndAbove");
 
@@ -147,6 +151,14 @@ public static class PaymentEndpoints
     {
         List<PaymentResponse> result = await mediator.Send(
             new GetPaymentsQuery(lastSeenId, pageSize, search, status, from, to), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetUnsettledPayments(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        UnsettledPaymentsResponse result = await mediator.Send(new GetUnsettledPaymentsQuery(), ct);
         return Results.Ok(result);
     }
 

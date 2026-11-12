@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Platform.Revenue;
+using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
@@ -22,8 +23,13 @@ namespace Pena_e_Arte.Application.Billing.Commands;
 /// Implements IAuditableCommand even though this is a tenant-scoped self-service action, not
 /// an admin action — the audit log doubles as MrrRules' only precise-cancellation-timestamp
 /// source pre-ledger (see MrrInputLoader.cs, and §2.1.C's AdminCancelledAt→CancelledAt
-/// rename).</summary>
-public record CancelMySubscriptionCommand(Guid StudioId)
+/// rename).
+///
+/// E05b-2 (O07): carries the quote the owner is confirming. The handler rebuilds the quote with
+/// CancellationQuotes before doing anything else and refuses (CancellationQuoteChangedException)
+/// when it no longer matches, so nothing reaches the billing service on a stale quote and the
+/// refund issued is always the refund the owner saw.</summary>
+public record CancelMySubscriptionCommand(Guid StudioId, CancelMySubscriptionRequest ConfirmedQuote)
     : IRequest<SubscriptionResponse>, IAuditableCommand
 {
     public string AuditAction => AuditActions.SubscriptionCancelledByOwner;
@@ -58,6 +64,18 @@ public class CancelMySubscriptionHandler(
         DateTime now = DateTime.UtcNow;
         decimal mrrBefore = MrrRules.MonthlyEquivalent(subscription);
 
+        // O07: the quote this cancellation would honour, built exactly as the owner's quote was, and
+        // compared BEFORE any billing call (the downgrade release below included). A mismatch is a
+        // disagreement about money: stop and re-ask, never refund either number silently.
+        SubscriptionInvoicePayment? latestInvoice = await CancellationQuotes.LatestInvoiceAsync(db, subscription, ct);
+        CancellationQuote current = CancellationQuotes.Build(subscription, latestInvoice, now);
+        if (!CancellationQuotes.Matches(current.Response, command.ConfirmedQuote))
+        {
+            logger.LogInformation(
+                "Cancellation refused for studio {StudioId}: the confirmed quote no longer matches.", command.StudioId);
+            throw new CancellationQuoteChangedException();
+        }
+
         // A3 row 3 — release any scheduled downgrade first; the quote used the current period's invoice.
         if (subscription.PendingPlanId is not null && subscription.StripeSubscriptionId is not null)
         {
@@ -69,15 +87,10 @@ public class CancelMySubscriptionHandler(
         decimal refundAmount = 0m;
         int? monthsUsed = null;
 
-        if (subscription.BillingInterval == BillingInterval.Yearly && subscription.StripeSubscriptionId is not null)
+        if (CancellationQuotes.HasRefundFormula(subscription))
         {
-            SubscriptionInvoicePayment? invoice = await db.SubscriptionInvoicePayments
-                .Where(p => p.SubscriptionId == subscription.Id)
-                .OrderByDescending(p => p.PaidAt)
-                .FirstOrDefaultAsync(ct);
-
-            YearlyRefundQuote? quote = YearlyRefundCalculator.QuoteFor(invoice, now);
-            if (quote is not null && invoice is not null)
+            // The quote just compared, not a second computation.
+            if (current is { Yearly: YearlyRefundQuote quote, Invoice: SubscriptionInvoicePayment invoice })
             {
                 refundAmount = quote.RefundAmount;
                 monthsUsed = quote.MonthsUsed;
@@ -86,7 +99,7 @@ public class CancelMySubscriptionHandler(
                     currentUser.UserId, adminReason: null, logger, ct);
             }
 
-            await billing.CancelSubscriptionAsync(subscription.StripeSubscriptionId, ct); // immediate, no proration
+            await billing.CancelSubscriptionAsync(subscription.StripeSubscriptionId!, ct); // immediate, no proration
             subscription.Status = SubscriptionStatus.Cancelled;
             subscription.CurrentPeriodEnd = now; // §2.1.C — precise access-end for MrrRules' pre-ledger window
             subscription.CancelAtPeriodEnd = false;
@@ -129,6 +142,16 @@ public class CancelMySubscriptionValidator : AbstractValidator<CancelMySubscript
     public CancelMySubscriptionValidator()
     {
         RuleFor(x => x.StudioId).NotEmpty();
+        RuleFor(x => x.ConfirmedQuote).NotNull()
+            .WithMessage("Confirm the cancellation quote you were shown.");
+        When(x => x.ConfirmedQuote is not null, () =>
+        {
+            RuleFor(x => x.ConfirmedQuote.BillingInterval).Must(i => i is "Monthly" or "Yearly")
+                .WithMessage("The confirmed quote's billing interval must be Monthly or Yearly.");
+            RuleFor(x => x.ConfirmedQuote.RefundAmount).GreaterThanOrEqualTo(0m);
+            RuleFor(x => x.ConfirmedQuote.MonthsUsed).GreaterThan(0).When(x => x.ConfirmedQuote.MonthsUsed is not null);
+            RuleFor(x => x.ConfirmedQuote.AmountPaid).GreaterThanOrEqualTo(0m).When(x => x.ConfirmedQuote.AmountPaid is not null);
+        });
     }
 }
 

@@ -458,6 +458,7 @@ ol.steps li { margin: 6px 0; }
         <button class="nav-section-toggle" aria-expanded="false">Payments</button>
         <ul class="nav-section-list collapsed">
           <li><a href="#owner-payments" data-nav-link>Payment list</a></li>
+          <li><a href="#owner-unsettled-payments" data-nav-link>Not settled yet</a></li>
           <li><a href="#owner-payment-detail" data-nav-link>Payment detail</a></li>
           <li><a href="#owner-create-payment" data-nav-link>Create payment</a></li>
           <li><a href="#owner-connect-pok" data-nav-link>Connect POK</a></li>
@@ -2981,7 +2982,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Payment list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/payments</code>: every payment across the studio, newest first, with a search by client or artist name, a status filter, a paid-date range and "Load more" paging. Every filter searches all of the studio's payments, not only the ones already on screen.</p>
+<p>At <code>/payments</code>: every payment across the studio, newest first, with a search by client or artist name, a status filter, a paid-date range and "Load more" paging. Every filter searches all of the studio's payments, not only the ones already on screen. Above the list, the <a href="#owner-unsettled-payments">Not settled yet</a> box shows the card payments the daily check hasn't settled.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Payment list wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -3021,7 +3022,48 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Appointment link:</strong> a payment's details name its appointment by client and date (in your studio's time zone). Click it to open the appointment.</div>
 <div class="callout callout-tip"><strong>POK order ID:</strong> a card payment's details show its <span class="step-title">POK order</span> ID — search for it in POK Business (E-payments → E-orders) to see the same payment, its fee and its refunds there.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> if a client paid but closed the page before it confirmed, the payment updates by itself, usually within minutes and at the latest overnight; the client gets their "Deposit received" email then.</div>
-<div class="crosslinks">See also: <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a>, <a href="#owner-studio-profile">Studio profile</a></div>
+<div class="crosslinks">See also: <a href="#owner-unsettled-payments">Not settled yet</a>, <a href="#owner-payment-detail">Payment detail</a>, <a href="#owner-create-payment">Create payment</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a>, <a href="#owner-studio-profile">Studio profile</a></div>
+</section>
+
+<section id="owner-unsettled-payments" data-role="owner">
+<h2><span class="role-badge role-owner">Owner</span> Card payments not settled yet</h2>
+<table class="access-table"><tr><th>Role</th><th>Access</th></tr>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>At the top of <code>/payments</code>, the <span class="step-title">Not settled yet</span> box lists the card payments TattooOS's daily check with POK hasn't settled, in three groups, and says when each one was last checked and what POK answered. It decides nothing itself: it shows what the check recorded.</p>
+<figure class="wireframe">
+<svg viewBox="0 0 760 300" role="img" aria-label="Not settled yet wireframe">
+<rect x="20" y="16" width="720" height="268" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="36" y="40" font-size="11" font-weight="700">⏳ Not settled yet</text>
+<text x="36" y="56" font-size="8" fill-opacity="0.6">Card payments the daily check with the card provider hasn't settled. None of this is money received yet. Cash … is on your dashboard under Needs you.</text>
+<line x1="20" y1="68" x2="740" y2="68" stroke="currentColor" stroke-opacity="0.12"/>
+<text x="36" y="86" font-size="9" font-weight="700">Card provider disagrees (1)</text><text x="716" y="86" font-size="9">▴</text>
+<text x="36" y="106" font-size="9">Maria Silva</text><text x="600" y="106" font-size="8" fill-opacity="0.6">Session 18 Nov 2026</text>
+<text x="36" y="120" font-size="9" font-weight="700">€50.00</text><text x="84" y="120" font-size="8" fill-opacity="0.6">not paid, by our record</text>
+<text x="36" y="134" font-size="8" fill-opacity="0.6">Last checked 12 Nov, 02:00. The card provider said refunded.</text>
+<line x1="20" y1="148" x2="740" y2="148" stroke="currentColor" stroke-opacity="0.12"/>
+<text x="36" y="166" font-size="9" font-weight="700">On hold, not charged yet (2)</text><text x="716" y="166" font-size="9">▾</text>
+<line x1="20" y1="180" x2="740" y2="180" stroke="currentColor" stroke-opacity="0.12"/>
+<text x="36" y="198" font-size="9" font-weight="700">Waiting for the client to pay (1)</text><text x="716" y="198" font-size="9">▴</text>
+<text x="36" y="218" font-size="9">João Santos</text><text x="600" y="218" font-size="8" fill-opacity="0.6">Session 20 Nov 2026</text>
+<text x="36" y="232" font-size="9" font-weight="700">€50.00</text><text x="84" y="232" font-size="8" fill-opacity="0.6">asked, not paid</text>
+<text x="36" y="246" font-size="8" fill-opacity="0.6">Not checked with the card provider yet.</text>
+<text x="36" y="260" font-size="8" fill-opacity="0.6">Cancelled automatically after 13 Nov, 14:20.</text>
+</svg>
+</figure>
+<figcaption>Not settled yet — a count per group, the disagreement open, each payment's last check and, for an unpaid one, when it is cancelled; never a total</figcaption>
+<h3>Steps</h3>
+<ol class="steps">
+<li>Go to <span class="step-title">Payments</span>. The box is above the search and filters.</li>
+<li>Click a group's name to open or close it. <span class="step-title">Card provider disagrees</span> opens by itself, because those need you.</li>
+<li>Read each payment: client, session date, the amount and what it is ("on hold, not charged" or "asked, not paid"), and when POK last answered about it.</li>
+<li>Click a payment to open it and act: charge or release a hold, refund, or ask the client again.</li>
+</ol>
+<div class="callout callout-tip"><strong>Card provider disagrees:</strong> POK's last answer doesn't match TattooOS's record — for example a payment TattooOS still shows as unpaid that POK says was refunded. The check never guesses here; it leaves the payment as it is for you to look at, in TattooOS and in POK Business.</div>
+<div class="callout callout-tip"><strong>On hold, not charged yet:</strong> the client's card was authorised but not charged. These only exist for card deposits taken before 22 Oct 2026. Charge or release each one from its payment page; card holds don't last forever.</div>
+<div class="callout callout-tip"><strong>Waiting for the client to pay:</strong> a card payment was started but not paid. Each one says when it is cancelled automatically (24 hours after it was created); after that the client can start a new one. "Expired" means its time is up and the next check cancels it.</div>
+<div class="callout callout-tip"><strong>Last checked:</strong> when POK last answered about that payment. The check runs every night and again whenever POK sends an update. <em>Check overdue</em> means POK hasn't answered about it for more than a day, so the payment may be out of date; if it stays that way, check the "Card deposits — POK" section of <a href="#owner-studio-profile">Studio profile</a>.</div>
+<div class="callout callout-tip"><strong>No totals:</strong> nothing here is money received, so the amounts are never added up. Paid money is in the list below and in <a href="#owner-reports">Revenue reports</a>. Cash a client said they'd bring is under "Needs you" on the Dashboard, not repeated here. Each group shows its 10 oldest payments; use the Pending or On hold filter for the rest.</div>
+<div class="crosslinks">See also: <a href="#owner-payments">Payment list</a>, <a href="#owner-card-money-flow">Where card deposit money goes</a>, <a href="#owner-connect-pok">Connect POK</a>, <a href="#ref-deposit-statuses">Deposit / payment statuses</a></div>
 </section>
 
 <section id="owner-payment-detail" data-role="owner">
@@ -3666,7 +3708,22 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Change plan</span> to pick a different plan, or <span class="step-title">Manage billing</span> to open Stripe's hosted billing portal (update card, view invoices).</li>
 <li>If cash-billed, a card offers to switch to self-serve card billing instead.</li>
 <li>If a downgrade is scheduled, a card lets you cancel that pending change and keep your current plan.</li>
+<li>To cancel your plan, click <span class="step-title">Cancel plan</span>. Wait a moment while TattooOS works out what cancelling means for you, then read it: a monthly card plan keeps access until the end of the period you've paid for, a plan paid in cash ends today, and a yearly plan shows the amount you'd get back, if any. Click <span class="step-title">Cancel plan</span> in the message to confirm, or <span class="step-title">Keep my plan</span> to back out.</li>
 </ol>
+<figure class="wireframe">
+<svg viewBox="0 0 760 220" role="img" aria-label="Cancel plan message wireframe">
+<rect x="200" y="16" width="360" height="188" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.2"/>
+<text x="220" y="42" font-size="11" font-weight="700">Cancel your yearly plan?</text>
+<text x="220" y="62" font-size="8">You'll get €474.00 back and lose access today.</text>
+<rect x="220" y="88" width="320" height="40" rx="4" fill="currentColor" fill-opacity="0.07"/>
+<text x="230" y="104" font-size="7">Your refund changed while this was open, so nothing was cancelled.</text>
+<text x="230" y="118" font-size="7">The amount above is the new one. Confirm again if you still want to cancel.</text>
+<rect x="340" y="160" width="90" height="24" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="356" y="176" font-size="8">Keep my plan</text>
+<rect x="440" y="160" width="100" height="24" rx="4" fill="#ef4444" fill-opacity="0.5"/><text x="462" y="176" font-size="8">Cancel plan</text>
+</svg>
+</figure>
+<figcaption>Cancel plan — the button is available only once the amount is worked out; if it changed while the message was open, nothing is cancelled and the new amount is shown</figcaption>
+<div class="callout callout-tip"><strong>What you confirm is what happens:</strong> <span class="step-title">Cancel plan</span> in the message becomes available only once TattooOS has worked out what cancelling means for you. If it can't (for example you're offline), the message says so and offers <span class="step-title">Try again</span>, and your plan stays as it is. If the amount changes while the message is open (for example a new month of a yearly plan starts), nothing is cancelled: the message shows the new amount and you confirm again if you still want to.</div>
 <div class="callout callout-warn"><strong>Payment failed?</strong> A banner appears at the top of every page showing how many days your payment has been overdue, and reminder emails go out on day 1, 3, and 7 after the failure. Click "Update billing details" in either place to fix it — the banner and emails stop automatically once a payment succeeds.</div>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a>, <a href="#owner-developer-api">Developer — API access</a>, <a href="#owner-developer-webhooks">Developer — Webhooks</a></div>
 </section>

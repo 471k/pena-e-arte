@@ -21,6 +21,7 @@ import { useAppSelector } from "@/app/hooks";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import type { GetPaymentsParams } from "../payment.types";
+import { UnsettledPaymentsSection } from "./UnsettledPaymentsSection";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -187,6 +188,9 @@ export function PaymentListPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+        {/* E05b-2 (O06): what the reconciliation check hasn't settled, above the history. */}
+        <UnsettledPaymentsSection />
+
         {/* Filters (E05b-1): newest first; each one narrows the server's query, so a search finds any payment,
             not just the ones already loaded. */}
         <div className="space-y-3" data-testid="payment-filters">

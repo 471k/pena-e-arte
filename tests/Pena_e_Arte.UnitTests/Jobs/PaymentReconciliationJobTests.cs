@@ -607,6 +607,91 @@ public class PaymentReconciliationJobTests
         _db.Payments.Find(payment.Id)!.Status.Should().Be(PaymentStatus.Paid);
     }
 
+    // ── E05b-2: the job records the provider's answer (observation only) ─────────
+
+    [Fact]
+    public async Task RunAsync_HeldStillAuthorized_RecordsWhenAndWhatTheProviderAnswered()
+    {
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_rec_held");
+        _stripe.GetStatusAsync(_studioId, "pi_rec_held", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Authorized);
+
+        await CreateSut().RunAsync();
+
+        Payment stored = _db.Payments.Find(payment.Id)!;
+        stored.Status.Should().Be(PaymentStatus.Captured, "recording the answer changes no decision");
+        stored.ProviderCheckedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        stored.ProviderStatusAtCheck.Should().Be(PaymentProviderStatus.Authorized);
+    }
+
+    [Fact]
+    public async Task RunAsync_PendingRefundedAtProvider_RecordsTheDisagreementItLeavesForAPerson()
+    {
+        Guid appointmentId = await SeedAppointment(DateTime.UtcNow.AddDays(5));
+        Payment payment = await SeedPayment(
+            PaymentStatus.Pending, "pi_rec_refunded", appointmentId, DateTime.UtcNow.AddHours(5));
+        _stripe.GetStatusAsync(_studioId, "pi_rec_refunded", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Refunded);
+
+        await CreateSut().RunAsync();
+
+        Payment stored = _db.Payments.Find(payment.Id)!;
+        stored.Status.Should().Be(PaymentStatus.Pending);
+        stored.ProviderStatusAtCheck.Should().Be(PaymentProviderStatus.Refunded);
+        stored.ProviderCheckedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RunAsync_ProviderHasNoRecord_RecordsACheckWithNoStatus()
+    {
+        Guid appointmentId = await SeedAppointment(DateTime.UtcNow.AddDays(5));
+        Payment payment = await SeedPayment(
+            PaymentStatus.Pending, "pi_rec_missing", appointmentId, DateTime.UtcNow.AddHours(5));
+        _stripe.GetStatusAsync(_studioId, "pi_rec_missing", Arg.Any<CancellationToken>())
+               .Returns((PaymentProviderStatus?)null);
+
+        await CreateSut().RunAsync();
+
+        Payment stored = _db.Payments.Find(payment.Id)!;
+        stored.ProviderCheckedAt.Should().NotBeNull();
+        stored.ProviderStatusAtCheck.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RunAsync_ProviderCallFails_LeavesTheLastCheckUntouched_SoTheStalenessShows()
+    {
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_rec_broken");
+        _stripe.GetStatusAsync(_studioId, "pi_rec_broken", Arg.Any<CancellationToken>())
+               .ThrowsAsync(new PaymentProviderNotConnectedException("Reconnect POK."));
+
+        await CreateSut().RunAsync();
+
+        Payment stored = _db.Payments.Find(payment.Id)!;
+        stored.ProviderCheckedAt.Should().BeNull();
+        stored.ProviderStatusAtCheck.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RunAsync_RowReMintedDuringRun_DoesNotRecordTheOldOrdersAnswerOnIt()
+    {
+        Guid appointmentId = await SeedAppointment(DateTime.UtcNow.AddDays(5));
+        Payment payment = await SeedPayment(
+            PaymentStatus.Pending, "pi_rec_old", appointmentId, DateTime.UtcNow.AddMinutes(-5));
+        _stripe.GetStatusAsync(_studioId, "pi_rec_old", Arg.Any<CancellationToken>())
+               .Returns(_ =>
+               {
+                   using FakeDbContext other = FakeDbContext.Create(_dbName);
+                   other.Payments.Find(payment.Id)!.ProviderReferenceId = "pi_rec_new";
+                   other.SaveChanges();
+                   return PaymentProviderStatus.Pending;
+               });
+
+        await CreateSut().RunAsync();
+
+        using FakeDbContext fresh = FakeDbContext.Create(_dbName);
+        fresh.Payments.Find(payment.Id)!.ProviderCheckedAt.Should().BeNull();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────────
 
     private async Task<Payment> SeedPayment(

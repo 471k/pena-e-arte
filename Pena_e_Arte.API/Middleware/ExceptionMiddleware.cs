@@ -58,6 +58,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
                                                 "This action was already completed by another request. Refresh and try again.", null),
             DesignAlreadyApprovedException => (StatusCodes.Status409Conflict, ex.Message, null),
             ConsentFormAlreadySignedException => (StatusCodes.Status409Conflict, ex.Message, null),
+            CancellationQuoteChangedException => (StatusCodes.Status409Conflict, ex.Message, "CANCELLATION_QUOTE_CHANGED"),
             ForbiddenException => (StatusCodes.Status403Forbidden, ex.Message, null),
             ImpersonationScopeException => (StatusCodes.Status403Forbidden, ex.Message, "IMPERSONATION_SCOPE_DENIED"),
             TenantSuspendedException => (StatusCodes.Status403Forbidden, ex.Message, "STUDIO_SUSPENDED"),

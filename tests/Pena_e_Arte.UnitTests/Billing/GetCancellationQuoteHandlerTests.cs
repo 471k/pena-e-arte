@@ -30,6 +30,9 @@ public class GetCancellationQuoteHandlerTests
         result.BillingInterval.Should().Be("Monthly");
         result.RefundAmount.Should().Be(0m);
         result.MonthsUsed.Should().BeNull();
+        result.InvoiceId.Should().BeNull();
+        // Card-billed monthly cancels at period end, so access runs to it.
+        result.AccessEndDate.Should().BeCloseTo(DateTime.UtcNow.AddDays(10), TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -42,6 +45,9 @@ public class GetCancellationQuoteHandlerTests
         // Cash-billed is always Monthly in this system (§3 flag) — reported as such.
         result.BillingInterval.Should().Be("Monthly");
         result.RefundAmount.Should().Be(0m);
+        // E05b-2: the cancel ends a cash-billed plan immediately, so the quote says today, not the
+        // period end it used to promise.
+        result.AccessEndDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -49,8 +55,10 @@ public class GetCancellationQuoteHandlerTests
     {
         const string stripeId = "sub_yearly_quote";
         Guid subId = await SeedSubscription(BillingInterval.Yearly, stripeId);
+        Guid invoiceId = Guid.NewGuid();
         _db.SubscriptionInvoicePayments.Add(new SubscriptionInvoicePayment
         {
+            Id = invoiceId,
             SubscriptionId = subId,
             StudioId = _studioId,
             StripeInvoiceId = "in_1",
@@ -71,6 +79,8 @@ public class GetCancellationQuoteHandlerTests
         result.BillingInterval.Should().Be("Yearly");
         result.MonthsUsed.Should().Be(3);
         result.RefundAmount.Should().Be(553m);
+        result.AmountPaid.Should().Be(790m);
+        result.InvoiceId.Should().Be(invoiceId, "the cancel request sends it back so the server can tell the quote is still the same");
     }
 
     [Fact]

@@ -27,7 +27,7 @@ import {
   useKeepSubscriptionMutation,
 } from "../billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
-import { priceFor, type SubscriptionResponse, type PlanResponse, type PlanUsageDimension, type PlanUsageResponse } from "../billing.types";
+import { priceFor, toConfirmation, type SubscriptionResponse, type PlanResponse, type PlanUsageDimension, type PlanUsageResponse } from "../billing.types";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 
 // GetCancellationQuoteQuery's response has no currency field of its own (there's only ever
@@ -44,8 +44,13 @@ function formatDate(iso: string): string {
 }
 
 // Owner-facing cancel flow — replaces Stripe-portal cancellation (A4). Shown from both the
-// card-billed and cash-billed trigger points below; the quote is skipped for cash-billed
-// (always immediate, no refund) since there's nothing to compute.
+// card-billed and cash-billed trigger points below.
+//
+// E05b-2 (O07): every plan gets a quote, cash-billed too (its zero-refund answer is real, not
+// absent), and "Cancel plan" stays disabled until one has loaded. A failed quote blocks the
+// confirmation with a retry, never a bypass. The confirmation sends back exactly the quote on
+// screen; if the server's quote has moved on (a month boundary passed while the dialog was open),
+// it answers 409 CANCELLATION_QUOTE_CHANGED, nothing is cancelled, and the dialog shows the new one.
 interface CancelSubscriptionDialogProps {
   open:         boolean;
   onOpenChange: (open: boolean) => void;
@@ -53,27 +58,49 @@ interface CancelSubscriptionDialogProps {
   isYearly:     boolean;
 }
 
+function isQuoteChanged(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("data" in error)) return false;
+  const data = (error as { data: unknown }).data;
+  return typeof data === "object" && data !== null && (data as { code?: unknown }).code === "CANCELLATION_QUOTE_CHANGED";
+}
+
 function CancelSubscriptionDialog({ open, onOpenChange, isCashBilled, isYearly }: CancelSubscriptionDialogProps) {
-  const { data: quote, isFetching: loadingQuote } =
-    useGetCancellationQuoteQuery(undefined, { skip: !open || isCashBilled });
+  const { currentData: quote, isFetching: loadingQuote, isError: quoteFailed, refetch: refetchQuote } =
+    useGetCancellationQuoteQuery(undefined, { skip: !open, refetchOnMountOrArgChange: true });
   const [cancelSubscription, { isLoading: cancelling }] = useCancelSubscriptionMutation();
+  const [quoteChanged, setQuoteChanged] = useState(false);
+  const canConfirm = Boolean(quote) && !loadingQuote && !quoteFailed && !cancelling;
+
+  function handleOpenChange(next: boolean) {
+    if (!next) setQuoteChanged(false);
+    onOpenChange(next);
+  }
 
   async function handleConfirm() {
+    if (!quote) return;
     try {
-      await cancelSubscription().unwrap();
+      await cancelSubscription(toConfirmation(quote)).unwrap();
       toast.success("Your subscription has been cancelled.");
-      onOpenChange(false);
-    } catch {
+      handleOpenChange(false);
+    } catch (error) {
+      if (isQuoteChanged(error)) {
+        setQuoteChanged(true);
+        void refetchQuote();
+        return;
+      }
       toast.error("Failed to cancel your subscription. Please try again.");
     }
   }
 
   function body() {
-    if (isCashBilled) {
-      return "You'll lose access today. This subscription is billed in cash — no refund applies.";
+    if (quoteFailed) {
+      return "We couldn't work out what you'd get back, so your plan can't be cancelled yet. Nothing has changed.";
     }
     if (loadingQuote || !quote) {
       return "Checking your refund eligibility…";
+    }
+    if (isCashBilled) {
+      return "You'll lose access today. This subscription is billed in cash — no refund applies.";
     }
     if (quote.billingInterval === "Yearly") {
       return quote.refundAmount > 0
@@ -84,12 +111,12 @@ function CancelSubscriptionDialog({ open, onOpenChange, isCashBilled, isYearly }
   }
 
   const breakdown =
-    !isCashBilled && quote?.billingInterval === "Yearly" && quote.monthsUsed !== null
+    !isCashBilled && !quoteFailed && !loadingQuote && quote?.billingInterval === "Yearly" && quote.monthsUsed !== null
       ? `${quote.monthsUsed} month${quote.monthsUsed === 1 ? "" : "s"} used of ${formatCurrency(quote.amountPaid ?? 0, PLATFORM_CURRENCY)} paid`
       : null;
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Cancel your {isYearly ? "yearly" : "monthly"} plan?</AlertDialogTitle>
@@ -98,11 +125,25 @@ function CancelSubscriptionDialog({ open, onOpenChange, isCashBilled, isYearly }
             {breakdown && <span className="block text-xs">{breakdown}</span>}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {quoteChanged && !quoteFailed && (
+          <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm" role="alert" data-testid="quote-changed">
+            Your refund changed while this was open, so nothing was cancelled. The amount above is the new one.
+            Confirm again if you still want to cancel.
+          </p>
+        )}
+        {quoteFailed && (
+          <div className="flex justify-start">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => void refetchQuote()}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              Try again
+            </Button>
+          </div>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={cancelling}>Keep my plan</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => { e.preventDefault(); void handleConfirm(); }}
-            disabled={cancelling || (!isCashBilled && loadingQuote)}
+            disabled={!canConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

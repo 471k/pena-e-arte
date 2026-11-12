@@ -32,6 +32,16 @@ public class Payment : TenantEntity, IHasReferenceAmount
     /// expiresAfterMinutes). Enforced server-side by PaymentReconciliationJob's release pass.</summary>
     public DateTime? HoldExpiresAt { get; set; }
 
+    /// <summary>When PaymentReconciliationJob last got an answer from the provider about this
+    /// payment's order. Null = never asked (cash, or a card row the job has not reached yet). A
+    /// provider call that failed leaves it unchanged, so a stale time is how a failing check shows.
+    /// Observation only: the job's decisions never read it.</summary>
+    public DateTime? ProviderCheckedAt { get; set; }
+
+    /// <summary>What the provider answered at <see cref="ProviderCheckedAt"/>. Null with a check
+    /// time = the provider had no record of the order.</summary>
+    public PaymentProviderStatus? ProviderStatusAtCheck { get; set; }
+
     // Cash fields
     public string? CashNote { get; set; }
     public Guid? CashConfirmedByUserId { get; set; }

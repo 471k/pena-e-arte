@@ -26,6 +26,7 @@ public class PaymentConfiguration : TenantEntityConfiguration<Payment>
         builder.Property(p => p.ClientToken).HasMaxLength(500);
         builder.Property(p => p.CashNote).HasMaxLength(500);
         builder.Property(p => p.CashConfirmedByUserId).IsRequired(false);
+        builder.Property(p => p.ProviderStatusAtCheck).HasConversion<string>().HasMaxLength(16);
 
         // One payment per appointment, enforced at the database — application-level
         // duplicate checks alone are racy (card intent creation vs cash declaration).

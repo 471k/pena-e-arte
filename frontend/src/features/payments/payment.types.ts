@@ -157,3 +157,49 @@ export interface PayWithSavedCardSetupResponse {
   payerAuthSetupReferenceId: string | null;
   deviceDataCollection:      PayWithSavedCardDeviceDataCollection | null;
 }
+
+// ── Unsettled card payments (E05b-2, O06) ─────────────────────────────────────
+// Camelcase mirror of Pena_e_Arte.Contracts.Responses.UnsettledPaymentsResponse: what the reconciliation
+// job hasn't settled, exactly as it last recorded it. Amounts are per payment and never totalled.
+
+export const UnsettledPaymentKind = {
+  ProviderDisagrees:   "ProviderDisagrees",
+  OnHold:              "OnHold",
+  AwaitingCardPayment: "AwaitingCardPayment",
+} as const;
+export type UnsettledPaymentKind = (typeof UnsettledPaymentKind)[keyof typeof UnsettledPaymentKind];
+
+export type ProviderStatusAtCheck = "Pending" | "Authorized" | "Captured" | "Canceled" | "Refunded" | "Failed";
+
+export interface UnsettledPaymentItem {
+  paymentId:             string;
+  appointmentId:         string;
+  appointmentDate:       string;
+  appointmentStatus:     string;
+  clientName:            string;
+  amount:                number;
+  currency:              string;
+  /** Local status: "Pending" (not paid) or "Captured" (held). */
+  status:                "Pending" | "Captured";
+  createdAt:             string;
+  /** AwaitingCardPayment only: after this the unpaid order is cancelled automatically. */
+  releaseDeadline:       string | null;
+  /** When the provider last answered about it; null = not asked yet. */
+  providerCheckedAt:     string | null;
+  /** What it answered; null with a check time = it had no record of the order. */
+  providerStatusAtCheck: ProviderStatusAtCheck | null;
+  checkOverdue:          boolean;
+}
+
+export interface UnsettledPaymentGroup {
+  kind:  UnsettledPaymentKind;
+  total: number;
+  items: UnsettledPaymentItem[];
+}
+
+export interface UnsettledPaymentsResponse {
+  generatedAt:            string;
+  checkOverdueAfterHours: number;
+  maxItemsPerGroup:       number;
+  groups:                 UnsettledPaymentGroup[];
+}

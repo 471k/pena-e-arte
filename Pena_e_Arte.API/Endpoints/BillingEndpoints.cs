@@ -158,12 +158,14 @@ public static class BillingEndpoints
         return Results.Ok(result);
     }
 
+    // The body is the quote the owner confirmed (E05b-2, O07). Required: no quote, no cancellation.
     private static async Task<IResult> CancelMySubscription(
+        CancelMySubscriptionRequest request,
         ICurrentTenant tenant,
         ISender mediator,
         CancellationToken ct)
     {
-        SubscriptionResponse result = await mediator.Send(new CancelMySubscriptionCommand(tenant.StudioId), ct);
+        SubscriptionResponse result = await mediator.Send(new CancelMySubscriptionCommand(tenant.StudioId, request), ct);
         return Results.Ok(result);
     }
 

@@ -69,6 +69,10 @@ const server = setupServer(
   http.get("http://localhost/api/v1/payments", () =>
     HttpResponse.json([]),
   ),
+  // E05b-2: the "Not settled yet" section above the history; its own behaviour is in UnsettledPaymentsSection.test.tsx.
+  http.get("http://localhost/api/v1/payments/unsettled", () =>
+    HttpResponse.json({ generatedAt: new Date().toISOString(), checkOverdueAfterHours: 26, maxItemsPerGroup: 10, groups: [] }),
+  ),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
