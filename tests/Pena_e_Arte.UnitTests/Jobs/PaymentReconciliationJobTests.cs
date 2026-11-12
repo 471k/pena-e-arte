@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -7,6 +8,7 @@ using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Jobs;
+using Pena_e_Arte.UnitTests.ConsentForms;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Jobs;
@@ -289,6 +291,67 @@ public class PaymentReconciliationJobTests
         updated.Status.Should().Be(PaymentStatus.Paid);
         updated.PaidAt.Should().NotBeNull();
         _db.Appointments.Find(appointmentId)!.DepositStatus.Should().Be(DepositStatus.Forfeited);
+    }
+
+    [Fact]
+    public async Task RunAsync_HeldForfeitCapturedAtProvider_KeepsItWithoutRefundOrWarning()
+    {
+        // The studio keeps a forfeit: before the fix this logged "refund it manually", which was false.
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(-1), DepositStatus.Forfeited, AppointmentStatus.Cancelled);
+        await SeedPayment(PaymentStatus.Captured, "pi_held_forfeit_kept", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_held_forfeit_kept", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
+        CapturingLogger<PaymentReconciliationJob> logger = new();
+
+        await new PaymentReconciliationJob(_db, _stripe, _jobs, logger).RunAsync();
+
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        logger.Entries.Should().NotContain(e => e.Level >= LogLevel.Warning);
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task RunAsync_HeldDepositCapturedOnCancelledAppointment_IsRefundedInFull()
+    {
+        // Cancel-then-heal race, then a capture (e.g. in the POK dashboard) before the job released
+        // the hold. Before the fix: Paid, a log line, and nothing else ever looked at it again.
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(5), DepositStatus.Pending, AppointmentStatus.Cancelled);
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_held_captured_cancelled", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_held_captured_cancelled", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
+
+        await CreateSut().RunAsync();
+
+        await _stripe.Received(1).RefundAsync(_studioId, "pi_held_captured_cancelled", 50m, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        Payment updated = _db.Payments.Find(payment.Id)!;
+        updated.Status.Should().Be(PaymentStatus.Refunded);
+        updated.RefundedAmount.Should().Be(updated.Amount);
+        updated.PaidAt.Should().NotBeNull(); // charged, then refunded: "Deposit refunded", kept 0
+        _db.Appointments.Find(appointmentId)!.DepositStatus.Should().Be(DepositStatus.Refunded);
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task RunAsync_RefundOfAHeldDepositCapturedOnCancelledAppointmentFails_StaysHeldForTheNextRun()
+    {
+        Guid appointmentId = await SeedAppointment(
+            DateTime.UtcNow.AddDays(5), DepositStatus.Pending, AppointmentStatus.Cancelled);
+        Payment payment = await SeedPayment(PaymentStatus.Captured, "pi_held_refund_down", appointmentId);
+        _stripe.GetStatusAsync(_studioId, "pi_held_refund_down", Arg.Any<CancellationToken>())
+               .Returns(PaymentProviderStatus.Captured);
+        _stripe.RefundAsync(_studioId, "pi_held_refund_down", 50m, Arg.Any<string>(), Arg.Any<CancellationToken>())
+               .Returns<Task<string>>(_ => throw new ServiceUnavailableException("POK unavailable"));
+
+        await CreateSut().RunAsync();
+
+        Payment updated = _db.Payments.Find(payment.Id)!;
+        updated.Status.Should().Be(PaymentStatus.Captured);
+        updated.PaidAt.Should().BeNull();
+        _db.Appointments.Find(appointmentId)!.DepositStatus.Should().Be(DepositStatus.Pending);
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
     }
 
     [Fact]

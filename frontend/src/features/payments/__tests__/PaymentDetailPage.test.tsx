@@ -409,6 +409,22 @@ describe("PaymentDetailPage", () => {
     );
   }
 
+  it("a hold on a cancelled appointment is not offered for capture and says it is released", async () => {
+    servePayment({ status: "Captured", refundedAmount: null, paidAt: null,
+      appointmentStatus: "Cancelled", depositStatus: "Pending" });
+    renderPage("appt-001", Role.Owner);
+    expect(await screen.findByText(/this hold is released automatically/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /capture deposit/i })).not.toBeInTheDocument();
+  });
+
+  it("a forfeit on a cancelled appointment can still be captured", async () => {
+    servePayment({ status: "Captured", refundedAmount: null, paidAt: null,
+      appointmentStatus: "Cancelled", depositStatus: "Forfeited" });
+    renderPage("appt-001", Role.Owner);
+    expect(await screen.findByRole("button", { name: /capture deposit/i })).toBeInTheDocument();
+    expect(screen.queryByText(/this hold is released automatically/i)).not.toBeInTheDocument();
+  });
+
   it("a partial refund shows 'Partly refunded' with the kept and refunded amounts, and keeps the receipt", async () => {
     servePayment({ status: "Refunded", refundedAmount: 30, appointmentStatus: "Completed" });
     renderPage("appt-002", Role.Owner);

@@ -164,6 +164,37 @@ public class CaptureDepositHandlerTests
             .Should().Be(DepositStatus.Forfeited);
     }
 
+    [Fact]
+    public async Task Handle_HoldOnACancelledAppointment_RefusesWithoutCallingTheProvider()
+    {
+        // The client's money: PaymentReconciliationJob releases the hold. Capturing it would charge
+        // for an appointment that isn't happening.
+        await SeedStudio();
+        await SeedAppointment(DepositStatus.Pending, AppointmentStatus.Cancelled);
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_cancelled");
+
+        Func<Task> act = () => CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*cancelled*");
+        await _stripe.DidNotReceive().CaptureAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Captured);
+    }
+
+    [Fact]
+    public async Task Handle_ForfeitOnACancelledAppointment_IsCapturedAndStaysForfeited()
+    {
+        // The studio keeps a late-cancel forfeit, so "Capture deposit" still works for it.
+        await SeedStudio();
+        await SeedAppointment(DepositStatus.Forfeited, AppointmentStatus.Cancelled);
+        Guid paymentId = await SeedPayment(PaymentStatus.Captured, "pi_cancelled_forfeit");
+
+        await CreateSut().Handle(new CaptureDepositCommand(paymentId), default);
+
+        await _stripe.Received(1).CaptureAsync(_studioId, "pi_cancelled_forfeit", Arg.Any<CancellationToken>());
+        _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Paid);
+        _db.Appointments.Single(a => a.Id == _appointmentId).DepositStatus.Should().Be(DepositStatus.Forfeited);
+    }
+
     private async Task SeedStudio()
     {
         _db.Studios.Add(new Studio
@@ -175,7 +206,8 @@ public class CaptureDepositHandlerTests
         await _db.SaveChangesAsync();
     }
 
-    private async Task SeedAppointment(DepositStatus depositStatus = DepositStatus.Pending)
+    private async Task SeedAppointment(
+        DepositStatus depositStatus = DepositStatus.Pending, AppointmentStatus status = AppointmentStatus.Pending)
     {
         _db.Appointments.Add(new Appointment
         {
@@ -186,7 +218,7 @@ public class CaptureDepositHandlerTests
             Date = DateTime.UtcNow.AddDays(3),
             EndDate = DateTime.UtcNow.AddDays(3).AddMinutes(90),
             DurationMinutes = 90,
-            Status = AppointmentStatus.Pending,
+            Status = status,
             DepositStatus = depositStatus
         });
         await _db.SaveChangesAsync();

@@ -204,6 +204,32 @@ public class CashPaymentIntegrationTests
         result.ProviderReferenceId.Should().BeNull();
     }
 
+    [Fact]
+    public async Task DeclareCashDeposit_CancelledAppointment_RefusesAndLeavesTheCardOrderToReconciliation()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (_, Guid clientId) = await SeedArtistAndClient(tenantId);
+        Guid appointmentId = await SeedAppointment(tenantId, clientId);
+        Guid paymentId = await SeedCardPendingPayment(tenantId, appointmentId, clientId, $"pi_{Guid.NewGuid():N}");
+        await using (AppDbContext ctx = _fixture.CreateDbContext(tenantId))
+        {
+            Appointment appt = await ctx.Appointments.SingleAsync(a => a.Id == appointmentId);
+            appt.Status = AppointmentStatus.Cancelled;
+            await ctx.SaveChangesAsync();
+        }
+        IJobScheduler jobs = Substitute.For<IJobScheduler>();
+
+        Func<Task> act = () => RunDeclareHandler(tenantId, appointmentId, jobs);
+
+        // Never heal or convert it here: the job releases the order, or refunds it in full if charged.
+        await act.Should().ThrowAsync<BusinessRuleViolationException>().WithMessage("*cancelled*");
+        jobs.Received(1).TriggerPaymentReconciliationNow();
+        await using AppDbContext verify = _fixture.CreateDbContext(tenantId);
+        Payment payment = await verify.Payments.SingleAsync(p => p.Id == paymentId);
+        payment.Method.Should().Be(ClientPaymentMethod.Card);
+        payment.Status.Should().Be(PaymentStatus.Pending);
+    }
+
     // ── ActivateSubscriptionManually ──────────────────────────────────────
 
     [Fact]
@@ -391,7 +417,7 @@ public class CashPaymentIntegrationTests
 
     // ── Runner helpers ────────────────────────────────────────────────────
 
-    private async Task<PaymentResponse> RunDeclareHandler(Guid tenantId, Guid appointmentId)
+    private async Task<PaymentResponse> RunDeclareHandler(Guid tenantId, Guid appointmentId, IJobScheduler? jobs = null)
     {
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
         CurrentTenantService tenant = new();
@@ -399,7 +425,7 @@ public class CashPaymentIntegrationTests
         ICurrentUser currentUser = Substitute.For<ICurrentUser>();
         currentUser.Role.Returns("owner"); // staff path — no ownership restriction
         IPaymentProvider stripe = Substitute.For<IPaymentProvider>();
-        DeclareCashDepositHandler handler = new(db, tenant, currentUser, stripe);
+        DeclareCashDepositHandler handler = new(db, tenant, currentUser, stripe, jobs ?? Substitute.For<IJobScheduler>());
         return await handler.Handle(new DeclareCashDepositCommand(appointmentId, null), default);
     }
 

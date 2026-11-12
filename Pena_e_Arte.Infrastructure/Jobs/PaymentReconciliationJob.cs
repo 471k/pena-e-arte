@@ -28,7 +28,8 @@ public class PaymentReconciliationJob(
     /// Held deposits (PaymentStatus.Captured = authorised, not yet captured): promote to Paid when the
     /// provider reports the capture happened elsewhere (e.g. in the POK dashboard); mark Failed when
     /// the provider reports the hold is gone, so "Capture deposit" stops offering an impossible action;
-    /// release a hold left on a CANCELLED appointment (unless it is a forfeit, which stays held).
+    /// release a hold left on a CANCELLED appointment, or refund it in full if it was captured there
+    /// (unless it is a forfeit, which the studio keeps).
     /// </summary>
     private async Task ReconcileHeldAsync(CancellationToken ct)
     {
@@ -54,11 +55,39 @@ public class PaymentReconciliationJob(
 
                 switch (status)
                 {
+                    case PaymentProviderStatus.Captured
+                        when payment.Appointment.Status == AppointmentStatus.Cancelled
+                          && payment.Appointment.DepositStatus != DepositStatus.Forfeited:
+                        // Held on a cancelled appointment, then captured before this job could release
+                        // it (in the POK dashboard, say). Only the cancel-then-heal race leaves a
+                        // non-forfeit hold on a cancelled appointment: every money branch of the
+                        // cancellation either settles the hold or refuses. So the cancellation applied
+                        // no policy, and this job can't apply one afterwards: refund in full, exactly
+                        // like ReconcilePendingAsync's charged twin. Before this, the row became Paid
+                        // with only a log line, then left the job and every owner view for good.
+                        // A failed refund throws before the save: the row stays held and is retried
+                        // on the next run, and the owner's "Not settled yet" lists it meanwhile (as a
+                        // provider disagreement, or as check overdue).
+                        // The amount is explicit: POK rejects a refund without one.
+                        await paymentProvider.RefundAsync(
+                            payment.StudioId, payment.ProviderReferenceId!, payment.Amount, payment.Currency, ct);
+                        payment.Status = PaymentStatus.Refunded;
+                        payment.PaidAt = now; // the card WAS charged: "Deposit refunded", kept 0
+                        payment.RefundedAmount = payment.Amount;
+                        payment.UpdatedAt = now;
+                        payment.Appointment.DepositStatus = DepositStatus.Refunded;
+                        payment.Appointment.UpdatedAt = now;
+                        logger.LogWarning(
+                            "Held deposit {PaymentId} for studio {StudioId} was captured at the provider on a cancelled appointment; refunded in full.",
+                            payment.Id, payment.StudioId);
+                        break;
                     case PaymentProviderStatus.Captured:
                         MarkPaid(payment, now);
                         if (payment.Appointment.Status == AppointmentStatus.Cancelled)
-                            logger.LogWarning(
-                                "Held deposit {PaymentId} for studio {StudioId} was captured at the provider on a cancelled appointment; refund it manually.",
+                            // A late-cancel forfeit whose capture POK refused at cancellation time, now
+                            // captured: the studio keeps it, as its policy said. MarkPaid keeps Forfeited.
+                            logger.LogInformation(
+                                "Forfeited deposit {PaymentId} for studio {StudioId} was captured at the provider; the studio keeps it.",
                                 payment.Id, payment.StudioId);
                         else
                             tellClientPaid = true; // captured in the POK dashboard: same email as "Capture deposit"
@@ -78,11 +107,13 @@ public class PaymentReconciliationJob(
                         when payment.Appointment.Status == AppointmentStatus.Cancelled
                           && payment.Appointment.DepositStatus != DepositStatus.Forfeited:
                         // The cancellation saw a Pending payment, so it settled nothing; then a heal path
-                        // (ConfirmCardPaymentCommand, CreateDepositPaymentCommand's resume branch, which
-                        // the saved-card flow shares, or DeclareCashDepositCommand) moved the order to
-                        // held without checking the appointment. Release it, exactly like
-                        // ReconcilePendingAsync does. A B3 forfeit whose capture POK refused is Forfeited
-                        // and stays held for the owner to capture.
+                        // moved the order to held. The heal paths (ConfirmCardPaymentCommand,
+                        // CreateDepositPaymentCommand's resume branch, which the saved-card flow shares,
+                        // and DeclareCashDepositCommand) all refuse a cancelled appointment now, so
+                        // what's left is a race: a heal that read the appointment just before the
+                        // cancellation saved. Release it, exactly like ReconcilePendingAsync does. A B3
+                        // forfeit whose capture POK refused is Forfeited and stays held for the owner
+                        // to capture.
                         await paymentProvider.CancelAsync(payment.StudioId, payment.ProviderReferenceId!, ct);
                         payment.Status = PaymentStatus.Refunded;
                         payment.RefundedAmount = payment.Amount;

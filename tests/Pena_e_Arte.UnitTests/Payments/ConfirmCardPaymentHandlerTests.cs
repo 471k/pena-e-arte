@@ -73,6 +73,56 @@ public class ConfirmCardPaymentHandlerTests
     }
 
     [Fact]
+    public async Task Handle_HeldDepositChargedOnACancelledAppointment_IsNotMarkedPaid()
+    {
+        // Before the fix, the cancelled guard covered Pending rows only, so a held row fell through to
+        // Paid, where nothing would ever give the money back. The job refunds it in full instead.
+        Guid appointmentId = await SeedAppointmentAsync(AppointmentStatus.Cancelled);
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Captured, "order-held-c", appointmentId);
+        _provider.GetStatusAsync(_studioId, "order-held-c", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
+
+        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.Status.Should().Be(PaymentStatus.Captured.ToString());
+        _db.Payments.Single(p => p.Id == paymentId).PaidAt.Should().BeNull();
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Pending);
+        _jobs.Received(1).TriggerPaymentReconciliationNow();
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
+    public async Task Handle_AuthorisedOnACancelledAppointment_IsNotHealedToHeld()
+    {
+        Guid appointmentId = await SeedAppointmentAsync(AppointmentStatus.Cancelled);
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Pending, "order-auth-c", appointmentId);
+        _provider.GetStatusAsync(_studioId, "order-auth-c", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Authorized);
+
+        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.Status.Should().Be(PaymentStatus.Pending.ToString());
+        _jobs.Received(1).TriggerPaymentReconciliationNow();
+    }
+
+    [Fact]
+    public async Task Handle_HeldForfeitChargedAtProvider_IsPaidAndStaysForfeited()
+    {
+        // The studio keeps a forfeit. Before the fix this path overwrote Forfeited with Paid.
+        Guid appointmentId = await SeedAppointmentAsync(AppointmentStatus.Cancelled, DepositStatus.Forfeited);
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Captured, "order-forfeit", appointmentId);
+        _provider.GetStatusAsync(_studioId, "order-forfeit", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
+
+        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.Status.Should().Be(PaymentStatus.Paid.ToString());
+        _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Forfeited);
+        _jobs.DidNotReceive().TriggerPaymentReconciliationNow();
+        _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
+    }
+
+    [Fact]
     public async Task Handle_ProviderStillPending_LeavesLocalStateUnchanged()
     {
         Guid paymentId = await SeedPaymentAsync(PaymentStatus.Pending, "order-3");
@@ -167,7 +217,8 @@ public class ConfirmCardPaymentHandlerTests
         return client.Id;
     }
 
-    private async Task<Guid> SeedAppointmentAsync()
+    private async Task<Guid> SeedAppointmentAsync(
+        AppointmentStatus status = AppointmentStatus.Pending, DepositStatus depositStatus = DepositStatus.Pending)
     {
         Appointment appointment = new()
         {
@@ -177,8 +228,8 @@ public class ConfirmCardPaymentHandlerTests
             Date = DateTime.UtcNow.AddDays(5),
             EndDate = DateTime.UtcNow.AddDays(5).AddMinutes(90),
             DurationMinutes = 90,
-            Status = AppointmentStatus.Pending,
-            DepositStatus = DepositStatus.Pending,
+            Status = status,
+            DepositStatus = depositStatus,
         };
         _db.Appointments.Add(appointment);
         await _db.SaveChangesAsync();
