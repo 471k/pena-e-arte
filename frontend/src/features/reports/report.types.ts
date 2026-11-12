@@ -26,12 +26,17 @@ export interface EarningsPaymentLine {
   /** When the payment came in (UTC ISO). The "last 30 days" list filters on this. */
   paidAt:           string;
   clientName:       string;
-  /** What the client paid, minus refunds. */
+  /** What the studio kept: amount minus refunds. 0 when fully refunded, so never label it "paid" alone. */
   clientPaidAmount: number;
   /** The artist's share; null when shareIsKnown is false. */
   artistAmount:     number | null;
   shareIsKnown:     boolean;
   splits:           SessionSplitResponse[];
+  /** The payment's status, e.g. "Paid" or "Refunded" (E05b-1). */
+  status:           string;
+  /** What the client paid, before any refund. */
+  amount:           number;
+  refundedAmount:   number | null;
 }
 
 /** One month of the artist's trend (A07a). A month with payments and an unknown share is null, never 0. */

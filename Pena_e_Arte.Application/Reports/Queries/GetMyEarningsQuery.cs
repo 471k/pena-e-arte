@@ -143,7 +143,10 @@ public class GetMyEarningsHandler(IAppDbContext db, ICurrentUser currentUser, IC
                 shareIsKnown,
                 splitsByPayment[p.Id]
                     .Select(s => new SessionSplitResponse(s.Id, s.PaymentId, s.Label, s.Amount, s.PaidAt))
-                    .ToList()))
+                    .ToList(),
+                p.Status.ToString(),
+                p.Amount,
+                p.RefundedAmount))
             .ToList();
 
         return new ArtistEarningsResponse(

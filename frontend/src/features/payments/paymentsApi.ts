@@ -21,9 +21,16 @@ export const paymentsApi = createApi({
   tagTypes: ["Payment"],
   endpoints: (builder) => ({
     getPayments: builder.query<PaymentResponse[], GetPaymentsParams>({
-      query: ({ lastSeenId, pageSize = 20 } = {}) => ({
+      query: ({ lastSeenId, pageSize = 20, search, status, from, to } = {}) => ({
         url:    "payments",
-        params: { ...(lastSeenId ? { lastSeenId } : {}), pageSize },
+        params: {
+          ...(lastSeenId ? { lastSeenId } : {}),
+          pageSize,
+          ...(search ? { search } : {}),
+          ...(status ? { status } : {}),
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
+        },
       }),
       providesTags: ["Payment"],
     }),

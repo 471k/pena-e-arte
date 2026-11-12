@@ -40,6 +40,9 @@ const EARNINGS: ArtistEarningsResponse = {
       clientPaidAmount: 380,
       artistAmount: 228,
       shareIsKnown: true,
+      status: "Paid",
+      amount: 380,
+      refundedAmount: null,
       splits: [
         { id: "s-001", paymentId: "p-001", label: "Artist cut", amount: 300, paidAt: null },
         { id: "s-002", paymentId: "p-001", label: "Studio fee", amount: 80, paidAt: null },
@@ -217,6 +220,29 @@ describe("MyEarningsPage", () => {
     expect(within(share).getByTestId("earnings-client-paid-total")).toHaveTextContent("€380");
     expect(screen.getByTestId("earnings-line-share")).toHaveTextContent("€228");
     expect(screen.getByText("Client paid €380")).toBeInTheDocument();
+  });
+
+  // E05b-1, carried finding 1: a fully refunded payment read "Client paid ALL 0".
+  it("a fully refunded payment shows what the client paid, struck through and marked Refunded, never paid 0", async () => {
+    respondWith({
+      ...EARNINGS,
+      payments: [{ ...EARNINGS.payments[0], status: "Refunded", clientPaidAmount: 0, refundedAmount: 380, artistAmount: 0 }],
+    });
+    renderPage();
+    const line = await screen.findByTestId("earnings-line-refunded");
+    expect(line).toHaveTextContent("Client paid €380 Refunded");
+    expect(within(line).getByText("€380").tagName).toBe("S");
+    expect(within(line).getByLabelText("€380, refunded")).toBeInTheDocument();
+    expect(screen.queryByText(/Client paid €0/)).not.toBeInTheDocument();
+  });
+
+  it("a partly refunded payment shows both the amount paid and the amount refunded", async () => {
+    respondWith({
+      ...EARNINGS,
+      payments: [{ ...EARNINGS.payments[0], status: "Refunded", clientPaidAmount: 300, refundedAmount: 80, artistAmount: 180 }],
+    });
+    renderPage();
+    expect(await screen.findByTestId("earnings-line-refunded")).toHaveTextContent("Client paid €380 · €80 refunded");
   });
 
   // The defect A07a fixes: an unconfigured studio must never show a number as "your share".

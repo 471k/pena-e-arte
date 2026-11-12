@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, CreditCard, Loader2, Plus, Search } from "lucide-react";
+import { ChevronRight, CreditCard, Download, Loader2, Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Input } from "@/shared/components/ui/input";
@@ -15,8 +16,29 @@ import { PaymentStatus } from "../payment.types";
 import { PAYMENT_STATUS_LABELS } from "../paymentStatusLabels";
 import { describeDeposit, type DepositOutcomeKind } from "../depositOutcome";
 import { Money } from "@/shared/components/Money";
+import { Label } from "@/shared/components/ui/label";
+import { useAppSelector } from "@/app/hooks";
+import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
+import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
+import type { GetPaymentsParams } from "../payment.types";
 
 const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
+const ALL_STATUSES = Object.values(PaymentStatus);
+// The revenue export only ever holds money received.
+const EXPORTABLE_STATUSES: ReadonlySet<PaymentStatus> = new Set([PaymentStatus.Paid, PaymentStatus.Refunded]);
+
+type Filters = Pick<GetPaymentsParams, "search" | "status" | "from" | "to">;
+
+function exportPath(filters: Filters): string {
+  const params = new URLSearchParams();
+  if (filters.search) params.set("search", filters.search);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.from)   params.set("from", filters.from);
+  if (filters.to)     params.set("to", filters.to);
+  const qs = params.toString();
+  return `reports/revenue/export.csv${qs ? `?${qs}` : ""}`;
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -77,54 +99,71 @@ export function PaymentListPage() {
   useDocumentMeta({ title: "Payments — TattooOS", canonical: "/payments" });
 
   const navigate = useNavigate();
-  const [cursor, setCursor]               = useState<string | undefined>(undefined);
-  const [previousPages, setPreviousPages] = useState<PaymentResponse[]>([]);
+  const { token, tenantId } = useAppSelector((s) => s.auth);
 
-  const { data, isLoading, isFetching, isError, refetch } = useGetPaymentsQuery({
-    lastSeenId: cursor,
+  // Every filter is applied by the server (E05b-1, O05): filtering the loaded page in the browser only ever
+  // searched the 20 oldest payments.
+  const [searchInput,  setSearchInput]  = useState("");
+  const [statusFilter, setStatusFilter] = useState<PaymentStatus | null>(null);
+  const [fromDate,     setFromDate]     = useState("");
+  const [toDate,       setToDate]       = useState("");
+  const search = useDebouncedValue(searchInput.trim(), SEARCH_DEBOUNCE_MS);
+  const datesInOrder = !fromDate || !toDate || fromDate <= toDate;
+
+  const filters: Filters = {
+    search: search || undefined,
+    status: statusFilter ?? undefined,
+    from:   datesInOrder && fromDate ? fromDate : undefined,
+    to:     datesInOrder && toDate ? toDate : undefined,
+  };
+  const filtersActive = Boolean(filters.search || filters.status || filters.from || filters.to);
+
+  // "Load more" pages belong to the filters they were loaded under. Changing a filter starts again from the
+  // first page: derived from the filter key on render, never reset by an effect.
+  const filterKey = JSON.stringify(filters);
+  const [paging, setPaging] = useState<{ key: string; cursor?: string; previous: PaymentResponse[] }>({
+    key: filterKey, previous: [],
+  });
+  const page = paging.key === filterKey ? paging : { key: filterKey, cursor: undefined, previous: [] };
+
+  // currentData, not data: data keeps the previous filter's rows while the new ones load.
+  const { currentData, isFetching, isError, refetch } = useGetPaymentsQuery({
+    ...filters,
+    lastSeenId: page.cursor,
     pageSize:   PAGE_SIZE,
   });
   const errorMessage = useSuspensionAwareError(isError, "Failed to load payments. Please try again.");
 
-  const allPayments = cursor === undefined
-    ? data ?? []
-    : [...previousPages, ...(data ?? [])];
-
-  const hasMore = (data?.length ?? 0) === PAGE_SIZE;
+  const allPayments = [...page.previous, ...(currentData ?? [])];
+  const firstPageLoading = page.cursor === undefined && currentData === undefined && !isError;
+  const hasMore = (currentData?.length ?? 0) === PAGE_SIZE;
+  const settled = !firstPageLoading && !isError;
 
   function handleLoadMore() {
     const last = allPayments[allPayments.length - 1];
     if (!last) return;
-    setPreviousPages(allPayments);
-    setCursor(last.id);
+    setPaging({ key: filterKey, cursor: last.id, previous: allPayments });
   }
 
-  const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState<PaymentStatus | null>(null);
+  function clearFilters() {
+    setSearchInput("");
+    setStatusFilter(null);
+    setFromDate("");
+    setToDate("");
+  }
 
-  const presentStatuses = useMemo<PaymentStatus[]>(() => {
-    const set = new Set<PaymentStatus>();
-    allPayments.forEach((p) => set.add(p.status));
-    return [...set];
-  }, [allPayments]);
-
-  const filteredPayments = useMemo<PaymentResponse[]>(() => {
-    let result = allPayments;
-    const term = search.trim().toLowerCase();
-    if (term) {
-      result = result.filter((p) => p.clientName.toLowerCase().includes(term));
+  const canExport = !filters.status || EXPORTABLE_STATUSES.has(filters.status);
+  const [exporting, setExporting] = useState(false);
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadAuthenticatedFile(exportPath(filters), "payments.csv", token, tenantId);
+    } catch {
+      toast.error("Couldn't export payments. Please try again.");
+    } finally {
+      setExporting(false);
     }
-    if (statusFilter) {
-      result = result.filter((p) => p.status === statusFilter);
-    }
-    return result;
-  }, [allPayments, search, statusFilter]);
-
-  const tableEmptyMessage = search
-    ? `No payments match "${search}".`
-    : statusFilter
-    ? `No payments with status "${PAYMENT_STATUS_LABELS[statusFilter]}".`
-    : "No payments yet.";
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,9 +173,10 @@ export function PaymentListPage() {
           <span className="font-semibold tracking-tight">Payments</span>
         </div>
         <div className="flex items-center gap-3">
+          {/* How many are loaded, not a total: more may be one "Load more" away. */}
           {allPayments.length > 0 && (
-            <span className="text-xs text-muted-foreground">
-              {allPayments.length} payment{allPayments.length !== 1 ? "s" : ""}
+            <span className="text-xs text-muted-foreground" data-testid="payments-shown">
+              {allPayments.length} shown
             </span>
           )}
           <Button size="sm" className="gap-1.5" onClick={() => navigate("/payments/new")}>
@@ -147,24 +187,24 @@ export function PaymentListPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Search by client name…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+        {/* Filters (E05b-1): newest first; each one narrows the server's query, so a search finds any payment,
+            not just the ones already loaded. */}
+        <div className="space-y-3" data-testid="payment-filters">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              aria-label="Search payments by client or artist name"
+              placeholder="Search by client or artist name…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              maxLength={100}
+              className="pl-9"
+            />
+          </div>
 
-        {/* Status filter pills — only shown when loaded data contains multiple statuses */}
-        {!isLoading && !isError && presentStatuses.length > 1 && (
-          <div
-            className="flex flex-wrap items-center gap-2"
-            aria-label="Filter by payment status"
-          >
-            {presentStatuses.map((s) => (
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by payment status">
+            {ALL_STATUSES.map((s) => (
               <button
                 key={s}
                 type="button"
@@ -181,10 +221,41 @@ export function PaymentListPage() {
               </button>
             ))}
           </div>
-        )}
 
-        {isLoading && (
-          <div className="space-y-0">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:items-end">
+            <div className="space-y-1">
+              <Label htmlFor="payments-from" className="text-xs">Paid from</Label>
+              <Input id="payments-from" type="date" value={fromDate} max={toDate || undefined}
+                     onChange={(e) => setFromDate(e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="payments-to" className="text-xs">Paid to</Label>
+              <Input id="payments-to" type="date" value={toDate} min={fromDate || undefined}
+                     onChange={(e) => setToDate(e.target.value)} className="h-9" />
+            </div>
+            <div className="col-span-2 flex flex-wrap items-center gap-2 sm:ml-auto">
+              {filtersActive && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
+              )}
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}
+                      disabled={!canExport || exporting}>
+                <Download className="h-3.5 w-3.5" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
+          {!datesInOrder && (
+            <p className="text-xs text-destructive-text" role="alert">&ldquo;Paid to&rdquo; is before &ldquo;Paid from&rdquo;, so the dates aren&apos;t applied.</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Dates are in your studio&apos;s timezone and match when a payment was paid, so a date range leaves out
+            payments that haven&apos;t been paid yet. Export CSV saves the paid and refunded payments matching these filters.
+            {!canExport && " The export holds only paid and refunded payments, so it's off for this status."}
+          </p>
+        </div>
+
+        {firstPageLoading && (
+          <div className="space-y-0" aria-label="Loading payments">
             {Array.from({ length: 8 }).map((_, i) => (
               <PaymentRowSkeleton key={i} />
             ))}
@@ -200,8 +271,18 @@ export function PaymentListPage() {
           </p>
         )}
 
-        {/* Rich empty state — zero payments loaded at all */}
-        {!isLoading && !isError && allPayments.length === 0 && (
+        {/* Four different answers: loading (above), error (above), no payments at all, and nothing matching
+            the filters. "No payments yet" under an active filter would tell the owner something false. */}
+        {settled && allPayments.length === 0 && filtersActive && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center" data-testid="payments-no-matches">
+            <Search className="h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm font-medium">No payments match these filters</p>
+            <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
+          </div>
+        )}
+
+        {/* Rich empty state — the studio has no payments at all */}
+        {settled && allPayments.length === 0 && !filtersActive && (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <CreditCard className="h-8 w-8 text-muted-foreground/40" />
             <p className="text-sm font-medium">No payments yet</p>
@@ -220,7 +301,7 @@ export function PaymentListPage() {
         )}
 
         {/* Table — when payments are loaded */}
-        {!isLoading && !isError && allPayments.length > 0 && (
+        {!firstPageLoading && allPayments.length > 0 && (
           <DataTable<PaymentResponse>
             columns={[
               {
@@ -280,10 +361,10 @@ export function PaymentListPage() {
                 ),
               },
             ]}
-            data={filteredPayments}
+            data={allPayments}
             keyExtractor={(p) => p.id}
             onRowClick={(p) => navigate(`/payments/${p.appointmentId}`)}
-            emptyMessage={tableEmptyMessage}
+            emptyMessage="No payments match these filters."
             mobileCard={(p) => (
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
@@ -304,7 +385,7 @@ export function PaymentListPage() {
           />
         )}
 
-        {!isLoading && !isError && hasMore && (
+        {settled && hasMore && (
           <div className="flex justify-center pt-2">
             <Button
               variant="outline"
