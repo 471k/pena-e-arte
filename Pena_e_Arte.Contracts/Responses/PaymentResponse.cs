@@ -25,4 +25,8 @@ public record PaymentResponse(
     decimal? ReferenceAmount = null,
     string? ReferenceCurrency = null,
     decimal? ReferenceRate = null,
-    DateOnly? ReferenceRateDate = null);
+    DateOnly? ReferenceRateDate = null,
+    // The appointment's deposit status when the query loaded it. "Forfeited" tells a hold the studio
+    // keeps under its cancellation policy apart from one on a cancelled appointment that is released
+    // (and can't be captured). Null when not loaded.
+    string? DepositStatus = null);

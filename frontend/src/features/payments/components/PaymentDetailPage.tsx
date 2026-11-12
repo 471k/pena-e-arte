@@ -261,6 +261,10 @@ export function PaymentDetailPage() {
   const alreadyRefunded = payment.refundedAmount ?? (isRefunded ? payment.amount : 0);
   const leftToRefund    = Math.max(0, payment.amount - alreadyRefunded);
   const canRefund       = (isPaid || isRefunded) && leftToRefund > 0;
+  // A hold on a cancelled appointment is the client's money unless the studio kept it as a
+  // late-cancel forfeit: the API refuses to capture it, and reconciliation releases it.
+  const holdReleasedOnCancel = payment.status === PaymentStatus.Captured
+    && payment.appointmentStatus === "Cancelled" && payment.depositStatus !== "Forfeited";
 
   return (
     <div className="min-h-screen bg-background">
@@ -282,7 +286,13 @@ export function PaymentDetailPage() {
             </span>
           )}
 
-          {payment.status === PaymentStatus.Captured && canOwner && isCard && (
+          {holdReleasedOnCancel && canOwner && isCard && (
+            <span className="text-xs text-muted-foreground">
+              Appointment cancelled — this hold is released automatically, so it can't be captured.
+            </span>
+          )}
+
+          {payment.status === PaymentStatus.Captured && !holdReleasedOnCancel && canOwner && isCard && (
             <Button
               size="sm"
               onClick={() => handleCapture(payment.id)}

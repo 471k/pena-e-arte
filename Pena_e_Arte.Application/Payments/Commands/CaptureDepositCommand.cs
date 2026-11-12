@@ -37,14 +37,23 @@ public class CaptureDepositHandler(
         if (payment.ProviderReferenceId is null)
             throw new BusinessRuleViolationException("Payment has no associated provider reference.");
 
+        Appointment? appointment = await db.Appointments
+            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+
+        // A hold on a cancelled appointment is the client's money unless the studio kept it as a
+        // late-cancel forfeit. PaymentReconciliationJob releases it; capturing it here would take
+        // money for an appointment that isn't happening.
+        if (appointment is { Status: AppointmentStatus.Cancelled }
+            && appointment.DepositStatus != DepositStatus.Forfeited)
+            throw new BusinessRuleViolationException(
+                "This appointment was cancelled, so its deposit can't be captured. The hold will be released automatically.");
+
         await paymentProvider.CaptureAsync(payment.StudioId, payment.ProviderReferenceId, ct);
 
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
         payment.UpdatedAt = DateTime.UtcNow;
 
-        Appointment? appointment = await db.Appointments
-            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
         if (appointment is not null)
         {
             // A late-cancel forfeit whose capture POK refused at cancellation time stays Forfeited

@@ -48,8 +48,22 @@ public class ConfirmCardPaymentHandler(
         PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
             payment.StudioId, payment.ProviderReferenceId, ct);
 
+        Appointment? appt = await db.Appointments
+            .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
+
+        // Authorised or charged on an appointment cancelled meanwhile: never heal it here, neither to
+        // held nor to Paid. PaymentReconciliationJob releases the hold or refunds the charge in full;
+        // run it now rather than overnight. A late-cancel forfeit is the exception: the studio keeps it.
+        bool owedBack = appt is { Status: AppointmentStatus.Cancelled }
+            && appt.DepositStatus != DepositStatus.Forfeited;
+
         switch (status)
         {
+            case PaymentProviderStatus.Authorized when payment.Status == PaymentStatus.Pending && owedBack:
+            case PaymentProviderStatus.Captured when payment.Status != PaymentStatus.Paid && owedBack:
+                jobs.TriggerPaymentReconciliationNow();
+                break;
+
             case PaymentProviderStatus.Authorized when payment.Status == PaymentStatus.Pending:
                 payment.Status = PaymentStatus.Captured;
                 payment.UpdatedAt = DateTime.UtcNow;
@@ -57,31 +71,24 @@ public class ConfirmCardPaymentHandler(
                 break;
 
             case PaymentProviderStatus.Captured when payment.Status != PaymentStatus.Paid:
-                Appointment? appt = await db.Appointments
-                    .FirstOrDefaultAsync(a => a.Id == payment.AppointmentId, ct);
-
-                // Charged on an appointment cancelled meanwhile: never mark it Paid here.
-                // PaymentReconciliationJob refunds it in full; run it now rather than overnight.
-                if (appt is { Status: AppointmentStatus.Cancelled } && payment.Status == PaymentStatus.Pending)
-                {
-                    jobs.TriggerPaymentReconciliationNow();
-                    break;
-                }
-
                 payment.Status = PaymentStatus.Paid;
                 payment.PaidAt = DateTime.UtcNow;
                 payment.UpdatedAt = DateTime.UtcNow;
 
                 if (appt is not null)
                 {
-                    appt.DepositStatus = DepositStatus.Paid;
+                    // A forfeit stays Forfeited: the same rule as CaptureDepositCommand and
+                    // PaymentReconciliationJob.MarkPaid.
+                    if (appt.DepositStatus != DepositStatus.Forfeited)
+                        appt.DepositStatus = DepositStatus.Paid;
                     appt.UpdatedAt = DateTime.UtcNow;
                 }
 
                 await db.SaveChangesAsync(ct);
                 // The client's "deposit received" email. Card deposits are charged when the client
-                // pays (C-4), so this is usually the moment the money arrives.
-                if (appt is not null)
+                // pays (C-4), so this is usually the moment the money arrives. Not for a forfeit on
+                // a cancelled appointment: the job sends nothing in that case either.
+                if (appt is { Status: not AppointmentStatus.Cancelled })
                     jobs.EnqueueDepositPaidNotification(payment.Id);
                 break;
 

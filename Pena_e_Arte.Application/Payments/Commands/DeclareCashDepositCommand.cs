@@ -16,7 +16,8 @@ public class DeclareCashDepositHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser currentUser,
-    IPaymentProvider paymentProvider)
+    IPaymentProvider paymentProvider,
+    IJobScheduler jobs)
     : IRequestHandler<DeclareCashDepositCommand, PaymentResponse>
 {
     public async Task<PaymentResponse> Handle(DeclareCashDepositCommand command, CancellationToken ct)
@@ -32,6 +33,20 @@ public class DeclareCashDepositHandler(
             Client? me = await db.FindClientForUserAsync(currentUser, ct);
             if (me is null || me.Id != appointment.ClientId)
                 throw new NotFoundException(nameof(Appointment), command.AppointmentId);
+        }
+
+        // Same rule as CreateDepositPaymentCommand: never take a deposit for a cancelled appointment.
+        // Without it, the provider checks below could heal a card order on a cancelled appointment
+        // to held or Paid, where nothing would ever give the money back. A card payment still in
+        // flight is settled by PaymentReconciliationJob: released, or refunded in full if charged.
+        if (appointment.Status == AppointmentStatus.Cancelled)
+        {
+            bool cardInFlight = await db.Payments.AnyAsync(p => p.AppointmentId == appointment.Id
+                && p.Method == ClientPaymentMethod.Card && p.Status == PaymentStatus.Pending
+                && p.ProviderReferenceId != null, ct);
+            if (cardInFlight)
+                jobs.TriggerPaymentReconciliationNow();
+            throw new BusinessRuleViolationException("This appointment was cancelled, so no deposit is due.");
         }
 
         string studioCurrency = await db.Studios

@@ -39,6 +39,8 @@ export interface PaymentResponse {
   referenceRate?:        number | null;
   /** "yyyy-MM-dd" — the date the Bank of Albania states for referenceRate. */
   referenceRateDate?:    string | null;
+  /** The appointment's deposit status when the API loaded it ("Forfeited" = the studio keeps it). */
+  depositStatus?:        string | null;
 }
 
 export interface PaymentIntentResponse {

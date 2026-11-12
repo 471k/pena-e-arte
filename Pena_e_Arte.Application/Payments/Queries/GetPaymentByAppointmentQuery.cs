@@ -58,6 +58,7 @@ public class GetPaymentByAppointmentHandler(IAppDbContext db, ICurrentUser curre
         {
             AppointmentStatus = appointment?.Status.ToString(),
             AppointmentDate = appointment?.Date,
+            DepositStatus = appointment?.DepositStatus.ToString(),
         };
     }
 }
