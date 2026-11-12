@@ -309,17 +309,19 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="flex items-center justify-between px-6 py-3 border-b bg-background">
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="h-5 w-5" />
-          <span className="font-semibold tracking-tight">Dashboard</span>
+      {/* The date sits under the title, not beside the button: on a 390px phone the three in one row
+          made "Dashboard" touch the button and wrapped the date to three lines. */}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b bg-background">
+        <div className="flex items-center gap-2 min-w-0">
+          <LayoutDashboard className="h-5 w-5 shrink-0" />
+          <div className="min-w-0">
+            <span className="block font-semibold tracking-tight truncate">Dashboard</span>
+            <span className="block text-xs text-muted-foreground truncate" data-testid="dashboard-date">{formatDate(today)}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button size="sm" onClick={() => navigate("/schedule")}>
-            + Book Appointment
-          </Button>
-          <span className="text-xs text-muted-foreground">{formatDate(today)}</span>
-        </div>
+        <Button size="sm" className="shrink-0" onClick={() => navigate("/schedule")}>
+          + Book Appointment
+        </Button>
       </div>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">

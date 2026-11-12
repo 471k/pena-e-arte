@@ -26,6 +26,8 @@ export const ownerTourSteps: TourStep[] = [
     targetSelector: '[data-tour="owner-artist-mode-switch"]',
     title: "Switch between Owner and Artist",
     body: "Once your own artist profile is enabled, jump between your Owner dashboard and your Artist profile from here anytime.",
+    // In the header from sm up; on a phone the same switch sits at the top of the menu.
+    inNavDrawerBelowSm: true,
   },
   {
     targetSelector: '[data-tour="owner-solo-publish-banner"]',

@@ -11,6 +11,9 @@ export interface TourStep {
   body: string;
   placement?: "top" | "bottom" | "left" | "right";
   route?: string;
+  /** The target is a header control shown from `sm` up, with a copy at the top of the nav drawer
+   *  below that (the owner's Owner/Artist switch). The layout opens the drawer below `sm` only. */
+  inNavDrawerBelowSm?: boolean;
 }
 
 export interface OnboardingTourProps {

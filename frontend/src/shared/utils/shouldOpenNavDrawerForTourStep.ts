@@ -8,6 +8,11 @@ import type { TourStep } from "@/shared/components/OnboardingTour";
  * so opening the drawer there would just pop a redundant modal over it.
  */
 export function shouldOpenNavDrawerForTourStep(step: TourStep): boolean {
+  // A header control with a drawer copy below sm: from sm up the header copy is visible, and opening
+  // the drawer there would cover it.
+  if (step.inNavDrawerBelowSm) {
+    return typeof window !== "undefined" && !window.matchMedia("(min-width: 640px)").matches;
+  }
   if (!step.targetSelector.endsWith('-nav"]')) return false;
   return typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches;
 }

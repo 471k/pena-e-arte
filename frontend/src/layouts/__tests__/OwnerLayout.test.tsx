@@ -430,6 +430,96 @@ describe("OwnerLayout", () => {
     expect(await screen.findByTestId("outlet")).toBeInTheDocument();
   });
 
+  // ── The switch on a phone (owner phone-navigation patch, 2026-11-12) ───────────
+  // Below sm the header switch is hidden (hidden sm:flex) and the nav drawer is the only navigation,
+  // so the drawer carries the same switch. jsdom applies no CSS, so these assert what the drawer holds;
+  // e2e/owner-phone-navigation.spec.ts checks it at a real 390px width.
+
+  it("the nav drawer carries the Owner/Artist switch for an owner with an artist profile", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+    const user = userEvent.setup();
+    renderLayout();
+    await screen.findByRole("tab", { name: /artist/i }); // the header copy, once the profile has loaded
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    const drawer = await screen.findByRole("dialog");
+    const drawerSwitch = within(drawer).getByRole("tablist", { name: /switch between owner and artist/i });
+    expect(within(drawerSwitch).getByRole("tab", { name: /owner/i })).toHaveAttribute("aria-selected", "true");
+    expect(within(drawerSwitch).getByRole("tab", { name: /artist/i })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("Artist in the drawer switch enters artist mode, closes the drawer and swaps the menu", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+    const user = userEvent.setup();
+    renderLayout();
+    await screen.findByRole("tab", { name: /artist/i });
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("tab", { name: /artist/i }));
+
+    expect(await screen.findByTestId("artist-outlet")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Reopened, the drawer shows the artist menu with Today, and the switch now says Artist.
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByRole("link", { name: /^today$/i })).toHaveAttribute("href", "/today");
+    expect(within(drawer).getByRole("tab", { name: /artist/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("Owner in the drawer switch returns to the dashboard and closes the drawer", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+    const user = userEvent.setup();
+    renderLayout({}, "/artists/art-owner-1");
+    await screen.findByTestId("artist-outlet");
+    await screen.findByRole("tab", { name: /owner/i });
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("tab", { name: /owner/i }));
+
+    expect(await screen.findByTestId("outlet")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("the drawer switch is reachable and works from the keyboard", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json(MY_ARTIST_PROFILE)),
+    );
+    const user = userEvent.setup();
+    renderLayout();
+    await screen.findByRole("tab", { name: /artist/i });
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    const drawer = await screen.findByRole("dialog");
+    const artistTab = within(drawer).getByRole("tab", { name: /artist/i });
+
+    // Tab through the drawer until focus lands on the switch's Artist button, then activate it.
+    for (let i = 0; i < 10 && document.activeElement !== artistTab; i++) await user.tab();
+    expect(artistTab).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByTestId("artist-outlet")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("the drawer has no Owner/Artist switch for an owner without an artist profile", async () => {
+    const user = userEvent.setup();
+    renderLayout();
+    await screen.findByTestId("outlet");
+
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).queryByRole("tablist", { name: /switch between owner and artist/i })).not.toBeInTheDocument();
+    // Nor in the header, at any width.
+    expect(screen.queryAllByRole("tablist", { name: /switch between owner and artist/i })).toHaveLength(0);
+  });
+
   // ── Context-scoped nav: owner vs artist menu (2026-09-17) ────────────────────
   // The owner and their own dual-role artist identity must each see only their own specific
   // menu — the artist context must not be cluttered with owner-only studio-management items,
