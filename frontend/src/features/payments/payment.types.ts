@@ -73,9 +73,17 @@ export interface UpdateSessionSplitsRequest {
   splits: SessionSplitItem[];
 }
 
+/** GET /payments (E05b-1): newest first, every filter applied on the server. */
 export interface GetPaymentsParams {
   lastSeenId?: string;
   pageSize?:   number;
+  /** Client or artist name, any case. */
+  search?:     string;
+  /** One PaymentStatus by its exact name. */
+  status?:     PaymentStatus;
+  /** Studio-local dates (yyyy-MM-dd) on when the payment was paid; unpaid payments drop out when set. */
+  from?:       string;
+  to?:         string;
 }
 
 /** Amount/currency let the checkout page render the server's own figures instead of trusting a

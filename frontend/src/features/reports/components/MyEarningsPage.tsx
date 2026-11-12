@@ -10,7 +10,7 @@ import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { RevenueTrendChart } from "./RevenueTrendChart";
 import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
 import { describeArtistArrangement } from "@/features/studios/payModel";
-import type { ArtistEarningsResponse } from "../report.types";
+import type { ArtistEarningsResponse, EarningsPaymentLine } from "../report.types";
 
 function formatDate(iso: string | null, studioTimezone: string | undefined): string {
   if (!iso) return "—";
@@ -58,6 +58,33 @@ function ShareHeadline({ data }: { data: ArtistEarningsResponse }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * What the client paid, and what happened to it. A fully refunded payment used to read "Client paid ALL 0":
+ * the client did pay, it was refunded afterwards (E05b-1, carried finding 1). The original figure stays,
+ * struck through, with the refund named; a partial refund shows both amounts.
+ */
+function ClientPaid({ line, currency }: { line: EarningsPaymentLine; currency: string }) {
+  const refunded = line.refundedAmount ?? 0;
+  const isRefunded = line.status === "Refunded" && refunded > 0;
+  if (!isRefunded) {
+    return <span className="tabular-nums">Client paid {formatCurrency(line.amount, currency)}</span>;
+  }
+  const original = formatCurrency(line.amount, currency);
+  if (line.clientPaidAmount <= 0) {
+    return (
+      <span className="tabular-nums" data-testid="earnings-line-refunded">
+        Client paid <s aria-label={`${original}, refunded`}>{original}</s>{" "}
+        <span className="font-medium text-foreground">Refunded</span>
+      </span>
+    );
+  }
+  return (
+    <span className="tabular-nums" data-testid="earnings-line-refunded">
+      Client paid {original} · {formatCurrency(refunded, currency)} refunded
+    </span>
   );
 }
 
@@ -178,7 +205,7 @@ export function MyEarningsPage() {
                               ? <time dateTime={line.appointmentDate}>{formatDate(line.appointmentDate, studio?.timezone)}</time>
                               : "—"}
                           </span>
-                          <span className="tabular-nums">Client paid {formatCurrency(line.clientPaidAmount, data.currency)}</span>
+                          <ClientPaid line={line} currency={data.currency} />
                         </div>
                         {line.splits.length > 0 && (
                           <ul className="mt-1 space-y-0.5">

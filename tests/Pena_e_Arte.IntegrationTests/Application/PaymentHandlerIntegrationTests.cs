@@ -268,7 +268,9 @@ public class PaymentHandlerIntegrationTests
         }
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantId);
-        GetPaymentsHandler handler = new(db);
+        CurrentTenantService pageTenant = new();
+        pageTenant.SetTenant(tenantId);
+        GetPaymentsHandler handler = new(db, pageTenant);
         List<PaymentResponse> result = await handler.Handle(new GetPaymentsQuery(PageSize: 2), default);
 
         result.Should().HaveCount(2);
@@ -293,7 +295,9 @@ public class PaymentHandlerIntegrationTests
         await RunCreateHandler(tenantB, apptB, clientB);
 
         await using AppDbContext db = _fixture.CreateDbContext(tenantA);
-        GetPaymentsHandler handler = new(db);
+        CurrentTenantService pageTenant = new();
+        pageTenant.SetTenant(tenantA);
+        GetPaymentsHandler handler = new(db, pageTenant);
         List<PaymentResponse> result = await handler.Handle(new GetPaymentsQuery(), default);
 
         result.Should().ContainSingle();

@@ -26,13 +26,16 @@ public static class ReportEndpoints
         return Results.Ok(result);
     }
 
+    // from/to are studio-local calendar dates (yyyy-MM-dd), not instants (E05b-1, O08).
     private static async Task<IResult> ExportRevenueCsv(
-        DateTime? from,
-        DateTime? to,
+        DateOnly? from,
+        DateOnly? to,
+        string? search,
+        string? status,
         ISender mediator,
         CancellationToken ct)
     {
-        string csv = await mediator.Send(new ExportRevenueCsvQuery(from, to), ct);
+        string csv = await mediator.Send(new ExportRevenueCsvQuery(from, to, search, status), ct);
         return Results.Content(csv, "text/csv; charset=utf-8");
     }
 

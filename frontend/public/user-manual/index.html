@@ -2150,6 +2150,7 @@ ol.steps li { margin: 6px 0; }
 <text x="40" y="284" font-size="9" fill-opacity="0.7">Besa Klienti — Paid 20 Jun 2026 · Session 15 Jul 2026 · Client paid 380.00</text><text x="700" y="284" font-size="9" text-anchor="end">228.00</text>
 <text x="52" y="298" font-size="7" fill-opacity="0.5">Artist cut</text><text x="700" y="298" font-size="7" text-anchor="end" fill-opacity="0.5">300.00</text>
 <text x="52" y="310" font-size="7" fill-opacity="0.5">Studio fee</text><text x="700" y="310" font-size="7" text-anchor="end" fill-opacity="0.5">80.00</text>
+<text x="40" y="336" font-size="9" fill-opacity="0.7">Arben Dushi — Paid 2 Jun 2026 · Session 9 Jun 2026 · Client paid <tspan text-decoration="line-through">150.00</tspan> Refunded</text><text x="700" y="336" font-size="9" text-anchor="end">0.00</text>
 </svg>
 </figure>
 <figcaption>My Earnings — your share and what clients paid, the 12-month chart, then each payment</figcaption>
@@ -2162,6 +2163,7 @@ ol.steps li { margin: 6px 0; }
 <li>If a payment has a session split, its line items appear indented under that payment.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> only fully paid or partially-refunded-and-retained payments count — the same rule the studio's own revenue report uses.</div>
+<div class="callout callout-tip"><strong>Refunds:</strong> a refunded payment still shows what the client paid. A full refund shows the amount crossed out and marked <em>Refunded</em>, with a share of 0; a partial refund shows both, for example "Client paid €380 · €80 refunded", and your share is worked out on what was kept.</div>
 <div class="callout callout-tip"><strong>Lek prices:</strong> at studios in Albania that price in euros, booth-rent amounts on this page (and your hourly rate on your artist profile) also show the amount in lek (≈), at the Bank of Albania's official rate. Earnings totals stay in euros, because they add up payments made at different rates.</div>
 <div class="crosslinks">See also: <a href="#owner-artist-pay-model">Owner: how artists get paid</a>, <a href="#owner-reports">Owner: revenue reports</a>, <a href="#owner-become-artist">Owner: enable your own artist profile</a></div>
 </section>
@@ -2979,27 +2981,41 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Payment list</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/payments</code>: every payment across the studio, searchable by client name, filterable by status, with cursor-based "Load more" paging.</p>
+<p>At <code>/payments</code>: every payment across the studio, newest first, with a search by client or artist name, a status filter, a paid-date range and "Load more" paging. Every filter searches all of the studio's payments, not only the ones already on screen.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Payment list wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="12" font-weight="700">Payments</text><text x="640" y="25" font-size="9">+ New payment</text>
-<rect x="20" y="60" width="480" height="24" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<rect x="20" y="94" width="60" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="28" y="106" font-size="7">Pending</text>
-<rect x="88" y="94" width="70" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="96" y="106" font-size="7">Paid</text>
-<rect x="20" y="118" width="700" height="26" fill="currentColor" fill-opacity="0.04"/>
-<text x="30" y="136" font-size="8">Client</text><text x="150" y="136" font-size="8">Session Date</text><text x="270" y="136" font-size="8">Amount</text><text x="360" y="136" font-size="8">Status</text><text x="460" y="136" font-size="8">Method</text><text x="550" y="136" font-size="8">Date Paid</text>
-<rect x="20" y="146" width="700" height="26" fill="currentColor" fill-opacity="0.02"/>
+<text x="16" y="25" font-size="12" font-weight="700">Payments</text><text x="560" y="25" font-size="9">20 shown</text><text x="640" y="25" font-size="9">+ New payment</text>
+<rect x="20" y="56" width="700" height="24" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="32" y="72" font-size="8" fill-opacity="0.5">🔍 Search by client or artist name…</text>
+<rect x="20" y="88" width="56" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="28" y="100" font-size="7">Pending</text>
+<rect x="82" y="88" width="78" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="90" y="100" font-size="7">Cash Pending</text>
+<rect x="166" y="88" width="56" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="174" y="100" font-size="7">On hold</text>
+<rect x="228" y="88" width="44" height="16" rx="8" fill="currentColor" fill-opacity="0.25"/><text x="238" y="100" font-size="7">Paid</text>
+<rect x="278" y="88" width="112" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="286" y="100" font-size="7">Refunded or released</text>
+<rect x="396" y="88" width="48" height="16" rx="8" fill="currentColor" fill-opacity="0.08"/><text x="404" y="100" font-size="7">Failed</text>
+<text x="20" y="122" font-size="7">Paid from</text><rect x="20" y="126" width="120" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="28" y="140" font-size="7">01/11/2026</text>
+<text x="150" y="122" font-size="7">Paid to</text><rect x="150" y="126" width="120" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="158" y="140" font-size="7">30/11/2026</text>
+<text x="560" y="140" font-size="8">Clear filters</text><rect x="626" y="126" width="94" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="638" y="140" font-size="8">⤓ Export CSV</text>
+<rect x="20" y="160" width="700" height="26" fill="currentColor" fill-opacity="0.04"/>
+<text x="30" y="178" font-size="8">Client</text><text x="150" y="178" font-size="8">Session Date</text><text x="270" y="178" font-size="8">Amount</text><text x="360" y="178" font-size="8">Status</text><text x="460" y="178" font-size="8">Method</text><text x="560" y="178" font-size="8">Date Paid ▾</text>
+<rect x="20" y="188" width="700" height="26" fill="currentColor" fill-opacity="0.02"/>
+<rect x="20" y="216" width="700" height="26" fill="currentColor" fill-opacity="0.02"/>
 </svg>
 </figure>
-<figcaption>Payment list — client, session date, amount, status, method, date-paid columns</figcaption>
+<figcaption>Payment list — newest first; search, status pills and a paid-date range all go to the server; Export CSV saves the matching paid and refunded payments</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Search by client name and/or filter by status pill.</li>
+<li>Type a client's or artist's name in the search box (any capitals). It searches every payment your studio has.</li>
+<li>Click a status pill to show only that status; click it again to show all.</li>
+<li>Pick <span class="step-title">Paid from</span> and <span class="step-title">Paid to</span> to see a period. Both days are included, in your studio's time zone.</li>
 <li>Click a row to open that appointment's payment detail.</li>
+<li>Click <span class="step-title">Export CSV</span> to download the paid and refunded payments matching your filters, or <span class="step-title">Clear filters</span> to go back to everything.</li>
 <li>Click <span class="step-title">New payment</span> to charge or record a deposit for an appointment.</li>
 <li>Click <span class="step-title">Load more</span> at the bottom for older payments.</li>
 </ol>
+<div class="callout callout-tip"><strong>Order:</strong> the newest payment is at the top, by the date it was paid; a payment that hasn't been paid yet sorts by when it was created. The count at the top ("20 shown") is how many are loaded so far, not the total.</div>
+<div class="callout callout-tip"><strong>Dates:</strong> a date range matches the day each payment was paid, so payments that haven't been paid (pending, on hold, failed, released holds) drop out while dates are set. "No payments match these filters" means the filters found nothing, not that the studio has no payments.</div>
+<div class="callout callout-tip"><strong>Export:</strong> the file only ever holds money received, so Export CSV is turned off while you filter by a status like Pending or Failed. It opens with a few lines saying the dates (as studio dates and exact UTC times), time zone and filters it covers.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> card deposits only work once your studio has connected its own POK merchant account — see <a href="#owner-connect-pok">Connect POK</a>. Until then, the Card option is unavailable at checkout and clients see Cash only.</div>
 <div class="callout callout-tip"><strong>Card deposit statuses:</strong> <em>Pending</em> — waiting for the client to pay. <em>Paid</em> — the client paid and the card was charged. <em>Partly refunded</em> — you refunded part of it; the payment shows how much you kept and how much went back. <em>Refunded</em> — the whole amount went back to the client. <em>Kept</em> / <em>Partly kept</em> — the client cancelled late and your cancellation policy kept all or part of it (any rest was refunded). <em>Failed</em> — the card payment didn't go through; nothing was charged, and you can ask for the deposit again. Card deposits are charged when the client pays, so there's nothing to capture; <em>On hold</em> and <em>Released</em> only appear on card deposits taken before 22 Oct 2026, and an older deposit on hold shows <span class="step-title">Capture deposit</span>. If a client pays after the appointment was already cancelled, TattooOS refunds that payment in full automatically. To refund a card payment, open a Paid payment, click <span class="step-title">Refund</span>, enter an amount for a partial refund (or leave it blank for the full amount) and click <span class="step-title">Confirm refund</span>. A confirmation message appears once the refund is issued. To give more back later, open the payment again and click <span class="step-title">Refund more</span> — it shows what's left to refund; leave the amount blank to refund the rest. A full refund costs you no POK fees; a partial one keeps POK's fixed fee — see <a href="#owner-card-money-flow">Where card deposit money goes</a>.</div>
 <div class="callout callout-tip"><strong>Appointment link:</strong> a payment's details name its appointment by client and date (in your studio's time zone). Click it to open the appointment.</div>
@@ -3720,7 +3736,7 @@ ol.steps li { margin: 6px 0; }
 <figure class="wireframe">
 <svg viewBox="0 0 760 420" role="img" aria-label="Reports wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="11" font-weight="700">Reports</text>
+<text x="16" y="25" font-size="11" font-weight="700">Reports</text><rect x="640" y="10" width="100" height="20" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="652" y="24" font-size="8">⤓ Export CSV</text>
 <rect x="20" y="60" width="720" height="160" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="36" y="82" font-size="10" font-weight="700">Revenue trend (last 12 months)</text>
 <polyline points="60,190 150,170 240,180 330,140 420,150 510,110 600,130 690,90" fill="none" stroke="#7c3aed" stroke-width="2"/>
@@ -3733,10 +3749,12 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Reports — revenue trend chart above, per-artist breakdown table below</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>View the <span class="step-title">Revenue trend</span> chart — hover a point for that month's exact figure.</li>
+<li>View the <span class="step-title">Revenue trend</span> chart — hover or tap a point for that month's exact figure. On a phone every other month is labelled so the labels stay readable; every month is still plotted.</li>
 <li>Scroll to <span class="step-title">Revenue by artist</span> for a table sorted highest-earning artist first.</li>
-<li>Click <span class="step-title">Export CSV</span> to download a payment-by-payment revenue ledger, ready to hand to an accountant.</li>
+<li>Click <span class="step-title">Export CSV</span> to download a payment-by-payment revenue ledger of every paid and refunded payment, ready to hand to an accountant. For one period, or one client's or artist's payments, set the filters on <a href="#owner-payments">Payments</a> and export from there.</li>
 </ol>
+<div class="callout callout-tip"><strong>What the file says about itself:</strong> the CSV opens with a short block: the period as your studio's dates and as exact UTC times, your studio's time zone, the statuses and search used, a note on currencies, and when it was exported. Then a blank line, then one row per payment. Every date and time in the file is in your studio's time zone.</div>
+<div class="callout callout-tip"><strong>Periods are studio days:</strong> "1 to 30 November" runs from midnight at the start of 1 November to midnight at the end of 30 November in your studio's time zone, including across a clock change. Each row's amounts are in that payment's own currency and are never converted or added together; "Retained Amount" is the amount minus any refund.</div>
 <div class="crosslinks">See also: <a href="#owner-billing">Billing</a>, <a href="#owner-payments">Track deposits and payments</a></div>
 </section>
 

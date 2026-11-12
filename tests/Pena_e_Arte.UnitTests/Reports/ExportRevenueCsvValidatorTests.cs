@@ -17,16 +17,37 @@ public class ExportRevenueCsvValidatorTests
     [Fact]
     public void Validate_ToOnOrAfterFrom_IsValid()
     {
-        DateTime from = DateTime.UtcNow.AddDays(-10);
-        DateTime to = DateTime.UtcNow;
-        _sut.Validate(new ExportRevenueCsvQuery(from, to)).IsValid.Should().BeTrue();
+        _sut.Validate(new ExportRevenueCsvQuery(new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31))).IsValid.Should().BeTrue();
+        _sut.Validate(new ExportRevenueCsvQuery(new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 1))).IsValid.Should().BeTrue();
     }
 
     [Fact]
     public void Validate_ToBeforeFrom_IsInvalid()
     {
-        DateTime from = DateTime.UtcNow;
-        DateTime to = DateTime.UtcNow.AddDays(-10);
-        _sut.Validate(new ExportRevenueCsvQuery(from, to)).IsValid.Should().BeFalse();
+        _sut.Validate(new ExportRevenueCsvQuery(new DateOnly(2026, 10, 31), new DateOnly(2026, 10, 1))).IsValid.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("Paid")]
+    [InlineData("Refunded")]
+    public void Validate_AStatusTheExportCanHold_IsValid(string status)
+    {
+        _sut.Validate(new ExportRevenueCsvQuery(null, null, Status: status)).IsValid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("Pending")]  // a real status, but never money received, so never in this file
+    [InlineData("Failed")]
+    [InlineData("paid")]
+    [InlineData("1")]
+    public void Validate_AnyOtherStatus_IsRefused_RatherThanAnEmptyFile(string status)
+    {
+        _sut.Validate(new ExportRevenueCsvQuery(null, null, Status: status)).IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Validate_SearchLongerThanTheCap_IsInvalid()
+    {
+        _sut.Validate(new ExportRevenueCsvQuery(null, null, Search: new string('x', 101))).IsValid.Should().BeFalse();
     }
 }

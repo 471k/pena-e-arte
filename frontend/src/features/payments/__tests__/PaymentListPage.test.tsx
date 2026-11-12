@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { act, render, screen, cleanup, within } from "@testing-library/react";
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
+import { fireEvent, render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -243,7 +243,7 @@ describe("PaymentListPage", () => {
     expect(screen.getByRole("button", { name: /load more/i })).toBeInTheDocument();
   });
 
-  it("shows '20 payments' counter with a full page", async () => {
+  it("counts the rows shown, not a total it doesn't know", async () => {
     server.use(
       http.get("http://localhost/api/v1/payments", () =>
         HttpResponse.json(PAGE_OF_20),
@@ -251,7 +251,7 @@ describe("PaymentListPage", () => {
     );
     renderPage();
     await screen.findAllByText("Client 0");
-    expect(screen.getByText("20 payments")).toBeInTheDocument();
+    expect(screen.getByTestId("payments-shown")).toHaveTextContent("20 shown");
   });
 
   it("clicking 'Load more' fetches the next page and accumulates results", async () => {
@@ -321,98 +321,125 @@ describe("PaymentListPage", () => {
     expect(screen.getByTestId("detail-page")).toBeInTheDocument();
   });
 
-  // ── Client-name search ────────────────────────────────────────────────────────
+  // ── Server-side search and filters (E05b-1, O05) ──────────────────────────────
+  // Every filter goes to the server as a query parameter. Filtering the loaded page in the browser could
+  // only ever find a payment among the 20 already loaded.
 
-  it("search input is present on the page", async () => {
+  /** Records every request's query string and answers each with the given rows. */
+  function captureRequests(rows: (params: URLSearchParams) => PaymentResponse[]) {
+    const seen: URLSearchParams[] = [];
     server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
-      ),
+      http.get("http://localhost/api/v1/payments", ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        seen.push(params);
+        return HttpResponse.json(rows(params));
+      }),
     );
-    renderPage();
-    await screen.findAllByText("Maria Silva");
-    expect(screen.getByPlaceholderText(/search by client name/i)).toBeInTheDocument();
-  });
+    return seen;
+  }
 
-  it("typing a client name filters the visible payments", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
-      ),
-    );
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findAllByText("Maria Silva");
-
-    await user.type(screen.getByPlaceholderText(/search by client name/i), "Maria");
-
-    expect(screen.getAllByText("Maria Silva")).toHaveLength(2);
-    expect(screen.queryByText("João Santos")).not.toBeInTheDocument();
-  });
-
-  it("search is case-insensitive", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
-      ),
-    );
+  it("search is sent to the server, debounced into one request, and finds client or artist names", async () => {
+    const seen = captureRequests((q) => (q.get("search") === "maria" ? [PAYMENT_CARD] : [PAYMENT_CARD, PAYMENT_CASH]));
     const user = userEvent.setup();
     renderPage();
     await screen.findAllByText("João Santos");
 
-    await user.type(screen.getByPlaceholderText(/search by client name/i), "joão");
+    await user.type(screen.getByRole("searchbox", { name: /search payments by client or artist name/i }), "maria");
 
-    expect(screen.getAllByText("João Santos")).toHaveLength(2);
-    expect(screen.queryByText("Maria Silva")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("João Santos")).not.toBeInTheDocument());
+    expect(await screen.findAllByText("Maria Silva")).toHaveLength(2);
+    const searches = seen.map((q) => q.get("search")).filter(Boolean);
+    expect(searches).toEqual(["maria"]); // one request for the settled term, not one per keystroke
   });
 
-  // ── Status filter pills ───────────────────────────────────────────────────────
-
-  it("status filter pills appear when multiple statuses are present", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
-      ),
-    );
+  it("every status has a filter pill, whatever the loaded rows contain", async () => {
+    captureRequests(() => [PAYMENT_CARD]);
     renderPage();
     await screen.findAllByText("Maria Silva");
 
-    // PAYMENT_CARD is "Paid", PAYMENT_CASH is "CashPending" (displayed as "Cash Pending")
-    expect(screen.getByRole("button", { name: "Paid" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cash Pending" })).toBeInTheDocument();
+    for (const label of ["Pending", "Cash Pending", "On hold", "Paid", "Refunded or released", "Failed"]) {
+      expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
+    }
   });
 
-  it("clicking a status filter pill shows only matching payments", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
-      ),
-    );
+  it("a status pill sends its exact status name, and pressing it again clears it", async () => {
+    const seen = captureRequests((q) => (q.get("status") === "CashPending" ? [PAYMENT_CASH] : [PAYMENT_CARD, PAYMENT_CASH]));
     const user = userEvent.setup();
     renderPage();
     await screen.findAllByText("Maria Silva");
 
-    await user.click(screen.getByRole("button", { name: "Paid" }));
+    await user.click(screen.getByRole("button", { name: "Cash Pending" }));
+    await waitFor(() => expect(screen.queryByText("Maria Silva")).not.toBeInTheDocument());
+    expect(seen.at(-1)?.get("status")).toBe("CashPending");
 
-    expect(screen.getAllByText("Maria Silva")).toHaveLength(2);   // Paid
-    expect(screen.queryByText("João Santos")).not.toBeInTheDocument(); // CashPending
+    await user.click(screen.getByRole("button", { name: "Cash Pending" }));
+    // Back to the unfiltered list (served from RTK Query's cache for those arguments, so no new request).
+    expect(await screen.findAllByText("Maria Silva")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Cash Pending" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("clicking the active status pill again clears the filter", async () => {
-    server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
-      ),
-    );
+  it("a date range is sent as studio-local dates", async () => {
+    const seen = captureRequests(() => [PAYMENT_CARD]);
+    renderPage();
+    await screen.findAllByText("Maria Silva");
+
+    fireEvent.change(screen.getByLabelText("Paid from"), { target: { value: "2026-10-01" } });
+    fireEvent.change(screen.getByLabelText("Paid to"), { target: { value: "2026-10-31" } });
+
+    await waitFor(() => expect(seen.at(-1)?.get("to")).toBe("2026-10-31"));
+    expect(seen.at(-1)?.get("from")).toBe("2026-10-01");
+  });
+
+  it("a 'to' date before the 'from' date is not sent, and says why", async () => {
+    const seen = captureRequests(() => [PAYMENT_CARD]);
+    renderPage();
+    await screen.findAllByText("Maria Silva");
+
+    fireEvent.change(screen.getByLabelText("Paid from"), { target: { value: "2026-10-31" } });
+    fireEvent.change(screen.getByLabelText("Paid to"), { target: { value: "2026-10-01" } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/before .Paid from./);
+    expect(seen.every((q) => !q.has("to"))).toBe(true);
+  });
+
+  it("changing a filter starts again from the first page", async () => {
+    const seen = captureRequests((q) => (q.get("lastSeenId") ? [{ ...PAYMENT_CASH, id: "pay-x", appointmentId: "appt-x", clientName: "Extra Client" }] : PAGE_OF_20));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("Client 0");
+    await user.click(screen.getByRole("button", { name: /load more/i }));
+    await screen.findAllByText("Extra Client");
+
+    await user.click(screen.getByRole("button", { name: "Paid" }));
+
+    await waitFor(() => expect(seen.at(-1)?.get("status")).toBe("Paid"));
+    expect(seen.at(-1)?.has("lastSeenId")).toBe(false);
+    await waitFor(() => expect(screen.queryByText("Extra Client")).not.toBeInTheDocument());
+  });
+
+  // ── Four distinct states ─────────────────────────────────────────────────────
+
+  it("nothing matching the filters is its own state, not 'No payments yet'", async () => {
+    captureRequests((q) => (q.get("status") === "Failed" ? [] : [PAYMENT_CARD]));
     const user = userEvent.setup();
     renderPage();
     await screen.findAllByText("Maria Silva");
 
-    await user.click(screen.getByRole("button", { name: "Paid" }));
-    expect(screen.queryByText("João Santos")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Failed" }));
 
-    await user.click(screen.getByRole("button", { name: "Paid" }));
-    expect(screen.getAllByText("João Santos")).toHaveLength(2);
+    expect(await screen.findByTestId("payments-no-matches")).toHaveTextContent("No payments match these filters");
+    expect(screen.queryByText("No payments yet")).not.toBeInTheDocument();
+
+    await user.click(within(screen.getByTestId("payments-no-matches")).getByRole("button", { name: /clear filters/i }));
+    expect(await screen.findAllByText("Maria Silva")).toHaveLength(2);
+  });
+
+  it("loading, error, empty and no-matches never show at the same time", async () => {
+    renderPage(); // default handler: []
+    expect(await screen.findByText("No payments yet")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Loading payments")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("payments-no-matches")).not.toBeInTheDocument();
+    expect(screen.queryByText(/failed to load payments/i)).not.toBeInTheDocument();
   });
 
   it("shows a held (Captured) card deposit as 'On hold' in both its badge and its filter pill", async () => {
@@ -430,24 +457,43 @@ describe("PaymentListPage", () => {
     expect(screen.queryByText("Captured")).not.toBeInTheDocument();
   });
 
-  it("shows a status-named empty message when the selected status no longer matches any payment", async () => {
-    let includeHeld = true;
+  // ── Export with the list's filters (E05b-1, O08) ──────────────────────────────
+
+  it("Export CSV downloads the revenue export with the list's current filters", async () => {
+    captureRequests(() => [PAYMENT_CARD]);
+    const exportUrls: string[] = [];
     server.use(
-      http.get("http://localhost/api/v1/payments", () =>
-        HttpResponse.json(includeHeld ? [PAYMENT_CARD, PAYMENT_CASH, PAYMENT_HELD] : [PAYMENT_CARD, PAYMENT_CASH]),
-      ),
+      http.get("http://localhost/api/v1/reports/revenue/export.csv", ({ request }) => {
+        exportUrls.push(request.url);
+        return new HttpResponse("csv", { headers: { "Content-Type": "text/csv" } });
+      }),
     );
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
     const user = userEvent.setup();
-    const store = renderPage();
-    await screen.findAllByText("Ana Held");
+    renderPage();
+    await screen.findAllByText("Maria Silva");
 
-    await user.click(screen.getByRole("button", { name: "On hold" }));
-    includeHeld = false;
-    await act(async () => {
-      store.dispatch(paymentsApi.util.invalidateTags(["Payment"]));
-    });
+    await user.click(screen.getByRole("button", { name: "Paid" }));
+    fireEvent.change(screen.getByLabelText("Paid from"), { target: { value: "2026-10-01" } });
+    await user.click(screen.getByRole("button", { name: /export csv/i }));
 
-    expect(await screen.findByText('No payments with status "On hold".')).toBeInTheDocument();
+    await waitFor(() => expect(exportUrls).toHaveLength(1));
+    const q = new URL(exportUrls[0]).searchParams;
+    expect(q.get("status")).toBe("Paid");
+    expect(q.get("from")).toBe("2026-10-01");
+  });
+
+  it("Export CSV is off for a status the revenue export can't hold, and says why", async () => {
+    captureRequests(() => [PAYMENT_CASH]);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("João Santos");
+
+    await user.click(screen.getByRole("button", { name: "Cash Pending" }));
+
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeDisabled();
+    expect(screen.getByText(/holds only paid and refunded payments/)).toBeInTheDocument();
   });
 
   // ── mobileCard ─────────────────────────────────────────────────────────────────

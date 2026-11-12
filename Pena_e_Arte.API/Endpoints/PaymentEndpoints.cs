@@ -139,9 +139,14 @@ public static class PaymentEndpoints
         ISender mediator,
         CancellationToken ct,
         Guid? lastSeenId = null,
-        int pageSize = 20)
+        int pageSize = GetPaymentsQuery.DefaultPageSize,
+        string? search = null,
+        string? status = null,
+        DateOnly? from = null,
+        DateOnly? to = null)
     {
-        List<PaymentResponse> result = await mediator.Send(new GetPaymentsQuery(lastSeenId, pageSize), ct);
+        List<PaymentResponse> result = await mediator.Send(
+            new GetPaymentsQuery(lastSeenId, pageSize, search, status, from, to), ct);
         return Results.Ok(result);
     }
 
