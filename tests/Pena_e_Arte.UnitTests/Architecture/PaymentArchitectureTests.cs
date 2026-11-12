@@ -158,9 +158,18 @@ public class PaymentArchitectureTests
             ["Pena_e_Arte.Application/Payments/Commands/ConfirmCardPaymentCommand.cs"] = 1,
             // Needs CashPending; cancelling turns CashPending into Refunded (CancellationOutcome).
             ["Pena_e_Arte.Application/Payments/Commands/ConfirmCashDepositCommand.cs"] = 1,
-            // Legacy Stripe webhook (payment_intent.succeeded), keyed by a Stripe PaymentIntent id.
-            // Deposits carry POK order ids, so no deposit row matches. It has NO cancelled check:
-            // if a Stripe deposit path ever returns, this route must get one first.
+            // LANDMINE, unreachable today. Legacy Stripe webhook (payment_intent.succeeded, BillingEndpoints),
+            // keyed by a Stripe PaymentIntent id; deposits carry POK order ids, so no deposit row matches
+            // (Stripe deposits are foreclosed by ADR-0001 Amendment B). If it ever matches a deposit it does
+            // the worst thing a route to Paid can do: it sets ANY payment status other than Paid to Paid
+            // (Refunded and Failed included), and sets the appointment's DepositStatus to Paid whatever it
+            // was (Forfeited, Refunded and PrePaid included). That erases why the money moved (a refund or
+            // a kept deposit then reads as a normal payment) and on a cancelled appointment it makes
+            // describeDeposit show money owed back as "Kept".
+            // Before anything makes it reachable for deposits (a Stripe deposit path, or matching by another
+            // id), it must: refuse to change a Refunded or Failed payment; refuse, or refund like
+            // PaymentReconciliationJob does, a non-forfeited deposit on a cancelled appointment (the owedBack
+            // rule in ConfirmCardPaymentCommand, PR #356); and change DepositStatus only from Pending.
             ["Pena_e_Arte.Application/Payments/Commands/ConfirmPaymentCommand.cs"] = 1,
             // Refuses a cancelled appointment before reaching this heal.
             ["Pena_e_Arte.Application/Payments/Commands/CreateDepositPaymentCommand.cs"] = 1,
