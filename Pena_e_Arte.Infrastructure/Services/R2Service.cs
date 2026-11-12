@@ -27,12 +27,28 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         return Task.FromResult((uploadUrl, publicUrl));
     }
 
+    /// <summary>
+    /// Each address this bucket is or was served from, as "https://host/" (trailing slash, so
+    /// "https://host.evil.com/..." can't pass for "https://host/..."). Current address first.
+    /// </summary>
+    private IEnumerable<string> KnownPrefixes() =>
+        new[] { _opts.PublicUrl }
+            .Concat(_opts.LegacyPublicUrls)
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u.Trim().TrimEnd('/') + "/")
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The object key behind a stored URL; the value itself when no known address matches.</summary>
+    private string ToObjectKey(string urlOrKey)
+    {
+        string? prefix = KnownPrefixes()
+            .FirstOrDefault(p => urlOrKey.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+        return prefix is null ? urlOrKey : urlOrKey[prefix.Length..];
+    }
+
     public Task<string> GeneratePresignedReadUrlAsync(string fileUrl, CancellationToken ct)
     {
-        string prefix = _opts.PublicUrl.TrimEnd('/') + "/";
-        string objectKey = fileUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? fileUrl[prefix.Length..]
-            : fileUrl;
+        string objectKey = ToObjectKey(fileUrl);
 
         GetPreSignedUrlRequest request = new()
         {
@@ -47,14 +63,11 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
 
     public bool IsR2Url(string url) =>
         !string.IsNullOrEmpty(url) &&
-        url.StartsWith(_opts.PublicUrl, StringComparison.OrdinalIgnoreCase);
+        KnownPrefixes().Any(p => url.StartsWith(p, StringComparison.OrdinalIgnoreCase));
 
     public Task<string> GeneratePresignedReadUrlAsync(string objectKey, TimeSpan ttl, CancellationToken ct)
     {
-        string prefix = _opts.PublicUrl.TrimEnd('/') + "/";
-        string key = objectKey.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? objectKey[prefix.Length..]
-            : objectKey;
+        string key = ToObjectKey(objectKey);
 
         GetPreSignedUrlRequest request = new()
         {
@@ -78,6 +91,9 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
 
     public string GetPublicUrl(string objectKey) =>
         $"{_opts.PublicUrl.TrimEnd('/')}/{objectKey}";
+
+    public IReadOnlyList<string> GetKnownPublicUrls(string objectKey) =>
+        KnownPrefixes().Select(p => p + objectKey).ToList();
 
     public async Task UploadAsync(string objectKey, byte[] data, string contentType, CancellationToken ct)
     {

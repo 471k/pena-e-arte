@@ -11,6 +11,15 @@ public class R2Options
     public string PublicUrl { get; init; } = string.Empty;
 
     /// <summary>
+    /// Addresses this bucket was served from before PublicUrl. The database stores full file
+    /// URLs, so files uploaded before a move to a new address keep the old one; R2Service still
+    /// recognises them (validation, signed read links, the guest-upload cleanup). New uploads
+    /// always get PublicUrl. Blank entries are ignored, so an unset secret changes nothing.
+    /// Moved from the workers.dev Worker to media.tattooos.co on 12 Nov 2026.
+    /// </summary>
+    public string[] LegacyPublicUrls { get; init; } = [];
+
+    /// <summary>
     /// Destination bucket for R2ExportJob's daily backup copy (same Cloudflare account as
     /// BucketName, different bucket). Left unset until a dedicated backup bucket exists —
     /// R2ExportService degrades to a no-op when empty, same pattern as GeoIp:* being unset.

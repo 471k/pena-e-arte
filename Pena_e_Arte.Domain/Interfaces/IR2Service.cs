@@ -20,5 +20,11 @@ public interface IR2Service
 
     string GetPublicUrl(string objectKey);
 
+    /// <summary>
+    /// Every URL a stored row may hold for this object: the current public address first, then
+    /// any address the bucket was served from before. For matching stored URLs to objects.
+    /// </summary>
+    IReadOnlyList<string> GetKnownPublicUrls(string objectKey);
+
     Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct);
 }

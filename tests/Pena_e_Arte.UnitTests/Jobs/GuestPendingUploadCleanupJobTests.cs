@@ -23,7 +23,7 @@ public class GuestPendingUploadCleanupJobTests
     {
         R2ObjectInfo orphan = new($"{Prefix}s1/area/orphan.png", DateTime.UtcNow.AddHours(-72), 1024);
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([orphan]);
-        _r2.GetPublicUrl(orphan.Key).Returns("https://cdn.example.com/" + orphan.Key);
+        _r2.GetKnownPublicUrls(orphan.Key).Returns(["https://cdn.example.com/" + orphan.Key]);
 
         await CreateSut().RunAsync();
 
@@ -35,7 +35,7 @@ public class GuestPendingUploadCleanupJobTests
     {
         R2ObjectInfo fresh = new($"{Prefix}s1/area/fresh.png", DateTime.UtcNow.AddHours(-1), 1024);
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([fresh]);
-        _r2.GetPublicUrl(fresh.Key).Returns("https://cdn.example.com/" + fresh.Key);
+        _r2.GetKnownPublicUrls(fresh.Key).Returns(["https://cdn.example.com/" + fresh.Key]);
 
         await CreateSut().RunAsync();
 
@@ -48,13 +48,38 @@ public class GuestPendingUploadCleanupJobTests
         string publicUrl = "https://cdn.example.com/" + Prefix + "s1/area/referenced.png";
         R2ObjectInfo referenced = new(Prefix + "s1/area/referenced.png", DateTime.UtcNow.AddHours(-72), 1024);
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([referenced]);
-        _r2.GetPublicUrl(referenced.Key).Returns(publicUrl);
+        _r2.GetKnownPublicUrls(referenced.Key).Returns([publicUrl]);
 
         _db.AppointmentAttachments.Add(new AppointmentAttachment
         {
             StudioId = Guid.NewGuid(),
             AppointmentId = Guid.NewGuid(),
             ImageUrl = publicUrl,
+        });
+        await _db.SaveChangesAsync();
+
+        await CreateSut().RunAsync();
+
+        await _r2.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RunAsync_ObjectReferencedOnlyByItsOldAddress_IsNotDeleted()
+    {
+        // A booking saved before the bucket moved to media.tattooos.co keeps the Worker URL.
+        string key = Prefix + "s1/area/before-the-move.png";
+        string newUrl = "https://media.example.com/" + key;
+        string oldUrl = "https://old-worker.example.dev/" + key;
+        R2ObjectInfo referenced = new(key, DateTime.UtcNow.AddHours(-72), 1024);
+        _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([referenced]);
+        _r2.GetPublicUrl(key).Returns(newUrl);
+        _r2.GetKnownPublicUrls(key).Returns([newUrl, oldUrl]);
+
+        _db.AppointmentAttachments.Add(new AppointmentAttachment
+        {
+            StudioId = Guid.NewGuid(),
+            AppointmentId = Guid.NewGuid(),
+            ImageUrl = oldUrl,
         });
         await _db.SaveChangesAsync();
 
@@ -72,9 +97,9 @@ public class GuestPendingUploadCleanupJobTests
         R2ObjectInfo fresh = new(Prefix + "s1/area/fresh.png", DateTime.UtcNow.AddHours(-1), 1024);
 
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([orphan, referenced, fresh]);
-        _r2.GetPublicUrl(orphan.Key).Returns("https://cdn.example.com/" + orphan.Key);
-        _r2.GetPublicUrl(referenced.Key).Returns(referencedUrl);
-        _r2.GetPublicUrl(fresh.Key).Returns("https://cdn.example.com/" + fresh.Key);
+        _r2.GetKnownPublicUrls(orphan.Key).Returns(["https://cdn.example.com/" + orphan.Key]);
+        _r2.GetKnownPublicUrls(referenced.Key).Returns([referencedUrl]);
+        _r2.GetKnownPublicUrls(fresh.Key).Returns(["https://cdn.example.com/" + fresh.Key]);
 
         _db.AppointmentAttachments.Add(new AppointmentAttachment
         {
@@ -107,8 +132,8 @@ public class GuestPendingUploadCleanupJobTests
         R2ObjectInfo failing = new(Prefix + "s1/area/failing.png", DateTime.UtcNow.AddHours(-72), 1024);
         R2ObjectInfo succeeding = new(Prefix + "s1/area/succeeding.png", DateTime.UtcNow.AddHours(-72), 1024);
         _r2.ListByPrefixAsync(Prefix, Arg.Any<CancellationToken>()).Returns([failing, succeeding]);
-        _r2.GetPublicUrl(failing.Key).Returns("https://cdn.example.com/" + failing.Key);
-        _r2.GetPublicUrl(succeeding.Key).Returns("https://cdn.example.com/" + succeeding.Key);
+        _r2.GetKnownPublicUrls(failing.Key).Returns(["https://cdn.example.com/" + failing.Key]);
+        _r2.GetKnownPublicUrls(succeeding.Key).Returns(["https://cdn.example.com/" + succeeding.Key]);
         _r2.DeleteAsync(failing.Key, Arg.Any<CancellationToken>())
            .Returns<Task>(_ => throw new InvalidOperationException("storage unavailable"));
 
