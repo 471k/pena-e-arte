@@ -79,6 +79,29 @@ export interface CancellationQuoteResponse {
   accessEndDate:         string;
   amountPaid:            number | null;
   monthlyReferencePrice: number | null;
+  // The invoice a yearly refund was computed from; sent back on confirm (E05b-2).
+  invoiceId:             string | null;
+}
+
+// Camelcase mirror of Pena_e_Arte.Contracts.Requests.CancelMySubscriptionRequest: the quote the owner is
+// confirming, exactly as shown. The server cancels only if it still matches, else 409
+// CANCELLATION_QUOTE_CHANGED and nothing is cancelled (E05b-2, O07).
+export interface ConfirmCancellationRequest {
+  billingInterval: CancellationQuoteResponse["billingInterval"];
+  refundAmount:    number;
+  monthsUsed:      number | null;
+  amountPaid:      number | null;
+  invoiceId:       string | null;
+}
+
+export function toConfirmation(quote: CancellationQuoteResponse): ConfirmCancellationRequest {
+  return {
+    billingInterval: quote.billingInterval,
+    refundAmount:    quote.refundAmount,
+    monthsUsed:      quote.monthsUsed,
+    amountPaid:      quote.amountPaid,
+    invoiceId:       quote.invoiceId,
+  };
 }
 
 // Returns the active price for the given plan at the given billing interval, or

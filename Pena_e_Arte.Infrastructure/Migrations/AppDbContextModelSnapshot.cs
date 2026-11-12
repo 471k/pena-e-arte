@@ -2541,9 +2541,16 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<DateTime?>("ProviderCheckedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("ProviderReferenceId")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
+
+                    b.Property<string>("ProviderStatusAtCheck")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
 
                     b.Property<decimal?>("ReferenceAmount")
                         .HasColumnType("decimal(18,4)");

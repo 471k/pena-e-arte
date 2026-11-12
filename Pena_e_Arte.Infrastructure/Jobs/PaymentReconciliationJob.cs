@@ -4,6 +4,7 @@ using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Services;
 
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
@@ -17,9 +18,6 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 public class PaymentReconciliationJob(
     IAppDbContext db, IPaymentProvider paymentProvider, IJobScheduler jobScheduler, ILogger<PaymentReconciliationJob> logger)
 {
-    /// <summary>Unpaid card payments on appointments more than this far in the past are abandoned.</summary>
-    private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(3);
-
     public async Task RunAsync(CancellationToken ct = default)
     {
         await ReconcileHeldAsync(ct);
@@ -50,6 +48,7 @@ public class PaymentReconciliationJob(
                 PaymentProviderStatus? status = await paymentProvider.GetStatusAsync(
                     payment.StudioId, payment.ProviderReferenceId!, ct);
                 DateTime now = DateTime.UtcNow;
+                RecordProviderAnswer(payment, status, now);
                 bool tellOwnerHoldLost = false;
                 bool tellClientPaid = false;
 
@@ -151,18 +150,14 @@ public class PaymentReconciliationJob(
             .ToListAsync(ct);
 
         DateTime now = DateTime.UtcNow;
-        DateTime staleCutoff = now - StaleAfter;
 
         foreach (Payment payment in pending)
         {
             string providerReferenceId = payment.ProviderReferenceId!;
             bool appointmentCancelled = payment.Appointment.Status == AppointmentStatus.Cancelled;
-            // HoldExpiresAt is authoritative when set (every deposit; every payment link after B4). The
-            // appointment-date rule only covers legacy rows without one — a brand-new link for a past
-            // appointment must not be cancelled minutes after it was created.
-            bool expiredOrStale = payment.HoldExpiresAt is { } expires
-                ? expires < now
-                : payment.Appointment.Date < staleCutoff;
+            // HoldExpiresAt when set, else the legacy appointment-date rule: PaymentReleaseRule owns it,
+            // so the owner's unsettled-payments view shows the same deadline this pass acts on.
+            bool expiredOrStale = PaymentReleaseRule.DeadlineFor(payment.HoldExpiresAt, payment.Appointment.Date) < now;
             bool releasable = expiredOrStale || appointmentCancelled;
             bool tellClientPaid = false;
             try
@@ -192,6 +187,9 @@ public class PaymentReconciliationJob(
                     .SingleAsync(ct);
                 if (currentReference != providerReferenceId)
                     continue;
+
+                // Recorded only now: an answer about a replaced order says nothing about the row's new one.
+                RecordProviderAnswer(payment, status, now);
 
                 switch (status)
                 {
@@ -264,6 +262,16 @@ public class PaymentReconciliationJob(
                 logger.LogError(ex, "Failed to reconcile pending payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
             }
         }
+    }
+
+    /// <summary>
+    /// What the owner's unsettled-payments view (E05b-2) shows as "last checked with the provider". Pure
+    /// observation, written by the same per-payment save as the pass's own changes; no decision reads it.
+    /// </summary>
+    private static void RecordProviderAnswer(Payment payment, PaymentProviderStatus? status, DateTime now)
+    {
+        payment.ProviderCheckedAt = now;
+        payment.ProviderStatusAtCheck = status;
     }
 
     private void QueueDepositPaidNotification(Payment payment)

@@ -25,22 +25,10 @@ public class GetCancellationQuoteHandler(IAppDbContext db, ICurrentTenant tenant
             .FirstOrDefaultAsync(s => s.StudioId == tenant.StudioId, ct)
             ?? throw new NotFoundException(nameof(Subscription), tenant.StudioId);
 
-        // Monthly (card-billed) and cash-billed subscriptions are never refunded — A3: only a
-        // Yearly, Stripe-billed subscription has a refund formula. Cash-billed is always
-        // Monthly in this system (§3 flag — no Yearly cash-billed case exists), so reporting
-        // "Monthly" here is correct for both arms of this condition.
-        if (subscription.BillingInterval != BillingInterval.Yearly || subscription.StripeSubscriptionId is null)
-            return new CancellationQuoteResponse("Monthly", 0m, null, subscription.CurrentPeriodEnd, null, null);
-
-        SubscriptionInvoicePayment? invoice = await db.SubscriptionInvoicePayments
-            .Where(p => p.SubscriptionId == subscription.Id)
-            .OrderByDescending(p => p.PaidAt)
-            .FirstOrDefaultAsync(ct);
-
-        YearlyRefundQuote? quote = YearlyRefundCalculator.QuoteFor(invoice, DateTime.UtcNow);
-        return quote is null
-            ? new CancellationQuoteResponse("Yearly", 0m, null, DateTime.UtcNow, null, null)
-            : new CancellationQuoteResponse(
-                "Yearly", quote.RefundAmount, quote.MonthsUsed, DateTime.UtcNow, quote.AmountPaid, quote.MonthlyReferencePrice);
+        // Built by CancellationQuotes, the same builder the cancel command uses to check that the
+        // quote it is about to honour is still this one (E05b-2). Monthly (card-billed) and
+        // cash-billed subscriptions report a zero-refund quote: A3, no refund formula.
+        SubscriptionInvoicePayment? invoice = await CancellationQuotes.LatestInvoiceAsync(db, subscription, ct);
+        return CancellationQuotes.Build(subscription, invoice, DateTime.UtcNow).Response;
     }
 }

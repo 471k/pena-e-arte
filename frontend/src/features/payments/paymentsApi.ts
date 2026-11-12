@@ -13,6 +13,7 @@ import type {
   PokConnectionStatusResponse,
   PayWithSavedCardRequest,
   PayWithSavedCardSetupResponse,
+  UnsettledPaymentsResponse,
 } from "./payment.types";
 
 export const paymentsApi = createApi({
@@ -32,6 +33,11 @@ export const paymentsApi = createApi({
           ...(to ? { to } : {}),
         },
       }),
+      providesTags: ["Payment"],
+    }),
+    // Owner: card payments the reconciliation job hasn't settled (E05b-2, O06). Read-only.
+    getUnsettledPayments: builder.query<UnsettledPaymentsResponse, void>({
+      query: () => "payments/unsettled",
       providesTags: ["Payment"],
     }),
     getPaymentByAppointment: builder.query<PaymentResponse, string>({
@@ -126,6 +132,7 @@ export const paymentsApi = createApi({
 
 export const {
   useGetPaymentsQuery,
+  useGetUnsettledPaymentsQuery,
   useGetPaymentByAppointmentQuery,
   useCreatePaymentIntentMutation,
   useDeclareCashDepositMutation,

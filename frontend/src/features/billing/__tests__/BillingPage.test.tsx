@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -12,7 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { billingApi } from "@/features/billing/billingApi";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { BillingPage } from "@/features/billing/components/BillingPage";
-import type { SubscriptionResponse, PlanResponse, PlanUsageResponse } from "@/features/billing/billing.types";
+import type { SubscriptionResponse, PlanResponse, PlanUsageResponse, CancellationQuoteResponse } from "@/features/billing/billing.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import { toast } from "sonner";
 
@@ -872,5 +872,122 @@ describe("BillingPage", () => {
     await screen.findByText("Active");
     expect(screen.queryByText(/active until/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/next charge/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── E05b-2 (O07): a cancellation can't outrun its quote ─────────────────────────
+
+const YEARLY_QUOTE: CancellationQuoteResponse = {
+  billingInterval: "Yearly", refundAmount: 553, monthsUsed: 3, accessEndDate: new Date().toISOString(),
+  amountPaid: 790, monthlyReferencePrice: 79, invoiceId: "inv-1",
+};
+const NEXT_MONTH_QUOTE: CancellationQuoteResponse = { ...YEARLY_QUOTE, refundAmount: 474, monthsUsed: 4 };
+const CASH_QUOTE: CancellationQuoteResponse = {
+  billingInterval: "Monthly", refundAmount: 0, monthsUsed: null, accessEndDate: new Date().toISOString(),
+  amountPaid: null, monthlyReferencePrice: null, invoiceId: null,
+};
+
+async function openCancelDialog(): Promise<HTMLElement> {
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Cancel plan" }));
+  return screen.findByRole("alertdialog");
+}
+
+describe("Cancel plan dialog (E05b-2)", () => {
+  it("confirms exactly the quote on screen", async () => {
+    let posted: unknown = null;
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json(SUB_ACTIVE_YEARLY_CARD)),
+      http.get("http://localhost/api/v1/billing/subscription/cancel/quote", () => HttpResponse.json(YEARLY_QUOTE)),
+      http.post("http://localhost/api/v1/billing/subscription/cancel", async ({ request }) => {
+        posted = await request.json();
+        return HttpResponse.json({ ...SUB_ACTIVE_YEARLY_CARD, status: "Cancelled" });
+      }),
+    );
+    renderPage();
+    const dialog = await openCancelDialog();
+    await within(dialog).findByText(/553/);
+
+    await userEvent.setup().click(within(dialog).getByRole("button", { name: "Cancel plan" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Your subscription has been cancelled."));
+    expect(posted).toEqual({ billingInterval: "Yearly", refundAmount: 553, monthsUsed: 3, amountPaid: 790, invoiceId: "inv-1" });
+  });
+
+  it("can't be confirmed when the quote fails, and offers a retry instead of a bypass", async () => {
+    const cancelSpy = vi.fn();
+    let quoteCalls = 0;
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json(SUB_ACTIVE_YEARLY_CARD)),
+      http.get("http://localhost/api/v1/billing/subscription/cancel/quote", () => {
+        quoteCalls += 1;
+        return quoteCalls === 1
+          ? HttpResponse.json({ message: "boom" }, { status: 500 })
+          : HttpResponse.json(YEARLY_QUOTE);
+      }),
+      http.post("http://localhost/api/v1/billing/subscription/cancel", () => {
+        cancelSpy();
+        return HttpResponse.json(SUB_ACTIVE_YEARLY_CARD);
+      }),
+    );
+    renderPage();
+    const dialog = await openCancelDialog();
+
+    expect(await within(dialog).findByText(/can't be cancelled yet/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Cancel plan" })).toBeDisabled();
+    expect(cancelSpy).not.toHaveBeenCalled();
+
+    await userEvent.setup().click(within(dialog).getByRole("button", { name: /try again/i }));
+
+    await within(dialog).findByText(/553/);
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel plan" })).toBeEnabled());
+  });
+
+  it("when the quote changed, cancels nothing and shows the new refund to confirm again", async () => {
+    let quoteCalls = 0;
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json(SUB_ACTIVE_YEARLY_CARD)),
+      http.get("http://localhost/api/v1/billing/subscription/cancel/quote", () => {
+        quoteCalls += 1;
+        return HttpResponse.json(quoteCalls === 1 ? YEARLY_QUOTE : NEXT_MONTH_QUOTE);
+      }),
+      http.post("http://localhost/api/v1/billing/subscription/cancel", () =>
+        HttpResponse.json(
+          { status: 409, message: "Your refund changed since you opened this.", code: "CANCELLATION_QUOTE_CHANGED" },
+          { status: 409 },
+        ),
+      ),
+    );
+    renderPage();
+    const dialog = await openCancelDialog();
+    await within(dialog).findByText(/553/);
+
+    await userEvent.setup().click(within(dialog).getByRole("button", { name: "Cancel plan" }));
+
+    expect(await within(dialog).findByTestId("quote-changed")).toBeInTheDocument();
+    expect(await within(dialog).findByText(/474/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/553/)).not.toBeInTheDocument();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel plan" })).toBeEnabled());
+  });
+
+  it("cash-billed plans get a quote too, and confirm its zero refund", async () => {
+    let posted: unknown = null;
+    server.use(
+      http.get("http://localhost/api/v1/billing/subscription/cancel/quote", () => HttpResponse.json(CASH_QUOTE)),
+      http.post("http://localhost/api/v1/billing/subscription/cancel", async ({ request }) => {
+        posted = await request.json();
+        return HttpResponse.json({ ...SUB_ACTIVE_CASH, status: "Cancelled" });
+      }),
+    );
+    renderPage();
+    const dialog = await openCancelDialog();
+    expect(await within(dialog).findByText(/billed in cash/i)).toBeInTheDocument();
+
+    await userEvent.setup().click(within(dialog).getByRole("button", { name: "Cancel plan" }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(posted).toEqual({ billingInterval: "Monthly", refundAmount: 0, monthsUsed: null, amountPaid: null, invoiceId: null });
   });
 });
