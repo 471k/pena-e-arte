@@ -75,11 +75,18 @@ describe("public content pages", () => {
     expect(screen.getByText(/\[LAWYER REVIEW REQUIRED\]/i)).toBeInTheDocument();
   });
 
-  it("Refund Policy states the 24-hour default window and deposit forfeiture facts from the live code", () => {
+  it("Refund Policy states the 48-hour default window and deposit facts from the live code", () => {
     renderPublic(<RefundPolicyPage />);
     expect(screen.getByText(/48 hours/i)).toBeInTheDocument();
     expect(screen.getByText(/refunded in full \(100%\)/i)).toBeInTheDocument();
     expect(screen.getAllByText(/the deposit is forfeited/i).length).toBeGreaterThan(0);
+    // Corrected 12 Nov 2026 to match the app: charged up front, and rescheduling never costs the
+    // deposit (a client simply can't self-reschedule inside the window).
+    expect(screen.getByText(/charged in full when you pay it/i)).toBeInTheDocument();
+    expect(screen.getByText(/moving it costs nothing/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inside the notice window you can.t reschedule yourself/i)).toBeInTheDocument();
+    expect(screen.queryByText(/cancel or reschedule inside the notice window/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/refunded in full,\s+whatever the timing/i)).toBeInTheDocument();
     // Refund policy is REAL copy, so it must NOT carry the lawyer-review banner.
     expect(screen.queryByText(/\[LAWYER REVIEW REQUIRED\]/i)).not.toBeInTheDocument();
   });

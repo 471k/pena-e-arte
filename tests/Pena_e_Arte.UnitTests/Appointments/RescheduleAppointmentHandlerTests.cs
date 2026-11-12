@@ -68,7 +68,7 @@ public class RescheduleAppointmentHandlerTests
 
         await CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(4), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(4).AddHours(10), 60, null)), default);
 
         await _realtime.Received(1)
             .NotifyStudioAsync(_studioId, "AppointmentUpdated", Arg.Any<object>(), Arg.Any<CancellationToken>());
@@ -79,7 +79,7 @@ public class RescheduleAppointmentHandlerTests
     {
         Guid appointmentId = Guid.NewGuid();
         IAuditableCommand command = new RescheduleAppointmentCommand(appointmentId,
-            new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 60, null));
+            new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(1).AddHours(10), 60, null));
 
         command.AuditAction.Should().Be("Appointment.Rescheduled");
         command.AuditTargetType.Should().Be("Appointment");
@@ -91,7 +91,7 @@ public class RescheduleAppointmentHandlerTests
     {
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(Guid.NewGuid(),
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(1).AddHours(10), 60, null)), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -103,7 +103,7 @@ public class RescheduleAppointmentHandlerTests
 
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(1).AddHours(10), 60, null)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*Cancelled*");
@@ -116,7 +116,7 @@ public class RescheduleAppointmentHandlerTests
 
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(1), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(1).AddHours(10), 60, null)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*Completed*");
@@ -126,7 +126,7 @@ public class RescheduleAppointmentHandlerTests
     public async Task Handle_SlotConflict_ThrowsSlotAlreadyBookedException()
     {
         Guid id = await SeedAppointment(AppointmentStatus.Pending);
-        DateTime conflictDate = DateTime.UtcNow.AddDays(10);
+        DateTime conflictDate = DateTime.UtcNow.Date.AddDays(10).AddHours(10);
         await SeedConflictingAppointment(conflictDate);
 
         Func<Task> act = () => CreateSut().Handle(
@@ -283,7 +283,7 @@ public class RescheduleAppointmentHandlerTests
 
         var result = await CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(6), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(6).AddHours(10), 60, null)), default);
 
         result.DurationMinutes.Should().Be(60);
     }
@@ -297,7 +297,7 @@ public class RescheduleAppointmentHandlerTests
 
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(3), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(3).AddHours(10), 60, null)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*contact the studio directly*");
@@ -323,7 +323,7 @@ public class RescheduleAppointmentHandlerTests
 
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(4), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(4).AddHours(10), 60, null)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>()
             .WithMessage("*72 hours*");
@@ -337,7 +337,7 @@ public class RescheduleAppointmentHandlerTests
 
         Func<Task> act = () => CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(6), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(6).AddHours(10), 60, null)), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -349,9 +349,11 @@ public class RescheduleAppointmentHandlerTests
         // notice-window check, even for an imminent appointment.
         Guid id = await SeedAppointment(AppointmentStatus.Confirmed, DateTime.UtcNow.AddHours(1));
 
+        // Tomorrow 10:00 UTC, not "now + 3 h": that ran past the studio's 23:59 closing whenever the
+        // suite ran between about 20:00 and 21:00 UTC (CI on PR #358, 12 Nov 2026).
         var result = await CreateSut().Handle(
             new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddHours(3), 60, null)), default);
+                new RescheduleAppointmentRequest(DateTime.UtcNow.Date.AddDays(1).AddHours(10), 60, null)), default);
 
         result.DurationMinutes.Should().Be(60);
     }
