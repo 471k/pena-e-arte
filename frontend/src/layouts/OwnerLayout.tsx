@@ -209,8 +209,8 @@ export function OwnerLayout() {
   // Rent, Gift Cards, Packages, Campaigns, studio-wide Reports/Conduct Reports) and the menu
   // genuinely matches what a real invited artist would see, per the request that owner and
   // artist contexts each show only their own specific menu. "Owner Dashboard" stays first as an
-  // escape hatch back to owner mode — the header switcher covers this too, but only shows at sm+
-  // widths.
+  // escape hatch back to owner mode; the Owner/Artist switch covers this too, in the header from
+  // sm up and at the top of the nav drawer below that.
   const artistSections: NavSection[] = myArtist
     ? withNavBadges(
         buildArtistSections({
@@ -248,7 +248,20 @@ export function OwnerLayout() {
             <ArtistModeSwitcher artistId={myArtist.id} />
           </div>
         )}
-        <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
+        {/* Below sm the header switch is hidden, so the drawer carries the same switch: without it a
+            phone could only reach artist mode through "My Portfolio", which doesn't say it changes the
+            whole menu (owner phone-navigation patch, 2026-11-12). */}
+        <NavDrawer
+          sections={navSections}
+          title="TattooOS"
+          open={navOpen}
+          onOpenChange={setNavOpen}
+          revealTourId={revealTourId}
+          modal={navModal}
+          top={hasArtistProfile && myArtist
+            ? <ArtistModeSwitcher artistId={myArtist.id} layout="fill" onSwitch={() => setNavOpen(false)} />
+            : undefined}
+        />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <Button

@@ -6795,3 +6795,18 @@ So net is specified, not built (A07a §7 item 1), with Finance's question named.
 Tests:
 - Backend: `ArtistShareTests` (17); `PayModelTests` (readiness, save, confirm, artist terms, validators, OwnerOnly on all five endpoints); `GetMyEarningsHandlerTests` (phase 1 + unknown/booth rent/salaried/override/currency); `ArtistPayModelMigrationTests` (up and down on MySQL).
 - Frontend: `StudioPayModelCard`, `ArtistPayModelSection`, `SetupChecklist` pay-model rows, `MyEarningsPage` (no total when unknown).
+
+
+## Owner/Artist switch reachable from a phone's nav drawer — 2026-11-12
+
+**Found by:** the first signed-in look at production on a real phone (12 Nov). Fixes findings 2 and 3 of that report.
+
+**What was wrong:** `OwnerLayout` wrapped `ArtistModeSwitcher` in `hidden sm:flex` and the nav drawer, a phone's only navigation, had no copy of it. The report called artist mode "unreachable" below 640 px. That was overstated: the drawer's "My artist profile → My Portfolio" link goes to `/artists/{id}`, which `isInArtistContext` already counts as artist mode, so the menu did swap. But nothing said so. On a phone the role switch was a side effect of opening a portfolio page, and Today was two taps and a guess away.
+
+**Decision:** the drawer carries the same switch at its top (`NavDrawer`'s new `top` slot), as a second instance of `ArtistModeSwitcher` with `layout="fill"` and an `onSwitch` that closes the drawer. Both instances derive their state from the one `isInArtistContext` call, so they can't disagree. The header control is unchanged from `sm` up. This adds a path; it moves none.
+
+**Tour:** the `owner-artist-mode-switch` step was broken on a phone. Its only target was the hidden header copy, a single match, so the tour spotlit a 12×12 box at the top-left corner (measured at 390 px on 7da7465a). `TourStep.inNavDrawerBelowSm` now opens the drawer for that step below `sm` only. Between `sm` and `lg` the header copy is visible, and opening the drawer there would cover it. Both copies carry the same `data-tour`, and the tour's existing pick-the-visible-match logic chooses the right one.
+
+**Dashboard header:** the date moved under the title, and the title truncates. At 390 px "Dashboard" ended exactly where "+ Book Appointment" began, and the date wrapped to three lines (48 px).
+
+**Tests:** `OwnerLayout.test.tsx` has five drawer-switch tests (four failed on 7da7465a), `shouldOpenNavDrawerForTourStep` has three width cases (one failed on 7da7465a), and `e2e/owner-phone-navigation.spec.ts` (390 and 320 px, light and dark) covers the drawer switch into artist mode with Today in its menu, the tour spotlight on the drawer copy, and the header with no overflow, no collision and a one-line date.
