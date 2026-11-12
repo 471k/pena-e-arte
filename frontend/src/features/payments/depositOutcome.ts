@@ -54,6 +54,12 @@ export function describeDeposit(p: DepositFields): DepositOutcome {
         clientLabel: "Deposit on hold", clientDetail: "Charged by the studio, usually at your appointment",
         charged: false };
     case PaymentStatus.Paid:
+      // Paid on a cancelled appointment is read as a forfeit ("Kept"), and nothing here checks it.
+      // That is true only while every backend route to Paid refuses a deposit that isn't forfeited
+      // on a cancelled appointment (PR #356 closed four such routes). If a new route skips that
+      // check, money owed back to the client is shown here as kept and no test fails at this line.
+      // The tripwire is PaymentArchitectureTests.PaymentStatusPaid_IsWrittenOnlyByTheKnownRoutes:
+      // a new writer of Paid fails it until someone checks the route against this rule.
       if (cancelled) {
         return { kind: "kept", ownerLabel: "Kept", ownerDetail: `${money(p.amount)} kept (cancellation policy)`,
           clientLabel: "Deposit kept", clientDetail: "Kept under the studio's cancellation policy", charged: true };
