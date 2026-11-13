@@ -12,6 +12,8 @@ import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedF
 import { useGetAppointmentsQuery } from "../appointmentsApi";
 import { AppointmentCard } from "./AppointmentCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
+import { resolveScheduleScope, withArtistFilter } from "../scheduleScope";
+import { ScheduleScopeBar } from "./ScheduleScopeBar";
 
 function SchedulePageSkeleton() {
   return (
@@ -58,19 +60,27 @@ export function SchedulePage() {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [quickReminderOpen, setQuickReminderOpen] = useState(false);
   const { role, token, tenantId } = useAppSelector((s) => s.auth);
-  // Present when an owner reaches this page via their own artist-mode nav (OwnerLayout's
-  // ArtistModeSwitcher/artistNavItems) — filters to just their own appointments, the same
-  // scoping a real artist caller already gets automatically. Ignored for an actual artist
-  // caller (GetAppointmentsHandler already forces their own id regardless of this param).
-  const [searchParams] = useSearchParams();
-  const artistId = searchParams.get("artistId") ?? undefined;
+  // Whose appointments this is (E05c, O03; see scheduleScope.ts). `?artistId=` is an owner's own
+  // artist view, reached from OwnerLayout's artist-mode nav: just their own appointments, the scoping a
+  // real artist caller already gets (GetAppointmentsHandler forces an artist's own id regardless of
+  // the param). `?artist=` is an owner's or admin's filter to one artist. Both reach the server as
+  // `artistId`; the scope bar says which is in force.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { scope, requestArtistId, isOwnerInArtistMode } = resolveScheduleScope(role, searchParams);
+  const artistId = isOwnerInArtistMode ? requestArtistId : undefined;
   // Raw-contact reminders need an ArtistId. The backend infers it for an artist caller; an owner
   // has to name one. An owner in their own Artist view carries it in the URL (`?artistId=`), so
-  // they get the button and the dialog sends that id. A plain owner/admin view has no artist
-  // context and no artist picker, so the button stays hidden there (it would always 422).
-  const isOwnerInArtistMode = role === Role.Owner && !!artistId;
+  // they get the button and the dialog sends that id. Filtering the studio schedule to an artist
+  // is not acting as that artist, so the owner's filter never turns the button on (it would send
+  // reminders in another artist's name).
   const canQuickRemind = role === Role.Artist || isOwnerInArtistMode;
   const canExport = role === Role.Owner || role === Role.Admin;
+  const canFilter = (role === Role.Owner || role === Role.Admin) && !isOwnerInArtistMode;
+  const isFiltered = scope.kind === "artist";
+
+  function handleFilterChange(next: string | null) {
+    setSearchParams(withArtistFilter(searchParams, next));
+  }
   const [exporting, setExporting] = useState(false);
 
   async function handleExportCsv() {
@@ -89,7 +99,7 @@ export function SchedulePage() {
   const { data: appointments, isLoading, isError } = useGetAppointmentsQuery({
     from: weekStart.toISOString(),
     to:   weekEnd.toISOString(),
-    artistId,
+    artistId: requestArtistId,
   });
 
   const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments. Please try again.");
@@ -187,11 +197,20 @@ export function SchedulePage() {
               disabled={exporting}
             >
               <Download className="h-3.5 w-3.5" />
-              Export CSV
+              {/* The export has no artist filter: say so rather than let a filtered view imply one. */}
+              {isFiltered ? "Export CSV (all artists)" : "Export CSV"}
             </Button>
           )}
         </div>
       </header>
+
+      <ScheduleScopeBar
+        scope={scope}
+        isOwnerInArtistMode={isOwnerInArtistMode}
+        canFilter={canFilter}
+        linkUnassignedToDashboard={role === Role.Owner}
+        onFilterChange={handleFilterChange}
+      />
 
       {isLoading ? (
         <SchedulePageSkeleton />
@@ -245,7 +264,8 @@ export function SchedulePage() {
                 ) : (
                   <div className="space-y-2">
                     {dayAppointments.map((appt) => (
-                      <AppointmentCard key={appt.id} appointment={appt} />
+                      // Whose session each one is, only when the view spans several artists.
+                      <AppointmentCard key={appt.id} appointment={appt} showArtist={scope.kind === "studio"} />
                     ))}
                   </div>
                 )}

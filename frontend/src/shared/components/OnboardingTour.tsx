@@ -40,8 +40,13 @@ const SPOTLIGHT_PADDING = 6;
 // (the overwhelming common case) there's no ambiguity to resolve, and jsdom
 // (no real layout engine, every rect reads 0×0) would otherwise make every
 // step pay the full poll timeout for nothing.
+//
+// A target inside a `hidden` subtree (a collapsed Studio Settings group, E05c) is in the DOM but has no
+// box: measuring it spotlit a 12x12 square at (-6,-6) and nothing failed. It counts as not there yet, so
+// the step keeps polling while whatever opens it (the step's route, onBeforeStep) commits, and is skipped
+// if it never opens. `closest("[hidden]")` works in jsdom too, unlike a size check.
 function resolveTarget(selector: string): { el: Element | null; ambiguous: boolean } {
-  const candidates = document.querySelectorAll(selector);
+  const candidates = Array.from(document.querySelectorAll(selector)).filter((el) => !el.closest("[hidden]"));
   if (candidates.length <= 1) return { el: candidates[0] ?? null, ambiguous: false };
   for (const el of candidates) {
     const rect = el.getBoundingClientRect();
