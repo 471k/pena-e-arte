@@ -56,10 +56,10 @@ public class ReschedulePreviewAgreementTests
         ReschedulePreviewResponse preview = await new GetReschedulePreviewHandler(_db, _user)
             .Handle(new GetReschedulePreviewQuery(id), default);
 
-        Func<Task> save = () => new RescheduleAppointmentHandler(
-                _db, _tenant, _user, Substitute.For<IRealtimeNotifier>(), Substitute.For<ISender>(), Substitute.For<IJobScheduler>())
-            .Handle(new RescheduleAppointmentCommand(id,
-                new RescheduleAppointmentRequest(DateTime.UtcNow.AddDays(30), 60, null)), default);
+        // A fixed 10:00 on the target day, not UtcNow + 30 days: at 23:00-24:00 UTC that 60-minute move ran
+        // past the studio's 23:59 close and failed on hours, which this theory isn't about (14 Nov 2026,
+        // it blocked a production deploy). The crossing-close case is tested on purpose below.
+        Func<Task> save = () => Save(id, InHours, 60);
 
         if (preview.CanReschedule)
         {
@@ -76,6 +76,49 @@ public class ReschedulePreviewAgreementTests
         preview.CanReschedule.Should().Be(!closed && !insideWindow);
         preview.NoticeWindowApplies.Should().Be(role == "client");
         preview.Block.Should().Be(closed ? "AppointmentClosed" : insideWindow ? "InsideNoticeWindow" : null);
+    }
+
+    /// <summary>
+    /// A move that runs past the studio's close: the appointment itself may be moved (the preview says so),
+    /// but not to that time. The dialog's slot check and the save give the same reason, so the client is
+    /// told before saving what the save would refuse. Until 14 Nov 2026 this was covered only by accident,
+    /// one hour a day, by the theory above.
+    /// </summary>
+    [Theory]
+    [InlineData("client")]
+    [InlineData("owner")]
+    public async Task AMoveThatRunsPastTheStudiosClose_IsRefused_AndTheSlotCheckSaysSoFirst(string role)
+    {
+        _user.Role.Returns(role);
+        _user.UserId.Returns(role == "client" ? _clientUserId : Guid.NewGuid());
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed, DateTime.UtcNow.AddDays(10));
+        DateTime lateStart = TargetDay.AddHours(23).AddMinutes(30); // 23:30 + 60 min, close is 23:59
+
+        ReschedulePreviewResponse preview = await new GetReschedulePreviewHandler(_db, _user)
+            .Handle(new GetReschedulePreviewQuery(id), default);
+        SlotAvailabilityResult slot = await new CheckSlotAvailabilityHandler(_db, _tenant, _user)
+            .Handle(new CheckSlotAvailabilityQuery(_artistId, lateStart, 60, id), default);
+
+        preview.CanReschedule.Should().BeTrue();
+        slot.Available.Should().BeFalse();
+        slot.Reason.Should().Be("Outside studio hours (00:00–23:59).");
+        (await ((Func<Task>)(() => Save(id, lateStart, 60))).Should().ThrowAsync<BusinessRuleViolationException>())
+            .Which.Message.Should().Be(slot.Reason);
+    }
+
+    [Fact]
+    public async Task AMoveThatEndsExactlyAtTheStudiosClose_IsAllowed()
+    {
+        _user.Role.Returns("owner");
+        _user.UserId.Returns(Guid.NewGuid());
+        Guid id = await SeedAppointment(AppointmentStatus.Confirmed, DateTime.UtcNow.AddDays(10));
+        DateTime lastStart = TargetDay.AddHours(22).AddMinutes(59); // ends 23:59
+
+        SlotAvailabilityResult slot = await new CheckSlotAvailabilityHandler(_db, _tenant, _user)
+            .Handle(new CheckSlotAvailabilityQuery(_artistId, lastStart, 60, id), default);
+
+        slot.Available.Should().BeTrue();
+        await ((Func<Task>)(() => Save(id, lastStart, 60))).Should().NotThrowAsync();
     }
 
     [Fact]
@@ -126,6 +169,15 @@ public class ReschedulePreviewAgreementTests
         (await new GetReschedulePreviewValidator().ValidateAsync(new GetReschedulePreviewQuery(Guid.Empty)))
             .IsValid.Should().BeFalse();
     }
+
+    // The day every move lands on, 30 days out, at midnight UTC (the suite's studio has no timezone, so its
+    // hours are read in UTC). Times are added to it explicitly, so no test depends on the time it runs.
+    private static DateTime TargetDay => DateTime.UtcNow.Date.AddDays(30);
+    private static DateTime InHours => TargetDay.AddHours(10);
+
+    private Task Save(Guid id, DateTime newDate, int minutes) => new RescheduleAppointmentHandler(
+            _db, _tenant, _user, Substitute.For<IRealtimeNotifier>(), Substitute.For<ISender>(), Substitute.For<IJobScheduler>())
+        .Handle(new RescheduleAppointmentCommand(id, new RescheduleAppointmentRequest(newDate, minutes, null)), default);
 
     private async Task<Guid> SeedAppointment(AppointmentStatus status, DateTime start)
     {
