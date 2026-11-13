@@ -176,6 +176,30 @@ describe("SignConsentFormPage", () => {
     await user.click(screen.getByRole("button", { name: /sign consent form/i }));
 
     expect(await screen.findByText("Consent form signed!")).toBeInTheDocument();
+    // The server returned a fileUrl, so the PDF claim is true here.
+    expect(screen.getByText(/a pdf copy has been generated/i)).toBeInTheDocument();
+  });
+
+  it("does not claim a PDF exists when the server signed the form without one", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/consent-forms", () =>
+        HttpResponse.json({ ...SIGNED_FORM, fileUrl: null }, { status: 201 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithRoute(<SignConsentFormPage />);
+    await user.click(screen.getByLabelText("Appointment"));
+    await user.click(await screen.findByRole("option", {
+      name: new Date(FUTURE).toLocaleDateString("en-GB", {
+        day: "numeric", month: "short", year: "numeric",
+      }),
+    }));
+    await user.type(screen.getByLabelText(/digital signature/i), "Marco Cliente");
+    await user.click(screen.getByRole("button", { name: /sign consent form/i }));
+
+    expect(await screen.findByText(/consent form signed!/i)).toBeInTheDocument();
+    expect(screen.getByText(/a pdf copy couldn't be created this time/i)).toBeInTheDocument();
+    expect(screen.queryByText(/a pdf copy has been generated/i)).not.toBeInTheDocument();
   });
 
   it("shows an inline error message when signing fails", async () => {

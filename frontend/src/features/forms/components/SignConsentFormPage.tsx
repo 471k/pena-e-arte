@@ -43,7 +43,7 @@ export function SignConsentFormPage() {
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );
-  const [signConsentForm, { isLoading, isSuccess, isError, error, reset: resetMutation }] =
+  const [signConsentForm, { data: signed, isLoading, isSuccess, isError, error, reset: resetMutation }] =
     useSignConsentFormMutation();
 
   const isDuplicateSignature =
@@ -86,8 +86,12 @@ export function SignConsentFormPage() {
         <div className="text-center space-y-4 px-6">
           <CheckCircle aria-hidden="true" className="h-12 w-12 text-green-500 mx-auto" />
           <p className="text-base font-medium">Consent form signed!</p>
+          {/* Only claim a PDF exists when the server returned one: generation is best-effort and a
+              failure still signs the form (SignConsentFormCommand), with fileUrl null. */}
           <p className="text-sm text-muted-foreground">
-            Your signature has been recorded. A PDF copy has been generated and attached to your appointment.
+            {signed?.fileUrl
+              ? "Your signature has been recorded. A PDF copy has been generated and attached to your appointment."
+              : "Your signature and the exact text you agreed to have been recorded. A PDF copy couldn't be created this time, but your consent is still saved and the studio can see it."}
           </p>
           <div className="flex gap-3 justify-center pt-2">
             <Button variant="outline" size="sm" onClick={resetMutation}>

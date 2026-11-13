@@ -320,7 +320,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Type your full legal name in the \"Digital signature\" box to sign.",
       "Click \"Sign Consent Form\".",
     ],
-    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign. If the copy can't be made, the form's page says so; your signature and the agreed text are still saved.", "The exact wording you agreed to is saved with your signature, so a past consent always shows what you actually agreed to even if the studio later updates its consent text."],
+    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign. If the copy can't be made, the confirmation and the form's page say so; your signature and the agreed text are still saved.", "The exact wording you agreed to is saved with your signature, so a past consent always shows what you actually agreed to even if the studio later updates its consent text."],
     relatedArticleIds: ["client-consent-list"],
   },
   {
