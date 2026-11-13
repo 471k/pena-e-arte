@@ -6913,3 +6913,29 @@ Tests:
 | O06 | What reconciliation couldn't settle | E05b-2, PR #355 |
 | O07 | Cancellation bound to its quote | E05b-2, PR #355 |
 | O08 | Export that says what it covers | E05b-1, PR #354 |
+
+## Artists' hourly rates stay visible; an owner's `?artistId=` must be their own — 2026-11-13
+
+**Base:** `05ce5263` (PR #360). Frontend only: no endpoint, validator, migration or `.cs` file changed.
+
+### 1. The hourly rate is a public price — not an exposure, left as it is (owner's decision)
+
+**Claim checked:** the patch spec said `ArtistResponse.HourlyRate` reached clients through the `ClientAndAbove` reads (`ArtistEndpoints.cs:17`, `:21`) and that nobody had chosen that, and it asked for the rate to be visible to the owner and that artist only. The first half is true. The second half is not what the code shows. The rate was chosen to be public:
+- `GetPublicArtistQuery` puts it in `PublicArtistResponse` (anonymous portfolio page), and `ArtistPortfolioPage.tsx` shows it to anyone as "From X/hr". The profile-strength nudge counts it as part of a complete profile.
+- `GetPublicBookingArtistsQuery` puts it in `PublicBookingArtistResponse` (anonymous guest-booking picker). That record's own comment says it is for the client-side deposit-percent preview.
+- `BookAppointmentForm` and `GuestBookAppointmentForm` both work out the percentage-deposit estimate from it, and client Help says so ("A percentage deposit appears once you pick an artist, since it depends on their hourly rate").
+- With a percentage rule, any deposit amount gives the rate back: deposit ÷ hours ÷ percentage. Hiding the field cannot hide the number.
+
+**Why the A07a analogy does not hold:** the commission rate is the artist's *pay* and stays out of every response (A07a). The hourly rate is the *price a client is charged*: the session estimate is rate × hours. Showing starting prices is what the benchmark booking products do.
+
+**Decision (owner, 13 Nov):** keep it visible. No code change. The three options put to the owner were: keep it (chosen); hide it everywhere (remove "From X/hr", strip it from three responses, move deposit estimates to a new server endpoint, one of them anonymous, and it would still leak through deposits); or strip it from the signed-in reads only (rejected: the public page would still show it and the signed-in booking form's estimate would break, so it would look like a fix and hide nothing). The exposure the spec described was a decision that had in fact been made, just never written down. This entry writes it down.
+
+### 2. Artist mode needs the owner's *own* artist id in `?artistId=`
+
+**What was wrong:** `resolveScheduleScope` granted owner artist mode whenever `?artistId=` was present. An owner who typed a colleague's id got Quick reminder (raw-contact SMS sent with that artist's id) and the Availability link, all on that artist's behalf. Unreachable from the UI (OwnerLayout's artist nav always writes the owner's own id), and pre-existing.
+
+**Fix:** `resolveScheduleScope(role, params, ownArtistId)` grants owner artist mode only when `?artistId=` equals the owner's id from `GET /artists/me`. That is the same test `isInArtistContext` already used for the menu, so the menu and the page now agree. A different id, or no artist profile (404), gives the plain owner view. `SchedulePage` asks `/artists/me` only for an owner whose URL carries `?artistId=` (it is normally cached already, because OwnerLayout reads it). Until the answer arrives it shows the skeleton, and it holds back the appointments read, so a legitimate artist-mode visit never fires a studio-wide read first. Admins and artists are unchanged. E05c's `?artist=` filter is a separate parameter and is untouched.
+
+**What this does not guarantee:** `CreateManualReminderCommand` lets an owner name any artist in their studio. The client-reminder dialog's artist picker relies on that on purpose. So this is a fix for consistency between screen and URL, not a server-side permission. An owner calling the API directly can still send in a colleague's name, which is a sanctioned owner capability today. Making that a server rule would be a product decision about owner-sent reminders, and has not been made.
+
+**Tests:** `SchedulePage.scope.test.tsx` +4: another artist's id gives the plain view, with no Quick reminder, no Availability link and no request carrying that id; no artist profile gives the plain view; the owner's own id keeps artist mode, and the first request already carries it; an admin is unaffected and `/artists/me` is never asked. `SchedulePage.test.tsx` gained an `/artists/me` handler, and its existing own-id tests are unchanged. **Mutation check:** `05ce5263`'s `scheduleScope.ts` and `SchedulePage.tsx` put back under the new tests: the other-id and no-profile tests fail. The own-id and admin tests pass, as they should: the old code granted mode for any id, the owner's own included, and the admin path was not changed.

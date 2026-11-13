@@ -34,7 +34,18 @@ export interface ResolvedScheduleScope {
   isOwnerInArtistMode: boolean;
 }
 
-export function resolveScheduleScope(role: Role | null | undefined, params: URLSearchParams): ResolvedScheduleScope {
+/**
+ * `ownArtistId` is the caller's own artist id in this studio (GET /artists/me), or undefined when they have
+ * none or it isn't known. An owner is in artist mode only when `?artistId=` *equals* it, the same test
+ * isInArtistContext applies to the menu. Presence alone used to be enough, so an owner who typed another
+ * artist's id got artist mode on that artist's behalf: Quick reminder sending in their name, and the
+ * Availability link. Any other `?artistId=` from an owner is ignored: the plain owner view.
+ */
+export function resolveScheduleScope(
+  role: Role | null | undefined,
+  params: URLSearchParams,
+  ownArtistId: string | undefined,
+): ResolvedScheduleScope {
   const modeArtistId = params.get(ARTIST_MODE_PARAM) || undefined;
   const filterArtistId = params.get(SCHEDULE_ARTIST_PARAM) || undefined;
 
@@ -43,7 +54,7 @@ export function resolveScheduleScope(role: Role | null | undefined, params: URLS
     return { scope: { kind: "own" }, requestArtistId: modeArtistId, isOwnerInArtistMode: false };
   }
 
-  if (role === Role.Owner && modeArtistId) {
+  if (role === Role.Owner && modeArtistId !== undefined && modeArtistId === ownArtistId) {
     return { scope: { kind: "own" }, requestArtistId: modeArtistId, isOwnerInArtistMode: true };
   }
 
