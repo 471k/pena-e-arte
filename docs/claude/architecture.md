@@ -6914,7 +6914,7 @@ Tests:
 | O07 | Cancellation bound to its quote | E05b-2, PR #355 |
 | O08 | Export that says what it covers | E05b-1, PR #354 |
 
-## Artists' hourly rates stay visible; an owner's `?artistId=` must be their own — 2026-11-13
+## Artists' hourly rates stay visible; an owner's `?artistId=` must be their own; refunds vs automatic withdrawal — 2026-11-13
 
 **Base:** `05ce5263` (PR #360). Frontend only: no endpoint, validator, migration or `.cs` file changed.
 
@@ -6936,6 +6936,16 @@ Tests:
 
 **Fix:** `resolveScheduleScope(role, params, ownArtistId)` grants owner artist mode only when `?artistId=` equals the owner's id from `GET /artists/me`. That is the same test `isInArtistContext` already used for the menu, so the menu and the page now agree. A different id, or no artist profile (404), gives the plain owner view. `SchedulePage` asks `/artists/me` only for an owner whose URL carries `?artistId=` (it is normally cached already, because OwnerLayout reads it). Until the answer arrives it shows the skeleton, and it holds back the appointments read, so a legitimate artist-mode visit never fires a studio-wide read first. Admins and artists are unchanged. E05c's `?artist=` filter is a separate parameter and is untouched.
 
-**What this does not guarantee:** `CreateManualReminderCommand` lets an owner name any artist in their studio. The client-reminder dialog's artist picker relies on that on purpose. So this is a fix for consistency between screen and URL, not a server-side permission. An owner calling the API directly can still send in a colleague's name, which is a sanctioned owner capability today. Making that a server rule would be a product decision about owner-sent reminders, and has not been made.
+**What this does not guarantee:** `CreateManualReminderCommand` lets an owner name any artist in their studio. The client-reminder dialog's artist picker relies on that on purpose. So this is a fix for consistency between screen and URL, not a server-side permission. An owner calling the API directly can still send in a colleague's name.
+
+**Settled, not a gap (Desktop, 13 Nov):** an owner sending a reminder in a studio artist's name (`CreateManualReminderCommand.RequireExplicitArtistAsync` accepts any artist in the owner's studio) is within an owner's authority. Owners run the studio, and the client-reminder dialog's artist picker exists because this is intended. The `?artistId=` fix above is about the screen saying clearly whose name a message goes out under. It is not a permission boundary. Do not "fix" the picker or add a server rule restricting owners to their own artist id without a new product decision.
+
+### 3. Help no longer suggests automatic payouts; it warns about refunds instead (Q24)
+
+**Finding:** on POK staging, an automatic withdrawal of the whole Balance followed by a partial refund left the merchant balance negative (POK reference doc Part 14; question Q24 in the POK email, not answered yet). "Where card deposit money goes" (`owner-card-money-flow`) told owners to set up a POK "Recurring transfer" for automatic payouts, which recommended exactly that path.
+
+**Why it is copy, not a platform setting:** every studio connects its own POK merchant account (`owner-connect-pok`). The platform cannot read or enforce a studio's automatic-withdrawal setting: E-payments keys are scoped to orders, and POK's dashboard endpoints return 403 to them. An earlier proposal to "keep auto-withdrawal off for every production studio" assumed a capability that does not exist. Checking the platform's own merchant covers no real studio.
+
+**Change (Desktop's spec, 13 Nov):** the recurring-transfer suggestion is removed from the article and the manual. In its place is a warning that refunds are paid out of the studio's POK Balance, and that an automatic withdrawal which empties it can leave it negative when a refund lands afterwards. The same line is on the `PokSettingsCard` ("Card deposits — POK"), where a studio makes the decision, and in the Connect POK Help and manual section. Not on the setup checklist: that surface is about completeness, and a caution there reads as a chore. No owner tour step mentions payouts or withdrawals (the `owner-pok-card` step is about connecting keys), so no tour step changed. No behaviour change. Q24 stays in the POK email. It leaves the go-live path once this ships.
 
 **Tests:** `SchedulePage.scope.test.tsx` +4: another artist's id gives the plain view, with no Quick reminder, no Availability link and no request carrying that id; no artist profile gives the plain view; the owner's own id keeps artist mode, and the first request already carries it; an admin is unaffected and `/artists/me` is never asked. `SchedulePage.test.tsx` gained an `/artists/me` handler, and its existing own-id tests are unchanged. **Mutation check:** `05ce5263`'s `scheduleScope.ts` and `SchedulePage.tsx` put back under the new tests: the other-id and no-profile tests fail. The own-id and admin tests pass, as they should: the old code granted mode for any id, the owner's own included, and the admin path was not changed.
