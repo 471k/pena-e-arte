@@ -320,7 +320,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Type your full legal name in the \"Digital signature\" box to sign.",
       "Click \"Sign Consent Form\".",
     ],
-    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign.", "The exact wording you agreed to is saved with your signature, so a past consent always shows what you actually agreed to even if the studio later updates its consent text."],
+    warnings: ["You can only sign one consent form per appointment — a PDF copy is generated and attached automatically once you sign. If the copy can't be made, the form's page says so; your signature and the agreed text are still saved.", "The exact wording you agreed to is saved with your signature, so a past consent always shows what you actually agreed to even if the studio later updates its consent text."],
     relatedArticleIds: ["client-consent-list"],
   },
   {
@@ -782,7 +782,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Artist],
     title: "Review a client's signed consent form",
     route: "/forms/consent",
-    keywords: ["review signature", "consent document"],
+    keywords: ["review signature", "consent document", "missing pdf", "no pdf copy"],
     summary: "Review a client's signed consent form for an appointment, including their signature and any attached document.",
     steps: [
       "Open the client's profile and go to the Forms tab, or open Consent Forms from the menu.",
@@ -790,6 +790,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check the \"Signed\" or \"Pending\" status, client, and linked appointment.",
       "View the digital signature and, if attached, open or download the consent document.",
       "The \"Consent agreement (as signed)\" section shows the exact text the client agreed to at the time — the stored snapshot, not the studio's current wording — so a past consent is always an accurate record.",
+    ],
+    tips: [
+      "If the \"Consent document\" row says \"No PDF copy was created for this form\", the PDF couldn't be made when the client signed. The signature and the agreed text on the page are the signed record and are still valid. Print the page if you need a copy on file, and report it through Send feedback with the form ID so the PDF can be looked into.",
     ],
   },
   {
@@ -1581,12 +1584,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Turn off \"Powered by TattooOS\" branding",
     keywords: ["remove branding", "white label"],
-    summary: "This toggle controls whether the \"Powered by TattooOS\" credit is shown on your public booking widget.",
+    summary: "This toggle controls whether TattooOS is credited on what your clients receive: the footer of their emails, the foot of their consent forms and receipts, and the booking page they use when signed in.",
     steps: [
       "Go to Studio Settings and open \"Online booking\". The \"Platform branding\" card is there.",
-      "Switch the toggle to turn \"Powered by TattooOS\" on or off in your booking widget footer.",
+      "Switch the toggle off to remove the credit from all of these at once, or on to show it again.",
     ],
-    tips: ["Removing the branding may require upgrading your plan — if your plan doesn't allow it, the toggle will be disabled with an upgrade note."],
+    tips: [
+      "Removing the branding may require upgrading your plan — if your plan doesn't allow it, the toggle will be disabled with an upgrade note.",
+      "On consent forms and receipts the credit is a small grey line, \"Generated via TattooOS · tattooos.co\". Your studio's name stays at the top of every receipt either way.",
+      "The change applies to emails, consent forms and receipts created after you switch it. Ones already sent or saved stay as they were, except receipts, which are created fresh each time someone downloads one.",
+    ],
   },
   {
     id: "owner-embed",
@@ -2363,7 +2370,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-branding-removal",
     roles: [Owner],
     question: "Can I remove the \"Powered by TattooOS\" footer?",
-    answer: "Yes, from Studio Settings, under \"Online booking\" → \"Platform branding\" — though on some plans this may require upgrading first.",
+    answer: "Yes, from Studio Settings, under \"Online booking\" → \"Platform branding\" — though on some plans this may require upgrading first. One switch covers your clients' emails, consent forms, receipts and the signed-in booking page.",
     relatedArticleIds: ["owner-branding"],
   },
   {

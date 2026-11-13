@@ -34,10 +34,10 @@ public class GetPaymentInvoiceHandler(
                 throw new NotFoundException(nameof(Payment), query.PaymentId);
         }
 
-        string studioName = await db.Studios
+        var studio = await db.Studios
             .Where(s => s.Id == tenant.StudioId)
-            .Select(s => s.Name)
-            .FirstOrDefaultAsync(ct) ?? string.Empty;
+            .Select(s => new { s.Name, s.ShowPlatformBranding })
+            .FirstOrDefaultAsync(ct);
 
         // Appointment and Artist loaded separately — Appointment is a required nav on Payment,
         // so Including it in the same query produces an inner join in InMemory and real DBs alike.
@@ -56,7 +56,7 @@ public class GetPaymentInvoiceHandler(
             : [new InvoiceLineItem("Tattoo deposit", payment.Amount)];
 
         PaymentInvoiceData data = new(
-            StudioName: studioName,
+            StudioName: studio?.Name ?? string.Empty,
             ClientFullName: $"{payment.Client?.FirstName} {payment.Client?.LastName}".Trim(),
             ClientEmail: payment.Client?.Email ?? string.Empty,
             ArtistFullName: artist is not null
@@ -68,9 +68,10 @@ public class GetPaymentInvoiceHandler(
             Method: payment.Method.ToString(),
             Status: payment.Status.ToString(),
             ProviderReferenceId: payment.ProviderReferenceId,
-            CashNote: payment.CashNote,
             IssuedAt: payment.PaidAt ?? DateTime.UtcNow,
             LineItems: lineItems,
+            // Same fallback as the consent PDF: the Studio default is to show branding.
+            ShowPlatformBranding: studio?.ShowPlatformBranding ?? true,
             Currency: payment.Currency,
             ReferenceCurrency: payment.ReferenceCurrency,
             ReferenceRate: payment.ReferenceRate,

@@ -20,6 +20,7 @@ public class SignConsentFormHandlerTests
     private readonly IConsentFormPdfService _pdf = Substitute.For<IConsentFormPdfService>();
     private readonly IR2Service _r2 = Substitute.For<IR2Service>();
     private readonly ISender _sender = Substitute.For<ISender>();
+    private readonly CapturingLogger<SignConsentFormHandler> _logger = new();
     private readonly Guid _studioId = Guid.NewGuid();
 
     public SignConsentFormHandlerTests()
@@ -31,7 +32,7 @@ public class SignConsentFormHandlerTests
     }
 
     private SignConsentFormHandler CreateSut() =>
-        new(_db, _tenant, _currentUser, _pdf, _r2, _sender);
+        new(_db, _tenant, _currentUser, _pdf, _r2, _sender, _logger);
 
     [Fact]
     public async Task Handle_ValidRequest_ReturnsConsentFormResponse()
@@ -94,6 +95,53 @@ public class SignConsentFormHandlerTests
 
         result.Id.Should().NotBeEmpty();
         result.FileUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_PdfServiceThrows_LogsStageAndExceptionTypeButNotItsMessage()
+    {
+        // The message stands in for text a render failure can echo — e.g. the client's name.
+        _pdf.When(p => p.Generate(Arg.Any<ConsentFormPdfData>()))
+            .Do(_ => throw new InvalidOperationException("could not lay out 'Jane Doe'"));
+        Guid clientId = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+
+        ConsentFormResponse result = await CreateSut().Handle(
+            new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
+
+        (Microsoft.Extensions.Logging.LogLevel level, string message) = _logger.Entries.Should().ContainSingle().Subject;
+        level.Should().Be(Microsoft.Extensions.Logging.LogLevel.Error);
+        message.Should().Contain("render")
+            .And.Contain(typeof(InvalidOperationException).FullName!)
+            .And.Contain(result.Id.ToString())
+            .And.NotContain("Jane Doe");
+    }
+
+    [Fact]
+    public async Task Handle_UploadThrows_LogsUploadStage_AndSigningStillSucceeds()
+    {
+        _r2.UploadAsync(Arg.Any<string>(), Arg.Any<byte[]>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new HttpRequestException("r2 unavailable"));
+        Guid clientId = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+
+        ConsentFormResponse result = await CreateSut().Handle(
+            new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
+
+        result.FileUrl.Should().BeNull();
+        _logger.Entries.Should().ContainSingle(e => e.Message.Contains("upload")
+            && e.Message.Contains(typeof(HttpRequestException).FullName!));
+    }
+
+    [Fact]
+    public async Task Handle_PdfSucceeds_LogsNothing()
+    {
+        Guid clientId = await SeedClient();
+        Guid appointmentId = await SeedAppointment(clientId);
+
+        await CreateSut().Handle(new SignConsentFormCommand(new(clientId, appointmentId, "sig")), default);
+
+        _logger.Entries.Should().BeEmpty();
     }
 
     [Fact]

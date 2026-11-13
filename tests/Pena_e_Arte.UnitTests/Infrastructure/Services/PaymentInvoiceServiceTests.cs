@@ -32,9 +32,9 @@ public class PaymentInvoiceServiceTests
             Method: "Card",
             Status: "Paid",
             ProviderReferenceId: "ref-123",
-            CashNote: null,
             IssuedAt: DateTime.UtcNow,
             LineItems: [new InvoiceLineItem("Tattoo deposit", 12.345m)],
+            ShowPlatformBranding: true,
             Currency: currency);
 
         byte[] pdf = _sut.Generate(data);
@@ -46,7 +46,7 @@ public class PaymentInvoiceServiceTests
 
     // ── Lek reference (Albanian EUR studios, spec D7) ────────────────────────
 
-    private static PaymentInvoiceData EuroReceipt(decimal? rate) => new(
+    private static PaymentInvoiceData EuroReceipt(decimal? rate, bool showPlatformBranding = true) => new(
         StudioName: "Test Studio",
         ClientFullName: "Jane Doe",
         ClientEmail: "jane@example.com",
@@ -57,9 +57,9 @@ public class PaymentInvoiceServiceTests
         Method: "Card",
         Status: "Paid",
         ProviderReferenceId: "ref-123",
-        CashNote: null,
         IssuedAt: DateTime.UtcNow,
         LineItems: [new InvoiceLineItem("Session part 1", 50.5m), new InvoiceLineItem("Session part 2", 29.5m)],
+        ShowPlatformBranding: showPlatformBranding,
         Currency: "EUR",
         ReferenceCurrency: rate is null ? null : "ALL",
         ReferenceRate: rate,
@@ -98,4 +98,50 @@ public class PaymentInvoiceServiceTests
         PaymentInvoiceService.FormatAmount(50.5m, d).Should().Be("50.50 EUR");
         PaymentInvoiceService.ExchangeRateRowText(d).Should().BeNull();
     }
+
+    // ── Payment details rows ─────────────────────────────────────────────────
+
+    [Fact]
+    public void PaymentDetailRows_LabelTheProviderReferenceGenerically_NeverAsStripe()
+    {
+        IReadOnlyList<(string Label, string Value)> rows = PaymentInvoiceService.PaymentDetailRows(EuroReceipt(null));
+
+        rows.Should().Equal(("Method", "Card"), ("Status", "Paid"), ("Payment reference", "ref-123"));
+        rows.Should().NotContain(r => r.Label.Contains("Stripe", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void PaymentDetailRows_WithoutAProviderReference_OmitTheRow() =>
+        PaymentInvoiceService.PaymentDetailRows(EuroReceipt(null) with { ProviderReferenceId = null })
+            .Select(r => r.Label).Should().Equal("Method", "Status");
+
+    [Fact]
+    public void PaymentDetailRows_WithFrozenReference_EndWithTheExchangeRate() =>
+        PaymentInvoiceService.PaymentDetailRows(EuroReceipt(90.74m)).Select(r => r.Label)
+            .Should().Equal("Method", "Status", "Payment reference", "Exchange rate");
+
+    [Fact]
+    public void PaymentDetailRows_NeverIncludeAFreeTextNote() =>
+        // The cash note is staff-writable free text and is no longer carried to the receipt at all;
+        // this pins that no row reintroduces it under another label.
+        PaymentInvoiceService.PaymentDetailRows(EuroReceipt(90.74m)).Select(r => r.Label)
+            .Should().NotContain(l => l.Contains("Note", StringComparison.OrdinalIgnoreCase));
+
+    // ── Platform branding (SP-03, extended to receipts) ──────────────────────
+
+    [Fact]
+    public void PlatformBrandingLine_WhenTheStudioShowsBranding_IsTheConsentPdfsLine() =>
+        PaymentInvoiceService.PlatformBrandingLineText(EuroReceipt(null, showPlatformBranding: true))
+            .Should().Be("Generated via TattooOS · tattooos.co");
+
+    [Fact]
+    public void PlatformBrandingLine_WhenTheStudioHasRemovedBranding_IsAbsent() =>
+        PaymentInvoiceService.PlatformBrandingLineText(EuroReceipt(null, showPlatformBranding: false))
+            .Should().BeNull();
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Generate_EitherBrandingSetting_RendersAPdf(bool showPlatformBranding) =>
+        _sut.Generate(EuroReceipt(null, showPlatformBranding)).Take(4).Should().Equal(0x25, 0x50, 0x44, 0x46);
 }

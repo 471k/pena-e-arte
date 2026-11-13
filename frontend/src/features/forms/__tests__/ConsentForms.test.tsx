@@ -280,6 +280,41 @@ describe("ConsentFormDetailPage", () => {
     expect(link).toHaveAttribute("href", SIGNED_FORM.fileUrl);
   });
 
+  it("says plainly that there is no PDF when a signed form has none (staff view)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/consent-forms/:id", () =>
+        HttpResponse.json({ ...SIGNED_FORM_DETAIL, fileUrl: null }),
+      ),
+    );
+    renderDetailPage(SIGNED_FORM.id, Role.Artist);
+    // The row is still there, so the gap is never silent.
+    expect(await screen.findByText("Consent document")).toBeInTheDocument();
+    expect(screen.getByText(/no pdf copy was created for this form/i)).toBeInTheDocument();
+    expect(screen.getByText(/print this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/send feedback with the form id/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /view signed consent/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /download/i })).not.toBeInTheDocument();
+  });
+
+  it("tells the client their consent is still recorded when the PDF is missing, without staff instructions", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/consent-forms/:id", () =>
+        HttpResponse.json({ ...SIGNED_FORM_DETAIL, fileUrl: null }),
+      ),
+    );
+    renderDetailPage(SIGNED_FORM.id, Role.Client);
+    expect(await screen.findByText(/no pdf copy was created for this form/i)).toBeInTheDocument();
+    expect(screen.getByText(/the consent is still recorded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/send feedback/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no document row for an unsigned form (nothing is owed yet)", async () => {
+    renderDetailPage(PENDING_FORM.id, Role.Artist);
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    expect(screen.queryByText("Consent document")).not.toBeInTheDocument();
+    expect(screen.queryByText(/no pdf copy/i)).not.toBeInTheDocument();
+  });
+
   it("shows the 'Pending' badge and no signature for an unsigned form", async () => {
     renderDetailPage(PENDING_FORM.id);
     expect(await screen.findByText("Pending")).toBeInTheDocument();

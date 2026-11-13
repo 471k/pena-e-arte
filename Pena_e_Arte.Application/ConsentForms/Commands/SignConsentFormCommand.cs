@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Requests;
@@ -20,7 +21,8 @@ public class SignConsentFormHandler(
     ICurrentUser currentUser,
     IConsentFormPdfService pdfService,
     IR2Service r2,
-    ISender sender)
+    ISender sender,
+    ILogger<SignConsentFormHandler> logger)
     : IRequestHandler<SignConsentFormCommand, ConsentFormResponse>
 {
     public async Task<ConsentFormResponse> Handle(SignConsentFormCommand command, CancellationToken ct)
@@ -98,6 +100,8 @@ public class SignConsentFormHandler(
     private async Task<string?> TryGeneratePdfAsync(
         ConsentForm form, Appointment appointment, CancellationToken ct)
     {
+        // Which step failed is the first thing anyone diagnosing a missing document needs.
+        string stage = "load";
         try
         {
             Client? client = await db.Clients
@@ -121,15 +125,29 @@ public class SignConsentFormHandler(
                 SignedAt: form.SignedAt ?? DateTime.UtcNow,
                 ShowPlatformBranding: studio?.ShowPlatformBranding ?? true);
 
+            stage = "render";
             byte[] pdfBytes = pdfService.Generate(data);
             string objectKey = $"consent/{form.StudioId}/{form.Id}.pdf";
 
+            stage = "upload";
             await r2.UploadAsync(objectKey, pdfBytes, "application/pdf", ct);
             return r2.GetPublicUrl(objectKey);
         }
-        catch
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // PDF generation / upload is best-effort: signing must succeed regardless.
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // PDF generation / upload is best-effort: signing must succeed regardless, and the
+            // detail page says the document is missing. But the failure must be visible here.
+            // Only the exception TYPE is logged, never `ex` itself: the PDF carries the client's
+            // and artist's names and the signature, and a render exception's message can echo
+            // the text it was laying out (CLAUDE.md rule 3: never log PII).
+            logger.LogError(
+                "Consent form PDF {Stage} failed for consent form {ConsentFormId} in studio {StudioId}: {ExceptionType} (inner: {InnerExceptionType}); the form is signed without a document",
+                stage, form.Id, form.StudioId, ex.GetType().FullName,
+                ex.InnerException?.GetType().FullName ?? "none");
             return null;
         }
     }

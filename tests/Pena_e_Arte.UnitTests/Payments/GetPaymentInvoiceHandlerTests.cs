@@ -94,6 +94,41 @@ public class GetPaymentInvoiceHandlerTests
         _invoiceService.Received(1).Generate(Arg.Is<PaymentInvoiceData>(d => d.Currency == "ALL"));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_InvoiceDataCarriesTheStudiosBrandingFlagAndName(bool showPlatformBranding)
+    {
+        Studio studio = new()
+        {
+            Id = _studioId,
+            Name = "Needle & Co",
+            Slug = "needle-co",
+            City = "Tirana",
+            TrialExpiresAt = DateTime.UtcNow.AddDays(30),
+        };
+        if (!showPlatformBranding) studio.UpdateBranding(false);
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+        Guid paymentId = await SeedPayment();
+
+        await CreateSut().Handle(new GetPaymentInvoiceQuery(paymentId), default);
+
+        _invoiceService.Received(1).Generate(Arg.Is<PaymentInvoiceData>(d =>
+            d.ShowPlatformBranding == showPlatformBranding && d.StudioName == "Needle & Co"));
+    }
+
+    [Fact]
+    public async Task Handle_StudioRowMissing_FallsBackToShowingBranding()
+    {
+        Guid paymentId = await SeedPayment();
+
+        await CreateSut().Handle(new GetPaymentInvoiceQuery(paymentId), default);
+
+        _invoiceService.Received(1).Generate(Arg.Is<PaymentInvoiceData>(d =>
+            d.ShowPlatformBranding && d.StudioName == string.Empty));
+    }
+
     private async Task<Guid> SeedPayment(Guid? userId = null, decimal amount = 100m, string currency = "EUR")
     {
         Client client = new()

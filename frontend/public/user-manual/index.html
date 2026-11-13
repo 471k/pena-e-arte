@@ -954,7 +954,7 @@ ol.steps li { margin: 6px 0; }
 <li>Cover photo, studio name, city, and description at the top.</li>
 <li>Click <span class="step-title">Book an Appointment</span> — this opens the full studio page in a new tab (since the booking form itself needs the full site).</li>
 <li>Browse the artist list below.</li>
-<li>A small "Powered by TattooOS" footer link is shown unless the studio's plan allows removing it.</li>
+<li>A small "Powered by TattooOS" footer link is shown at the bottom. The Platform branding switch does not cover the embed.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-embed">Owner: embed code</a>, <a href="#owner-branding">Owner: branding</a></div>
 </section>
@@ -1291,7 +1291,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Sign consent form</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. The full consent agreement text is shown on the page so you can read exactly what you're agreeing to before you sign, and the exact wording is saved with your signature. A PDF copy is generated and attached to the appointment automatically.</p>
+<p>At <code>/forms/consent/new</code>, digitally sign a consent form for a specific appointment by typing your full legal name. The full consent agreement text is shown on the page so you can read exactly what you're agreeing to before you sign, and the exact wording is saved with your signature. A PDF copy is generated and attached to the appointment automatically. If the copy can't be made, the form's page says "No PDF copy was created for this form"; your signature and the agreed text are still saved.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Sign consent form wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1343,7 +1343,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Consent form detail</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✓ (own, read-only)</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A read-only view showing the signature, client/appointment IDs, dates, the exact consent text agreed to at signing time (the "Consent agreement (as signed)" snapshot — not the studio's current wording, so a past consent is always an accurate record), and a link to the generated PDF document.</p>
+<p>A read-only view showing the signature, client/appointment IDs, dates, the exact consent text agreed to at signing time (the "Consent agreement (as signed)" snapshot — not the studio's current wording, so a past consent is always an accurate record), and a link to the generated PDF document. If the PDF couldn't be made when the form was signed, the "Consent document" row says "No PDF copy was created for this form" instead of leaving a gap; the signature and the agreed text on the page are still the signed record.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Consent form detail wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -2034,6 +2034,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Click any row to confirm the signature and view the generated PDF.</li>
+<li>If the page says "No PDF copy was created for this form", the PDF couldn't be made when the client signed. The signature and the agreed text on the page are the signed record and are still valid. Print the page if you need a copy on file, and report it through Send feedback with the form ID so the PDF can be looked into.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#client-consent-detail">Consent form detail</a></div>
 </section>
@@ -2984,7 +2985,7 @@ ol.steps li { margin: 6px 0; }
 </figure>
 <figcaption>Consent form detail — signature and generated PDF link</figcaption>
 <h3>Steps</h3>
-<ol class="steps"><li>Confirm the signature and open the PDF if needed.</li></ol>
+<ol class="steps"><li>Confirm the signature and open the PDF if needed.</li><li>If the page says "No PDF copy was created for this form", the PDF couldn't be made when the client signed. The signature and the agreed text on the page are the signed record and are still valid. Print the page if you need a copy on file, and report it through Send feedback with the form ID so the PDF can be looked into.</li></ol>
 <div class="crosslinks">See also: <a href="#owner-consent-list">Consent forms</a></div>
 </section>
 
@@ -3538,20 +3539,26 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Branding</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A single toggle, on the Studio Settings page under <span class="step-title">Online booking</span>, for showing or hiding the "Powered by TattooOS" mark on your public booking widget — hiding it requires a plan that allows branding removal.</p>
+<p>A single toggle, on the Studio Settings page under <span class="step-title">Online booking</span>, for showing or hiding the TattooOS credit on what your clients receive — hiding it requires a plan that allows branding removal. The one switch covers:</p>
+<ul>
+<li>the "Powered by TattooOS" line in the footer of the emails your clients get;</li>
+<li>the small grey "Generated via TattooOS · tattooos.co" line at the foot of signed consent forms (PDF) and payment receipts (PDF);</li>
+<li>the "Powered by TattooOS" footer on the booking page clients use when signed in.</li>
+</ul>
+<p>Your studio's name stays at the top of every receipt either way. The change applies to emails and consent forms created after you switch it; receipts are created fresh on every download, so they always follow the current setting.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Branding settings wireframe">
 <rect x="230" y="180" width="300" height="100" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="250" y="205" font-size="11" font-weight="700">Platform branding</text>
 <text x="250" y="225" font-size="8" fill-opacity="0.6">Show "Powered by TattooOS"</text>
-<text x="250" y="238" font-size="8" fill-opacity="0.6">on booking widget.</text>
+<text x="250" y="238" font-size="8" fill-opacity="0.6">to your clients.</text>
 <rect x="460" y="215" width="36" height="18" rx="9" fill="#22c55e" fill-opacity="0.7"/><circle cx="486" cy="224" r="7" fill="#fff"/>
 </svg>
 </figure>
 <figcaption>Branding — single toggle switch, disabled with an upgrade hint on ineligible plans</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Toggle the switch off to hide the platform branding mark (requires an eligible plan).</li>
+<li>Toggle the switch off to remove the credit from client emails, consent forms, receipts and the signed-in booking page at once (requires an eligible plan).</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#owner-embed">Embed code</a></div>
 </section>

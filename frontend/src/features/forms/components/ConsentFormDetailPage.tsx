@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Copy, Download, ExternalLink, FileSignature } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Copy, Download, ExternalLink, FileSignature } from "lucide-react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
@@ -7,6 +7,8 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { formatRelativeTimeFromNow } from "@/shared/utils/formatRelativeTime";
+import { useAppSelector } from "@/app/hooks";
+import { Role } from "@/shared/types/roles";
 import { useGetConsentFormByIdQuery } from "../consentFormsApi";
 import type { ConsentFormDetailResponse } from "../form.types";
 
@@ -20,6 +22,37 @@ function formatDateTime(dateStr: string): string {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+/**
+ * A signed form whose PDF copy could not be made (the server logs the failure and
+ * signs anyway). Said out loud rather than leaving a gap where the document belongs:
+ * the signature and the agreed-text snapshot on this page ARE the signed record.
+ */
+function MissingDocumentNotice({ isClient }: { isClient: boolean }) {
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm"
+    >
+      <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-yellow-800 dark:text-yellow-400" aria-hidden />
+      <div className="space-y-1">
+        <p className="font-medium">No PDF copy was created for this form.</p>
+        {isClient ? (
+          <p className="text-foreground/80">
+            Your signature and the exact text you agreed to are saved on this page, so the
+            consent is still recorded. The studio can see this form too.
+          </p>
+        ) : (
+          <p className="text-foreground/80">
+            The signature and the agreed text on this page are the signed record, and they
+            are still valid. If you need a copy on file, print this page. Then report it
+            through Send feedback with the form ID so the PDF can be looked into.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function PageHeader({ onBack }: { onBack: () => void }) {
   return (
@@ -76,6 +109,7 @@ function SignatureDisplay({ value }: { value: string }) {
 function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
   const navigate = useNavigate();
   const [copied, copy] = useCopyToClipboard();
+  const role = useAppSelector((s) => s.auth.role);
 
   const isPdf = form.fileUrl?.toLowerCase().endsWith(".pdf") ?? false;
   const docLabel = isPdf ? "View signed consent (PDF)" : "View document";
@@ -172,34 +206,41 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
           )}
 
           {/* ── Document link + download ── */}
-          {form.fileUrl && (
+          {/* A signed form always gets this row: either the document, or a plain
+              statement that there is none. Before, a form whose PDF failed showed
+              nothing at all where the document belongs. */}
+          {(form.fileUrl || form.signedAt) && (
             <>
               <Separator />
               <DetailRow label="Consent document">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <a
-                    href={form.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-link underline underline-offset-2 hover:opacity-80"
-                    aria-label={docLabel}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                    {docLabel}
-                  </a>
-
-                  {isPdf && (
+                {!form.fileUrl ? (
+                  <MissingDocumentNotice isClient={role === Role.Client} />
+                ) : (
+                  <div className="flex items-center gap-3 flex-wrap">
                     <a
                       href={form.fileUrl}
-                      download
-                      className="inline-flex items-center gap-1.5 text-sm text-foreground/60 hover:text-foreground transition-colors"
-                      aria-label="Download signed consent form PDF"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-link underline underline-offset-2 hover:opacity-80"
+                      aria-label={docLabel}
                     >
-                      <Download className="h-3.5 w-3.5" aria-hidden />
-                      Download
+                      <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      {docLabel}
                     </a>
-                  )}
-                </div>
+
+                    {isPdf && (
+                      <a
+                        href={form.fileUrl}
+                        download
+                        className="inline-flex items-center gap-1.5 text-sm text-foreground/60 hover:text-foreground transition-colors"
+                        aria-label="Download signed consent form PDF"
+                      >
+                        <Download className="h-3.5 w-3.5" aria-hidden />
+                        Download
+                      </a>
+                    )}
+                  </div>
+                )}
               </DetailRow>
             </>
           )}
