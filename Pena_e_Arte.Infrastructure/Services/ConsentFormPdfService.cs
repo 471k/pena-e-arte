@@ -104,7 +104,7 @@ public class ConsentFormPdfService : IConsentFormPdfService
                     // SP-03: show "Generated via" line only when studio has branding enabled.
                     if (d.ShowPlatformBranding)
                     {
-                        col.Item().AlignRight().Text("Generated via TattooOS · tattooos.co")
+                        col.Item().AlignRight().Text(DocumentBranding.GeneratedViaLine)
                             .FontSize(8).FontColor("#bbbbbb").Italic();
                     }
                 });

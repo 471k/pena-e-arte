@@ -46,10 +46,11 @@ export function BrandingSettingsCard() {
         >
           <div className="space-y-0.5">
             <p className="text-sm font-medium">
-              Show "Powered by TattooOS" on booking widget
+              Show "Powered by TattooOS" to your clients
             </p>
             <p className="text-xs text-muted-foreground">
-              Displayed in the booking widget footer for your clients.
+              A small line in the footer of the emails your clients get, at the foot of their
+              consent forms and receipts, and on the booking page they use when signed in.
             </p>
             {upgradeHint && (
               <p className="text-xs text-warning-text dark:text-amber-400 mt-1">
@@ -65,7 +66,7 @@ export function BrandingSettingsCard() {
                 checked={studio.showPlatformBranding}
                 onChange={handleToggle}
                 disabled={isDisabled}
-                aria-label="Show platform branding on booking widget"
+                aria-label="Show platform branding to your clients"
               />
             )
           }

@@ -118,7 +118,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         (Guid clientId, Guid appointmentId) = await SeedClientAndAppointment(tenantId);
 
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _pdf, _r2, _sender)
+        ConsentFormResponse result = await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _pdf, _r2, _sender, NullLogger<SignConsentFormHandler>.Instance)
             .Handle(new SignConsentFormCommand(
                 new SignConsentFormRequest(clientId, appointmentId, "data:image/png;base64,abc")), default);
 
@@ -342,7 +342,7 @@ public class FormHandlerIntegrationTests(DatabaseFixture fixture)
         Guid tenantId, Guid clientId, Guid appointmentId, string signature)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _pdf, _r2, _sender)
+        return await new SignConsentFormHandler(db, TenantFor(tenantId), StaffUser(), _pdf, _r2, _sender, NullLogger<SignConsentFormHandler>.Instance)
             .Handle(new SignConsentFormCommand(
                 new SignConsentFormRequest(clientId, appointmentId, signature)), default);
     }

@@ -176,6 +176,30 @@ describe("SignConsentFormPage", () => {
     await user.click(screen.getByRole("button", { name: /sign consent form/i }));
 
     expect(await screen.findByText("Consent form signed!")).toBeInTheDocument();
+    // The server returned a fileUrl, so the PDF claim is true here.
+    expect(screen.getByText(/a pdf copy has been generated/i)).toBeInTheDocument();
+  });
+
+  it("does not claim a PDF exists when the server signed the form without one", async () => {
+    server.use(
+      http.post("http://localhost/api/v1/consent-forms", () =>
+        HttpResponse.json({ ...SIGNED_FORM, fileUrl: null }, { status: 201 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithRoute(<SignConsentFormPage />);
+    await user.click(screen.getByLabelText("Appointment"));
+    await user.click(await screen.findByRole("option", {
+      name: new Date(FUTURE).toLocaleDateString("en-GB", {
+        day: "numeric", month: "short", year: "numeric",
+      }),
+    }));
+    await user.type(screen.getByLabelText(/digital signature/i), "Marco Cliente");
+    await user.click(screen.getByRole("button", { name: /sign consent form/i }));
+
+    expect(await screen.findByText(/consent form signed!/i)).toBeInTheDocument();
+    expect(screen.getByText(/a pdf copy couldn't be created this time/i)).toBeInTheDocument();
+    expect(screen.queryByText(/a pdf copy has been generated/i)).not.toBeInTheDocument();
   });
 
   it("shows an inline error message when signing fails", async () => {
@@ -278,6 +302,41 @@ describe("ConsentFormDetailPage", () => {
     // fileUrl ends in .pdf, so the label is the PDF-specific variant
     const link = await screen.findByRole("link", { name: /view signed consent \(pdf\)/i });
     expect(link).toHaveAttribute("href", SIGNED_FORM.fileUrl);
+  });
+
+  it("says plainly that there is no PDF when a signed form has none (staff view)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/consent-forms/:id", () =>
+        HttpResponse.json({ ...SIGNED_FORM_DETAIL, fileUrl: null }),
+      ),
+    );
+    renderDetailPage(SIGNED_FORM.id, Role.Artist);
+    // The row is still there, so the gap is never silent.
+    expect(await screen.findByText("Consent document")).toBeInTheDocument();
+    expect(screen.getByText(/no pdf copy was created for this form/i)).toBeInTheDocument();
+    expect(screen.getByText(/print this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/send feedback with the form id/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /view signed consent/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /download/i })).not.toBeInTheDocument();
+  });
+
+  it("tells the client their consent is still recorded when the PDF is missing, without staff instructions", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/consent-forms/:id", () =>
+        HttpResponse.json({ ...SIGNED_FORM_DETAIL, fileUrl: null }),
+      ),
+    );
+    renderDetailPage(SIGNED_FORM.id, Role.Client);
+    expect(await screen.findByText(/no pdf copy was created for this form/i)).toBeInTheDocument();
+    expect(screen.getByText(/the consent is still recorded/i)).toBeInTheDocument();
+    expect(screen.queryByText(/send feedback/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no document row for an unsigned form (nothing is owed yet)", async () => {
+    renderDetailPage(PENDING_FORM.id, Role.Artist);
+    expect(await screen.findByText("Pending")).toBeInTheDocument();
+    expect(screen.queryByText("Consent document")).not.toBeInTheDocument();
+    expect(screen.queryByText(/no pdf copy/i)).not.toBeInTheDocument();
   });
 
   it("shows the 'Pending' badge and no signature for an unsigned form", async () => {

@@ -141,27 +141,26 @@ public class PaymentInvoiceService : IPaymentInvoiceService
                             cols.RelativeColumn(9);
                         });
 
-                        void Row(string label, string value)
+                        foreach ((string label, string value) in PaymentDetailRows(d))
                         {
                             table.Cell().PaddingVertical(2)
                                 .Text(label).FontSize(9).FontColor("#888888");
                             table.Cell().PaddingVertical(2).Text(value).FontSize(9);
                         }
-
-                        Row("Method", d.Method);
-                        Row("Status", d.Status);
-                        if (d.ProviderReferenceId is not null)
-                            Row("Stripe PI", d.ProviderReferenceId);
-                        if (d.CashNote is not null)
-                            Row("Note", d.CashNote);
-                        if (ExchangeRateRowText(d) is string rateRow)
-                            Row("Exchange rate", rateRow);
                     });
 
                     // ── Footer ──────────────────────────────────────────────
                     col.Item().PaddingTop(24)
                         .Text("Thank you for your business. This document is your official receipt.")
                         .FontSize(8).FontColor("#aaaaaa").Italic();
+
+                    // Platform branding, on the studio's ShowPlatformBranding flag: the consent PDF's
+                    // line and styling (SP-03), since a receipt is a document, not the widget.
+                    if (PlatformBrandingLineText(d) is string brandingLine)
+                    {
+                        col.Item().AlignRight().Text(brandingLine)
+                            .FontSize(8).FontColor("#bbbbbb").Italic();
+                    }
                 });
             });
         }).GeneratePdf();
@@ -179,4 +178,21 @@ public class PaymentInvoiceService : IPaymentInvoiceService
         => d is { ReferenceRate: decimal rate, ReferenceRateDate: DateOnly rateDate }
             ? MoneyText.BankOfAlbaniaRateLine(rate, rateDate)
             : null;
+
+    // The "Payment details" rows, in order. The provider reference is labelled generically: it holds
+    // the provider's order id (POK today), which a client disputing a charge with their bank can quote,
+    // and naming a provider the studio may not use would be wrong. No free-text note row: see
+    // PaymentInvoiceData.
+    internal static IReadOnlyList<(string Label, string Value)> PaymentDetailRows(PaymentInvoiceData d)
+    {
+        List<(string Label, string Value)> rows = [("Method", d.Method), ("Status", d.Status)];
+        if (!string.IsNullOrEmpty(d.ProviderReferenceId))
+            rows.Add(("Payment reference", d.ProviderReferenceId));
+        if (ExchangeRateRowText(d) is string rateRow)
+            rows.Add(("Exchange rate", rateRow));
+        return rows;
+    }
+
+    internal static string? PlatformBrandingLineText(PaymentInvoiceData d)
+        => d.ShowPlatformBranding ? DocumentBranding.GeneratedViaLine : null;
 }
