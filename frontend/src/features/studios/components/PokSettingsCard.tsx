@@ -65,6 +65,10 @@ export function PokSettingsCard() {
           isn't registered there, POK won't be able to approve an account for you — use Cash for
           deposits instead.
         </p>
+        <p className="text-xs text-muted-foreground">
+          Refunds are paid out of your POK Balance. An automatic withdrawal in POK that empties the
+          Balance can leave it negative when a refund lands afterwards.
+        </p>
         {cardDepositsSwitchedOff && (
           <p role="status" className="rounded-md border px-3 py-2 text-xs text-muted-foreground">
             Card deposits aren't switched on in TattooOS yet. You can link your POK account now —

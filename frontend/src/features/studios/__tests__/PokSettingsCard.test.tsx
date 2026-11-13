@@ -72,6 +72,14 @@ describe("PokSettingsCard", () => {
     expect(document.querySelector(step!.targetSelector)).toHaveTextContent(/card deposits — pok/i);
   });
 
+  it("warns that an automatic withdrawal can leave the Balance negative when a refund lands (Q24)", async () => {
+    renderCard();
+    await screen.findByLabelText(/key id/i);
+    expect(screen.getByText(/refunds are paid out of your pok balance/i)).toHaveTextContent(
+      /automatic withdrawal .* can leave it negative when a refund lands afterwards/i,
+    );
+  });
+
   it("connect button is disabled until all three fields are filled", async () => {
     const user = userEvent.setup();
     renderCard();

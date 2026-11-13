@@ -1362,6 +1362,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "If the card says \"Card deposits aren't switched on in TattooOS yet\", you can still link your POK account now. Clients see Cash only until card deposits go live in TattooOS — nothing else is needed from you.",
       "To switch to a different POK account, click \"Reconnect / change account\" and enter the new credentials — this replaces the old ones.",
       "Card deposits settle directly to your own merchant account — TattooOS never takes a commission or fee from any client deposit, card or cash, now or in the future. POK charges you its own card fee; \"Where card deposit money goes\" explains when, how much refunds cost, and where to see every figure.",
+      "The card also reminds you that refunds are paid out of your POK Balance: an automatic withdrawal in POK that empties the Balance can leave it negative when a refund lands afterwards.",
       "POK takes card deposits in ALL and EUR — the two currencies a studio can choose. A studio set up earlier in another currency shows Cash only even after you connect, until it switches to ALL or EUR.",
       "Lost your Key Secret? POK only shows it once. Create a new API key in POK, reconnect here with the new values, then delete the old key in POK.",
       "If connecting says our secure key store is temporarily unavailable, nothing was saved — wait a few minutes and connect again. While that lasts, clients see card payments as temporarily unavailable and can still pay in cash; your stored keys aren't affected.",
@@ -1382,13 +1383,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Where card deposit money goes (POK fees, refunds, payouts)",
     route: "/payments",
-    keywords: ["pok fee", "card fee", "commission", "bank commission", "net amount", "frozen balance", "where is my money", "payout", "withdraw", "transfer to bank", "refund cost", "fees", "total received"],
+    keywords: ["pok fee", "card fee", "commission", "bank commission", "net amount", "frozen balance", "where is my money", "payout", "withdraw", "transfer to bank", "automatic withdrawal", "recurring transfer", "negative balance", "refund cost", "fees", "total received"],
     summary: "Card deposits go from the client's card straight to your own POK account — TattooOS never holds or touches the money. POK charges you its card fee when a deposit is charged. Here's what happens at each step, what refunds cost, and where to check every figure.",
     steps: [
       "The client pays: POK charges the client's card for the deposit straight away, and the amount reaches your Balance in POK Business, minus POK's card fee. There's nothing for you to capture.",
       "If the client cancels, TattooOS refunds what your cancellation policy gives back (all of it with enough notice) to the client's card through POK.",
       "To check any payment, open POK Business → Transactions and click it: \"Paid Amount\" is what the client paid, \"Bank commission\" is POK's fee, and \"Total received\" is what reached your Balance.",
-      "Your Balance is your money and can be paid out. In POK Business, add your bank account once under Accounts → Bank Accounts, then open \"Withdraw money\" (or \"Transfer to bank\" on the Dashboard), enter the amount, pick the account and click \"Transfer\" — or set up a \"Recurring transfer\" for automatic payouts. POK decides when transfers arrive and whether it charges for them.",
+      "Your Balance is your money and can be paid out. In POK Business, add your bank account once under Accounts → Bank Accounts, then open \"Withdraw money\" (or \"Transfer to bank\" on the Dashboard), enter the amount, pick the account and click \"Transfer\". POK decides when transfers arrive and whether it charges for them.",
+    ],
+    warnings: [
+      "Refunds are paid out of your POK Balance. An automatic withdrawal that empties the Balance can leave it negative when a refund lands afterwards.",
     ],
     tips: [
       "The client pays exactly the deposit shown, with no card surcharge. POK's card fee is paid by you, the studio, out of the deposit. TattooOS takes nothing, card or cash.",
