@@ -90,6 +90,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" }),
   ),
+  // The owner's own artist row: an owner's `?artistId=` is artist mode only when it is this id.
+  http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json({ id: "my-own-artist-id" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));

@@ -44,6 +44,8 @@ const ARTISTS = [
 /** Every GET /appointments, so a test can assert the request rather than the rendering. */
 let requests: URL[] = [];
 let appointments: AppointmentResponse[] = [];
+/** How many times GET /artists/me was asked. */
+let myArtistReads = 0;
 
 const server = setupServer(
   http.get("http://localhost/api/v1/appointments", ({ request }) => {
@@ -51,13 +53,18 @@ const server = setupServer(
     return HttpResponse.json(appointments);
   }),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json(ARTISTS)),
+  // The owner's own artist row. An owner's `?artistId=` is artist mode only when it equals this id.
+  http.get("http://localhost/api/v1/artists/me", () => {
+    myArtistReads += 1;
+    return HttpResponse.json({ ...ARTISTS[0], id: "my-own-artist-id", firstName: "Owner", lastName: "Self" });
+  }),
   http.get("http://localhost/api/v1/reminders", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/studios/me", () =>
     HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => { server.resetHandlers(); cleanup(); requests = []; appointments = []; });
+afterEach(() => { server.resetHandlers(); cleanup(); requests = []; appointments = []; myArtistReads = 0; });
 afterAll(() => server.close());
 
 function LocationProbe() {
@@ -175,6 +182,50 @@ describe("SchedulePage scope (E05c, O03)", () => {
     expect(await screen.findByTestId("schedule-scope")).toHaveTextContent(/your own appointments \(your artist view\)/i);
     expect(screen.queryByLabelText(/^artist$/i)).not.toBeInTheDocument();
     await waitFor(() => expect(lastRequest().searchParams.get("artistId")).toBe("my-own-artist-id"));
+  });
+
+  // ── An owner's `?artistId=` must be their own artist id (13 Nov, pre-go-live) ────────────────────
+  // Presence used to be enough, so a typed-in colleague's id gave artist mode on their behalf: Quick
+  // reminder (which sends in that artist's name) and the Availability link.
+
+  it("an owner with ANOTHER artist's id in ?artistId= gets the plain owner view, not that artist's mode", async () => {
+    renderSchedule(Role.Owner, "/schedule?artistId=a-bea");
+    expect(await screen.findByTestId("schedule-scope")).toHaveTextContent(/every artist's appointments/i);
+    expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /availability/i })).not.toBeInTheDocument();
+    // The owner's own filter is offered, as in any plain owner view.
+    expect(await screen.findByLabelText(/^artist$/i)).toHaveDisplayValue("All artists (whole studio)");
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
+    // Nothing is fetched in the other artist's name: no request ever carried their id.
+    expect(requests.every((r) => !r.searchParams.has("artistId"))).toBe(true);
+  });
+
+  it("an owner with no artist profile (404 on /artists/me) gets the plain owner view whatever ?artistId= says", async () => {
+    server.use(http.get("http://localhost/api/v1/artists/me", () => HttpResponse.json({}, { status: 404 })));
+    renderSchedule(Role.Owner, "/schedule?artistId=a-ana");
+    expect(await screen.findByTestId("schedule-scope")).toHaveTextContent(/every artist's appointments/i);
+    expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /availability/i })).not.toBeInTheDocument();
+  });
+
+  it("an owner with their OWN id keeps artist mode: Quick reminder and the Availability link with their id", async () => {
+    renderSchedule(Role.Owner, "/schedule?artistId=my-own-artist-id");
+    expect(await screen.findByRole("button", { name: /quick reminder/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /availability/i }))
+      .toHaveAttribute("href", "/schedule/availability?artistId=my-own-artist-id");
+    // The first appointments request already carries the owner's own id: no studio-wide read first.
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
+    expect(requests[0].searchParams.get("artistId")).toBe("my-own-artist-id");
+  });
+
+  it("an admin is unaffected: ?artistId= is still a plain filter, and /artists/me isn't asked", async () => {
+    renderSchedule(Role.Admin, "/schedule?artistId=a-bea");
+    await waitFor(() =>
+      expect(screen.getByTestId("schedule-scope")).toHaveTextContent(/bea kola.s appointments only/i));
+    await waitFor(() => expect(requests.length).toBeGreaterThan(0));
+    expect(requests[0].searchParams.get("artistId")).toBe("a-bea");
+    expect(screen.queryByRole("button", { name: /quick reminder/i })).not.toBeInTheDocument();
+    expect(myArtistReads).toBe(0);
   });
 
   it("the export button says it covers every artist while a filter is on", async () => {

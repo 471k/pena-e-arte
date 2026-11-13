@@ -10,9 +10,10 @@ import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import { useGetAppointmentsQuery } from "../appointmentsApi";
+import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { AppointmentCard } from "./AppointmentCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
-import { resolveScheduleScope, withArtistFilter } from "../scheduleScope";
+import { ARTIST_MODE_PARAM, resolveScheduleScope, withArtistFilter } from "../scheduleScope";
 import { ScheduleScopeBar } from "./ScheduleScopeBar";
 
 function SchedulePageSkeleton() {
@@ -66,7 +67,13 @@ export function SchedulePage() {
   // the param). `?artist=` is an owner's or admin's filter to one artist. Both reach the server as
   // `artistId`; the scope bar says which is in force.
   const [searchParams, setSearchParams] = useSearchParams();
-  const { scope, requestArtistId, isOwnerInArtistMode } = resolveScheduleScope(role, searchParams);
+  // Artist mode needs `?artistId=` to be the owner's own artist id, so an owner arriving with one is
+  // checked against /artists/me (OwnerLayout has usually fetched it already). No artist profile (404)
+  // or a different id gives the plain owner view.
+  const checksOwnArtist = role === Role.Owner && !!searchParams.get(ARTIST_MODE_PARAM);
+  const { data: myArtist, isLoading: myArtistLoading } = useGetMyArtistQuery(undefined, { skip: !checksOwnArtist });
+  const ownArtistPending = checksOwnArtist && myArtistLoading;
+  const { scope, requestArtistId, isOwnerInArtistMode } = resolveScheduleScope(role, searchParams, myArtist?.id);
   const artistId = isOwnerInArtistMode ? requestArtistId : undefined;
   // Raw-contact reminders need an ArtistId. The backend infers it for an artist caller; an owner
   // has to name one. An owner in their own Artist view carries it in the URL (`?artistId=`), so
@@ -100,7 +107,7 @@ export function SchedulePage() {
     from: weekStart.toISOString(),
     to:   weekEnd.toISOString(),
     artistId: requestArtistId,
-  });
+  }, { skip: ownArtistPending });
 
   const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments. Please try again.");
 
@@ -116,6 +123,9 @@ export function SchedulePage() {
   const weekHasAppointments = days.some((day) =>
     (appointments ?? []).some((a) => isSameDay(new Date(a.date), day))
   );
+
+  // Until the owner's own artist id is known, neither the scope nor the header's buttons are settled.
+  if (ownArtistPending) return <SchedulePageSkeleton />;
 
   return (
     <div className="min-h-screen bg-background">
