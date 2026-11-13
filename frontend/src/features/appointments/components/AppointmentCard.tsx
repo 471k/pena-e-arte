@@ -25,6 +25,11 @@ import { Money } from "@/shared/components/Money";
 
 interface AppointmentCardProps {
   appointment: AppointmentResponse;
+  /**
+   * Name the artist, or say "Unassigned" (E05c, O03). The schedule turns this on only when its view spans
+   * several artists; one artist's own schedule would just repeat their name on every card.
+   */
+  showArtist?: boolean;
 }
 
 const TERMINAL_STATUSES = new Set<AppointmentStatus>([
@@ -46,7 +51,7 @@ function formatTime(dateStr: string, studioTimezone: string | undefined): string
     [], withStudioTimeZone({ hour: "2-digit", minute: "2-digit" }, studioTimezone));
 }
 
-export function AppointmentCard({ appointment }: AppointmentCardProps) {
+export function AppointmentCard({ appointment, showArtist = false }: AppointmentCardProps) {
   const navigate      = useNavigate();
   const isArtistPlus  = usePermission(Role.Artist);
   const canOwner      = usePermission(Role.Owner);
@@ -127,6 +132,15 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               </span>
             )}
           </div>
+          {showArtist && (
+            <p className="text-xs" data-testid="appointment-card-artist">
+              {appointment.artistId === null ? (
+                <span className="font-medium text-warning-text">Unassigned</span>
+              ) : (
+                <span className="text-muted-foreground">Artist: {appointment.artistName ?? "Assigned"}</span>
+              )}
+            </p>
+          )}
           {hasDeposit && (
             <div className="text-xs text-muted-foreground flex items-center gap-1.5">
               <span>

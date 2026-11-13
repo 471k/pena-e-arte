@@ -1650,17 +1650,20 @@ ol.steps li { margin: 6px 0; }
 <text x="16" y="25" font-size="10" font-weight="700">Schedule · Clients · Designs · Intake · Consent · Deposit Rules · Notifications</text>
 <rect x="0" y="40" width="760" height="34" fill="currentColor" fill-opacity="0.03"/>
 <text x="300" y="61" font-size="10">‹  1 Jul 2026 – 7 Jul 2026  ›</text><text x="500" y="61" font-size="9">Today</text>
-<text x="20" y="100" font-size="11" font-weight="700">Mon <tspan fill-opacity="0.5">1 Jul</tspan></text>
-<rect x="20" y="108" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="30" y="127" font-size="9">10:00 – Jane Doe · 60 min</text>
-<rect x="410" y="112" width="55" height="16" rx="8" fill="#facc15" fill-opacity="0.5"/><text x="418" y="123" font-size="7">Requested</text>
-<text x="20" y="170" font-size="11" font-weight="700">Tue <tspan fill-opacity="0.5">2 Jul</tspan></text>
-<text x="30" y="190" font-size="9" fill-opacity="0.5">No appointments</text>
+<rect x="0" y="74" width="760" height="24" fill="currentColor" fill-opacity="0.02"/>
+<text x="20" y="90" font-size="9" fill-opacity="0.7">Showing <tspan font-weight="700">your own appointments</tspan>.</text>
+<text x="20" y="124" font-size="11" font-weight="700">Mon <tspan fill-opacity="0.5">1 Jul</tspan></text>
+<rect x="20" y="132" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="30" y="151" font-size="9">10:00 – Jane Doe · 60 min</text>
+<rect x="410" y="136" width="55" height="16" rx="8" fill="#facc15" fill-opacity="0.5"/><text x="418" y="147" font-size="7">Requested</text>
+<text x="20" y="194" font-size="11" font-weight="700">Tue <tspan fill-opacity="0.5">2 Jul</tspan></text>
+<text x="30" y="214" font-size="9" fill-opacity="0.5">No appointments</text>
 </svg>
 </figure>
-<figcaption>Schedule — one section per day of the active week, with day-by-day navigation</figcaption>
+<figcaption>Schedule — the line under the header says whose appointments these are (yours); one section per day of the active week</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
+<li>The line under the header reads <span class="step-title">Showing your own appointments</span>: the schedule only ever shows sessions assigned to you. (An owner in their Artist view sees "your artist view" there.)</li>
 <li>Use <span class="step-title">‹ ›</span> to move between weeks, or <span class="step-title">Today</span> to jump back to the current week.</li>
 <li>Click <span class="step-title">Availability</span> to set your <a href="#artist-availability">working hours and time off</a>.</li>
 <li>Click an appointment card to open its full detail, or use the inline <span class="step-title">Confirm</span> / <span class="step-title">Complete</span> / no-show / cancel buttons directly on the card.</li>
@@ -2253,8 +2256,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Click <span class="step-title">Add artist</span> to go straight to the new-artist form.</li>
 <li>Click <span class="step-title">Set rule</span> to create your first deposit rule.</li>
-<li>Your opening hours start as the Mon–Fri, 9:00–18:00 schedule set when you registered. Click <span class="step-title">Check hours</span> to review them in Studio Settings (saving them there counts as checking), or <span class="step-title">They're right</span> if they already are.</li>
-<li>How artists get paid starts as commission with no rate, so commission artists can't see their share yet. Click <span class="step-title">Set pay model</span> and save your terms in Studio Settings (see <a href="#owner-artist-pay-model">How artists get paid</a>). There's no <span class="step-title">They're right</span> for this step: commission with no rate can't give anyone a share.</li>
+<li>Your opening hours start as the Mon–Fri, 9:00–18:00 schedule set when you registered. Click <span class="step-title">Check hours</span> to review them in Studio Settings, which opens at <span class="step-title">Hours and closures</span> (saving them there counts as checking), or <span class="step-title">They're right</span> if they already are.</li>
+<li>How artists get paid starts as commission with no rate, so commission artists can't see their share yet. Click <span class="step-title">Set pay model</span> (it opens Studio Settings at <span class="step-title">Payments and artist pay</span>) and save your terms in Studio Settings (see <a href="#owner-artist-pay-model">How artists get paid</a>). There's no <span class="step-title">They're right</span> for this step: commission with no rate can't give anyone a share.</li>
 </ol>
 <p>If your studio has no opening hours at all, the step shows <span class="step-title">Set hours</span> and stays until you add some: clients can't book without them, so it can't be ticked off any other way.</p>
 <div class="crosslinks">See also: <a href="#owner-create-artist">Add artist</a>, <a href="#owner-create-deposit-rule">Create deposit rule</a></div>
@@ -2851,30 +2854,37 @@ ol.steps li { margin: 6px 0; }
 <section id="owner-schedule" data-role="owner">
 <h2><span class="role-badge role-owner">Owner</span> Schedule</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
-<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own appointments)</td></tr><tr><td>Owner</td><td>✓ (whole studio)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Identical screen to <a href="#artist-schedule">the artist's weekly schedule</a>, at <code>/schedule</code>, but shows every artist's appointments across the studio.</p>
+<tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own appointments)</td></tr><tr><td>Owner</td><td>✓ (whole studio, or one artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
+<p>The same weekly list as <a href="#artist-schedule">the artist's schedule</a>, at <code>/schedule</code>, showing every artist's appointments across the studio — or one artist's, picked from the <span class="step-title">Artist</span> dropdown. A line under the header always says which you're looking at.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Owner schedule wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="10" font-weight="700">Dashboard · Schedule · Artists · Clients · Designs · Payments · Billing · Studio Settings</text>
 <rect x="0" y="40" width="760" height="34" fill="currentColor" fill-opacity="0.03"/>
-<text x="300" y="61" font-size="10">‹  1 Jul 2026 – 7 Jul 2026  ›</text>
-<text x="20" y="100" font-size="11" font-weight="700">Mon 1 Jul</text>
-<rect x="20" y="108" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="30" y="127" font-size="9">10:00 – Jane Doe · Elena Martins · 60 min</text>
-<rect x="20" y="146" width="500" height="30" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="30" y="165" font-size="9">14:00 – Marco Rossi · 90 min</text>
-<rect x="440" y="152" width="70" height="18" rx="9" fill="#f59e0b" fill-opacity="0.15"/><text x="475" y="165" font-size="7" text-anchor="middle" fill="#b45309">Needs artist</text>
+<text x="300" y="61" font-size="10">‹  1 Jul 2026 – 7 Jul 2026  ›</text><text x="640" y="61" font-size="9">Export CSV</text>
+<rect x="0" y="74" width="760" height="30" fill="currentColor" fill-opacity="0.02"/>
+<text x="20" y="93" font-size="9" fill-opacity="0.6">Artist</text>
+<rect x="56" y="80" width="150" height="18" rx="4" fill="none" stroke="currentColor" stroke-opacity="0.3"/><text x="62" y="93" font-size="8">All artists (whole studio) ▾</text>
+<text x="220" y="93" font-size="8" fill-opacity="0.7">Showing <tspan font-weight="700">every artist's appointments</tspan> and requests with no artist yet. All of them are under Needs you on your <tspan text-decoration="underline">Dashboard</tspan>.</text>
+<text x="20" y="130" font-size="11" font-weight="700">Mon 1 Jul</text>
+<rect x="20" y="138" width="500" height="40" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="30" y="155" font-size="9">10:00 – Jane Doe · 60 min</text><text x="30" y="170" font-size="8" fill-opacity="0.6">Artist: Elena Martins</text>
+<rect x="20" y="186" width="500" height="40" rx="4" fill="currentColor" fill-opacity="0.05"/>
+<text x="30" y="203" font-size="9">14:00 – Marco Rossi · 90 min</text><text x="30" y="218" font-size="8" font-weight="700" fill="#b45309">Unassigned</text>
+<rect x="440" y="192" width="70" height="18" rx="9" fill="#f59e0b" fill-opacity="0.15"/><text x="475" y="205" font-size="7" text-anchor="middle" fill="#b45309">Needs artist</text>
 </svg>
 </figure>
-<figcaption>Owner schedule — same weekly-list layout, studio-wide scope; unassigned studio-choice bookings show a "Needs artist" badge</figcaption>
+<figcaption>Owner schedule — the Artist dropdown and the line beside it say whose appointments these are; in the whole-studio view each card names its artist or reads "Unassigned"</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Navigate weeks, click any appointment for full detail or use inline status actions.</li>
-<li>A <span class="step-title">Needs artist</span> badge marks a Pending appointment where the client let the studio choose — open it and assign an artist before it can be confirmed.</li>
-<li>Click <span class="step-title">Export CSV</span> to download a spreadsheet-ready copy of your appointments.</li>
+<li>Read the line under the header: <span class="step-title">Showing every artist's appointments</span> for the whole studio, or <span class="step-title">Showing [artist's name]'s appointments only</span> when you've picked one artist.</li>
+<li>To see one artist's week, pick them from the <span class="step-title">Artist</span> dropdown; choose <span class="step-title">All artists (whole studio)</span> to go back. The page address changes with your choice (<code>/schedule?artist=…</code>), so a link to one artist's schedule can be bookmarked or shared. The choice isn't remembered: opening Schedule from the menu shows the whole studio again.</li>
+<li>Navigate weeks, click any appointment for full detail or use inline status actions. In the whole-studio view each card names its artist, or reads <span class="step-title">Unassigned</span>.</li>
+<li>A <span class="step-title">Needs artist</span> badge marks a Pending appointment where the client let the studio choose — open it and assign an artist before it can be confirmed. Every request with no artist is listed under Needs you on your Dashboard; the schedule links there rather than counting them a second time. Picking one artist leaves them out, and the line says so.</li>
+<li>Click <span class="step-title">Export CSV</span> to download a spreadsheet-ready copy of your appointments. The export always covers every artist; while you've picked one, the button reads <span class="step-title">Export CSV (all artists)</span>.</li>
 </ol>
 <div class="callout callout-tip"><strong>Going back:</strong> the back arrow, and cancelling, return you to the page you came from. If you opened the appointment from an email, a notification or a new tab, they take you to your Schedule instead of leaving TattooOS.</div>
+<div class="callout callout-tip"><strong>A filter, not a change of identity:</strong> picking an artist only narrows the list. It doesn't let you send Quick Reminders as them or change their hours; those stay in your own Artist view (for your own profile) and on each artist's profile.</div>
 <div class="crosslinks">See also: <a href="#artist-schedule">Artist: weekly schedule</a>, <a href="#owner-appointment-detail">Appointment detail</a></div>
 </section>
 
@@ -3138,7 +3148,7 @@ ol.steps li { margin: 6px 0; }
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Card deposits — POK card wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
-<text x="16" y="25" font-size="12" font-weight="700">Studio Profile</text>
+<text x="16" y="25" font-size="12" font-weight="700">Studio Settings · Payments and artist pay</text>
 <rect x="200" y="60" width="360" height="300" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
 <text x="220" y="88" font-size="11" font-weight="700">💳 Card deposits — POK</text>
 <text x="220" y="108" font-size="8" fill-opacity="0.6">Connect your studio's own POK merchant account to accept card deposits.</text>
@@ -3154,7 +3164,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>In your POK merchant dashboard, open <span class="step-title">E-payments → API Keys</span>.</li>
 <li>Create an API key (enter a Tag and a Description, then confirm). POK then shows your <span class="step-title">Merchant ID</span>, <span class="step-title">Key ID</span> and <span class="step-title">Key Secret</span> once — copy all three before you close that window.</li>
-<li>In TattooOS, go to Studio Profile and find the <span class="step-title">Card deposits — POK</span> section.</li>
+<li>In TattooOS, go to Studio Settings, open <span class="step-title">Payments and artist pay</span>, and find the <span class="step-title">Card deposits — POK</span> card.</li>
 <li>Paste your Merchant ID, Key ID and Key Secret, then click <span class="step-title">Connect</span>. The card then shows <strong>Connected</strong> with your Merchant ID.</li>
 </ol>
 <div class="callout callout-tip"><strong>Not switched on yet?</strong> If the card says "Card deposits aren't switched on in TattooOS yet", you can still link your POK account now. Clients see Cash only until card deposits go live in TattooOS — nothing else is needed from you.</div>
@@ -3334,34 +3344,60 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Studio profile</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The studio settings hub at <code>/studios/me</code>: name, street address, phone, business tax ID (NIPT), location, country, and timezone at the top (URL slug in its own card above), followed by a Currency card, a Social Media card, a Card deposits — POK card, then branding, studio hours, QR code, embed code, referral, notification preference, and recent-activity cards below.</p>
+<p>The studio settings hub at <code>/studios/me</code>, grouped by the job being set up. Each group is a heading you click to open or close; the cards inside are the same ones, and each still saves on its own. <span class="step-title">Business details</span> is open when you arrive; the others start closed, and a link that names a group (the <a href="#owner-setup-checklist">setup checklist</a>, the tour, Help's "Go to page") opens that group for you.</p>
+<table class="access-table"><tr><th>Group</th><th>What's in it</th></tr>
+<tr><td>Business details</td><td>Studio URL, the studio details form (name, phone, NIPT, street address, country, map location, timezone), <a href="#owner-social-verification">Social Media</a></td></tr>
+<tr><td>Hours and closures</td><td>Studio hours, Studio closures</td></tr>
+<tr><td>Payments and artist pay</td><td><a href="#owner-studio-currency">Currency</a>, Card deposits — POK, <a href="#owner-artist-pay-model">How artists get paid</a></td></tr>
+<tr><td>Online booking</td><td><a href="#owner-embed">Booking widget</a>, <a href="#owner-branding">Platform branding</a> (the "Powered by TattooOS" line on the widget), Marketing QR code</td></tr>
+<tr><td>Notifications</td><td><a href="#owner-notifications-prefs">Notification preferences</a></td></tr>
+<tr><td>Integrations</td><td>Developer — API access, Developer — Webhooks</td></tr>
+<tr><td>Referral programme</td><td><a href="#owner-referral">Referral programme</a></td></tr>
+<tr><td>Recent activity</td><td>Recent studio activity</td></tr>
+</table>
 <figure class="wireframe">
-<svg viewBox="0 0 760 520" role="img" aria-label="Studio profile wireframe">
+<svg viewBox="0 0 760 520" role="img" aria-label="Studio settings groups wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
 <text x="16" y="25" font-size="11" font-weight="700">Studio Settings</text>
-<rect x="260" y="56" width="240" height="26" rx="4" fill="currentColor" fill-opacity="0.04"/>
-<text x="270" y="73" font-size="8">Studio URL: ink-and-soul · Edit</text>
-<rect x="260" y="90" width="240" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="280" y="112" font-size="11" font-weight="700">Studio details</text>
-<text x="280" y="130" font-size="8" fill-opacity="0.6">Studio name</text><rect x="280" y="136" width="200" height="18" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="280" y="164" font-size="8" fill-opacity="0.6">Phone (country + number) · Instagram</text>
-<text x="280" y="184" font-size="8" fill-opacity="0.6">Location (map picker) · Country</text>
-<rect x="280" y="190" width="200" height="60" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<rect x="260" y="300" width="240" height="34" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="272" y="316" font-size="9" font-weight="700">Currency</text><text x="272" y="328" font-size="8" fill-opacity="0.6">Albanian Lek (ALL) · Save</text>
-<rect x="260" y="344" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="360" font-size="8">Branding</text>
-<rect x="260" y="374" width="240" height="24" rx="4" fill="currentColor" fill-opacity="0.03"/><text x="272" y="390" font-size="8">QR code · Embed code · Referral</text>
+<rect x="200" y="54" width="360" height="452" rx="8" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="74" font-size="10" font-weight="700">Business details</text><text x="540" y="74" font-size="9">▴</text>
+<text x="214" y="87" font-size="7" fill-opacity="0.6">Studio URL, name, address, map location, timezone and social accounts</text>
+<rect x="214" y="96" width="332" height="20" rx="4" fill="currentColor" fill-opacity="0.04"/><text x="222" y="110" font-size="8">Studio URL: ink-and-soul · Edit</text>
+<rect x="214" y="122" width="332" height="118" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="224" y="140" font-size="9" font-weight="700">Studio details</text>
+<text x="224" y="156" font-size="7" fill-opacity="0.6">Studio name · Phone · NIPT · Street address · Country</text>
+<rect x="224" y="164" width="312" height="44" rx="4" fill="currentColor" fill-opacity="0.05"/><text x="232" y="190" font-size="7" fill-opacity="0.6">Location (map picker)</text>
+<text x="224" y="226" font-size="7" fill-opacity="0.6">Timezone · Save changes</text>
+<rect x="214" y="246" width="332" height="22" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/><text x="224" y="261" font-size="8" font-weight="700">Social Media</text>
+<line x1="200" y1="280" x2="560" y2="280" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="298" font-size="10" font-weight="700">Hours and closures</text><text x="540" y="298" font-size="9">▾</text>
+<text x="214" y="310" font-size="7" fill-opacity="0.6">When clients can book, and dates the whole studio is closed</text>
+<line x1="200" y1="318" x2="560" y2="318" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="336" font-size="10" font-weight="700">Payments and artist pay</text><text x="540" y="336" font-size="9">▾</text>
+<text x="214" y="348" font-size="7" fill-opacity="0.6">Currency, card deposits with POK, and how artists get paid</text>
+<line x1="200" y1="356" x2="560" y2="356" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="374" font-size="10" font-weight="700">Online booking</text><text x="540" y="374" font-size="9">▾</text>
+<line x1="200" y1="386" x2="560" y2="386" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="404" font-size="10" font-weight="700">Notifications</text><text x="540" y="404" font-size="9">▾</text>
+<line x1="200" y1="416" x2="560" y2="416" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="434" font-size="10" font-weight="700">Integrations</text><text x="540" y="434" font-size="9">▾</text>
+<line x1="200" y1="446" x2="560" y2="446" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="464" font-size="10" font-weight="700">Referral programme</text><text x="540" y="464" font-size="9">▾</text>
+<line x1="200" y1="476" x2="560" y2="476" stroke="currentColor" stroke-opacity="0.15"/>
+<text x="214" y="494" font-size="10" font-weight="700">Recent activity</text><text x="540" y="494" font-size="9">▾</text>
 </svg>
 </figure>
-<figcaption>Studio profile — settings cards stack vertically below the main details form</figcaption>
-<h3>Steps (in page order)</h3>
+<figcaption>Studio Settings — eight groups by job; Business details is open on arrival, each other group opens when you click its name</figcaption>
+<h3>Steps</h3>
 <ol class="steps">
-<li>Edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
+<li>Click a group's name to open it, and again to close it. Groups don't stay open between visits.</li>
+<li>Under <span class="step-title">Business details</span>, edit your <span class="step-title">Studio URL</span> slug (one-time only — it locks after the first change).</li>
 <li>Update <span class="step-title">Studio name</span>, <span class="step-title">Street address</span> (stays in sync with the map below — type an address to move the pin, or drag the pin to update the address), <span class="step-title">Phone</span> (the country prefix follows your studio's country; change it if needed, then type the number), <span class="step-title">Country</span> (in this and the phone-prefix dropdown, typing a country's first letters jumps to it), and <span class="step-title">Timezone</span> (controls how appointment times are shown in emails, texts, and reports; each option shows its UTC offset and a readable name, your country's zones are listed first under "Suggested", and typing a city's first letters jumps to it), then <span class="step-title">Save changes</span>.</li>
 <li>New studios and artists start with the country, phone prefix, currency and timezone filled in from your location (your internet connection's location, or your browser's settings). Check them and change any that are wrong.</li>
-<li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
-<li>In the <span class="step-title">Currency</span> card, choose the currency your studio prices and takes payments in — see <a href="#owner-studio-currency">Your studio's currency</a> below.</li>
-<li>Below: <a href="#owner-social-verification">Social Media</a> (connect/verify Instagram, TikTok, Facebook, X, YouTube), <span class="step-title">Card deposits — POK</span> (paste your studio's own POK <span class="step-title">Key ID</span>, <span class="step-title">Key Secret</span>, and <span class="step-title">Merchant ID</span> from your POK dashboard's API Keys section, then <span class="step-title">Connect</span> — every studio brings its own POK account, there is no shared platform account, and card deposits stay unavailable to clients until this is connected; card or cash, TattooOS never takes a commission or fee from a client's deposit), <a href="#owner-branding">Branding</a>, <span class="step-title">Studio hours</span> (weekly opening hours — clients can only book within these, regardless of any individual artist's own working hours; a default Mon–Fri, 9am–6pm schedule is applied automatically at registration; studio hours, artists' hours, closures and time off all follow your studio's timezone, all year round), QR code (its link uses your public address on <code>tattooos.co</code>), <a href="#owner-embed">Embed code</a>, <a href="#owner-referral">Referral programme</a>, <a href="#owner-notifications-prefs">Notification preferences</a>, and "Recent studio activity" cards.</li>
+<li>If you haven't added your <span class="step-title">Business tax ID (NIPT)</span> yet, a banner prompts you to add it — its <span class="step-title">Add now</span> opens Business details and puts you in the field. Format is one letter, 8 digits, one letter (e.g. L01234567A). Once saved, the field becomes read-only; contact support to change it. It's never shown to clients.</li>
+<li><span class="step-title">Hours and closures</span>: <span class="step-title">Studio hours</span> (weekly opening hours — clients can only book within these, regardless of any individual artist's own working hours; a default Mon–Fri, 9am–6pm schedule is applied automatically at registration; studio hours, artists' hours, closures and time off all follow your studio's timezone, all year round) and <span class="step-title">Studio closures</span> (dates the whole studio is shut).</li>
+<li><span class="step-title">Payments and artist pay</span>: the <span class="step-title">Currency</span> card (see <a href="#owner-studio-currency">Your studio's currency</a>), <span class="step-title">Card deposits — POK</span> (paste your studio's own POK <span class="step-title">Key ID</span>, <span class="step-title">Key Secret</span>, and <span class="step-title">Merchant ID</span> from your POK dashboard's API Keys section, then <span class="step-title">Connect</span> — every studio brings its own POK account, there is no shared platform account, and card deposits stay unavailable to clients until this is connected; card or cash, TattooOS never takes a commission or fee from a client's deposit), and <a href="#owner-artist-pay-model">How artists get paid</a>.</li>
+<li><span class="step-title">Online booking</span>: <a href="#owner-embed">Booking widget</a>, <a href="#owner-branding">Platform branding</a>, and the Marketing QR code (its link uses your public address on <code>tattooos.co</code>). <span class="step-title">Notifications</span>: <a href="#owner-notifications-prefs">Notification preferences</a>. <span class="step-title">Integrations</span>: API access and webhooks. Then <a href="#owner-referral">Referral programme</a> and "Recent studio activity".</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> the studio URL slug can only be changed once — choose carefully. Changing currency doesn't convert your prices — the numbers stay the same and are read in the new currency; review your services, deposit rules, packages and gift-card amounts after changing. Use your POK <em>production</em> credentials, not the staging/sandbox pair — sandbox keys will not process real payments, and your Key Secret is never shown again after you connect. POK only opens merchant accounts for businesses registered in Albania — if your studio isn't registered there, you won't be able to get POK credentials to connect, and should use Cash for deposits instead.</div>
 <div class="crosslinks">See also: <a href="#guest-studio-portfolio">Guest: studio profile page</a>, <a href="#admin-audit-log">Admin: audit log</a>, <a href="#owner-studio-currency">Your studio's currency</a>, <a href="#owner-social-verification">Verify social media accounts</a>, <a href="#owner-payments">Payment list</a></div>
@@ -3371,7 +3407,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> How artists get paid</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗ (sees their own share and arrangement on My Earnings)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>The <span class="step-title">How artists get paid</span> card in Studio Settings sets how your artists are paid unless an artist has their own terms. It decides the share each artist sees on <a href="#artist-earnings">My Earnings</a>. Nothing is paid out automatically.</p>
+<p>The <span class="step-title">How artists get paid</span> card in Studio Settings (under <span class="step-title">Payments and artist pay</span>) sets how your artists are paid unless an artist has their own terms. It decides the share each artist sees on <a href="#artist-earnings">My Earnings</a>. Nothing is paid out automatically.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 360" role="img" aria-label="How artists get paid card wireframe">
 <rect x="200" y="40" width="360" height="270" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
@@ -3396,7 +3432,7 @@ ol.steps li { margin: 6px 0; }
 </ul>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Open Studio Settings and find <span class="step-title">How artists get paid</span>.</li>
+<li>Open Studio Settings and open <span class="step-title">Payments and artist pay</span>; the <span class="step-title">How artists get paid</span> card is there. The setup checklist's <span class="step-title">Set pay model</span> opens that group for you.</li>
 <li>Pick the arrangement. The rate appears only for commission and the fee only for a flat fee. Saving keeps only the value the arrangement uses, so moving from commission to booth rent and saving clears the rate; enter it again if you move back. The same applies to an artist's own terms.</li>
 <li>Click <span class="step-title">Save artist pay</span>. Saving ticks <span class="step-title">Set how artists get paid</span> off your <a href="#owner-setup-checklist">setup checklist</a>.</li>
 <li>For an artist with a different deal, open their profile, expand <span class="step-title">How this artist gets paid</span>, set their own arrangement, rate or fee, and click <span class="step-title">Save pay terms</span>. Anything left empty uses the studio's terms.</li>
@@ -3410,7 +3446,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Your studio's currency</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>Every studio prices, takes deposits, and gets paid in exactly one currency — Albanian Lek (ALL) or Euro (EUR) — set on the Currency card in Studio Settings (<code>/studios/me</code>). It defaults to ALL when you register (EUR if your country uses the euro), and you can change it until the first payment, gift card, package sale, or booth-rent charge is actually recorded — after that it's locked.</p>
+<p>Every studio prices, takes deposits, and gets paid in exactly one currency — Albanian Lek (ALL) or Euro (EUR) — set on the Currency card in Studio Settings (<code>/studios/me</code>, under <span class="step-title">Payments and artist pay</span>). It defaults to ALL when you register (EUR if your country uses the euro), and you can change it until the first payment, gift card, package sale, or booth-rent charge is actually recorded — after that it's locked.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 200" role="img" aria-label="Currency card wireframe">
 <rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
@@ -3423,7 +3459,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Unlocked — pick a currency and Save; once locked, this becomes a read-only value with a lock icon</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Go to Studio Settings and find the <span class="step-title">Currency</span> card.</li>
+<li>Go to Studio Settings and open <span class="step-title">Payments and artist pay</span>; the <span class="step-title">Currency</span> card is first.</li>
 <li>Pick the currency your studio prices and charges in from the dropdown — Albanian Lek (ALL), the default, or Euro (EUR) — then click <span class="step-title">Save</span>. A confirmation dialog asks you to confirm — existing prices aren't converted, only relabelled in the new currency.</li>
 <li>Once your first payment, gift card, package sale, or booth-rent charge is recorded, the card shows a lock icon and the currency becomes read-only — contact support if it genuinely needs to change.</li>
 <li>From then on, every price, deposit, invoice, receipt, and report in your studio uses this currency.</li>
@@ -3463,7 +3499,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Verify social media accounts</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own profile only — connects, verifies and disconnects their own accounts; view-only on a colleague's profile)</td></tr><tr><td>Owner</td><td>✓ (studio, and any artist)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>The "Social Media" card (Studio Settings) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
+<p>The "Social Media" card (Studio Settings, under Business details) and the artist profile's "Social" tab both use the same mechanism: connect or verify Instagram, TikTok, Facebook, X, and YouTube accounts, so clients see a green "Verified" checkmark next to the handle wherever it's shown — proof it's really the account it claims to be, not something anyone could type into a form.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 220" role="img" aria-label="Social Media card wireframe">
 <rect width="760" height="30" fill="currentColor" fill-opacity="0.06"/>
@@ -3500,7 +3536,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Branding</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A single toggle, on the Studio Settings page, for showing or hiding the "Powered by TattooOS" mark on your public booking widget — hiding it requires a plan that allows branding removal.</p>
+<p>A single toggle, on the Studio Settings page under <span class="step-title">Online booking</span>, for showing or hiding the "Powered by TattooOS" mark on your public booking widget — hiding it requires a plan that allows branding removal.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Branding settings wireframe">
 <rect x="230" y="180" width="300" height="100" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
@@ -3522,7 +3558,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Embed code</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A ready-made <code>&lt;iframe&gt;</code> snippet on the Studio Settings page for pasting your booking widget into your own website.</p>
+<p>A ready-made <code>&lt;iframe&gt;</code> snippet on the Studio Settings page, under <span class="step-title">Online booking</span>, for pasting your booking widget into your own website.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Embed code card wireframe">
 <rect x="200" y="140" width="360" height="180" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
@@ -3548,7 +3584,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Referral programme</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>Generate a shareable referral link on the Studio Settings page — studios that sign up using your code get a free month once they subscribe, and you can track how many have redeemed it.</p>
+<p>Generate a shareable referral link on the Studio Settings page, under <span class="step-title">Referral programme</span> — studios that sign up using your code get a free month once they subscribe, and you can track how many have redeemed it.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Referral programme card wireframe">
 <rect x="200" y="140" width="360" height="200" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
@@ -3659,7 +3695,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Notification preferences</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗ (clients set per-studio prefs instead, see <a href="#client-my-studios">My Studios</a>)</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>A table on the Studio Settings page: for each event type (appointment created, deposit captured, form submitted, etc.), toggle whether Email and/or SMS notifications are sent. A dash means that event isn't sent by that channel.</p>
+<p>A table on the Studio Settings page, under <span class="step-title">Notifications</span>: for each event type (appointment created, deposit captured, form submitted, etc.), toggle whether Email and/or SMS notifications are sent. A dash means that event isn't sent by that channel.</p>
 <p><strong>Card deposit hold ended (to you)</strong> is the one event that goes to you rather than the client: an email and a bell notification when POK ends a deposit's hold before you charged it, so you can ask for the deposit again (see <a href="#owner-payments">Payments</a>). It is sent by email only. Card deposits taken since 22 Oct 2026 are charged when the client pays, so it only concerns older deposits still on hold.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Notification preferences wireframe">

@@ -21,20 +21,8 @@ import { useGetMyStudioQuery, useUpdateMyStudioMutation, useUpdateStudioSlugMuta
 import { useGetVisitorGeoQuery } from "@/features/public/publicApi";
 import { TimezoneSelect } from "@/shared/components/ui/timezone-select";
 import { defaultTimezoneId, suggestedTimezoneIds } from "@/shared/utils/timezones";
-import { CurrencySettingsCard } from "./CurrencySettingsCard";
-import { BrandingSettingsCard } from "./BrandingSettingsCard";
-import { DeveloperSettingsCard } from "./DeveloperSettingsCard";
-import { WebhookSettingsCard } from "./WebhookSettingsCard";
-import { PokSettingsCard } from "./PokSettingsCard";
-import { QrCodeSection } from "./QrCodeSection";
-import { ReferralCodeCard } from "./ReferralCodeCard";
-import { StudioClosuresCard } from "./StudioClosuresCard";
-import { StudioHoursCard } from "./StudioHoursCard";
-import { StudioPayModelCard } from "./StudioPayModelCard";
-import { StudioAuditLogCard } from "./StudioAuditLogCard";
-import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
-import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
-import { EmbedCodeCard } from "./EmbedCodeCard";
+import { StudioSettingsSections } from "./StudioSettingsSections";
+import { useSettingsGroups } from "../useSettingsGroups";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
 import { asPhoneCountry } from "@/shared/utils/phoneCountries";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
@@ -119,6 +107,10 @@ export function StudioProfilePage() {
   const [niptBannerDismissed, setNiptBannerDismissed] = useState(
     () => sessionStorage.getItem("nipt-banner-dismissed") === "true",
   );
+
+  // E05c (O04): the cards are grouped. Business details (this form) is always shown, so the banners'
+  // "Add now" below still lands on a laid-out field.
+  const groups = useSettingsGroups();
 
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const [addressBannerDismissed, setAddressBannerDismissed] = useState(
@@ -317,301 +309,294 @@ export function StudioProfilePage() {
           </Alert>
         )}
 
-        {studio && (
-          <Card>
-            <CardContent className="py-3 px-4 space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-foreground">Studio URL:</span>
-                {!slugEditing ? (
-                  <>
-                    <span className="font-mono text-xs text-foreground/80">{studio.slug}</span>
-                    {studio.slugLockedAt ? (
-                      <span className="text-xs text-muted-foreground italic ml-1">
-                        · locked
+        <StudioSettingsSections
+          groups={groups}
+          profile={
+            <>
+              {studio && (
+                <Card>
+                  <CardContent className="py-3 px-4 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-foreground">Studio URL:</span>
+                      {!slugEditing ? (
+                        <>
+                          <span className="font-mono text-xs text-foreground/80">{studio.slug}</span>
+                          {studio.slugLockedAt ? (
+                            <span className="text-xs text-muted-foreground italic ml-1">
+                              · locked
+                            </span>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => { setSlugInput(studio.slug); setSlugEditing(true); setSlugError(null); }}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Input
+                            value={slugInput}
+                            onChange={(e) => { setSlugInput(e.target.value.toLowerCase()); setSlugError(null); }}
+                            className="h-7 text-xs font-mono w-48"
+                            placeholder="my-studio-slug"
+                            maxLength={60}
+                            aria-label="New studio URL slug"
+                            aria-invalid={!!slugError}
+                            aria-describedby={slugError ? "slug-error" : undefined}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={handleSlugSave}
+                            disabled={slugSaving || !slugInput}
+                          >
+                            {slugSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setSlugEditing(false)}
+                            disabled={slugSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                      <span className="text-foreground/65">·</span>
+                      <span className="text-xs text-foreground/70">
+                        Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
                       </span>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => { setSlugInput(studio.slug); setSlugEditing(true); setSlugError(null); }}
-                      >
-                        Edit
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Input
-                      value={slugInput}
-                      onChange={(e) => { setSlugInput(e.target.value.toLowerCase()); setSlugError(null); }}
-                      className="h-7 text-xs font-mono w-48"
-                      placeholder="my-studio-slug"
-                      maxLength={60}
-                      aria-label="New studio URL slug"
-                      aria-invalid={!!slugError}
-                      aria-describedby={slugError ? "slug-error" : undefined}
-                    />
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={handleSlugSave}
-                      disabled={slugSaving || !slugInput}
-                    >
-                      {slugSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setSlugEditing(false)}
-                      disabled={slugSaving}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-                <span className="text-foreground/65">·</span>
-                <span className="text-xs text-foreground/70">
-                  Registered {new Date(studio.createdAt).toLocaleDateString("en-GB")}
-                </span>
-              </div>
+                    </div>
 
-              {slugError && (
-                <p id="slug-error" className="text-xs text-destructive-text">{slugError}</p>
+                    {slugError && (
+                      <p id="slug-error" className="text-xs text-destructive-text">{slugError}</p>
+                    )}
+
+                    {studio.slugLockedAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Studio URL was changed on {new Date(studio.slugLockedAt).toLocaleDateString("en-GB")}.
+                        URLs can only be changed once.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
-              {studio.slugLockedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Studio URL was changed on {new Date(studio.slugLockedAt).toLocaleDateString("en-GB")}.
-                  URLs can only be changed once.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Studio details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isSuccess && (
-              <p className="text-sm text-success-text mb-4">Changes saved.</p>
-            )}
-            {serverError && (
-              <p className="text-sm text-destructive-text mb-4">{serverError}</p>
-            )}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Studio name</Label>
-                <Input id="name" {...register("name")} aria-invalid={!!errors.name} />
-                {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="phoneNumber">Phone number (optional)</Label>
-                <Controller
-                  control={control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <PhoneInput
-                      id="phoneNumber"
-                      defaultCountry={asPhoneCountry(countryCodeValue || studio?.countryCode)}
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      aria-invalid={!!errors.phoneNumber}
-                      aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
-                    />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Studio details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isSuccess && (
+                    <p className="text-sm text-success-text mb-4">Changes saved.</p>
                   )}
-                />
-                {errors.phoneNumber && (
-                  <p id="phoneNumber-error" className="text-xs text-destructive-text">{errors.phoneNumber.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="nipt">Business tax ID (NIPT)</Label>
-                {studio?.nipt ? (
-                  <>
-                    <Input id="nipt" value={studio.nipt} readOnly className="bg-muted/40 cursor-default font-mono" />
-                    <p className="text-xs text-muted-foreground">Contact support to change.</p>
-                  </>
-                ) : (
-                  <>
-                    <Input
-                      id="nipt"
-                      placeholder="L01234567A"
-                      {...niptRegister}
-                      ref={(el) => {
-                        niptFieldRef(el);
-                        niptInputRef.current = el;
-                      }}
-                      aria-invalid={!!errors.nipt}
-                      aria-describedby="nipt-help"
-                    />
-                    <p id="nipt-help" className="text-xs text-muted-foreground">
-                      Used for invoicing and business verification. Format: one letter, 8 digits, one letter.
-                    </p>
-                    {errors.nipt && (
-                      <p className="text-xs text-destructive-text">{errors.nipt.message}</p>
-                    )}
-                  </>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="addressLine1">Street address</Label>
-                <Input
-                  id="addressLine1"
-                  placeholder="Rruga e Kavajës 10"
-                  {...addressLine1Register}
-                  ref={(el) => {
-                    addressLine1FieldRef(el);
-                    addressInputRef.current = el;
-                  }}
-                  aria-invalid={!!errors.addressLine1}
-                  aria-describedby="addressLine1-help"
-                />
-                <p id="addressLine1-help" className="text-xs text-muted-foreground flex items-center gap-1">
-                  {geocodeStatus === "loading" && (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Locating on the map…
-                    </>
+                  {serverError && (
+                    <p className="text-sm text-destructive-text mb-4">{serverError}</p>
                   )}
-                  {geocodeStatus === "error" &&
-                    "Couldn't find that address automatically — you can also click the map below to set your studio's location."}
-                  {(geocodeStatus === "idle" || geocodeStatus === "success") &&
-                    "Stays in sync with the map below — type an address to move the pin, or drag the pin to update the address."}
-                </p>
-                {errors.addressLine1 && (
-                  <p className="text-xs text-destructive-text">{errors.addressLine1.message}</p>
-                )}
-              </div>
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name">Studio name</Label>
+                      <Input id="name" {...register("name")} aria-invalid={!!errors.name} />
+                      {errors.name && <p className="text-xs text-destructive-text">{errors.name.message}</p>}
+                    </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="addressLine2">Address line 2 (optional)</Label>
-                  <Input id="addressLine2" placeholder="Suite, floor, unit" {...register("addressLine2")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="postalCode">Postal code (optional)</Label>
-                  <Input id="postalCode" {...register("postalCode")} />
-                </div>
-              </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phoneNumber">Phone number (optional)</Label>
+                      <Controller
+                        control={control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                          <PhoneInput
+                            id="phoneNumber"
+                            defaultCountry={asPhoneCountry(countryCodeValue || studio?.countryCode)}
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            aria-invalid={!!errors.phoneNumber}
+                            aria-describedby={errors.phoneNumber ? "phoneNumber-error" : undefined}
+                          />
+                        )}
+                      />
+                      {errors.phoneNumber && (
+                        <p id="phoneNumber-error" className="text-xs text-destructive-text">{errors.phoneNumber.message}</p>
+                      )}
+                    </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="countryCode">Country</Label>
-                <Controller
-                  control={control}
-                  name="countryCode"
-                  render={({ field }) => (
-                    // Radix's hidden native-<select> autofill shim can fire a spurious
-                    // onValueChange("") the first time `value` goes from unset to a real
-                    // code (observed once PHONE_COUNTRIES' ~250 items are registered) —
-                    // there's no real "blank country" option in this list, so an empty
-                    // callback value is always that shim, never a genuine user choice.
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={(v) => { if (v) field.onChange(v); }}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="nipt">Business tax ID (NIPT)</Label>
+                      {studio?.nipt ? (
+                        <>
+                          <Input id="nipt" value={studio.nipt} readOnly className="bg-muted/40 cursor-default font-mono" />
+                          <p className="text-xs text-muted-foreground">Contact support to change.</p>
+                        </>
+                      ) : (
+                        <>
+                          <Input
+                            id="nipt"
+                            placeholder="L01234567A"
+                            {...niptRegister}
+                            ref={(el) => {
+                              niptFieldRef(el);
+                              niptInputRef.current = el;
+                            }}
+                            aria-invalid={!!errors.nipt}
+                            aria-describedby="nipt-help"
+                          />
+                          <p id="nipt-help" className="text-xs text-muted-foreground">
+                            Used for invoicing and business verification. Format: one letter, 8 digits, one letter.
+                          </p>
+                          {errors.nipt && (
+                            <p className="text-xs text-destructive-text">{errors.nipt.message}</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="addressLine1">Street address</Label>
+                      <Input
+                        id="addressLine1"
+                        placeholder="Rruga e Kavajës 10"
+                        {...addressLine1Register}
+                        ref={(el) => {
+                          addressLine1FieldRef(el);
+                          addressInputRef.current = el;
+                        }}
+                        aria-invalid={!!errors.addressLine1}
+                        aria-describedby="addressLine1-help"
+                      />
+                      <p id="addressLine1-help" className="text-xs text-muted-foreground flex items-center gap-1">
+                        {geocodeStatus === "loading" && (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Locating on the map…
+                          </>
+                        )}
+                        {geocodeStatus === "error" &&
+                          "Couldn't find that address automatically — you can also click the map below to set your studio's location."}
+                        {(geocodeStatus === "idle" || geocodeStatus === "success") &&
+                          "Stays in sync with the map below — type an address to move the pin, or drag the pin to update the address."}
+                      </p>
+                      {errors.addressLine1 && (
+                        <p className="text-xs text-destructive-text">{errors.addressLine1.message}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="addressLine2">Address line 2 (optional)</Label>
+                        <Input id="addressLine2" placeholder="Suite, floor, unit" {...register("addressLine2")} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="postalCode">Postal code (optional)</Label>
+                        <Input id="postalCode" {...register("postalCode")} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="countryCode">Country</Label>
+                      <Controller
+                        control={control}
+                        name="countryCode"
+                        render={({ field }) => (
+                          // Radix's hidden native-<select> autofill shim can fire a spurious
+                          // onValueChange("") the first time `value` goes from unset to a real
+                          // code (observed once PHONE_COUNTRIES' ~250 items are registered) —
+                          // there's no real "blank country" option in this list, so an empty
+                          // callback value is always that shim, never a genuine user choice.
+                          <Select
+                            value={field.value ?? ""}
+                            onValueChange={(v) => { if (v) field.onChange(v); }}
+                          >
+                            <SelectTrigger id="countryCode" aria-invalid={!!errors.countryCode}>
+                              <SelectValue placeholder="Select a country" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-72" showScrollbar>
+                              <CountrySelectItems />
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.countryCode && (
+                        <p className="text-xs text-destructive-text">{errors.countryCode.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label>Location</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Click the map or drag the pin to update your studio location.
+                      </p>
+                      {/* key forces remount once studio data arrives so the pin initialises correctly */}
+                      <LocationPicker
+                        key={studio ? `${studio.latitude},${studio.longitude}` : "unset"}
+                        value={
+                          latValue != null && !isNaN(latValue) && lngValue != null && !isNaN(lngValue)
+                            ? { lat: latValue, lng: lngValue, city: cityValue ?? "" }
+                            : undefined
+                        }
+                        onChange={({ lat, lng, city, streetAddress }) => {
+                          setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
+                          setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
+                          setValue("city",      city, { shouldDirty: true, shouldValidate: true });
+                          if (streetAddress) {
+                            pinDrivenAddressUpdate.current = true;
+                            setValue("addressLine1", streetAddress, { shouldDirty: true, shouldValidate: true });
+                          }
+                        }}
+                        error={
+                          errors.latitude?.message ??
+                          errors.longitude?.message ??
+                          errors.city?.message
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="timezone">Timezone</Label>
+                      <Controller
+                        control={control}
+                        name="timezone"
+                        render={({ field }) => (
+                          <TimezoneSelect
+                            id="timezone"
+                            value={field.value}
+                            onChange={(tz) => field.onChange(tz)}
+                            countryCode={countryCodeValue}
+                            ipCountry={visitorGeo?.countryCode}
+                            ipTimezone={visitorGeo?.timeZone}
+                            aria-invalid={!!errors.timezone}
+                          />
+                        )}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Appointment times in emails, texts, and reports are shown in this timezone.
+                      </p>
+                      {errors.timezone && (
+                        <p className="text-xs text-destructive-text">{errors.timezone.message}</p>
+                      )}
+                    </div>
+
+                    <SubscriptionGatedButton
+                      type="submit"
+                      className="w-full gap-2"
+                      disabled={saving || !isDirty}
                     >
-                      <SelectTrigger id="countryCode" aria-invalid={!!errors.countryCode}>
-                        <SelectValue placeholder="Select a country" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-72" showScrollbar>
-                        <CountrySelectItems />
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.countryCode && (
-                  <p className="text-xs text-destructive-text">{errors.countryCode.message}</p>
-                )}
-              </div>
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Save changes
+                    </SubscriptionGatedButton>
+                  </form>
+                </CardContent>
+              </Card>
 
-              <div className="space-y-1.5">
-                <Label>Location</Label>
-                <p className="text-xs text-muted-foreground">
-                  Click the map or drag the pin to update your studio location.
-                </p>
-                {/* key forces remount once studio data arrives so the pin initialises correctly */}
-                <LocationPicker
-                  key={studio ? `${studio.latitude},${studio.longitude}` : "unset"}
-                  value={
-                    latValue != null && !isNaN(latValue) && lngValue != null && !isNaN(lngValue)
-                      ? { lat: latValue, lng: lngValue, city: cityValue ?? "" }
-                      : undefined
-                  }
-                  onChange={({ lat, lng, city, streetAddress }) => {
-                    setValue("latitude",  lat,  { shouldDirty: true, shouldValidate: true });
-                    setValue("longitude", lng,  { shouldDirty: true, shouldValidate: true });
-                    setValue("city",      city, { shouldDirty: true, shouldValidate: true });
-                    if (streetAddress) {
-                      pinDrivenAddressUpdate.current = true;
-                      setValue("addressLine1", streetAddress, { shouldDirty: true, shouldValidate: true });
-                    }
-                  }}
-                  error={
-                    errors.latitude?.message ??
-                    errors.longitude?.message ??
-                    errors.city?.message
-                  }
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Controller
-                  control={control}
-                  name="timezone"
-                  render={({ field }) => (
-                    <TimezoneSelect
-                      id="timezone"
-                      value={field.value}
-                      onChange={(tz) => field.onChange(tz)}
-                      countryCode={countryCodeValue}
-                      ipCountry={visitorGeo?.countryCode}
-                      ipTimezone={visitorGeo?.timeZone}
-                      aria-invalid={!!errors.timezone}
-                    />
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Appointment times in emails, texts, and reports are shown in this timezone.
-                </p>
-                {errors.timezone && (
-                  <p className="text-xs text-destructive-text">{errors.timezone.message}</p>
-                )}
-              </div>
-
-              <SubscriptionGatedButton
-                type="submit"
-                className="w-full gap-2"
-                disabled={saving || !isDirty}
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save changes
-              </SubscriptionGatedButton>
-            </form>
-          </CardContent>
-        </Card>
-
-        <CurrencySettingsCard />
-        <StudioSocialLinksCard />
-        <PokSettingsCard />
-        <BrandingSettingsCard />
-        <DeveloperSettingsCard />
-        <WebhookSettingsCard />
-        <StudioHoursCard />
-        <StudioPayModelCard />
-        <StudioClosuresCard />
-        <QrCodeSection />
-        <EmbedCodeCard />
-        <ReferralCodeCard />
-        <NotificationPreferencesCard />
-        <StudioAuditLogCard />
+            </>
+          }
+        />
       </main>
     </div>
   );

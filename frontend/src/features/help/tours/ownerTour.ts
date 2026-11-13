@@ -1,3 +1,4 @@
+import { settingsSectionHref } from "@/features/studios/settingsGroups";
 import type { TourStep } from "@/shared/components/OnboardingTour";
 
 export const ownerTourSteps: TourStep[] = [
@@ -58,31 +59,35 @@ export const ownerTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="owner-studio-profile-nav"]',
     title: "Your studio profile",
-    body: "Edit your studio's public details, branding, booking widget, QR code, referral code, API/webhook access, your studio's currency, how artists get paid, and your POK account for card deposits here.",
+    body: "Studio Settings is grouped by job: Business details, Hours and closures, Payments and artist pay, Online booking, Notifications, Integrations, Referral programme and Recent activity. Click a group's name to open it.",
   },
   {
     targetSelector: '[data-tour="owner-studio-hours-card"]',
     title: "Set your hours",
     body: "Set your weekly opening hours — clients can only book within these hours, regardless of any individual artist's own working hours. A default Mon–Fri, 9am–6pm schedule is applied automatically; adjust it here anytime.",
-    route: "/studios/me",
+    // Studio Settings is grouped (E05c): the link opens the group that holds this card.
+    route: settingsSectionHref("hours"),
   },
   {
     targetSelector: '[data-tour="owner-studio-currency-card"]',
     title: "Your currency",
     body: "Prices and payments use this currency. Set it before your first payment — it locks after that.",
-    route: "/studios/me",
+    // Studio Settings is grouped (E05c): the link opens the group that holds this card.
+    route: settingsSectionHref("money"),
   },
   {
     targetSelector: '[data-tour="owner-studio-pay-model-card"]',
     title: "How artists get paid",
     body: "Choose commission, booth rent, a flat fee per session or salaried, so each artist's My Earnings shows their real share. It starts as commission with no rate until you set one.",
-    route: "/studios/me",
+    // Studio Settings is grouped (E05c): the link opens the group that holds this card.
+    route: settingsSectionHref("money"),
   },
   {
     targetSelector: '[data-tour="owner-pok-card"]',
     title: "Take card deposits with POK",
     body: "Connect your studio's own POK merchant account to let clients pay deposits by card. Copy the key ID, key secret and merchant ID from POK Business → API Keys — we check them with POK before saving. Without it, clients pay deposits in cash.",
-    route: "/studios/me",
+    // Studio Settings is grouped (E05c): the link opens the group that holds this card.
+    route: settingsSectionHref("money"),
   },
   {
     targetSelector: '[data-tour="owner-billing-nav"]',

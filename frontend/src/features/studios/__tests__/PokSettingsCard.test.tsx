@@ -67,7 +67,8 @@ describe("PokSettingsCard", () => {
     renderCard();
     await screen.findByLabelText(/key id/i);
     const step = ownerTourSteps.find((s) => s.targetSelector === '[data-tour="owner-pok-card"]');
-    expect(step?.route).toBe("/studios/me");
+    // E05c: Studio Settings is grouped, so the step links to the group that holds the card.
+    expect(step?.route).toBe("/studios/me?section=money");
     expect(document.querySelector(step!.targetSelector)).toHaveTextContent(/card deposits — pok/i);
   });
 

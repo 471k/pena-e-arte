@@ -9,6 +9,7 @@ import {
   type SetupAreaKey,
   type SetupAreaState,
 } from "@/features/studios/studiosApi";
+import { settingsSectionHref } from "@/features/studios/settingsGroups";
 
 /**
  * The owner's setup checklist (E05a, O02). Each area is one of three states from the server:
@@ -30,13 +31,14 @@ const COPY: Record<SetupAreaKey, AreaCopy> = {
   Artists:      { label: "Add your first artist", href: "/artists/new", cta: "Add artist" },
   DepositRules: { label: "Set a deposit rule",    href: "/deposit-rules/new", cta: "Set rule", tourId: "owner-deposit-rules-nav" },
   Hours: {
-    label: "Set your hours", href: "/studios/me", cta: "Set hours", tourId: "owner-studio-profile-nav",
+    // E05c: Studio Settings is grouped; the link opens the group with the hours in it.
+    label: "Set your hours", href: settingsSectionHref("hours"), cta: "Set hours", tourId: "owner-studio-profile-nav",
     unreviewed: { note: "We've set opening hours for you. Check they're right.", cta: "Check hours", canConfirm: true },
   },
   // A07a. No "They're right" here: every studio starts on commission with no rate, which can't be
   // confirmed (the server refuses terms that give artists no share), so the owner sets it in the form.
   PayModel: {
-    label: "Set how artists get paid", href: "/studios/me", cta: "Set pay model",
+    label: "Set how artists get paid", href: settingsSectionHref("money"), cta: "Set pay model",
     unreviewed: {
       note: "Every studio starts on commission with no rate set, so artists can't see their share yet.",
       cta: "Set pay model",
