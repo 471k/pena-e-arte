@@ -90,8 +90,11 @@ public class CancelAppointmentHandler(
         // below; the actual notification dispatch happens after the existing
         // SendAppointmentCancellationCommand send, matching this handler's own "notify after
         // save" convention.
+        // The cancellation isn't saved yet, so the row still holds the slot: exclude it from the match's
+        // availability check (C09: a cascade only offers a slot it has confirmed is free).
         Guid? waitlistMatchId = await db.ClaimNextMatchAsync(
-            appointment.StudioId, appointment.ArtistId, appointment.Date, ct);
+            appointment.StudioId, appointment.ArtistId, appointment.Date, appointment.DurationMinutes,
+            freedAppointmentId: appointment.Id, ct);
 
         // Refund deposit. Studio-initiated cancellation always refunds 100% (unchanged).
         // Client self-cancellation refunds per ClientCancellationPolicy — full refund with

@@ -3,6 +3,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GuestBookAppointmentForm } from "@/features/booking/components/GuestBookAppointmentForm";
+import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -199,6 +200,57 @@ describe("GuestBookAppointmentForm", () => {
         body: expect.objectContaining({
           firstName: "Jamie", lastName: "Guest", email: "jamie@example.com",
         }),
+      }),
+    );
+  }, FULL_FORM_TIMEOUT);
+
+  it("C09: arriving from a waitlist claim prefills the offered slot and sends the claim token", async () => {
+    mockCreateGuestAppointment.mockReturnValue(
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+    );
+    const slotStart = new Date(Date.UTC(2030, 2, 5, 13, 0)).toISOString();
+
+    const user = userEvent.setup();
+    render(<GuestBookAppointmentForm slug="test-studio"
+      waitlistClaim={{ token: "claim-tok", artistId: ARTIST.artistId, slotStart, durationMinutes: 90 }} />);
+
+    expect(screen.getByRole("note")).toHaveTextContent(/isn.t held for you: whoever books it first gets it/);
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue(toLocalDatetimeInputValue(new Date(slotStart)));
+
+    await fillIdentityFields(user);
+    await enter(user, screen.getByLabelText(/what are you looking to get done/i), "A small rose");
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Check your email");
+    expect(mockCreateGuestAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          booking: expect.objectContaining({
+            artistId: ARTIST.artistId, date: slotStart, durationMinutes: 90, waitlistClaimToken: "claim-tok",
+          }),
+        }),
+      }),
+    );
+  }, FULL_FORM_TIMEOUT);
+
+  it("sends no claim token on an ordinary visit", async () => {
+    mockCreateGuestAppointment.mockReturnValue(
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+    );
+    const user = userEvent.setup();
+    renderForm();
+
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    await fillIdentityFields(user);
+    await fillBookingFields(user);
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Check your email");
+    expect(mockCreateGuestAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ booking: expect.objectContaining({ waitlistClaimToken: null }) }),
       }),
     );
   }, FULL_FORM_TIMEOUT);

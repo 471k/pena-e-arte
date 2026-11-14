@@ -1074,7 +1074,8 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-client">Client</span> Join a waitlist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓ (guest fields required)</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✗</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>When your requested date or artist shows no availability on the booking form, a <strong>Notify me when a slot opens up</strong> button lets you join the studio's waitlist. Auto-FIFO: the oldest matching entry is notified first when a slot frees up, with a 24-hour window to claim it before it cascades to the next person in line. See all your entries at <code>/waitlist/mine</code>.</p>
+<p>When your requested date or artist shows no availability on the booking form, a <strong>Notify me when a slot opens up</strong> button lets you join the studio's waitlist. Auto-FIFO: the oldest matching entry is notified first when a slot frees up, and for the next 24 hours you're the one being offered it; after that the offer moves to the next person in line. See all your entries at <code>/waitlist/mine</code>.</p>
+<div class="callout callout-tip"><strong>The slot isn't held for you.</strong> Waitlist slots go to whoever books first. Being on the waitlist means you're told before others in line, not that the slot is kept, so book soon after the email if you want it.</div>
 <figure class="wireframe">
 <svg viewBox="0 0 760 300" role="img" aria-label="Waitlist wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
@@ -1091,7 +1092,9 @@ ol.steps li { margin: 6px 0; }
 <li>On the booking form, when your requested slot is unavailable, click <span class="step-title">Notify me when a slot opens up</span>.</li>
 <li>Confirm your details (pre-filled if signed in) and submit.</li>
 <li>Check <code>/waitlist/mine</code> to see status, or remove yourself at any time.</li>
-<li>When notified, you have 24 hours to book before the slot is offered to the next person in line.</li>
+<li>When a slot frees up you get an email naming it. <span class="step-title">Book this slot</span> opens a page showing the slot in the studio's time, then the booking form with the artist and time already filled in; add the rest and send the request as usual. Signed in, the same button is next to the entry on My Waitlist.</li>
+<li>The offer lasts 24 hours from the email. After that the entry shows Expired and the slot is offered to the next person in line; you can join again from the studio's page.</li>
+<li>If someone books the slot first, the page says so and lets you book another time. Booking from the offer, at that time or another, marks your entry Booked.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#client-book">Book an appointment</a></div>
 </section>
@@ -3247,7 +3250,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Waitlist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✓ (own matches only)</td></tr><tr><td>Owner</td><td>✓ (studio-wide)</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>At <code>/waitlist</code>: everyone waiting for a slot, filterable by status. When a slot frees up (cancellation or reschedule), the oldest matching entry is automatically notified by email — this page is for visibility, not manual selection. A notified entry has 24 hours to become a booking before it expires and cascades to the next person in line.</p>
+<p>At <code>/waitlist</code>: everyone waiting for a slot, filterable by status. When a slot frees up (cancellation or reschedule), the oldest matching entry is automatically notified by email — this page is for visibility, not manual selection. Before anyone is notified the slot is checked to still be bookable, so a taken slot, or one outside your hours, is never offered. The email links to a page showing the slot and on to the booking form with the artist and time filled in. The slot isn't held: whoever books it first gets it, as on other booking platforms. A client who books from the offer turns Booked by themselves; if they pick a different time, the offered slot goes to the next person in line. A notified entry has 24 hours to become a booking before it expires and the slot cascades to the next person in line, if it's still free.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 300" role="img" aria-label="Waitlist queue wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>

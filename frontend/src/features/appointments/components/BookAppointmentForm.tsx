@@ -42,6 +42,8 @@ import { useGetPublicStudioQuery }                from "@/features/public/public
 import { useEnsureActiveStudio }                  from "@/features/auth/useEnsureActiveStudio";
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { NotifyMeDialog }                         from "@/features/waitlist/components/NotifyMeDialog";
+import { WaitlistClaimNotice }                    from "@/features/waitlist/components/WaitlistClaimNotice";
+import { readWaitlistClaimHandoff, claimHandoffDefaults } from "@/features/waitlist/waitlistClaim";
 import { useGetMyPackagePurchasesQuery }          from "@/features/session-packages/packagesApi";
 import { useGetMyReferralRewardsQuery }           from "@/features/client-referrals/clientReferralsApi";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
@@ -248,6 +250,8 @@ export function BookAppointmentForm() {
   const location = useLocation();
   const flashDesign = location.state as
     { flashDesignId?: string; flashDesignTitle?: string; flashDesignImageUrl?: string } | null;
+  // C09: arriving from a waitlist claim page — prefill the offered slot and pass the claim token on.
+  const waitlistClaim = readWaitlistClaimHandoff(location.state);
 
   const {
     data:       targetStudio,
@@ -364,6 +368,7 @@ export function BookAppointmentForm() {
       durationMinutes: 60,
       clientId:        isClientRole ? (user?.id ?? "") : "",
       serviceId:       null,
+      ...claimHandoffDefaults(waitlistClaim, VALID_DURATIONS),
     },
   });
 
@@ -467,6 +472,7 @@ export function BookAppointmentForm() {
       referralRewardId:           (isClientRole && applyOwnReward && unredeemedReward) ? unredeemedReward.id : null,
       ...(images.length > 0 ? { images } : {}),
       packagePurchaseId,
+      waitlistClaimToken: waitlistClaim?.token ?? null,
     };
     const result = flashDesign?.flashDesignId
       ? await requestCatalogDesign({ catalogDesignId: flashDesign.flashDesignId, booking: body })
@@ -648,6 +654,8 @@ export function BookAppointmentForm() {
       {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
           AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
       <p className="text-xs text-muted-foreground">* Required</p>
+
+      {waitlistClaim && <WaitlistClaimNotice handoff={waitlistClaim} />}
 
       {flashDesign?.flashDesignId && (
         <div className="flex items-center gap-3 rounded-md border border-border/40 bg-muted/20 p-2">

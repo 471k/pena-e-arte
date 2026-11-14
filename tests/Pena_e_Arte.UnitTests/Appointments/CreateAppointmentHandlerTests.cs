@@ -63,6 +63,31 @@ public class CreateAppointmentHandlerTests
         result.Status.Should().Be(AppointmentStatus.Pending.ToString());
     }
 
+    // ── C09: a booking from a waitlist claim closes that offer ──
+
+    [Fact]
+    public async Task Handle_WithAWaitlistClaimToken_SendsTheCompletionAfterTheBookingIsSaved()
+    {
+        CreateAppointmentRequest req = ValidRequest() with { WaitlistClaimToken = "claim-token" };
+
+        AppointmentResponse result = await CreateSut().Handle(new CreateAppointmentCommand(req), default);
+
+        (await _db.Appointments.AnyAsync(a => a.Id == result.Id)).Should().BeTrue();
+        await _sender.Received(1).Send(
+            Arg.Is<Pena_e_Arte.Application.Waitlists.Commands.CompleteWaitlistClaimCommand>(c =>
+                c.StudioId == _studioId && c.ClientId == req.ClientId && c.Token == "claim-token"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithoutAWaitlistClaimToken_SendsNoCompletion()
+    {
+        await CreateSut().Handle(new CreateAppointmentCommand(ValidRequest()), default);
+
+        await _sender.DidNotReceiveWithAnyArgs().Send(
+            default(Pena_e_Arte.Application.Waitlists.Commands.CompleteWaitlistClaimCommand)!, default);
+    }
+
     [Fact]
     public async Task Handle_RequestWithStyle_PersistsAndRoundTripsStyleOnResponse()
     {

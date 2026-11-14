@@ -117,8 +117,11 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
     {
         Guid tenantId = Guid.NewGuid();
         (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+        // C09: the match now checks the freed slot is bookable, so the studio has to be open then. A fixed
+        // mid-day start keeps the 90-minute slot inside one day whatever time the suite runs.
+        await SeedStudioOpenAllWeek(tenantId);
 
-        DateTime start = DateTime.UtcNow.AddDays(10);
+        DateTime start = DateTime.UtcNow.Date.AddDays(10).AddHours(10);
         Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
         Guid entryId = await SeedWaitlistEntry(
             tenantId, null, artistId, start.AddDays(-1), start.AddDays(1));
@@ -135,6 +138,32 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         Waitlist entry = await verify.WaitlistEntries.IgnoreQueryFilters().FirstAsync(w => w.Id == entryId);
         entry.Status.Should().Be(WaitlistStatus.Notified);
         entry.NotifiedAt.Should().NotBeNull();
+        entry.NotifiedSlotStart.Should().BeCloseTo(start, TimeSpan.FromSeconds(1));
+        entry.NotifiedArtistId.Should().Be(artistId);
+        entry.NotifiedSlotDurationMinutes.Should().Be(90);
+    }
+
+    [Fact]
+    public async Task CancelAppointment_StudioClosedAtThatTime_NotifiesNobody()
+    {
+        // C09: a cascade never offers a slot that can't be booked. No StudioHours = closed.
+        Guid tenantId = Guid.NewGuid();
+        (Guid artistId, Guid clientId) = await SeedArtistAndClient(tenantId);
+        DateTime start = DateTime.UtcNow.Date.AddDays(10).AddHours(10);
+        Guid apptId = await SeedAppointment(tenantId, artistId, clientId, start, start.AddMinutes(90));
+        Guid entryId = await SeedWaitlistEntry(tenantId, null, artistId, start.AddDays(-1), start.AddDays(1));
+
+        ICurrentUser staffUser = Substitute.For<ICurrentUser>();
+        staffUser.Role.Returns("owner");
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        CancelAppointmentHandler handler = new(db, TenantFor(tenantId), staffUser, _realtime, _sender, _jobs, _stripe,
+            NullLogger<CancelAppointmentHandler>.Instance);
+        await handler.Handle(new CancelAppointmentCommand(apptId), default);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        Waitlist entry = await verify.WaitlistEntries.IgnoreQueryFilters().FirstAsync(w => w.Id == entryId);
+        entry.Status.Should().Be(WaitlistStatus.Waiting);
     }
 
     [Fact]
@@ -237,6 +266,23 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         await ctx.SaveChangesAsync();
 
         return (artist.Id, client.Id);
+    }
+
+    private async Task SeedStudioOpenAllWeek(Guid tenantId)
+    {
+        await using AppDbContext ctx = fixture.CreateDbContext(tenantId);
+        foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+        {
+            ctx.StudioHours.Add(new StudioHours
+            {
+                StudioId = tenantId,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = TimeSpan.FromHours(23).Add(TimeSpan.FromMinutes(59)),
+                IsOpen = true,
+            });
+        }
+        await ctx.SaveChangesAsync();
     }
 
     private async Task<Guid> SeedAppointment(

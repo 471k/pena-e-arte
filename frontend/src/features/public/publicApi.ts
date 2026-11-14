@@ -259,6 +259,8 @@ export interface CreateGuestAppointmentRequest {
     referralCode?:              string | null;
     images?: { url: string; category: string }[];
     promoCode?: string | null;
+    // C09: see CreateAppointmentRequest.waitlistClaimToken.
+    waitlistClaimToken?: string | null;
   };
 }
 

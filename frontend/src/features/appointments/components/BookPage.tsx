@@ -1,4 +1,4 @@
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AlertTriangle, ChevronLeft, X } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
@@ -12,6 +12,7 @@ import { useResendVerificationEmailMutation } from "@/features/auth/authApi";
 import { Role } from "@/shared/types/roles";
 import { getRoleRedirectPath } from "@/app/router";
 import { ReferAFriendCard } from "@/features/client-referrals/components/ReferAFriendCard";
+import { readWaitlistClaimHandoff } from "@/features/waitlist/waitlistClaim";
 import { BookAppointmentForm } from "./BookAppointmentForm";
 import { MyBookingsSection } from "./MyBookingsSection";
 
@@ -20,6 +21,8 @@ import { MyBookingsSection } from "./MyBookingsSection";
 // (nothing to show pre-account).
 function GuestBookPage({ slug }: { slug: string }) {
   useDocumentMeta({ title: "Book — TattooOS", canonical: "/book" });
+  // C09: a guest arriving from a waitlist claim page carries the offer in router state.
+  const waitlistClaim = readWaitlistClaimHandoff(useLocation().state);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -35,7 +38,7 @@ function GuestBookPage({ slug }: { slug: string }) {
               </p>
             </CardHeader>
             <CardContent>
-              <GuestBookAppointmentForm slug={slug} />
+              <GuestBookAppointmentForm slug={slug} waitlistClaim={waitlistClaim} />
             </CardContent>
           </Card>
         </div>

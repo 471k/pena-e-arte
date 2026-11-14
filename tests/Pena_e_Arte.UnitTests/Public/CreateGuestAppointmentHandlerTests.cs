@@ -105,6 +105,30 @@ public class CreateGuestAppointmentHandlerTests
             _lastSeededArtistId, Guid.Empty, NextMondayAt(10), 60, null, "A small rose"));
 
     [Fact]
+    public async Task Handle_WithAWaitlistClaimToken_SendsTheCompletionForTheNewGuestClient()
+    {
+        // C09: a guest booking started from a claim link closes that waitlist offer.
+        Studio studio = SeedStudioWithAvailableArtist();
+        string email = "claimer@example.com";
+        Guid newUserId = Guid.NewGuid();
+        _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns((Guid?)null);
+        _identity.CreateUserAsync(email, Arg.Any<string>(), "client", studio.Id, "Jamie")
+                 .Returns((true, newUserId, Array.Empty<string>()));
+        _identity.GeneratePasswordResetTokenAsync(email).Returns((true, "reset-token", (string?)null));
+        _identity.GenerateEmailConfirmationTokenAsync(newUserId).Returns("confirm-token");
+        CreateGuestAppointmentRequest request = ValidRequest(studio, email);
+        request = request with { Booking = request.Booking with { WaitlistClaimToken = "claim-token" } };
+
+        await CreateSut().Handle(new CreateGuestAppointmentCommand(studio.Slug, request), default);
+
+        Guid guestClientId = _db.Clients.Single(c => c.Email == email).Id;
+        await _sender.Received(1).Send(
+            Arg.Is<Pena_e_Arte.Application.Waitlists.Commands.CompleteWaitlistClaimCommand>(c =>
+                c.StudioId == studio.Id && c.ClientId == guestClientId && c.Token == "claim-token"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_ValidRequest_CreatesIdentityUserWithGeneratedPassword()
     {
         Studio studio = SeedStudioWithAvailableArtist();
