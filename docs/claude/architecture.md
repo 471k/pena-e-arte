@@ -283,7 +283,7 @@ Maps each product feature to its domain entities, infrastructure dependencies, a
 
 | # | Feature | Domain Entities | Infrastructure | Scope |
 |---|---|---|---|---|
-| 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake`; artist availability `ArtistSchedule`/`ArtistTimeOff` (studio-local; adding or removing time off first lists the booked sessions it covers via `GetTimeOffAffectedSessionsQuery` and never moves or cancels them, E04c 2026-11-05; edited at `/schedule/availability` or the artist profile's Availability tab) — `DepositRule.AmountFixed` and `Appointment.DepositAmount` carry no currency of their own, always read in `Studio.Currency` (2026-09-27) | Stripe (aggregator), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
+| 01 | Appointment Booking + Deposits (incl. guest checkout) | `Appointment`, `DepositRule`, `BookingIntake`; artist availability `ArtistSchedule`/`ArtistTimeOff` (studio-local; adding or removing time off first lists the booked sessions it covers via `GetTimeOffAffectedSessionsQuery` and never moves or cancels them, E04c 2026-11-05; edited at `/schedule/availability` or the artist profile's Availability tab) — `DepositRule.AmountFixed` and `Appointment.DepositAmount` carry no currency of their own, always read in `Studio.Currency` (2026-09-27) | POK (card deposits, paid into each studio's own POK merchant account; corrected 2026-11-14, it said Stripe), Hangfire, Cloudflare R2 (guest-pending images) | Per-tenant (guest checkout: `AllowAnonymous`, see AllowAnonymous Exceptions table) |
 | 02 | Consultation & Consent Forms | `IntakeForm` (consent-stamped: `ConsentTemplateId`/`ConsentTextSnapshot`/`ConsentedAt`, kind `ConsentTemplateKind.IntakeFormConsent`), `ConsentForm`, `ConsentTemplate` | Cloudflare R2 (PDF storage) | Per-tenant |
 | 03 | Design Approval Workflow | `DesignRevision`, `DesignApproval` (per revision: `DesignRevisionId`, `ClientNotes`, `ReviewedAt` = per-version history). No design status column: status and whose move it is (`WaitingOn` Artist/Client/Nobody) are derived from the latest revision in one place, `Application.Designs.DesignReviewState` (E04c, 2026-11-05). The API accepts a review of any revision; the UI offers it on the latest only (latest-only enforcement flagged, not done) | Cloudflare R2 (images), SignalR | Per-tenant |
 | 04 | Client Profile & Tattoo History | `ClientProfile`, `TattooRecord`, `BodyMap` (value object) | Cloudflare R2 (photos) | Per-tenant |
@@ -1025,7 +1025,7 @@ BillingInterval enum: Monthly | Yearly.
 ### Stripe Billing vs Stripe Connect — important distinction
 
 - Stripe Billing       = platform charges studios for SaaS access (subscriptions) — **ACTIVE**
-- Stripe (aggregator)  = platform collects client card deposits into its own account — **ACTIVE**
+- Client card deposits = **POK**, not Stripe: each studio connects its own POK merchant account and the deposit goes there; the platform holds no client money (corrected 2026-11-14; this line used to say "Stripe (aggregator) — ACTIVE")
 - Stripe Connect       = NOT USED — not available in the platform's country
 
 Studio payouts are NOT handled by the platform. Client pays studio (deposit) via card or cash.
@@ -4027,10 +4027,18 @@ the 24-hour claim window actually cascade to the next person in line instead of 
 one missed claim. Only `AppointmentStatus.Cancelled` assignments were grepped and hooked per the
 prompt's own explicit scoping — `MarkNoShowCommand` was deliberately left alone, since a no-show
 fires after the appointment's own time has already passed and has no future slot to offer against
-a waitlist entry's preferred-date window. A client marks their own claimed slot booked via a thin
-`MarkWaitlistEntryBookedCommand` fired from the frontend right after a successful booking submit,
-exactly as the spec directs, rather than threading waitlist state through
-`CreateAppointmentCoreAsync`. Shared `WaitlistQueuePage` serves both artist (self-scoped) and
+a waitlist entry's preferred-date window. A thin `MarkWaitlistEntryBookedCommand`
+(`POST /waitlist/{id}/mark-booked`) was meant to be fired from the frontend right after a successful
+booking submit, rather than threading waitlist state through `CreateAppointmentCoreAsync`.
+
+> **Correction (2026-11-14): nothing marks a waitlist entry booked, anywhere.** The endpoint exists,
+> but no frontend or backend code calls it outside tests, so an entry stays `Notified` even after the
+> client books. The 24-hour `WaitlistNotificationExpiryJob` then expires it and cascades to the next
+> person in line, with the same claim link, and down the queue. It re-matches on the expired entry's
+> own `PreferredDateFrom`, because the freed slot's date isn't stored (`ClaimNextMatchAsync` receives
+> it and discards it), so it can notify people about a slot taken days ago. The emailed claim link
+> (`/waitlist/{id}/claim`) also has no frontend route. Found in the E01-E03 evidence dump; the fix is
+> specified in `docs/claude/overnight-prompt-waitlist-claim-journey-2026-11-14.md`. Shared `WaitlistQueuePage` serves both artist (self-scoped) and
 owner (studio-wide) — `GetWaitlistQuery`'s own artist-self-scoping made a second, separate
 artist-facing page unnecessary, the same call the spec asked to resolve by checking the query's
 actual scoping behavior rather than assuming a split. Frontend `NotifyMeDialog` is wired into
