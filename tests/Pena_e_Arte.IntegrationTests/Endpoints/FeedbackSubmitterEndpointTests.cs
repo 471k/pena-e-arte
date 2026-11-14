@@ -116,7 +116,11 @@ public class FeedbackSubmitterEndpointTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(studioId);
         db.Studios.Add(new Studio
         {
-            Id = studioId, Name = "Feedback", Slug = studioId.ToString("N")[..8], CountryCode = "PT", Currency = "EUR",
+            Id = studioId,
+            Name = "Feedback",
+            Slug = studioId.ToString("N")[..8],
+            CountryCode = "PT",
+            Currency = "EUR",
         });
         await db.SaveChangesAsync();
     }
