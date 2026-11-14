@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Money;
@@ -9,7 +11,7 @@ namespace Pena_e_Arte.Application.Appointments.Queries;
 
 public record GetAppointmentIcsQuery(Guid AppointmentId) : IRequest<string>;
 
-public class GetAppointmentIcsHandler(IAppDbContext db, IExchangeRateProvider rates)
+public class GetAppointmentIcsHandler(IAppDbContext db, IExchangeRateProvider rates, ICurrentUser currentUser)
     : IRequestHandler<GetAppointmentIcsQuery, string>
 {
     public async Task<string> Handle(GetAppointmentIcsQuery query, CancellationToken ct)
@@ -18,6 +20,18 @@ public class GetAppointmentIcsHandler(IAppDbContext db, IExchangeRateProvider ra
             .Include(a => a.Artist)
             .FirstOrDefaultAsync(a => a.Id == query.AppointmentId, ct)
             ?? throw new NotFoundException("Appointment", query.AppointmentId);
+
+        // A client gets only their own appointment's file, by the same gate as GetMyAppointmentQuery.
+        // Someone else's is 404, the same as a missing id, never 403: a 403 would confirm the appointment
+        // exists. Until 14 Nov 2026 any signed-in client of the studio could fetch any appointment's file
+        // (date, artist, deposit) by id. Staff are unchanged: the tenant filter already limits them to
+        // their own studio.
+        if (currentUser.Role == "client")
+        {
+            Client? me = await db.FindClientForUserAsync(currentUser, ct);
+            if (me is null || me.Id != appt.ClientId)
+                throw new NotFoundException("Appointment", query.AppointmentId);
+        }
 
         var studio = await db.Studios
             .Where(s => s.Id == appt.StudioId)
