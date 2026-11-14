@@ -44,7 +44,7 @@ import { FeedbackInboxPage } from "@/features/feedback";
 import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, InstagramDataDeletionPage, NotFoundPage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
-import { WaitlistQueuePage, MyWaitlistPage } from "@/features/waitlist";
+import { WaitlistQueuePage, MyWaitlistPage, WaitlistClaimPage } from "@/features/waitlist";
 import { BoothRentManagementPage } from "@/features/booth-rent";
 import { GiftCardListPage, PurchaseGiftCardPage } from "@/features/gift-cards";
 import { PackageListPage, PurchasePackagePage } from "@/features/session-packages";
@@ -213,6 +213,9 @@ export const routes = [
         element: <AppLayout />,
         children: [
           { path: "book", element: <ErrorBoundary><BookPage /></ErrorBoundary> },
+          // C09: the waitlist email's link. Public like /book (a guest has no account); the claim token
+          // is in the URL fragment, never the path, so no server ever logs it.
+          { path: "waitlist/claim", element: <ErrorBoundary><WaitlistClaimPage /></ErrorBoundary> },
         ],
       },
       {

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Waitlists.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
@@ -195,6 +196,10 @@ public class CreateGuestAppointmentHandler(
                 "created for studio {@StudioId} — orphaned login, needs manual cleanup", userId, studio.Id);
             throw;
         }
+
+        // C09: a booking started from a waitlist claim closes that offer. Never fails the booking.
+        if (!string.IsNullOrWhiteSpace(req.Booking.WaitlistClaimToken))
+            await sender.Send(new CompleteWaitlistClaimCommand(studio.Id, client.Id, req.Booking.WaitlistClaimToken), ct);
 
         // Send email verification (non-blocking; failure must not abort the booking) — one
         // combined email carrying both the password-reset link (Decision #2's passwordless

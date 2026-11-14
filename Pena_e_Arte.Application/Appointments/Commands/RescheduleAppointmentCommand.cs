@@ -103,10 +103,11 @@ public class RescheduleAppointmentHandler(
 
         if (conflict) throw new SlotAlreadyBookedException();
 
-        // The original slot (pre-mutation Date/ArtistId) is what frees up — capture it before
+        // The original slot (pre-mutation Date/ArtistId/duration) is what frees up — capture it before
         // overwriting, then run the same auto-FIFO waitlist match CancelAppointmentHandler uses.
         DateTime freedDate = appointment.Date;
         Guid? freedArtistId = appointment.ArtistId;
+        int freedDurationMinutes = appointment.DurationMinutes;
 
         appointment.Date = req.NewDate;
         appointment.EndDate = newEnd;
@@ -114,12 +115,17 @@ public class RescheduleAppointmentHandler(
         appointment.Notes = req.Notes;
         appointment.UpdatedAt = DateTime.UtcNow;
 
-        Guid? waitlistMatchId = await db.ClaimNextMatchAsync(
-            appointment.StudioId, freedArtistId, freedDate, ct);
-
         await db.SaveChangesAsync(ct);
         if (claim is not null)
             await claim.CommitAsync(ct);
+
+        // After the move is saved, not before: the match now checks the freed slot is really free (C09), and
+        // until the save the database still shows this appointment there. Excluding it instead would also hide
+        // its new position, which can overlap the old slot when the move is short.
+        Guid? waitlistMatchId = await db.ClaimNextMatchAsync(
+            appointment.StudioId, freedArtistId, freedDate, freedDurationMinutes, freedAppointmentId: null, ct);
+        if (waitlistMatchId is not null)
+            await db.SaveChangesAsync(ct);
 
         AppointmentResponse response = CreateAppointmentHandler.Map(appointment);
         await realtime.NotifyStudioAsync(tenant.StudioId, "AppointmentUpdated", response, ct);
