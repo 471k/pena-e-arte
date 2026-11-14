@@ -1584,7 +1584,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     roles: [Owner],
     title: "Turn off \"Powered by TattooOS\" branding",
     keywords: ["remove branding", "white label"],
-    summary: "This toggle controls whether TattooOS is credited on what your clients receive: the footer of their emails, the foot of their consent forms and receipts, and the booking page they use when signed in.",
+    summary: "This toggle controls whether TattooOS is credited on what your clients receive: the footer of their emails, the foot of their consent forms and receipts, the booking page they use when signed in, and the booking widget you embed on your own website.",
     steps: [
       "Go to Studio Settings and open \"Online booking\". The \"Platform branding\" card is there.",
       "Switch the toggle off to remove the credit from all of these at once, or on to show it again.",
@@ -1593,6 +1593,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Removing the branding may require upgrading your plan — if your plan doesn't allow it, the toggle will be disabled with an upgrade note.",
       "On consent forms and receipts the credit is a small grey line, \"Generated via TattooOS · tattooos.co\". Your studio's name stays at the top of every receipt either way.",
       "The change applies to emails, consent forms and receipts created after you switch it. Ones already sent or saved stay as they were, except receipts, which are created fresh each time someone downloads one.",
+      "Your studio and artist pages on tattooos.co always show \"Powered by TattooOS\", whatever this switch says: those pages are part of TattooOS's own site. The switch covers what you put on your website (the embedded widget) and what your clients receive.",
     ],
   },
   {
@@ -1607,6 +1608,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Paste it into your website's HTML where you want the booking widget to appear.",
       "Click \"Open preview\" to see what the widget looks like before embedding it.",
     ],
+    tips: [
+      "The widget shows a small \"Powered by TattooOS\" line at the bottom while Platform branding is on. Turning it off (on plans that allow it) removes the line from the widget too. Its \"Book an Appointment\" button opens your studio page on tattooos.co, which always shows the line.",
+    ],
+    relatedArticleIds: ["owner-branding"],
   },
   {
     id: "owner-qr-code",
@@ -2370,7 +2375,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-branding-removal",
     roles: [Owner],
     question: "Can I remove the \"Powered by TattooOS\" footer?",
-    answer: "Yes, from Studio Settings, under \"Online booking\" → \"Platform branding\" — though on some plans this may require upgrading first. One switch covers your clients' emails, consent forms, receipts and the signed-in booking page.",
+    answer: "Yes, from Studio Settings, under \"Online booking\" → \"Platform branding\" — though on some plans this may require upgrading first. One switch covers your clients' emails, consent forms, receipts, the signed-in booking page and the booking widget on your own website. Your studio and artist pages on tattooos.co always show it, because they're part of TattooOS's own site.",
     relatedArticleIds: ["owner-branding"],
   },
   {

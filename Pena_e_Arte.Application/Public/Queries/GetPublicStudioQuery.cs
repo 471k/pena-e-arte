@@ -130,6 +130,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
             socialLinks,
             hours,
             studio.Timezone,
+            studio.ShowPlatformBranding,
             AddressLine1: studio.AddressLine1, AddressLine2: studio.AddressLine2, PostalCode: studio.PostalCode,
             Currency: studio.Currency,
             CountryCode: studio.CountryCode);

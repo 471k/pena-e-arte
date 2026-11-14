@@ -50,7 +50,8 @@ export function BrandingSettingsCard() {
             </p>
             <p className="text-xs text-muted-foreground">
               A small line in the footer of the emails your clients get, at the foot of their
-              consent forms and receipts, and on the booking page they use when signed in.
+              consent forms and receipts, on the booking page they use when signed in, and on the
+              booking widget on your website. Your pages on tattooos.co always show it.
             </p>
             {upgradeHint && (
               <p className="text-xs text-warning-text dark:text-amber-400 mt-1">

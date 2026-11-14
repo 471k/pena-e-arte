@@ -954,7 +954,7 @@ ol.steps li { margin: 6px 0; }
 <li>Cover photo, studio name, city, and description at the top.</li>
 <li>Click <span class="step-title">Book an Appointment</span> — this opens the full studio page in a new tab (since the booking form itself needs the full site).</li>
 <li>Browse the artist list below.</li>
-<li>A small "Powered by TattooOS" footer link is shown at the bottom. The Platform branding switch does not cover the embed.</li>
+<li>A small "Powered by TattooOS" footer link is shown at the bottom, unless the studio has turned off <a href="#owner-branding">Platform branding</a> on a plan that allows it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-embed">Owner: embed code</a>, <a href="#owner-branding">Owner: branding</a></div>
 </section>
@@ -3543,8 +3543,10 @@ ol.steps li { margin: 6px 0; }
 <ul>
 <li>the "Powered by TattooOS" line in the footer of the emails your clients get;</li>
 <li>the small grey "Generated via TattooOS · tattooos.co" line at the foot of signed consent forms (PDF) and payment receipts (PDF);</li>
-<li>the "Powered by TattooOS" footer on the booking page clients use when signed in.</li>
+<li>the "Powered by TattooOS" footer on the booking page clients use when signed in;</li>
+<li>the "Powered by TattooOS" footer on the booking widget you embed on your own website (see <a href="#owner-embed">Embed code</a>).</li>
 </ul>
+<p>It does not reach your studio and artist pages on tattooos.co (<code>/s/&lt;slug&gt;</code> and <code>/artist/&lt;slug&gt;</code>). Those always show "Powered by TattooOS", because they are part of TattooOS's own site rather than yours. The widget's <span class="step-title">Book an Appointment</span> button opens your studio page there, so a client who books will see the line on that page.</p>
 <p>Your studio's name stays at the top of every receipt either way. The change applies to emails and consent forms created after you switch it; receipts are created fresh on every download, so they always follow the current setting.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Branding settings wireframe">
@@ -3558,7 +3560,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Branding — single toggle switch, disabled with an upgrade hint on ineligible plans</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Toggle the switch off to remove the credit from client emails, consent forms, receipts and the signed-in booking page at once (requires an eligible plan).</li>
+<li>Toggle the switch off to remove the credit from client emails, consent forms, receipts, the signed-in booking page and your website's booking widget at once (requires an eligible plan).</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Choose / change plan</a>, <a href="#owner-embed">Embed code</a></div>
 </section>
@@ -3585,8 +3587,9 @@ ol.steps li { margin: 6px 0; }
 <li>Click the copy icon to copy the iframe snippet.</li>
 <li>Paste it into your own website's HTML.</li>
 <li>Click <span class="step-title">Open preview</span> to see how it will look first.</li>
+<li>The widget's small "Powered by TattooOS" line follows your <a href="#owner-branding">Platform branding</a> switch. Its Book button opens your studio page on tattooos.co, which always shows the line.</li>
 </ol>
-<div class="crosslinks">See also: <a href="#guest-embed">Guest: embedded booking widget</a></div>
+<div class="crosslinks">See also: <a href="#guest-embed">Guest: embedded booking widget</a>, <a href="#owner-branding">Branding</a></div>
 </section>
 
 <section id="owner-referral" data-role="owner">

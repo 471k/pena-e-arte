@@ -87,6 +87,7 @@ const STUDIO: PublicStudioResponse = {
     { dayOfWeek: 0, startTime: "00:00:00", endTime: "00:00:00", isOpen: false },
   ],
   timezone: "Europe/Lisbon",
+  showPlatformBranding: true,
   addressLine1: null,
   addressLine2: null,
   postalCode:   null,
@@ -330,6 +331,14 @@ describe("StudioPortfolioPage", () => {
   it("renders artist specialization under artist name", () => {
     renderPage();
     expect(screen.getByText("Neo-Traditional")).toBeInTheDocument();
+  });
+
+  // The studio page is ours, on our domain: it keeps the line even when the studio has turned branding off.
+  // Only the embed on the studio's own website follows that switch (Decisions Log, 14 Nov 2026).
+  it("keeps 'Powered by TattooOS' even when the studio's branding switch is off", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({ data: { ...STUDIO, showPlatformBranding: false }, isLoading: false, isError: false });
+    renderPage();
+    expect(screen.getByRole("link", { name: "Powered by TattooOS" })).toBeInTheDocument();
   });
 
   it("'Browse studios' back button navigates to /discover when there's no in-app history", async () => {
