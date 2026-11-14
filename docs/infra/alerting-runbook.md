@@ -90,6 +90,26 @@ one `LogError` (job id, type, failure reason) whenever *any* job transitions to 
    for the exception, and the failed CD run in GitHub Actions. Fix the cause, then re-run the
    failed CD jobs (`gh run rerun <run id> --failed`). If the exception is a command timeout, see 4.
 
+   **The migrate Job's log has a short life in Kubernetes.** Every CD run deletes and recreates
+   `tattooos-migrate` (`cd.yml`, "Run migration Job"). So `kubectl logs` shows only the latest
+   deploy's migration, and the next merge to `main` replaces it. This matters for successful
+   deploys too. "Job complete" doesn't say which migrations ran; the pod log's
+   `Applying migration '<name>'` line (EF EventId 20402) does. When a report needs that line as
+   evidence, read it before the next merge.
+
+   If the pod is already gone, Loki still has the log, because Alloy ships every pod's stdout,
+   short Jobs included:
+   `{namespace="tattooos", container="migrate"} |= "Applying migration"` (Grafana → Explore → Loki,
+   or `/loki/api/v1/query_range` via `kubectl port-forward -n monitoring svc/tattooos-loki 13100:3100`).
+   The `pod` label names each run. Checked on 2026-11-15:
+   - The deleted pod `tattooos-migrate-jk9xh` was still there, with all 12 of its lines.
+   - Migrate lines go back to at least 1 Nov.
+   - So the `retention_period: 48h` in `loki-configmap.yaml` isn't being enforced; Loki is bounded by
+     its disk instead.
+
+   Don't count on that, because it changes if retention starts being enforced. Treat Loki as the
+   fallback and the live pod log as the primary source.
+
 ## Manual verification
 
 **Verified end-to-end live on 2026-09-05, with Phi's explicit go-ahead for real downtime.**
