@@ -216,7 +216,9 @@ describe("ClientLayout", () => {
 
   it("ReadOnlyBanner is visible when readOnlyError is set in ui state", () => {
     renderLayout({ readOnlyError: "This action is blocked in read-only mode." });
-    expect(screen.getByText(/read-only mode/i)).toBeInTheDocument();
+    // A client is told to contact the studio, with no link to owner-only Billing.
+    expect(screen.getByText(/contact the studio directly/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /manage subscription/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
   });
 
