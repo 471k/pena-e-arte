@@ -237,7 +237,9 @@ describe("ArtistLayout", () => {
 
   it("ReadOnlyBanner is visible when readOnlyError is set in ui state", () => {
     renderLayout({ readOnlyError: "Grace period: studio is in read-only mode." });
-    expect(screen.getByText(/read-only mode/i)).toBeInTheDocument();
+    // An artist gets their own sentence, not the server's owner-facing one, and no link to owner-only Billing.
+    expect(screen.getByText(/studio owner can sort this out/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /manage subscription/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
   });
 
