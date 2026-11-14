@@ -77,6 +77,34 @@ public class GetPublicStudioHandlerTests
         result!.CountryCode.Should().Be("PT");
     }
 
+    // The website embed honours the studio's branding switch (14 Nov 2026), so the public response carries it.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Handle_ActiveStudio_CarriesItsPlatformBrandingSwitch(bool show)
+    {
+        Studio studio = MakeStudio();
+        studio.UpdateBranding(show);
+        _db.Studios.Add(studio);
+        await _db.SaveChangesAsync();
+
+        PublicStudioResponse? result = await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
+
+        result!.ShowPlatformBranding.Should().Be(show);
+    }
+
+    // The response is anonymous: it may say what to render, never what the studio is entitled to or pays for.
+    // A field like these would put a customer's commercial terms on a public endpoint (Desktop, 14 Nov 2026).
+    [Fact]
+    public void ThePublicResponse_CarriesNoPlanOrEntitlementFields()
+    {
+        string[] forbidden = ["allow", "plan", "subscription", "entitle", "tier", "price", "billing", "trial"];
+
+        IEnumerable<string> names = typeof(PublicStudioResponse).GetProperties().Select(p => p.Name.ToLowerInvariant());
+
+        names.Where(n => forbidden.Any(n.Contains)).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task Handle_UnknownSlug_ReturnsNull()
     {
