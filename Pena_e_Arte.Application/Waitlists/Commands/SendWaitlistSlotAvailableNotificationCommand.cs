@@ -1,8 +1,11 @@
+using System.Globalization;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Notifications.Queries;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Domain.Constants;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
@@ -17,6 +20,7 @@ public class SendWaitlistSlotAvailableNotificationHandler(
     INotificationPreferenceService prefs,
     IRealtimeNotifier realtime,
     IAppSettings appSettings,
+    IWaitlistClaimTokens claimTokens,
     ILogger<SendWaitlistSlotAvailableNotificationHandler> logger)
     : IRequestHandler<SendWaitlistSlotAvailableNotificationCommand, Unit>
 {
@@ -42,9 +46,28 @@ public class SendWaitlistSlotAvailableNotificationHandler(
             return Unit.Value;
         }
 
-        string bookUrl = $"{appSettings.BaseUrl}/waitlist/{entry.Id}/claim";
+        if (entry.Status != WaitlistStatus.Notified || entry.NotifiedAt is null)
+        {
+            logger.LogWarning("Waitlist entry {@WaitlistEntryId} is not notified; no slot-available email sent", entry.Id);
+            return Unit.Value;
+        }
+
+        // Studio has no tenant filter, so this read needs no IgnoreQueryFilters.
+        Studio? studio = await db.Studios.AsNoTracking().FirstOrDefaultAsync(s => s.Id == entry.StudioId, ct);
+        string? slotText = entry.NotifiedSlotStart is DateTime slotStart
+            ? TimezoneUtils.ToStudioLocalForRules(slotStart, studio?.Timezone)
+                .ToString("dddd d MMMM 'at' HH:mm", CultureInfo.InvariantCulture)
+            : null;
+
+        // C09: the link carries a purpose-bound claim token in the URL fragment, never the raw entry id. A
+        // fragment is never sent to a server, so the token stays out of Cloudflare, ingress and request logs.
+        string bookUrl = $"{appSettings.BaseUrl}/waitlist/claim#t={claimTokens.Mint(entry)}";
         string subject = "A slot just opened up";
-        string body = BuildEmailBody(recipientFirstName, bookUrl);
+        string body = BuildEmailBody(recipientFirstName, studio?.Name, slotText, bookUrl);
+        // What's stored in NotificationLogs and shown to studio staff: the same email with the token removed.
+        // The log is a record that the email went out, not a second copy of the client's credential.
+        string loggedBody = BuildEmailBody(recipientFirstName, studio?.Name, slotText,
+            $"{appSettings.BaseUrl}/waitlist/claim#t=[removed]");
 
         bool emailEnabled = await prefs.IsEnabledAsync(
             entry.StudioId, NotificationType.WaitlistSlotAvailable, NotificationChannel.Email, ct);
@@ -73,7 +96,7 @@ public class SendWaitlistSlotAvailableNotificationHandler(
                     : NotificationRecipientType.ExternalContact,
                 Channel = NotificationChannel.Email,
                 Subject = subject,
-                Body = body,
+                Body = loggedBody,
                 SentAt = DateTime.UtcNow,
                 IsSuccess = success,
             };
@@ -91,20 +114,26 @@ public class SendWaitlistSlotAvailableNotificationHandler(
         return Unit.Value;
     }
 
-    private static string BuildEmailBody(string? firstName, string bookUrl) =>
-        $"""
+    private static string BuildEmailBody(string? firstName, string? studioName, string? slotText, string bookUrl)
+    {
+        string where = studioName is null ? "" : $" at {System.Net.WebUtility.HtmlEncode(studioName)}";
+        string when = slotText is null ? "" : $" on <strong>{System.Net.WebUtility.HtmlEncode(slotText)}</strong>";
+        int hours = (int)WaitlistClaimWindow.Duration.TotalHours;
+        return $"""
         <!DOCTYPE html>
         <html>
         <body style="font-family:sans-serif;color:#222;max-width:600px;margin:auto">
           <h2 style="color:#27ae60">A Slot Just Opened Up</h2>
           <p>Hi {System.Net.WebUtility.HtmlEncode(firstName ?? "there")},</p>
-          <p>A slot matching your waitlist request is now available. You have
-             <strong>24 hours</strong> to claim it before it's offered to the next person in line.</p>
+          <p>A slot matching your waitlist request{where} is free{when}.</p>
+          <p>It isn't held for you: it goes to whoever books it first. You're the one being offered it for the next
+             <strong>{hours} hours</strong>; after that the offer moves to the next person in line.</p>
           <p><a href="{bookUrl}" style="display:inline-block;padding:10px 20px;background:#27ae60;
-             color:#fff;text-decoration:none;border-radius:4px">Claim this slot</a></p>
+             color:#fff;text-decoration:none;border-radius:4px">Book this slot</a></p>
           <hr/>
           <p style="font-size:0.85em;color:#666">TattooOS &mdash; Your Tattoo Studio</p>
         </body>
         </html>
         """;
+    }
 }

@@ -1,5 +1,6 @@
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { Bell, X } from "lucide-react";
+import { Bell, CalendarCheck, X } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -75,10 +76,24 @@ export function MyWaitlistPage() {
               </p>
               {entry.status === WaitlistStatus.Notified && (
                 <p className="text-xs text-info-text font-medium">
-                  A slot opened up — claim it within 24 hours of being notified.
+                  {entry.notifiedSlotStart
+                    ? `A slot opened up on ${formatDate(entry.notifiedSlotStart)}. `
+                    : "A slot opened up. "}
+                  It isn&apos;t held: whoever books first gets it. The offer is yours for 24 hours from when we
+                  emailed you.
                 </p>
               )}
             </div>
+            <div className="flex shrink-0 items-center gap-1">
+            {/* C09: the same claim page the email links to, with the same token. */}
+            {entry.status === WaitlistStatus.Notified && entry.claimToken && (
+              <Button asChild size="sm" className="h-8 gap-1">
+                <Link to={{ pathname: "/waitlist/claim", hash: `t=${entry.claimToken}` }}>
+                  <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                  Book this slot
+                </Link>
+              </Button>
+            )}
             {(entry.status === WaitlistStatus.Waiting || entry.status === WaitlistStatus.Notified) && (
               <Button
                 variant="ghost"
@@ -91,6 +106,7 @@ export function MyWaitlistPage() {
                 Remove
               </Button>
             )}
+            </div>
           </div>
         ))}
       </main>

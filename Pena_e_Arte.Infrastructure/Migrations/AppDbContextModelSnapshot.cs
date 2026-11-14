@@ -4198,7 +4198,16 @@ namespace Pena_e_Arte.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
+                    b.Property<Guid?>("NotifiedArtistId")
+                        .HasColumnType("char(36)");
+
                     b.Property<DateTime?>("NotifiedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("NotifiedSlotDurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("NotifiedSlotStart")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime>("PreferredDateFrom")

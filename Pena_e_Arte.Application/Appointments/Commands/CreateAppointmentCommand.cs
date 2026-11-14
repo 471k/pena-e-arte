@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
+using Pena_e_Arte.Application.Waitlists.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
@@ -49,8 +50,14 @@ public class CreateAppointmentHandler(
             clientId = req.ClientId;
         }
 
-        return await CreateAppointmentCoreAsync(
+        AppointmentResponse response = await CreateAppointmentCoreAsync(
             db, tenant.StudioId, clientId, req, slotLocker, jobs, realtime, sender, planLimits, ct);
+
+        // C09: a booking started from a waitlist claim closes that offer. Never fails the booking.
+        if (!string.IsNullOrWhiteSpace(req.WaitlistClaimToken))
+            await sender.Send(new CompleteWaitlistClaimCommand(tenant.StudioId, clientId, req.WaitlistClaimToken), ct);
+
+        return response;
     }
 
     /// <summary>

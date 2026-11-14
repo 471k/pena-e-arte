@@ -70,9 +70,11 @@ public class JoinWaitlistHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
         return Map(entry, null, client is null ? null : $"{client.FirstName} {client.LastName}");
     }
 
-    internal static WaitlistEntryResponse Map(Waitlist w, string? artistName = null, string? clientName = null) => new(
+    internal static WaitlistEntryResponse Map(
+        Waitlist w, string? artistName = null, string? clientName = null, string? claimToken = null) => new(
         w.Id, w.StudioId, w.ArtistId, artistName, w.ClientId, clientName,
         w.GuestName, w.GuestEmail, w.GuestPhone,
         w.PreferredDateFrom, w.PreferredDateTo, w.Status.ToString(),
-        w.NotifiedAt, w.Notes, w.CreatedAt);
+        w.NotifiedAt, w.Notes, w.CreatedAt,
+        w.NotifiedSlotStart, claimToken);
 }
