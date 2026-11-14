@@ -35,6 +35,8 @@ import { CategorizedImagesField } from "@/features/appointments/components/Categ
 import { DesiredPlacementField } from "@/features/appointments/components/DesiredPlacementField";
 import { SlotAvailabilityIndicator } from "@/features/appointments/components/SlotAvailabilityIndicator";
 import { AppointmentAttachmentCategory } from "@/features/appointments/appointment.types";
+import { claimHandoffDefaults, type WaitlistClaimHandoff } from "@/features/waitlist/waitlistClaim";
+import { WaitlistClaimNotice } from "@/features/waitlist/components/WaitlistClaimNotice";
 
 const VALID_DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480] as const;
 // Mirrors GetPresignedGuestUploadUrlValidator's accepted content types.
@@ -164,12 +166,14 @@ function ServiceDepositPreview({ service, currency, studio }: {
 
 interface GuestBookAppointmentFormProps {
   slug: string;
+  /** C09: set when the visit came from a waitlist claim page (BookPage reads it from router state). */
+  waitlistClaim?: WaitlistClaimHandoff | null;
 }
 
 /** Unauthenticated booking form for a visitor with no account yet (Decision #1 — true guest
  *  checkout). Identity fields (name/email/phone/marketing opt-in) are guest-only; the booking-
  *  content fields below are shared with the authenticated BookAppointmentForm (Decision #8). */
-export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps) {
+export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBookAppointmentFormProps) {
   const { data: artists, isLoading: loadingArtists } = useGetPublicBookingArtistsQuery(slug);
   const { data: depositRule } = useGetPublicDepositRuleQuery(slug);
   const { data: services } = useGetPublicServicesQuery(slug);
@@ -209,6 +213,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
     defaultValues: {
       firstName: "", lastName: "", email: "", phone: "", marketingOptIn: false,
       artistId: "", bookAnyArtist: false, durationMinutes: 60, serviceId: null,
+      ...claimHandoffDefaults(waitlistClaim, VALID_DURATIONS),
     },
   });
 
@@ -297,6 +302,7 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
           referralCode:              referralCode.trim() || null,
           images,
           promoCode: values.promoCode || null,
+          waitlistClaimToken: waitlistClaim?.token ?? null,
         },
       },
     });
@@ -338,6 +344,8 @@ export function GuestBookAppointmentForm({ slug }: GuestBookAppointmentFormProps
       {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
           AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
       <p className="text-xs text-muted-foreground">* Required</p>
+
+      {waitlistClaim && <WaitlistClaimNotice handoff={waitlistClaim} />}
 
       {submitError && (
         <div

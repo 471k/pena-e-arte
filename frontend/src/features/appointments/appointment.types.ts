@@ -229,6 +229,9 @@ export interface CreateAppointmentRequest {
   // When present, DurationMinutes/DepositAmount are re-derived server-side from the
   // service (never trusted from this request once set) — see CreateAppointmentCommand.
   serviceId?:                 string | null;
+  // C09: set when the booking started from a waitlist claim link. It authorises nothing; after the
+  // booking is saved, the server marks that waitlist offer booked if it is this client's own.
+  waitlistClaimToken?:        string | null;
 }
 
 export interface AssignAppointmentArtistRequest {

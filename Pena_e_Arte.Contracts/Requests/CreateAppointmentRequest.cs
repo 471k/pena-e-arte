@@ -33,7 +33,11 @@ public record CreateAppointmentRequest(
     // that case, never trusted) and — when the service has its own DepositAmount — that value
     // overrides the DepositRule calculation entirely for this booking. Null preserves the
     // original free-text/no-service booking flow exactly as before this field existed.
-    Guid? ServiceId = null);
+    Guid? ServiceId = null,
+    // C09: present when the booking was started from a waitlist claim link. It authorises nothing: the booking
+    // is checked exactly as without it. After the booking is saved, a valid token for this client's own offer
+    // marks that waitlist entry Booked (CompleteWaitlistClaimCommand). An invalid one is ignored.
+    string? WaitlistClaimToken = null);
 
 /// <summary>Category: "AreaPhoto" | "Reference" (matches AppointmentAttachmentCategory).</summary>
 public record AppointmentImageRequest(string Url, string Category);

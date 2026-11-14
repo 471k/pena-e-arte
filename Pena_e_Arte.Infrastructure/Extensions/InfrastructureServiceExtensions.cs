@@ -19,6 +19,7 @@ using Pena_e_Arte.Infrastructure.Services.MailKit;
 using Pena_e_Arte.Infrastructure.Services.Pok;
 using Pena_e_Arte.Infrastructure.Services.Marketing;
 using Pena_e_Arte.Infrastructure.Services.Social;
+using Pena_e_Arte.Infrastructure.Services.Waitlists;
 using Resend;
 using StackExchange.Redis;
 using Twilio;
@@ -243,6 +244,8 @@ public static class InfrastructureServiceExtensions
 
         services.Configure<MarketingOptOutOptions>(configuration.GetSection(MarketingOptOutOptions.Section));
         services.AddSingleton<IMarketingOptOutSigner, MarketingOptOutSigner>();
+        // Over the shared Data Protection key ring (AddSharedDataProtection); no key of its own.
+        services.AddSingleton<IWaitlistClaimTokens, WaitlistClaimTokens>();
         services.AddTransient<StorageReconciliationJob>();
         services.AddTransient<VaultHealthCheckJob>();
         // Polled every 5 minutes — no framework request logging, or it would log a line each run.

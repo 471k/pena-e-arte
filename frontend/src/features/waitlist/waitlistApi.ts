@@ -1,6 +1,6 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { WaitlistEntryResponse, JoinWaitlistRequest } from "./waitlist.types";
+import type { WaitlistEntryResponse, JoinWaitlistRequest, WaitlistClaimResponse } from "./waitlist.types";
 
 export const waitlistApi = createApi({
   reducerPath: "waitlistApi",
@@ -19,9 +19,10 @@ export const waitlistApi = createApi({
       query: (args) => ({ url: "waitlist", params: args?.artistId ? { artistId: args.artistId } : undefined }),
       providesTags: ["WaitlistEntry"],
     }),
-    markWaitlistEntryBooked: builder.mutation<void, string>({
-      query: (id) => ({ url: `waitlist/${id}/mark-booked`, method: "POST" }),
-      invalidatesTags: ["WaitlistEntry"],
+    // C09 claim page read. POST so the token travels in the body: it reaches the page in the URL
+    // fragment, which no server sees, and should never be put into a URL a server does see.
+    getWaitlistClaim: builder.query<WaitlistClaimResponse, string>({
+      query: (token) => ({ url: "public/waitlist/claim", method: "POST", body: { token } }),
     }),
     cancelWaitlistEntry: builder.mutation<void, string>({
       query: (id) => ({ url: `waitlist/${id}`, method: "DELETE" }),
@@ -34,6 +35,6 @@ export const {
   useJoinWaitlistMutation,
   useGetMyWaitlistEntriesQuery,
   useGetWaitlistQuery,
-  useMarkWaitlistEntryBookedMutation,
+  useGetWaitlistClaimQuery,
   useCancelWaitlistEntryMutation,
 } = waitlistApi;

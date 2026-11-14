@@ -21,10 +21,25 @@ public static class WaitlistEndpoints
             .RequireAuthorization("ClientAndAbove");
         group.MapGet("/", GetWaitlist)
             .RequireAuthorization("ArtistAndAbove");
-        group.MapPost("{id:guid}/mark-booked", MarkWaitlistEntryBooked)
-            .RequireAuthorization("ClientAndAbove");
         group.MapDelete("{id:guid}", CancelWaitlistEntry)
             .RequireAuthorization("ClientAndAbove");
+
+        // C09 claim page read. AllowAnonymous: a guest on the waitlist has no account, so the claim token in the
+        // email is the authorisation. Row in architecture.md's AllowAnonymous Exceptions table. Mitigations: a
+        // purpose-bound Data Protection token (not the entry id), the 24h window read from the row, one identical
+        // 404 for every invalid token, no personal data in the response, side-effect free, rate limited. POST
+        // with the token in the body so it never appears in a URL the server sees.
+        app.MapPost("/api/v1/public/waitlist/claim", GetWaitlistClaim)
+            .AllowAnonymous().RequireRateLimiting("public-read");
+    }
+
+    private static async Task<IResult> GetWaitlistClaim(
+        WaitlistClaimRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        WaitlistClaimResponse result = await mediator.Send(new GetWaitlistClaimQuery(request.Token), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> JoinWaitlist(
@@ -49,15 +64,6 @@ public static class WaitlistEndpoints
     {
         List<WaitlistEntryResponse> result = await mediator.Send(new GetWaitlistQuery(artistId), ct);
         return Results.Ok(result);
-    }
-
-    private static async Task<IResult> MarkWaitlistEntryBooked(
-        Guid id,
-        ISender mediator,
-        CancellationToken ct)
-    {
-        await mediator.Send(new MarkWaitlistEntryBookedCommand(id), ct);
-        return Results.NoContent();
     }
 
     private static async Task<IResult> CancelWaitlistEntry(

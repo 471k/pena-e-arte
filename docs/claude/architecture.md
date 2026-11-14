@@ -1240,6 +1240,7 @@ The following are the only documented exceptions:
 | `GET /api/v1/public/studios/{slug}/booking/deposit-rule` | Public deposit estimate for guest booking | None — read-only, single active rule's name/amounts only |
 | `POST /api/v1/public/studios/{slug}/booking/presign` | Anonymous image upload before a guest's account exists | Rate-limited (`public-booking`); image content-types only, no PDF; entire R2 key server-constructed, no client-supplied path component; orphan-cleanup job (`GuestPendingUploadCleanupJob`) |
 | `POST /api/v1/waitlist` | Guest waitlist join, no prior account needed | Rate-limited (`public-booking`); no PII beyond what guest booking already collects; `JoinWaitlistHandler` still resolves a signed-in client from the JWT when one is present, so a real account never falls back to the guest path unnecessarily |
+| `POST /api/v1/public/waitlist/claim` | The waitlist claim page (C09, 2026-11-14): a guest on the waitlist has no account, so the link in the "a slot opened up" email is the authorisation | The credential is a purpose-bound Data Protection token (`IWaitlistClaimTokens`, purpose `Waitlist.Claim.v1`, shared key ring), not the entry id; bound to one notification by `NotifiedAt`; 24h window read from the row; one identical 404 for every token that isn't valid and current; response carries no personal data (no guest name/email/phone, no notes); side-effect free (link scanners); token in the URL fragment and posted in the body, so no server logs it; rate-limited (`public-read`); tenant from the verified token via `SetTenant`, no `IgnoreQueryFilters` |
 | `POST /api/v1/gift-cards` | Guest gift-card purchase, no prior account needed | Rate-limited (`public-booking`); same posture as guest checkout — card is `Pending` until `IPaymentProvider` confirms payment |
 | `GET /api/v1/gift-cards/{code}/balance` | Public balance lookup by code alone (no per-studio scope in the route) | Rate-limited (`public-read`); enumeration risk from brute-forcing 12-char codes is accepted at that rate limit; response (`GiftCardBalanceResponse`) carries only `RemainingBalance`/`Status` — never `PurchaserEmail`/`RecipientEmail` |
 | `GET /api/v1/public/studios/{slug}/design-catalog` | Public flash/design catalog browse (P1 backlog Group 4, item #9) | None — read-only, only `IsCatalogItem && ClientId == null` designs, no client PII |
@@ -4030,6 +4031,9 @@ fires after the appointment's own time has already passed and has no future slot
 a waitlist entry's preferred-date window. A thin `MarkWaitlistEntryBookedCommand`
 (`POST /waitlist/{id}/mark-booked`) was meant to be fired from the frontend right after a successful
 booking submit, rather than threading waitlist state through `CreateAppointmentCoreAsync`.
+**That was never true and the command is gone (2026-11-14, C09):** a booking that carries a claim
+token now marks its entry Booked server-side (`CompleteWaitlistClaimCommand`). See the C09 entry at
+the end of this file.
 
 > **Correction (2026-11-14): nothing marks a waitlist entry booked, anywhere.** The endpoint exists,
 > but no frontend or backend code calls it outside tests, so an entry stays `Notified` even after the
@@ -4038,7 +4042,8 @@ booking submit, rather than threading waitlist state through `CreateAppointmentC
 > own `PreferredDateFrom`, because the freed slot's date isn't stored (`ClaimNextMatchAsync` receives
 > it and discards it), so it can notify people about a slot taken days ago. The emailed claim link
 > (`/waitlist/{id}/claim`) also has no frontend route. Found in the E01-E03 evidence dump; the fix is
-> specified in `docs/claude/overnight-prompt-waitlist-claim-journey-2026-11-14.md`. Shared `WaitlistQueuePage` serves both artist (self-scoped) and
+> specified in `docs/claude/overnight-prompt-waitlist-claim-journey-2026-11-14.md`. **Fixed the same
+> day (C09), see the entry at the end of this file.** Shared `WaitlistQueuePage` serves both artist (self-scoped) and
 owner (studio-wide) — `GetWaitlistQuery`'s own artist-self-scoping made a second, separate
 artist-facing page unnecessary, the same call the spec asked to resolve by checking the query's
 actual scoping behavior rather than assuming a split. Frontend `NotifyMeDialog` is wired into
@@ -6991,3 +6996,51 @@ Tests:
 *Known gap, not changed here:* `ShowPlatformBranding` is checked against `Plan.AllowBrandingRemoval` only when it is switched off (`UpdateStudioBrandingCommand`). Nothing resets it when a studio moves to a plan without removal, so a hidden line stays hidden on every surface after a downgrade. Raised with Desktop.
 
 **3. The consent PDF's legal footer: reviewed and deliberately left as it is (Phi, 14 Nov 2026).** Every signed consent PDF ends with "This document was generated automatically by TattooOS Studio Platform and is a legally binding digital consent record." (`ConsentFormPdfService`, footer note). It names the platform, but it is a statement about the document's standing, not branding. It stays **unchanged and unconditional**: it is not gated on `ShowPlatformBranding` and must not become so. Desktop raised it because it is a legal claim rather than an engineering choice; Phi read it and is content. This is a decision, not an oversight, so it is not to be reopened in a later phase. (The separate grey "Generated via TattooOS · tattooos.co" line on the same PDF *is* branding and does follow the switch.)
+
+## The waitlist claim journey (C09): no hold, first come, and a cascade only offers a free slot — 2026-11-14
+
+**What was broken:** the email's link 404'd; nothing ever marked an entry Booked; the entry didn't
+record which slot it was offered; and the expiry job's cascade re-matched on the expired client's own
+window. **One more, found while building it:** the expiry job's cascade never matched anyone in
+production. A Hangfire job has no tenant, and `ClaimNextMatchAsync` reads waitlist entries through the
+tenant filter (`StudioId == tenant.StudioId`, here `Guid.Empty`), so it always found nobody. The unit
+tests passed because `FakeDbContext` applies no query filters. The job now sets each studio as the
+tenant before matching, and `WaitlistClaimJourneyIntegrationTests` covers it on real MySQL.
+
+**Decisions:**
+- **No hold, first come, first served.** Claiming opens the booking form prefilled with the artist and
+  time; it doesn't reserve the slot or book outright (the entry has no service, duration choice,
+  placement or description to book from). This is the category norm. Booksy's own support article: when
+  a spot opens "Booksy automatically sends an SMS to those clients with a link to book", "It's
+  first-come, first-served" and "The waitlist doesn't 'auto-hold' spots or book appointments
+  automatically" (`support.booksy.com/hc/en-gb/articles/16463469277714-How-does-the-waitlist-work`);
+  Fresha documents waitlist updates in the same family
+  (`fresha.com/help-center/knowledge-base/calendar/169-send-waitlist-updates`).
+- **The entry records the offered slot:** `NotifiedSlotStart`, `NotifiedArtistId`,
+  `NotifiedSlotDurationMinutes` (additive, nullable, no backfill). The third wasn't in the spec: a
+  free/taken check needs the slot's length.
+- **The claim link's credential** is a Data Protection token, purpose `Waitlist.Claim.v1`, on the shared
+  key ring, payload entry id, studio id and `NotifiedAt` ticks. No expiry inside it: the 24h window
+  (`WaitlistClaimWindow`, one home) is read from the row, so an expired link can be told apart from a
+  forged one. `NotifiedAt` is truncated to whole seconds so the tracked value (the cancel path mints from
+  the still-tracked entity) and the stored `datetime(6)` value agree. Two tests pin the purpose isolation
+  both ways against Identity's `DataProtectorTokenProvider` purpose.
+- **Token in the URL fragment** (`/waitlist/claim#t=…`), posted in the body: no server, proxy or request
+  log sees it. Checked against Cloudflare Web Analytics, which loads on `app.tattooos.co`: its docs don't
+  mention fragments either way, but the beacon served to production (js 2026.10.1) builds every payload's
+  `location` and `referrer` through a sanitiser that clears `hash` and `search`, and a live capture with
+  a unique fragment on first load and after `pushState` found it in neither payload. `NotificationLogs`
+  keeps the email with the token replaced by `[removed]`.
+- **One path for guests and signed-in clients:** the token. My Waitlist's "Book this slot" gets the same
+  token for the client's own open offer from `GET /waitlist/mine`. The booking itself still uses the
+  session when there is one.
+- **Single use = the entry's status.** Viewing never consumes it. A booking carrying the token marks the
+  entry Booked (`CompleteWaitlistClaimCommand`, sent by both booking handlers after the appointment is
+  saved; it never fails the booking), only if the booking is for the entry's own person (same client, or
+  the guest email it was made with), so a forwarded email can't end someone else's place.
+- **The cascade's contract changed: it never notifies about a slot it hasn't just confirmed is free.**
+  `ClaimNextMatchAsync` runs the booking's own schedule-and-conflict check first, for every caller:
+  cancel (excluding the not-yet-saved cancelled appointment), reschedule (now matched after its save, so
+  the moved appointment's new position counts), the expiry job, and a claim booked at a different time
+  (the offered slot then moves to the next person). Pre-C09 rows with no recorded slot are expired, not
+  cascaded.
