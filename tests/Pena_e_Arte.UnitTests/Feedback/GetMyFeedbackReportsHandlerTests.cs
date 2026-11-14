@@ -33,7 +33,7 @@ public class GetMyFeedbackReportsHandlerTests
         AddReport(_userId, Guid.NewGuid(), "client", FeedbackType.SupportRequest);   // other studio
         await _db.SaveChangesAsync();
 
-        List<FeedbackReportResponse> result = await CreateSut().Handle(new GetMyFeedbackReportsQuery(), default);
+        List<MyFeedbackReportResponse> result = await CreateSut().Handle(new GetMyFeedbackReportsQuery(), default);
 
         result.Should().ContainSingle();
     }
@@ -45,7 +45,7 @@ public class GetMyFeedbackReportsHandlerTests
         AddReport(_userId, _studioId, "artist", FeedbackType.BugReport);
         await _db.SaveChangesAsync();
 
-        List<FeedbackReportResponse> result =
+        List<MyFeedbackReportResponse> result =
             await CreateSut().Handle(new GetMyFeedbackReportsQuery("SupportRequest"), default);
 
         result.Should().ContainSingle();
@@ -55,8 +55,25 @@ public class GetMyFeedbackReportsHandlerTests
     [Fact]
     public async Task Handle_NoMatchingReports_ReturnsEmptyList()
     {
-        List<FeedbackReportResponse> result = await CreateSut().Handle(new GetMyFeedbackReportsQuery(), default);
+        List<MyFeedbackReportResponse> result = await CreateSut().Handle(new GetMyFeedbackReportsQuery(), default);
         result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_ReportWithAdminNote_ResponseCarriesNoNote()
+    {
+        FeedbackReport report = FeedbackReport.Create(
+            _studioId, _userId, "client", "Some Studio", FeedbackType.SupportRequest, "Title", "Body of the report.");
+        report.UpdateStatus(FeedbackStatus.Reviewing, "internal: suspect this user is a reseller");
+        _db.FeedbackReports.Add(report);
+        await _db.SaveChangesAsync();
+
+        List<MyFeedbackReportResponse> result = await CreateSut().Handle(new GetMyFeedbackReportsQuery(), default);
+
+        result.Should().ContainSingle();
+        typeof(MyFeedbackReportResponse).GetProperty("AdminNote").Should().BeNull(
+            "the submitter's type must not have the field at all, not merely leave it null");
+        System.Text.Json.JsonSerializer.Serialize(result).Should().NotContain("reseller");
     }
 
     private void AddReport(Guid submitterUserId, Guid studioId, string role, FeedbackType type) =>

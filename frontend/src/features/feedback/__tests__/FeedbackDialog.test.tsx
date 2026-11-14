@@ -11,11 +11,11 @@ import authReducer from "@/features/auth/authSlice";
 import { feedbackApi } from "@/features/feedback/feedbackApi";
 import { filesApi } from "@/shared/api/filesApi";
 import { FeedbackDialog } from "@/features/feedback/components/FeedbackDialog";
-import type { FeedbackReportResponse } from "@/features/feedback/feedback.types";
+import type { MyFeedbackReportResponse } from "@/features/feedback/feedback.types";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-const CREATED_REPORT: FeedbackReportResponse = {
+const CREATED_REPORT: MyFeedbackReportResponse = {
   id:            "fb-0001",
   type:          "BugReport",
   title:         "Broken button",
@@ -23,7 +23,6 @@ const CREATED_REPORT: FeedbackReportResponse = {
   status:        "Open",
   studioName:    "Test Studio",
   submitterRole: "artist",
-  adminNote:    null,
   createdAt:     "2026-07-01T00:00:00.000Z",
   resolvedAt:    null,
 };

@@ -32,7 +32,7 @@ public static class FeedbackEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        FeedbackReportResponse result = await mediator.Send(new SubmitFeedbackCommand(request), ct);
+        MyFeedbackReportResponse result = await mediator.Send(new SubmitFeedbackCommand(request), ct);
         return Results.Created($"/api/v1/feedback/{result.Id}", result);
     }
 
@@ -63,7 +63,7 @@ public static class FeedbackEndpoints
         CancellationToken ct,
         string? type = null)
     {
-        List<FeedbackReportResponse> result = await mediator.Send(new GetMyFeedbackReportsQuery(type), ct);
+        List<MyFeedbackReportResponse> result = await mediator.Send(new GetMyFeedbackReportsQuery(type), ct);
         return Results.Ok(result);
     }
 

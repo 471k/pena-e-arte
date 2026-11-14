@@ -14,7 +14,9 @@ export const FEEDBACK_STATUS = {
 } as const;
 export type FeedbackStatus = (typeof FEEDBACK_STATUS)[keyof typeof FEEDBACK_STATUS];
 
-export interface FeedbackReportResponse {
+/** A report as its submitter sees it (GET feedback/mine, POST feedback). No adminNote: the API
+ *  doesn't send the admin's internal note to the submitter at all. */
+export interface MyFeedbackReportResponse {
   id:              string;
   type:            FeedbackType;
   title:           string;
@@ -22,10 +24,14 @@ export interface FeedbackReportResponse {
   status:          FeedbackStatus;
   studioName:      string;
   submitterRole:   string;
-  adminNote:      string | null;
   createdAt:       string;
   resolvedAt:      string | null;
   attachmentUrls?: string[];
+}
+
+/** A report as the platform admin sees it (platform/feedback): adds the internal note. */
+export interface FeedbackReportResponse extends MyFeedbackReportResponse {
+  adminNote: string | null;
 }
 
 export interface SubmitFeedbackRequest {

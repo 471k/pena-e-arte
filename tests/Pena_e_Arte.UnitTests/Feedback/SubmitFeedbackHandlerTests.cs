@@ -32,7 +32,7 @@ public class SubmitFeedbackHandlerTests
         await SeedStudio();
         SubmitFeedbackCommand command = Command("BugReport", "Broken button", "The submit button does nothing on Safari.");
 
-        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+        MyFeedbackReportResponse result = await CreateSut().Handle(command, default);
 
         FeedbackReport saved = _db.FeedbackReports.Single(r => r.Id == result.Id);
         saved.StudioId.Should().Be(_studioId);
@@ -47,7 +47,7 @@ public class SubmitFeedbackHandlerTests
         await SeedStudio();
         SubmitFeedbackCommand command = Command("BugReport", "Broken button", "The submit button does nothing on Safari.");
 
-        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+        MyFeedbackReportResponse result = await CreateSut().Handle(command, default);
 
         result.Type.Should().Be("BugReport");
         result.Title.Should().Be("Broken button");
@@ -55,7 +55,6 @@ public class SubmitFeedbackHandlerTests
         result.Status.Should().Be("Open");
         result.StudioName.Should().Be("Test Studio");
         result.SubmitterRole.Should().Be("artist");
-        result.AdminNote.Should().BeNull();
         result.ResolvedAt.Should().BeNull();
     }
 
@@ -65,7 +64,7 @@ public class SubmitFeedbackHandlerTests
         await SeedStudio();
         SubmitFeedbackCommand command = Command("General", "  Padded title  ", "  Padded body with enough characters.  ");
 
-        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+        MyFeedbackReportResponse result = await CreateSut().Handle(command, default);
 
         result.Title.Should().Be("Padded title");
         result.Body.Should().Be("Padded body with enough characters.");
@@ -92,7 +91,7 @@ public class SubmitFeedbackHandlerTests
             Request = baseCommand.Request with { AttachmentUrls = ["https://cdn.example.com/1.png", "https://cdn.example.com/2.mp4"] },
         };
 
-        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+        MyFeedbackReportResponse result = await CreateSut().Handle(command, default);
 
         result.AttachmentUrls.Should().Equal("https://cdn.example.com/1.png", "https://cdn.example.com/2.mp4");
         FeedbackReport saved = _db.FeedbackReports.Single(r => r.Id == result.Id);
@@ -105,7 +104,7 @@ public class SubmitFeedbackHandlerTests
         await SeedStudio();
         SubmitFeedbackCommand command = Command("BugReport", "Broken button", "The submit button does nothing on Safari.");
 
-        FeedbackReportResponse result = await CreateSut().Handle(command, default);
+        MyFeedbackReportResponse result = await CreateSut().Handle(command, default);
 
         result.AttachmentUrls.Should().BeEmpty();
     }

@@ -10,7 +10,7 @@ import {
   useGetFeedbackMessagesQuery,
   usePostFeedbackMessageMutation,
 } from "../feedbackApi";
-import type { FeedbackReportResponse, FeedbackStatus } from "../feedback.types";
+import type { MyFeedbackReportResponse, FeedbackStatus } from "../feedback.types";
 import { useSupportHub } from "../useSupportHub";
 
 const STATUS_BADGE: Record<FeedbackStatus, string> = {
@@ -27,7 +27,7 @@ function fmt(date: string): string {
 }
 
 interface SupportTicketThreadProps {
-  report:    FeedbackReportResponse;
+  report:    MyFeedbackReportResponse;
   canReply?: boolean;
 }
 

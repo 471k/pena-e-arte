@@ -223,7 +223,7 @@ describe("HelpMenu", () => {
       http.get("http://localhost/api/v1/feedback/mine", () => HttpResponse.json([{
         id: "fb-1", type: "SupportRequest", title: "Need help", body: "Can't find billing.",
         status: "Open", studioName: "Ink Soul", submitterRole: "client",
-        adminNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+        createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
       }])),
       http.get("http://localhost/api/v1/feedback/fb-1/messages", () => HttpResponse.json([])),
     );
