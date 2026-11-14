@@ -24,7 +24,7 @@ public class SeoShellHtmlWriterTests
             Guid.NewGuid(), name, slug, "Porto", latitude, longitude, description, coverImageUrl,
             "+351 912 345 678", averageRating, reviewCount, [],
             artists ?? [],
-            true, [], hours ?? [], "Europe/Lisbon");
+            true, [], hours ?? [], "Europe/Lisbon", ShowPlatformBranding: true);
 
     private static PublicArtistResponse MakeArtist(
         string name = "Elena Martins",

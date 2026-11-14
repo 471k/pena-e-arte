@@ -96,6 +96,9 @@ public class ConsentFormPdfService : IConsentFormPdfService
                     });
 
                     // ── Footer note ──────────────────────────────────────────
+                    // Unconditional on purpose: a statement about the document's standing, not branding, so
+                    // it is NOT gated on ShowPlatformBranding. Reviewed by Phi 14 Nov 2026 and left as is
+                    // (architecture.md Decisions Log, 2026-11-14). Don't reopen without a new decision.
                     col.Item().PaddingTop(8).Text(
                         "This document was generated automatically by TattooOS Studio Platform " +
                         "and is a legally binding digital consent record.")

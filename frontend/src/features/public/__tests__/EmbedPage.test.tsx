@@ -63,6 +63,7 @@ const STUDIO: PublicStudioResponse = {
   socialLinks: [],
   hours: [],
   timezone: "Europe/Lisbon",
+  showPlatformBranding: true,
   addressLine1: null,
   addressLine2: null,
   postalCode: null,
@@ -113,5 +114,20 @@ describe("EmbedPage", () => {
     });
     renderPage();
     expect(screen.getByText(/artists being added soon/i)).toBeInTheDocument();
+  });
+
+  // The embed is on the studio's own website, so it follows the studio's branding switch (14 Nov 2026).
+  it("shows the Powered by TattooOS line while the studio's branding switch is on", () => {
+    renderPage();
+    expect(screen.getByRole("link", { name: "Powered by TattooOS" })).toBeInTheDocument();
+  });
+
+  it("leaves the line out when the studio has turned branding off", () => {
+    mockUseGetPublicStudioQuery.mockReturnValue({
+      data: { ...STUDIO, showPlatformBranding: false }, isLoading: false, isError: false,
+    });
+    renderPage();
+    expect(screen.queryByText(/powered by tattooos/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Book an Appointment/i })).toBeInTheDocument();
   });
 });

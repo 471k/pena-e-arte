@@ -125,16 +125,21 @@ export function EmbedPage() {
         </div>
       </div>
 
-      <footer className="px-4 py-3 border-t text-center">
-        <a
-          href="https://app.tattooos.co"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-muted-foreground hover:underline"
-        >
-          Powered by TattooOS
-        </a>
-      </footer>
+      {/* The embed sits on the studio's own website, so it follows the studio's branding switch, as its
+          emails, consent forms and receipts do. The Book button opens the studio page on tattooos.co,
+          which always shows the line: that page is ours (Decisions Log, 14 Nov 2026). */}
+      {studio.showPlatformBranding && (
+        <footer className="px-4 py-3 border-t text-center">
+          <a
+            href="https://app.tattooos.co"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground hover:underline"
+          >
+            Powered by TattooOS
+          </a>
+        </footer>
+      )}
     </div>
   );
 }

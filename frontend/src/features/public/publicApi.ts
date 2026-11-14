@@ -47,6 +47,11 @@ export interface PublicStudioResponse {
   socialLinks:    PublicSocialLinkResponse[];
   hours:          PublicStudioHoursResponse[];
   timezone:       string;
+  /**
+   * Whether the website embed shows "Powered by TattooOS" (the studio's branding switch). Only this yes/no
+   * is public, never the plan behind it. The studio and artist pages on tattooos.co ignore it on purpose.
+   */
+  showPlatformBranding: boolean;
   addressLine1:   string | null;
   addressLine2:   string | null;
   postalCode:     string | null;
