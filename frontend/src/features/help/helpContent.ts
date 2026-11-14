@@ -2316,6 +2316,13 @@ export const FAQ_ITEMS: FaqItem[] = [
     relatedArticleIds: ["owner-billing"],
   },
   {
+    id: "faq-studio-read-only",
+    roles: [Artist, Client],
+    question: "Why does a banner say changes can't be saved right now?",
+    answer: "The studio's subscription needs attention (for example, its trial has ended and the studio hasn't subscribed yet), so for now the app won't save new bookings or edits. Only the studio owner can fix this; as an artist you don't need to do anything, and everything works again once they do. As a client, contact the studio directly if you need to book or change an appointment in the meantime.",
+    relatedArticleIds: [],
+  },
+  {
     id: "faq-cash-vs-card",
     roles: [Owner, Client],
     question: "What's the difference between paying by card and paying by cash?",
