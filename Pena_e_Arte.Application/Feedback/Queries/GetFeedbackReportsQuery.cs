@@ -16,8 +16,9 @@ public record GetFeedbackReportsQuery(
 public class GetFeedbackReportsHandler(IAppDbContext db)
     : IRequestHandler<GetFeedbackReportsQuery, List<FeedbackReportResponse>>
 {
-    // Shared with GetMyFeedbackReportsHandler — an Expression (not a compiled Func) so EF
+    // The admin inbox projection (includes AdminNote). An Expression (not a compiled Func) so EF
     // Core can translate it into the SQL projection rather than materializing full entities.
+    // The submitter gets GetMyFeedbackReportsHandler.ToSubmitterResponse, which has no note.
     internal static readonly Expression<Func<FeedbackReport, FeedbackReportResponse>> ToResponse = r =>
         new FeedbackReportResponse(
             r.Id,

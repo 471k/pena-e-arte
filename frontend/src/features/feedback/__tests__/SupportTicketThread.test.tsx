@@ -9,12 +9,12 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { feedbackApi } from "../feedbackApi";
 import { SupportTicketThread } from "../components/SupportTicketThread";
-import type { FeedbackReportResponse, FeedbackMessageResponse } from "../feedback.types";
+import type { MyFeedbackReportResponse, FeedbackMessageResponse } from "../feedback.types";
 
-const REPORT: FeedbackReportResponse = {
+const REPORT: MyFeedbackReportResponse = {
   id: "fb-1", type: "SupportRequest", title: "Billing question", body: "Where do I see my invoices?",
   status: "Open", studioName: "Ink Soul", submitterRole: "owner",
-  adminNote: null, createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
+  createdAt: "2026-07-21T00:00:00.000Z", resolvedAt: null,
 };
 
 const MESSAGES: FeedbackMessageResponse[] = [
@@ -43,7 +43,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-function renderThread(canReply = true, report: FeedbackReportResponse = REPORT) {
+function renderThread(canReply = true, report: MyFeedbackReportResponse = REPORT) {
   const store = configureStore({
     reducer: { auth: authReducer, [feedbackApi.reducerPath]: feedbackApi.reducer },
     middleware: (gd) => gd().concat(feedbackApi.middleware),

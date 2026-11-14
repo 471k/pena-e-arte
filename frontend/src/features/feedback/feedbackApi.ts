@@ -2,6 +2,7 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
 import type {
   FeedbackReportResponse,
+  MyFeedbackReportResponse,
   SubmitFeedbackRequest,
   UpdateFeedbackStatusRequest,
   FeedbackMessageResponse,
@@ -13,7 +14,7 @@ export const feedbackApi = createApi({
   baseQuery,
   tagTypes: ["Feedback", "FeedbackMessage"],
   endpoints: (builder) => ({
-    submitFeedback: builder.mutation<FeedbackReportResponse, SubmitFeedbackRequest>({
+    submitFeedback: builder.mutation<MyFeedbackReportResponse, SubmitFeedbackRequest>({
       query: (body) => ({ url: "feedback", method: "POST", body }),
       invalidatesTags: ["Feedback"],
     }),
@@ -42,7 +43,7 @@ export const feedbackApi = createApi({
       }),
       invalidatesTags: ["Feedback"],
     }),
-    getMyFeedbackReports: builder.query<FeedbackReportResponse[], { type?: string } | void>({
+    getMyFeedbackReports: builder.query<MyFeedbackReportResponse[], { type?: string } | void>({
       query: (args) => `feedback/mine${args?.type ? `?type=${args.type}` : ""}`,
       providesTags: ["Feedback"],
     }),

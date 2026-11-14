@@ -9,15 +9,15 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Feedback.Commands;
 
-public record SubmitFeedbackCommand(SubmitFeedbackRequest Request) : IRequest<FeedbackReportResponse>;
+public record SubmitFeedbackCommand(SubmitFeedbackRequest Request) : IRequest<MyFeedbackReportResponse>;
 
 public class SubmitFeedbackHandler(
     IAppDbContext db,
     ICurrentTenant tenant,
     ICurrentUser user)
-    : IRequestHandler<SubmitFeedbackCommand, FeedbackReportResponse>
+    : IRequestHandler<SubmitFeedbackCommand, MyFeedbackReportResponse>
 {
-    public async Task<FeedbackReportResponse> Handle(SubmitFeedbackCommand command, CancellationToken ct)
+    public async Task<MyFeedbackReportResponse> Handle(SubmitFeedbackCommand command, CancellationToken ct)
     {
         Studio studio = await db.Studios
             .FirstOrDefaultAsync(s => s.Id == tenant.StudioId, ct)
@@ -41,7 +41,8 @@ public class SubmitFeedbackHandler(
         return Map(report);
     }
 
-    internal static FeedbackReportResponse Map(FeedbackReport r) => new(
+    // Returned to the submitter, so the submitter's shape: no AdminNote.
+    internal static MyFeedbackReportResponse Map(FeedbackReport r) => new(
         r.Id,
         r.Type.ToString(),
         r.Title,
@@ -49,7 +50,6 @@ public class SubmitFeedbackHandler(
         r.Status.ToString(),
         r.StudioName,
         r.SubmitterRole,
-        r.AdminNote,
         r.CreatedAt,
         r.ResolvedAt,
         r.AttachmentUrls);

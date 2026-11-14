@@ -26,6 +26,20 @@ public class UpdateFeedbackStatusHandler(IAppDbContext db)
         report.UpdateStatus(status, command.Request.AdminNote);
         await db.SaveChangesAsync(ct);
 
-        return SubmitFeedbackHandler.Map(report);
+        return Map(report);
     }
+
+    // Admin-only endpoint, so the admin's shape (includes AdminNote).
+    internal static FeedbackReportResponse Map(FeedbackReport r) => new(
+        r.Id,
+        r.Type.ToString(),
+        r.Title,
+        r.Body,
+        r.Status.ToString(),
+        r.StudioName,
+        r.SubmitterRole,
+        r.AdminNote,
+        r.CreatedAt,
+        r.ResolvedAt,
+        r.AttachmentUrls);
 }
