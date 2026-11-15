@@ -19,8 +19,9 @@ public class ChatNotificationJob(
     {
         // IgnoreQueryFilters is used here — not because of an admin cross-tenant read (this
         // feature adds none, see Decision 2), but because this job runs with no ICurrentTenant
-        // scope at all (Hangfire jobs are not HTTP requests) — the tenant filter's underlying
-        // predicate would throw for a null/default tenant otherwise. Same pattern as
+        // scope at all (Hangfire jobs are not HTTP requests). With no tenant the filter doesn't
+        // throw: it compares StudioId to Guid.Empty and silently matches nothing, so this read
+        // would find no message and the job would quietly send nothing. Same pattern as
         // ManualReminderJob/SendArtistInviteJob's own IgnoreQueryFilters() usage.
         ChatMessage? message = await db.ChatMessages
             .IgnoreQueryFilters()

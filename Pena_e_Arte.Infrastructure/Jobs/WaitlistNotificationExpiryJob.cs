@@ -22,6 +22,11 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// nothing, so before 2026-11-14 the cascade silently never found anyone in production. The unit tests didn't
 /// show it because the fake context applies no query filters.</para>
 ///
+/// <para>The tenant is cleared when the per-studio loop ends (even if it throws), so the save and the sends
+/// after it run with no tenant, like any other job, rather than as whichever studio came last. Before
+/// 2026-11-15 they ran as the last studio, which was safe only because the send handler happens to use
+/// IgnoreQueryFilters().</para>
+///
 /// <para>It cascades on the slot actually offered (NotifiedSlotStart / NotifiedArtistId /
 /// NotifiedSlotDurationMinutes), not the expired client's own preferred window, and ClaimNextMatchAsync checks
 /// that slot is still free first. An entry notified before those fields existed has no recorded slot: it is
@@ -43,33 +48,46 @@ public class WaitlistNotificationExpiryJob(
                 && w.DeletedAt == null)
             .ToListAsync(ct);
 
-        if (expired.Count == 0) return;
+        if (expired.Count == 0)
+        {
+            // One line per run even when idle, so "the job ran and found nothing" can be told from "the job
+            // didn't run" (jobs audit, 15 Nov).
+            logger.LogInformation("WaitlistNotificationExpiryJob found no notified entries past their claim window");
+            return;
+        }
 
         List<Guid> toNotify = [];
         int skippedNoSlot = 0;
 
-        foreach (IGrouping<Guid, Waitlist> studioEntries in expired.GroupBy(w => w.StudioId))
+        try
         {
-            tenant.SetTenant(studioEntries.Key);
-
-            foreach (Waitlist entry in studioEntries)
+            foreach (IGrouping<Guid, Waitlist> studioEntries in expired.GroupBy(w => w.StudioId))
             {
-                entry.Status = WaitlistStatus.Expired;
-                entry.UpdatedAt = DateTime.UtcNow;
+                tenant.SetTenant(studioEntries.Key);
 
-                if (entry.NotifiedSlotStart is not DateTime slotStart || entry.NotifiedSlotDurationMinutes is not int duration)
+                foreach (Waitlist entry in studioEntries)
                 {
-                    skippedNoSlot++;
-                    logger.LogInformation(
-                        "Waitlist entry {@WaitlistEntryId} expired with no recorded slot (notified before C09); not cascaded",
-                        entry.Id);
-                    continue;
-                }
+                    entry.Status = WaitlistStatus.Expired;
+                    entry.UpdatedAt = DateTime.UtcNow;
 
-                Guid? matchedId = await db.ClaimNextMatchAsync(
-                    entry.StudioId, entry.NotifiedArtistId, slotStart, duration, freedAppointmentId: null, ct);
-                if (matchedId is Guid id) toNotify.Add(id);
+                    if (entry.NotifiedSlotStart is not DateTime slotStart || entry.NotifiedSlotDurationMinutes is not int duration)
+                    {
+                        skippedNoSlot++;
+                        logger.LogInformation(
+                            "Waitlist entry {@WaitlistEntryId} expired with no recorded slot (notified before C09); not cascaded",
+                            entry.Id);
+                        continue;
+                    }
+
+                    Guid? matchedId = await db.ClaimNextMatchAsync(
+                        entry.StudioId, entry.NotifiedArtistId, slotStart, duration, freedAppointmentId: null, ct);
+                    if (matchedId is Guid id) toNotify.Add(id);
+                }
             }
+        }
+        finally
+        {
+            tenant.ClearTenant();
         }
 
         await db.SaveChangesAsync(ct);
