@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, MessagesSquare, Pencil } from "lucide-react";
+import { ArrowLeft, MessagesSquare, Pencil, RotateCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/shared/components/ui/avatar";
@@ -31,7 +31,7 @@ export function MessagesInboxPage() {
   useDocumentMeta({ title: "Messages — TattooOS", canonical: "/messages" });
 
   const [searchParams] = useSearchParams();
-  const { data: conversations, isLoading } = useGetConversationsQuery();
+  const { data: conversations, isLoading, isError, isFetching, refetch } = useGetConversationsQuery();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newConversationOpen, setNewConversationOpen] = useState(false);
   // A row's appointment label renders in the studio's timezone, so it waits for it.
@@ -81,7 +81,28 @@ export function MessagesInboxPage() {
             </div>
           )}
 
-          {!isLoading && !conversations?.length && (
+          {/* A failed load is never shown as an empty inbox (S07). With no list to fall back on, the
+              error replaces it; after a failed refresh the last list stays, marked as possibly stale. */}
+          {!isLoading && isError && !conversations && (
+            <div className="space-y-3 py-12 px-4 text-center" role="alert">
+              <p className="text-sm text-destructive-text">Couldn&apos;t load your conversations.</p>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={isFetching} onClick={() => void refetch()}>
+                <RotateCw aria-hidden="true" className="h-3.5 w-3.5" />
+                Try again
+              </Button>
+            </div>
+          )}
+
+          {!isLoading && isError && conversations && (
+            <p role="alert" className="px-4 py-2 border-b text-xs text-destructive-text">
+              Couldn&apos;t refresh your conversations — this list may be out of date.{" "}
+              <button type="button" className="underline underline-offset-2" disabled={isFetching} onClick={() => void refetch()}>
+                Try again
+              </button>
+            </p>
+          )}
+
+          {!isLoading && !isError && !conversations?.length && (
             <p className="text-center text-sm text-muted-foreground py-12 px-4">
               No conversations yet. Start one with the "New message" button above.
             </p>
@@ -151,7 +172,10 @@ export function MessagesInboxPage() {
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Back
               </Button>
-              <ConversationThread conversation={selected} />
+              {/* Keyed by conversation so switching remounts the thread: a draft typed for one person
+                  is discarded, never carried into the next person's compose box and sent there (S07).
+                  Restoring a draft on return needs a per-conversation draft store — S04, not here. */}
+              <ConversationThread key={selected.id} conversation={selected} />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">

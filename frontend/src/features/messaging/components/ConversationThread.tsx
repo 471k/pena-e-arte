@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Send, CheckCheck } from "lucide-react";
+import { Loader2, Send, CheckCheck, RotateCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -36,7 +36,8 @@ interface ConversationThreadProps {
 export function ConversationThread({ conversation }: ConversationThreadProps) {
   const [draft, setDraft] = useState("");
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
-  const { data: messages, isLoading } = useGetMessagesQuery({ conversationId: conversation.id });
+  const { data: messages, isLoading, isError, isFetching, refetch } = useGetMessagesQuery({ conversationId: conversation.id });
+  const composerHintId = useId();
   const [sendMessage, { isLoading: isSending }] = useSendMessageMutation();
   const [markRead] = useMarkConversationReadMutation();
   // Appointment labels render in the studio's timezone, so they wait for it (never browser-local).
@@ -85,7 +86,27 @@ export function ConversationThread({ conversation }: ConversationThreadProps) {
           </div>
         )}
 
-        {!isLoading && !messages?.length && (
+        {/* A failed history load is never "No messages yet" (S07). */}
+        {!isLoading && isError && !messages && (
+          <div className="space-y-2 py-8 text-center" role="alert">
+            <p className="text-sm text-destructive-text">Couldn&apos;t load this conversation.</p>
+            <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={isFetching} onClick={() => void refetch()}>
+              <RotateCw aria-hidden="true" className="h-3.5 w-3.5" />
+              Try again
+            </Button>
+          </div>
+        )}
+
+        {!isLoading && isError && messages && (
+          <p role="alert" className="text-center text-xs text-destructive-text">
+            Couldn&apos;t refresh this conversation — newer messages may be missing.{" "}
+            <button type="button" className="underline underline-offset-2" disabled={isFetching} onClick={() => void refetch()}>
+              Try again
+            </button>
+          </p>
+        )}
+
+        {!isLoading && !isError && !messages?.length && (
           <p className="text-center text-xs text-muted-foreground py-8">
             No messages yet — say hello.
           </p>
@@ -125,32 +146,40 @@ export function ConversationThread({ conversation }: ConversationThreadProps) {
         })}
       </div>
 
-      <div className="flex items-end gap-2 p-3 border-t">
-        <Textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Type a message…"
-          rows={2}
-          maxLength={MAX_BODY_LENGTH}
-          disabled={isSending}
-          className="resize-none text-sm"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void handleSend();
-            }
-          }}
-        />
-        <Button
-          type="button"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          disabled={!canSend || isSending}
-          onClick={handleSend}
-          aria-label="Send message"
-        >
-          {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
+      <div className="p-3 border-t space-y-1">
+        <div className="flex items-end gap-2">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            // Named for the recipient, so the field itself says who will receive the text (S07).
+            aria-label={`Message to ${conversation.otherDisplayName}`}
+            aria-describedby={composerHintId}
+            placeholder="Type a message…"
+            rows={2}
+            maxLength={MAX_BODY_LENGTH}
+            disabled={isSending}
+            className="resize-none text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void handleSend();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            disabled={!canSend || isSending}
+            onClick={handleSend}
+            aria-label="Send message"
+          >
+            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </div>
+        <p id={composerHintId} className="text-xs text-muted-foreground">
+          Enter sends · Shift+Enter adds a new line
+        </p>
       </div>
     </div>
   );

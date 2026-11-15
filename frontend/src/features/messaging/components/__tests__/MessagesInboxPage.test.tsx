@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -42,13 +43,15 @@ function makeStore(role: Role) {
 }
 
 function renderInbox(role: Role) {
+  const store = makeStore(role);
   render(
-    <Provider store={makeStore(role)}>
+    <Provider store={store}>
       <MemoryRouter initialEntries={["/messages"]}>
         <MessagesInboxPage />
       </MemoryRouter>
     </Provider>,
   );
+  return store;
 }
 
 describe("MessagesInboxPage", () => {
@@ -113,5 +116,87 @@ describe("MessagesInboxPage — which appointment the last message is about", ()
     await within(labelled).findByText("Thu 3 Dec, 14:30 · Fine line");
 
     expect(within(labelled).queryByRole("link")).not.toBeInTheDocument();
+  });
+});
+
+describe("MessagesInboxPage — drafts and load failures (S07)", () => {
+  const conv = (id: string, name: string): ConversationResponse => ({
+    id, otherUserId: `u-${id}`, otherRole: "artist", otherDisplayName: name, otherAvatarUrl: null,
+    lastMessageAt: "2026-11-01T10:00:00Z", lastMessagePreview: "Hello", lastMessageFromMe: false,
+    unreadCount: 0, createdAt: "2026-10-01T00:00:00Z",
+  });
+  const TWO = [conv("c1", "Marco Ink"), conv("c2", "Ana Lines")];
+
+  function useThreadEndpoints(posted: (conversationId: string, body: string) => void) {
+    server.use(
+      http.get("http://localhost/api/v1/conversations/:id/messages", () => HttpResponse.json([])),
+      http.post("http://localhost/api/v1/conversations/:id/read", () => new HttpResponse(null, { status: 204 })),
+      http.post("http://localhost/api/v1/conversations/:id/messages", async ({ request, params }) => {
+        const body = (await request.json()) as { body: string };
+        posted(String(params.id), body.body);
+        return HttpResponse.json({}, { status: 201 });
+      }),
+    );
+  }
+
+  it("never carries a draft typed for one person into another person's composer", async () => {
+    const user = userEvent.setup();
+    const posted = vi.fn();
+    server.use(http.get("http://localhost/api/v1/conversations", () => HttpResponse.json(TWO)));
+    useThreadEndpoints(posted);
+    renderInbox(Role.Client);
+
+    await user.click(await screen.findByRole("button", { name: "Conversation with Marco Ink" }));
+    await user.type(await screen.findByRole("textbox", { name: "Message to Marco Ink" }), "Only for Marco");
+
+    await user.click(screen.getByRole("button", { name: "Conversation with Ana Lines" }));
+    const anasComposer = await screen.findByRole("textbox", { name: "Message to Ana Lines" });
+
+    expect(anasComposer).toHaveValue("");
+    expect(screen.queryByRole("textbox", { name: "Message to Marco Ink" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send message/i })).toBeDisabled();
+    // Enter in Ana's composer sends nothing — Marco's text is gone, not waiting to be delivered.
+    await user.type(anasComposer, "{Enter}");
+    expect(posted).not.toHaveBeenCalled();
+  });
+
+  it("shows a failed inbox load as an error with a working retry, never as an empty inbox", async () => {
+    const user = userEvent.setup();
+    let calls = 0;
+    server.use(http.get("http://localhost/api/v1/conversations", () => {
+      calls += 1;
+      return calls === 1 ? new HttpResponse(null, { status: 500 }) : HttpResponse.json(TWO);
+    }));
+    renderInbox(Role.Client);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load your conversations.");
+    expect(screen.queryByText(/no conversations yet/i)).not.toBeInTheDocument();
+
+    await user.click(within(alert).getByRole("button", { name: /try again/i }));
+
+    expect(await screen.findByRole("button", { name: "Conversation with Marco Ink" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/no conversations yet/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the last list after a failed refresh and says it may be out of date", async () => {
+    server.use(http.get("http://localhost/api/v1/conversations", () => HttpResponse.json(TWO)));
+    const store = renderInbox(Role.Owner);
+    await screen.findByRole("button", { name: "Conversation with Marco Ink" });
+
+    server.use(http.get("http://localhost/api/v1/conversations", () => new HttpResponse(null, { status: 500 })));
+    store.dispatch(messagingApi.util.invalidateTags(["Conversation"]));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't refresh your conversations/i);
+    expect(screen.getByRole("button", { name: "Conversation with Ana Lines" })).toBeInTheDocument();
+    expect(screen.queryByText(/no conversations yet/i)).not.toBeInTheDocument();
+  });
+
+  it("still shows the true empty state when the inbox really is empty", async () => {
+    renderInbox(Role.Artist);
+
+    expect(await screen.findByText(/no conversations yet/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
 });

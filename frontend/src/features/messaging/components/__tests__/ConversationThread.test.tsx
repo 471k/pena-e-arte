@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -202,5 +202,56 @@ describe("ConversationThread — which appointment a message is about", () => {
     await screen.findByText("Thu 3 Dec, 14:30 · Fine line");
 
     expect(container.textContent).not.toMatch(/appt-a|appt-b/);
+  });
+});
+
+describe("ConversationThread — load failures and the composer (S07)", () => {
+  it("shows a failed history load as an error with a working retry, never 'No messages yet'", async () => {
+    const user = userEvent.setup();
+    let calls = 0;
+    server.use(http.get("http://localhost/api/v1/conversations/:id/messages", () => {
+      calls += 1;
+      return calls === 1 ? new HttpResponse(null, { status: 500 }) : HttpResponse.json(MESSAGES);
+    }));
+    renderThread();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load this conversation.");
+    expect(screen.queryByText(/no messages yet/i)).not.toBeInTheDocument();
+
+    await user.click(within(alert).getByRole("button", { name: /try again/i }));
+
+    expect(await screen.findByText("Hey there")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("still says 'No messages yet' for a conversation that really has none", async () => {
+    server.use(http.get("http://localhost/api/v1/conversations/:id/messages", () => HttpResponse.json([])));
+    renderThread();
+
+    expect(await screen.findByText(/no messages yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("names the recipient on the composer and explains Enter versus Shift+Enter", async () => {
+    renderThread();
+    await screen.findByText("Hey there");
+
+    const composer = screen.getByRole("textbox", { name: "Message to Marco Ink" });
+    expect(composer).toHaveAccessibleDescription("Enter sends · Shift+Enter adds a new line");
+  });
+
+  it("keeps the typed text when sending fails", async () => {
+    const user = userEvent.setup();
+    server.use(http.post("http://localhost/api/v1/conversations/:id/messages", () => new HttpResponse(null, { status: 500 })));
+    renderThread();
+    await screen.findByText("Hey there");
+
+    const composer = screen.getByRole("textbox", { name: "Message to Marco Ink" });
+    await user.type(composer, "Please keep me");
+    await user.click(screen.getByRole("button", { name: /send message/i }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(composer).toHaveValue("Please keep me");
   });
 });
