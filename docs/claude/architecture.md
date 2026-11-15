@@ -7104,3 +7104,32 @@ placement picker.
   and their meaning are stored data, and the figure's L/R labels say which is which.
 - **In passing:** the session-package status badge was `role="button"` with no tab stop or key handler, so
   an owner couldn't toggle a package from the keyboard; it is now a real button.
+
+## Booking forms and the reminder picker on the studio's clock; the repeated hour is settled — 2026-11-15
+
+The slice 3 (S01) follow-up Desktop asked for: `ReminderDialog` is staff choosing when a reminder is sent, so
+slice 7's C03 (server-offered booking slots) would never reach it, and the two booking forms were the same
+change with the helpers slice 3 added.
+
+- **Every picked time is now read on the studio's wall clock**: `BookAppointmentForm`, `GuestBookAppointmentForm`
+  and `ReminderDialog`, joining `RescheduleDialog`. In the booking forms that covers six uses of the one value,
+  not one: the submit, the "in the future" check, the input's `min`, the live availability check
+  (`useDebouncedSlotCheckArgs` now takes the zone), the waitlist "notify me" date and a claim link's prefilled
+  slot. A New York client booking a Paris studio no longer books the wrong hour.
+- **Whose zone:** the guest form uses the public studio's `timezone`. The signed-in form uses the studio named
+  by `?studio=<slug>` when there is one (the session may not have switched to it yet), else the session's own
+  studio (`useStudioZone`). While the zone is unknown nothing is checked or sent and the form says why;
+  `toLocalDatetimeInputValue`, the browser-zone helper, is deleted, so that path can't come back.
+- **One rule, one note.** `studioWallInstant` / `checkStudioTime` (`studioDay.ts`) and `StudioDateTimeNote`
+  (shared, lifted from `RescheduleDialog`, which now uses it too) say the same things everywhere: "(studio
+  time, <zone>)" on the label, loading or unavailable zone, a skipped time refused, a repeated time, and the
+  viewer's own time when they are elsewhere.
+- **The repeated hour uses its first occurrence — decided, not open.** When the clocks go back a wall time
+  happens twice; the app takes the first and says so beside the field. Making the person choose between two
+  02:30s once a year adds a decision most people can't interpret. Desktop confirmed this on 15 Nov; slice 7
+  (C03) inherits it and should not reopen it.
+- **A claim link's slot** is no longer part of the forms' `defaultValues` (the zone may still be loading when
+  the form starts): `claimHandoffScheduledAt` fills it once the zone is known, and only into an empty field.
+- The schemas keep only "a time was picked"; "exists" and "in the future" need the zone, so `onSubmit` checks
+  them. The input's `min` still stops a past time natively; the check covers a page left open past its own
+  minimum.

@@ -36,7 +36,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "You don't need an account first — open a studio's page and click \"Book\", or go straight to a booking link. If you're not signed in, fill in your name, email, and phone (the country code next to the phone field starts on the studio's own country — change it if your number is from elsewhere; with the list focused, typing a country's first letters jumps to it); an account is created for you automatically and you'll get an email to set a password afterward.",
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
-      "In the \"Book an appointment\" card, choose an artist and a date.",
+      "In the \"Book an appointment\" card, choose an artist and a date and time. The time is the studio's local time: the field's label names the studio's time zone, and if you're somewhere else a line underneath says what that is in your own time. A time the clocks skip that night (when they go forward) can't be booked; a time that happens twice (when they go back) uses the first of the two, and the form says so.",
       "If the studio offers a Service (e.g. \"New Tattoo Session\", \"Touch-Up\"), pick one — its duration is set automatically and can't be changed, and if it has its own deposit, that replaces the studio's regular deposit. Pick \"Custom\" instead to choose your own duration, same as before.",
       "Or toggle \"Let the studio choose my artist\" if you don't have a preference — the studio will assign one before confirming.",
       "If the studio takes deposits, the estimated amount is shown under \"Deposit\". There's nothing to choose: it comes from the studio's deposit policy. A percentage deposit appears once you pick an artist, since it depends on their hourly rate.",
@@ -645,7 +645,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Send Reminder\" on an appointment's detail page or a client's profile page — the recipient's name and phone number are filled in automatically.",
       "For someone with no appointment or client record yet, use the \"Quick Reminder\" button (message icon) in the Schedule page's toolbar and type in a name and phone number instead (the country starts on your studio's country). Quick Reminders you send are listed under \"Recent quick reminders\" in the same dialog (your newest 50, with their status), and the dialog stays open after sending so you can see the new entry. Owners see this button once they switch to the Artist view (the Owner | Artist switch in the header), because the text is sent on behalf of their own artist profile.",
       "Optionally write a custom message, or leave it blank to send the studio's default reminder text.",
-      "Toggle \"Schedule for later\" and pick a date/time, or leave it off to send immediately.",
+      "Toggle \"Schedule for later\" and pick a date/time, or leave it off to send immediately. The time is studio time (the label names your studio's time zone), wherever you're sending from; clock changes work the same way as when booking or rescheduling.",
       "Click \"Send now\" or \"Schedule reminder\".",
       "Reopen the dialog to see the send history and cancel any reminder that's still Scheduled. A Failed reminder says why — for example the client has opted out of SMS, the studio reached its monthly notification limit, or the SMS provider couldn't deliver it. The history updates on its own when a scheduled reminder goes out.",
     ],

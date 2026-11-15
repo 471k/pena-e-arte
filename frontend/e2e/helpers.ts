@@ -88,3 +88,19 @@ export async function loginAs(page: Page, token: string, email: string, landingU
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(landingUrlPattern, { timeout: 10_000 });
 }
+
+/**
+ * The client's studio, with the one field the booking forms can't do without: its time zone. Picked times
+ * are read on the studio's clock (S01), so with no zone the form refuses to send a booking (it says the
+ * zone is loading or unavailable) — which is right in the app and wrong for a test that means to book.
+ * Register it after mockApiFallback, whose generic `[]` would otherwise answer /studios/me.
+ */
+export async function mockStudioZone(page: Page, timeZone = "Europe/Tirane") {
+  await page.route("**/api/v1/studios/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ id: STUDIO_ID, timezone: timeZone, currency: "EUR", countryCode: "AL" }),
+    });
+  });
+}

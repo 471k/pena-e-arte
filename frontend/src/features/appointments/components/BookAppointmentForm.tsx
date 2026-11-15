@@ -26,7 +26,10 @@ import { Money }           from "@/shared/components/Money";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { generateUuid }    from "@/shared/utils/uuid";
-import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
+import { checkStudioTime, studioTimeProblem, studioWallInstant, studioZoneFrom, toStudioInputValue } from "@/shared/utils/studioDay";
+import type { StudioZone } from "@/shared/utils/formatInStudioTimezone";
+import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { Role }            from "@/shared/types/roles";
 import {
   useCreateAppointmentMutation,
@@ -43,7 +46,7 @@ import { useEnsureActiveStudio }                  from "@/features/auth/useEnsur
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { NotifyMeDialog }                         from "@/features/waitlist/components/NotifyMeDialog";
 import { WaitlistClaimNotice }                    from "@/features/waitlist/components/WaitlistClaimNotice";
-import { readWaitlistClaimHandoff, claimHandoffDefaults } from "@/features/waitlist/waitlistClaim";
+import { readWaitlistClaimHandoff, claimHandoffDefaults, claimHandoffScheduledAt } from "@/features/waitlist/waitlistClaim";
 import { useGetMyPackagePurchasesQuery }          from "@/features/session-packages/packagesApi";
 import { useGetMyReferralRewardsQuery }           from "@/features/client-referrals/clientReferralsApi";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
@@ -84,10 +87,9 @@ const schema = z.object({
   artistId:        z.string().nullable(),
   bookAnyArtist:   z.boolean(),
   clientId:        z.string().min(1, "Select a client"),
-  scheduledAt:     z.string().min(1, "Select date and time").refine(
-    (v) => new Date(v) > new Date(),
-    "Appointment must be in the future"
-  ),
+  // Read on the studio's wall clock, so "in the future" and "exists" need the studio's zone: onSubmit
+  // checks them with checkStudioTime (S01). The schema can only say a value was picked.
+  scheduledAt:     z.string().min(1, "Select date and time"),
   // A picked service overrides this with its own DurationMinutes (which need not be one
   // of VALID_DURATIONS) — the "must be a preset duration" rule below only applies when no
   // service is selected, matching server-side (CreateAppointmentCommand ignores this field
@@ -262,6 +264,12 @@ export function BookAppointmentForm() {
   // the session switches to that studio, so right after arriving via ?studio=<slug> it can still be
   // empty, which used to show the deposit as a bare number ("1234.", G-2).
   const bookingCurrency = targetStudio?.currency ?? studioCurrency;
+  // The date & time is read on the zone of the studio being booked (S01): the one named by ?studio=<slug>
+  // when there is one (the session may not have switched to it yet), else the session's own studio. Never
+  // the viewer's browser zone.
+  const { zone: sessionZone, retry: retrySessionZone } = useStudioZone();
+  const zone: StudioZone = studioSlug ? studioZoneFrom(targetStudio?.timezone, studioLookupFailed) : sessionZone;
+  const studioTz = zone.status === "ready" ? zone.timeZone : null;
   // With the currency, the studio's country decides whether lek is shown next to euro (AL + EUR only).
   const bookingStudio: MoneyStudio = {
     countryCode: targetStudio?.countryCode ?? studioCountry,
@@ -358,6 +366,8 @@ export function BookAppointmentForm() {
     control,
     handleSubmit,
     setValue,
+    getValues,
+    setError,
     formState: { errors },
     reset: resetForm,
   } = useForm<FormValues>({
@@ -377,6 +387,13 @@ export function BookAppointmentForm() {
   const watchedDate          = useWatch({ control, name: "scheduledAt" });
   const watchedDuration      = useWatch({ control, name: "durationMinutes" });
   const watchedServiceId     = useWatch({ control, name: "serviceId" });
+
+  // A waitlist claim's offered slot, written on the studio's wall clock once the zone is known (and only
+  // into an empty field, so it never overwrites a time the client has typed).
+  const claimScheduledAt = claimHandoffScheduledAt(waitlistClaim, studioTz);
+  useEffect(() => {
+    if (claimScheduledAt && !getValues("scheduledAt")) setValue("scheduledAt", claimScheduledAt);
+  }, [claimScheduledAt, getValues, setValue]);
 
   // Keep clientId current for client role
   useEffect(() => {
@@ -410,7 +427,7 @@ export function BookAppointmentForm() {
   );
 
   const debouncedCheck = useDebouncedSlotCheckArgs(
-    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration,
+    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration, studioTz,
   );
 
   const {
@@ -446,6 +463,12 @@ export function BookAppointmentForm() {
     setReferralSourceOtherError(referralSourceOtherError);
     if (tattooDescriptionError || referralSourceOtherError) return;
 
+    const at = checkStudioTime(values.scheduledAt, zone);
+    if (!at.ok) {
+      setError("scheduledAt", { message: studioTimeProblem(at.reason, "Appointment must be in the future") });
+      return;
+    }
+
     const clientId = isClientRole ? (myClient?.id ?? values.clientId) : values.clientId;
     const images = [
       ...areaPhotos.doneUrls().map((url) => ({ url, category: AppointmentAttachmentCategory.AreaPhoto })),
@@ -454,7 +477,7 @@ export function BookAppointmentForm() {
     const body = {
       artistId:        values.bookAnyArtist ? null : values.artistId,
       clientId,
-      date:            new Date(values.scheduledAt).toISOString(),
+      date:            at.instant.toISOString(),
       durationMinutes: values.durationMinutes,
       serviceId:       values.serviceId ?? null,
       // The server always applies the studio's active DepositRule itself (single-active), so
@@ -830,13 +853,22 @@ export function BookAppointmentForm() {
       {/* Date & Time + Appointment Duration */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
-          <FieldLabel htmlFor="scheduledAt" required>Date &amp; Time</FieldLabel>
+          <FieldLabel htmlFor="scheduledAt" required>
+            Date &amp; Time {studioTz && <span className="font-normal text-muted-foreground">(studio time, {studioTz})</span>}
+          </FieldLabel>
           <Input
             id="scheduledAt"
             type="datetime-local"
-            min={toLocalDatetimeInputValue(new Date())}
+            min={studioTz ? toStudioInputValue(new Date(), studioTz) : undefined}
+            aria-describedby="scheduledAt-note"
             {...register("scheduledAt")}
             className={cn(errors.scheduledAt && "border-destructive")}
+          />
+          <StudioDateTimeNote
+            id="scheduledAt-note"
+            zone={zone}
+            value={watchedDate ?? ""}
+            onRetry={studioSlug ? undefined : retrySessionZone}
           />
           {errors.scheduledAt && (
             <p className="text-xs text-destructive-text" role="alert">
@@ -899,7 +931,7 @@ export function BookAppointmentForm() {
         <NotifyMeDialog
           studioSlug={studioSlug}
           artistId={watchedBookAnyArtist ? null : (watchedArtistId || null)}
-          preferredDate={watchedDate ? new Date(watchedDate) : null}
+          preferredDate={watchedDate ? studioWallInstant(watchedDate, studioTz) : null}
           isAuthenticated
         />
       )}

@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import {
   STUDIO_ID, ARTIST_ID, CLIENT_ID, APPT_ID, PAYMENT_ID,
   CLIENT_TOKEN, OWNER_TOKEN,
-  mockAuthLogin, mockApiFallback, loginAs,
+  mockAuthLogin, mockApiFallback, mockStudioZone, loginAs,
 } from "./helpers";
 
 // WCAG 2.1 AA automated coverage (CLAUDE.md non-negotiable rule 6 — matches current
@@ -205,6 +205,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
 
   test("in-flow deposit payment method selector has no violations", async ({ page }) => {
     await mockApiFallback(page);
+    await mockStudioZone(page);
     await mockAuthLogin(page, CLIENT_TOKEN);
     await page.route("**/api/v1/artists*", async (route) => {
       await route.fulfill({
@@ -424,6 +425,7 @@ test.describe("After Hours palette — scoped to authenticated layouts", () => {
     // ── In scope: a booking the mocked API rejects fires a real toast.error on /book. ──
     await page.unrouteAll({ behavior: "ignoreErrors" });
     await mockApiFallback(page);
+    await mockStudioZone(page);
     await mockAuthLogin(page, CLIENT_TOKEN);
     await page.route("**/api/v1/artists*", async (route) => {
       await route.fulfill({

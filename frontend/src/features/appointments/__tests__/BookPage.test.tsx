@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { studioWallInstant } from "@/shared/utils/studioDay";
 import { render, screen, cleanup, waitFor, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -736,6 +737,48 @@ describe("BookAppointmentForm", () => {
     expect(capturedBody).toMatchObject({ style: null });
   });
 
+  it("S01: date & time is read on the studio's clock — 22:00 at a Tokyo studio books and checks 13:00 UTC", async () => {
+    let capturedBody: { date?: string } | null = null;
+    const checkedDates: string[] = [];
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ ...STUDIO, timezone: "Asia/Tokyo" })),
+      http.get("http://localhost/api/v1/appointments/check-slot", ({ request }) => {
+        checkedDates.push(new URL(request.url).searchParams.get("date") ?? "");
+        return HttpResponse.json({ available: true, reason: null });
+      }),
+      http.post("http://localhost/api/v1/appointments", async ({ request }) => {
+        capturedBody = (await request.json()) as { date?: string };
+        return HttpResponse.json(CREATED_APPT, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(await screen.findByText(/studio time, Asia\/Tokyo/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await user.type(screen.getByLabelText(/date.*time/i), "2030-03-05T22:00");
+    await fillTattooDescription(user);
+    await waitFor(() => expect(checkedDates).toContain("2030-03-05T13:00:00.000Z"), { timeout: 3000 });
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Appointment requested!");
+    expect(capturedBody).toMatchObject({ date: "2030-03-05T13:00:00.000Z" });
+  });
+
+  it("S01: a past studio time is refused with the form's own message (the input's min can go stale)", async () => {
+    // The input's `min` stops a past time natively; this is the check behind it, for a page left open past
+    // its own minimum. Submitting the form element directly skips the browser's constraint validation.
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    fireEvent.change(screen.getByLabelText(/date.*time/i), { target: { value: "2020-01-01T10:00" } });
+    await fillTattooDescription(user);
+    fireEvent.submit(screen.getByRole("button", { name: /request appointment/i }).closest("form")!);
+    expect(await screen.findByText("Appointment must be in the future")).toBeInTheDocument();
+  });
+
   it("the slot-check call omits artistId when the toggle is on", async () => {
     let sawArtistIdParam = false;
     server.use(
@@ -775,7 +818,9 @@ describe("BookAppointmentForm", () => {
     await user.type(screen.getByLabelText(/date.*time/i), typed);
 
     await screen.findByText(/this slot is available/i);
-    expect(sentDate).toBe(new Date(typed).toISOString());
+    // The typed value is read on the studio's clock (S01; STUDIO is in Europe/Tirane), not the runner's.
+    // Before S01 this expected new Date(typed), which only passed where the runner shared Tirane's offset.
+    expect(sentDate).toBe(studioWallInstant(typed, STUDIO.timezone)!.toISOString());
   });
 
   it("shows studio-assigns-artist confirmation copy for a studio-choice booking", async () => {

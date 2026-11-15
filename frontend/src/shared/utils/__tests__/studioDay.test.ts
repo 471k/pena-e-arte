@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   addWallDays, formatSessionSpan, formatWallDate, isSameStudioDay, resolveStudioWallTime, studioDayBounds,
   studioMidnight, studioWallDate, studioWeekStart, toStudioInputValue,
+  checkStudioTime, studioTimeProblem, studioWallInstant, studioZoneFrom,
 } from "../studioDay";
 
 describe("studioDayBounds", () => {
@@ -129,5 +130,50 @@ describe("studio wall clock <-> instant", () => {
   it("rejects anything that isn't a datetime-local value", () => {
     expect(resolveStudioWallTime("", PARIS)).toEqual({ kind: "invalid" });
     expect(resolveStudioWallTime("2026-11-20", PARIS)).toEqual({ kind: "invalid" });
+  });
+});
+
+describe("studioWallInstant (the one rule for a picked studio time)", () => {
+  it("reads the value on the studio's clock", () => {
+    expect(studioWallInstant("2030-03-05T22:00", "Asia/Tokyo")!.toISOString()).toBe("2030-03-05T13:00:00.000Z");
+  });
+  it("a repeated hour uses its first occurrence", () => {
+    // 25 Oct 2026, Paris: 02:30 happens at 00:30Z (CEST) and again at 01:30Z (CET).
+    expect(studioWallInstant("2026-10-25T02:30", "Europe/Paris")!.toISOString()).toBe("2026-10-25T00:30:00.000Z");
+  });
+  it("a skipped hour, an invalid value or an unknown zone give null, never a browser-zone guess", () => {
+    expect(studioWallInstant("2026-03-29T02:30", "Europe/Paris")).toBeNull();
+    expect(studioWallInstant("2026-03-29", "Europe/Paris")).toBeNull();
+    expect(studioWallInstant("2026-11-20T10:00", null)).toBeNull();
+    expect(studioWallInstant("", "Europe/Paris")).toBeNull();
+  });
+});
+
+describe("studioZoneFrom", () => {
+  it("is ready with a zone, an error when the lookup failed, loading otherwise", () => {
+    expect(studioZoneFrom("Europe/Tirane", false)).toEqual({ status: "ready", timeZone: "Europe/Tirane" });
+    expect(studioZoneFrom(undefined, true)).toEqual({ status: "error" });
+    expect(studioZoneFrom(null, false)).toEqual({ status: "loading" });
+  });
+});
+
+describe("checkStudioTime", () => {
+  const now = new Date("2030-03-05T12:00:00Z");
+  const tokyo = { status: "ready", timeZone: "Asia/Tokyo" } as const;
+
+  it("gives the instant for a future studio time", () => {
+    expect(checkStudioTime("2030-03-05T22:00", tokyo, now)).toEqual({ ok: true, instant: new Date("2030-03-05T13:00:00Z") });
+  });
+  it("names each reason it can't be sent", () => {
+    expect(checkStudioTime("2030-03-05T22:00", { status: "loading" }, now)).toEqual({ ok: false, reason: "zone-loading" });
+    expect(checkStudioTime("2030-03-05T22:00", { status: "error" }, now)).toEqual({ ok: false, reason: "zone-error" });
+    expect(checkStudioTime("", tokyo, now)).toEqual({ ok: false, reason: "invalid" });
+    expect(checkStudioTime("2030-03-31T02:30", { status: "ready", timeZone: "Europe/Paris" }, now)).toEqual({ ok: false, reason: "gap" });
+    // 20:00 in Tokyo is 11:00Z, an hour before "now".
+    expect(checkStudioTime("2030-03-05T20:00", tokyo, now)).toEqual({ ok: false, reason: "past" });
+  });
+  it("the past message is the caller's own; the rest are shared", () => {
+    expect(studioTimeProblem("past", "Appointment must be in the future")).toBe("Appointment must be in the future");
+    expect(studioTimeProblem("gap", "x")).toMatch(/clocks go forward/);
   });
 });

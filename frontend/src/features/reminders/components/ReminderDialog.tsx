@@ -29,6 +29,8 @@ import { asPhoneCountry } from "@/shared/utils/phoneCountries";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { useStudioZone } from "@/features/studios/useStudioZone";
 import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { checkStudioTime, studioTimeProblem, toStudioInputValue } from "@/shared/utils/studioDay";
+import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 interface ReminderDialogProps {
@@ -47,23 +49,15 @@ const REMINDER_TIME: Intl.DateTimeFormatOptions = {
   day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
 };
 
-// Formats an ISO datetime string for an <input type="datetime-local"> value.
-function toDatetimeLocalValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-// Browsers allow a datetime-local input to be cleared even with `min` set, and `new
-// Date("")` parses to an Invalid Date rather than throwing — only .toISOString() throws,
-// so this must be checked up front rather than relying on a try/catch at the call site.
-function isValidDateTimeLocal(value: string): boolean {
-  return value.trim().length > 0 && !Number.isNaN(new Date(value).getTime());
-}
+// The "send at" input runs on the studio's wall clock (S01), like booking and rescheduling: its default,
+// its minimum and what it means as an instant all go through the studio's zone, never the browser's.
+const DEFAULT_LEAD_MS = 60 * 60 * 1000;
 
 export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, artistId }: ReminderDialogProps) {
   // Preselects the studio's own country in the phone field (the API call is cached app-wide).
   const { data: myStudio } = useGetMyStudioQuery();
-  const { zone } = useStudioZone();
+  const { zone, retry: retryZone } = useStudioZone();
+  const studioTz = zone.status === "ready" ? zone.timeZone : null;
   const isRawContact = !appointmentId && !clientId;
 
   // A client with no assigned artist has no authoritative artist source, and an
@@ -79,8 +73,12 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
   const [message, setMessage]               = useState("");
   const [pickedArtistId, setPickedArtistId] = useState("");
   const [scheduleLater, setScheduleLater]   = useState(false);
-  const [scheduledFor, setScheduledFor]     = useState(() =>
-    toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
+  // null = untouched: the field shows an hour after the dialog opened on the studio's clock, derived once the
+  // zone is known. The moment is captured once (state), not read during render.
+  const [editedFor, setEditedFor]           = useState<string | null>(null);
+  const [openedAt, setOpenedAt]             = useState(() => Date.now());
+  const scheduledFor = editedFor ?? (studioTz ? toStudioInputValue(new Date(openedAt + DEFAULT_LEAD_MS), studioTz) : "");
+  const sendAt = checkStudioTime(scheduledFor, zone);
 
   const [createReminder, { isLoading: isSending }] = useCreateManualReminderMutation();
   const [cancelReminder] = useCancelManualReminderMutation();
@@ -99,12 +97,13 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
     setMessage("");
     setPickedArtistId("");
     setScheduleLater(false);
-    setScheduledFor(toDatetimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
+    setEditedFor(null);
+    setOpenedAt(Date.now());
   }
 
   async function handleSubmit() {
-    if (scheduleLater && !isValidDateTimeLocal(scheduledFor)) {
-      toast.error("Pick a valid date and time to schedule for.");
+    if (scheduleLater && !sendAt.ok) {
+      toast.error(studioTimeProblem(sendAt.reason, "Pick a time in the future to schedule for."));
       return;
     }
 
@@ -115,7 +114,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
       recipientName:  isRawContact ? recipientName.trim() : undefined,
       recipientPhone: isRawContact ? recipientPhone.trim() : undefined,
       message: message.trim() || undefined,
-      scheduledFor: scheduleLater ? new Date(scheduledFor).toISOString() : undefined,
+      scheduledFor: scheduleLater && sendAt.ok ? sendAt.instant.toISOString() : undefined,
     });
 
     if ("data" in result) {
@@ -144,7 +143,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
     ? recipientName.trim().length > 0 && isValidE164Phone(recipientPhone) && recipientPhone.trim().length > 0
     : needsArtistPicker
     ? pickedArtistId.length > 0
-    : true) && (!scheduleLater || isValidDateTimeLocal(scheduledFor));
+    : true) && (!scheduleLater || sendAt.ok);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,14 +236,19 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
 
           {scheduleLater && (
             <div className="space-y-1.5">
-              <Label htmlFor="reminder-scheduled-for">Send at</Label>
+              <Label htmlFor="reminder-scheduled-for">
+                Send at {studioTz && <span className="font-normal text-muted-foreground">(studio time, {studioTz})</span>}
+              </Label>
               <Input
                 id="reminder-scheduled-for"
                 type="datetime-local"
-                min={toDatetimeLocalValue(new Date())}
+                disabled={!studioTz}
+                min={studioTz ? toStudioInputValue(new Date(), studioTz) : undefined}
                 value={scheduledFor}
-                onChange={(e) => setScheduledFor(e.target.value)}
+                onChange={(e) => setEditedFor(e.target.value)}
+                aria-describedby="reminder-scheduled-for-note"
               />
+              <StudioDateTimeNote id="reminder-scheduled-for-note" zone={zone} value={scheduledFor} onRetry={retryZone} />
             </div>
           )}
 

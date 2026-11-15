@@ -17,7 +17,7 @@ import {
 } from "../appointmentsApi";
 import type { AppointmentResponse } from "../appointment.types";
 import { useStudioZone } from "@/features/studios/useStudioZone";
-import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { resolveStudioWallTime, toStudioInputValue, type StudioWallTime } from "@/shared/utils/studioDay";
 
 // Same bounds as RescheduleAppointmentValidator (30–480) and BookAppointmentForm's DURATION_OPTIONS.
@@ -45,12 +45,8 @@ interface RescheduleDialogProps {
 // The input runs on the STUDIO's wall clock (S01): the value, its minimum and what it means as an
 // instant all go through the studio's zone. Before, the value was read in the viewer's browser zone and
 // the minimum was a UTC string (`new Date().toISOString().slice(0, 16)`) in a local-time input, which
-// allowed past times west of UTC and refused valid ones east of it.
-const TIME_WITH_ZONE: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", timeZoneName: "short" };
-
-function viewerTimeZone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
+// allowed past times west of UTC and refused valid ones east of it. What the picked time means is said by
+// StudioDateTimeNote, shared with the booking forms and the reminder picker.
 
 export function RescheduleDialog({ appointment, open, onOpenChange, description }: RescheduleDialogProps) {
   const { zone, retry: retryZone } = useStudioZone();
@@ -199,29 +195,7 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
                   aria-describedby="reschedule-date-note"
                 />
               )}
-              <div id="reschedule-date-note" aria-live="polite">
-                {zone.status === "loading" && (
-                  <p className="text-xs text-muted-foreground">Loading the studio&apos;s time zone…</p>
-                )}
-                {wallTime?.kind === "gap" && (
-                  <p className="text-xs text-destructive-text" role="alert">
-                    That time doesn&apos;t exist on that day: the clocks go forward. Pick another time.
-                  </p>
-                )}
-                {wallTime?.kind === "repeated" && (
-                  <p className="text-xs text-warning-text">
-                    That time happens twice on that day because the clocks go back. The first one is used
-                    ({formatStudioTime(wallTime.first, TIME_WITH_ZONE, zone)}).
-                  </p>
-                )}
-                {pickedInstant && studioTz && viewerTimeZone() !== studioTz && (
-                  <p className="text-xs text-muted-foreground">
-                    That&apos;s {pickedInstant.toLocaleString("en-GB", {
-                      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                    })} your time.
-                  </p>
-                )}
-              </div>
+              <StudioDateTimeNote id="reschedule-date-note" zone={zone} value={newDate} showZoneError={false} />
             </div>
 
             <div className="space-y-1.5">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CheckSlotAvailabilityParams } from "@/features/appointments/appointment.types";
+import { studioWallInstant } from "@/shared/utils/studioDay";
 
 /**
  * Debounces the artist/date/duration inputs of a booking form into the args shape a
@@ -12,21 +13,25 @@ import type { CheckSlotAvailabilityParams } from "@/features/appointments/appoin
  * like the booking submit, so the backend can compare it on the studio's own clock and against
  * stored (UTC) appointments. Sending the raw local value made the pre-check disagree with the
  * submit by the UTC offset (G-1, 2026-10-15). An incomplete/invalid date is not sent.
+ *
+ * The value is read on the STUDIO's wall clock (S01), through the same rule as the submit
+ * (studioWallInstant). Until the zone is known nothing is checked; a time the clocks skip is not sent.
  */
 export function useDebouncedSlotCheckArgs(
   artistId: string | null | undefined,
   bookAnyArtist: boolean,
   date: string | undefined,
   durationMinutes: number | undefined,
+  timeZone: string | null,
 ): CheckSlotAvailabilityParams | null {
   const [debounced, setDebounced] = useState<CheckSlotAvailabilityParams | null>(null);
 
   useEffect(() => {
-    const ready = date && durationMinutes && (bookAnyArtist || artistId);
+    const ready = date && timeZone && durationMinutes && (bookAnyArtist || artistId);
     const delay = ready ? 600 : 0;
     const timer = setTimeout(() => {
-      const instant = date ? new Date(date) : null;
-      if (!instant || Number.isNaN(instant.getTime()) || !durationMinutes || (!bookAnyArtist && !artistId)) {
+      const instant = date ? studioWallInstant(date, timeZone) : null;
+      if (!instant || !durationMinutes || (!bookAnyArtist && !artistId)) {
         setDebounced(null);
         return;
       }
@@ -37,7 +42,7 @@ export function useDebouncedSlotCheckArgs(
       });
     }, delay);
     return () => clearTimeout(timer);
-  }, [artistId, bookAnyArtist, date, durationMinutes]);
+  }, [artistId, bookAnyArtist, date, durationMinutes, timeZone]);
 
   return debounced;
 }
