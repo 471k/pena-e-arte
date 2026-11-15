@@ -3,6 +3,9 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { RecordLink } from "@/shared/components/RecordLink";
+import { RECORD_CONTAINER } from "@/shared/components/recordLinkContract";
+import { cn } from "@/shared/utils/cn";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
@@ -16,21 +19,21 @@ function formatDate(dateStr: string): string {
 }
 
 function ConsentFormRow({ form }: { form: ConsentFormResponse }) {
-  const navigate = useNavigate();
+  const clientLabel = form.clientName || form.clientId.slice(0, 8) + "…";
 
+  // S03: the title is the record's named link, stretched so the whole card still opens for a pointer.
   return (
-    <Card
-      className="cursor-pointer hover:bg-muted/40 transition-colors"
-      onClick={() => navigate(`/forms/consent/${form.id}`)}
-    >
+    <Card className={cn("hover:bg-muted/40 transition-colors", RECORD_CONTAINER)}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-0.5 min-w-0">
             <p className="text-sm font-medium">
-              Consent Form
+              <RecordLink to={`/forms/consent/${form.id}`} stretched aria-label={`Consent form for ${clientLabel}`}>
+                Consent Form
+              </RecordLink>
             </p>
             <p className="text-xs text-muted-foreground">
-              {form.clientName || form.clientId.slice(0, 8) + "…"}
+              {clientLabel}
             </p>
             <p className="text-xs text-muted-foreground font-mono">
               {form.appointmentId.slice(0, 8)}…

@@ -142,14 +142,18 @@ export function PackageListPage() {
                 {pkg.sessionCount} sessions — {currency ? <Money amount={pkg.price} currency={currency} /> : pkg.price}
               </p>
             </div>
-            <Badge
-              variant="outline"
-              className={cnActive(pkg.isActive)}
-              role="button"
+            {/* A real button (it was a role="button" badge that Tab couldn't reach). Its name keeps the visible
+                status word and says what pressing it does. */}
+            <button
+              type="button"
+              aria-label={`${pkg.name} is ${pkg.isActive ? "Active" : "Inactive"}. ${pkg.isActive ? "Deactivate" : "Activate"}`}
               onClick={() => toggleActive(pkg.id, pkg)}
+              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {pkg.isActive ? "Active" : "Inactive"}
-            </Badge>
+              <Badge variant="outline" className={cnActive(pkg.isActive)}>
+                {pkg.isActive ? "Active" : "Inactive"}
+              </Badge>
+            </button>
           </div>
         ))}
       </main>

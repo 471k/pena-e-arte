@@ -7066,3 +7066,41 @@ From the 15 Nov jobs tenant audit and Desktop's review of it.
   `GetSavedPortfolioImagesQuery` (saved portfolio images), already under `IgnoreQueryFilters()`. No job
   navigates any. So the practical risk today is nil and **no change is made**; this entry exists so nobody
   re-investigates the warning. Re-open it only if a new read navigates one of these pairs under the filter.
+
+## Records open from the keyboard; body placement without a mouse (After Hours slice 4: S03 + C10) — 2026-11-15
+
+`requirements.md` S03 and C10, the `docs/03` rules "buttons perform operations; links navigate" and "do not
+nest interactive controls or make the whole row a pointer-only target", and the package prototype's
+placement picker.
+
+- **One way to open a record: `RecordLink`** (`shared/components/RecordLink.tsx`; its card classes and the
+  row check are in `recordLinkContract.ts`), a named native link on the record's title. On a card it is `stretched`: the link's `::after` covers the card (`RECORD_CONTAINER`
+  makes the card the positioned box and draws the focus ring when the link has focus), so a pointer still
+  opens the whole card while the card itself is not a control. Sibling actions sit above the overlay
+  (`RECORD_ACTIONS` + `data-record-actions`). Never `stretched` inside a `<td>`.
+- **`DataTable` has no `onRowClick` any more**, so a row that only a mouse can open can't come back. It
+  takes `rowHref`; the title column carries the `RecordLink`, and a pointer click elsewhere on the row
+  opens the record unless it landed on one of the row's own controls, in a `data-record-actions` area, or
+  outside the row's DOM (a row's dropdown or dialog is portalled, and React still bubbles that click to the
+  row — this broke the clients list's Archive menu during the build and has its own test).
+- **Applied to** appointment cards (schedule), consent and intake form cards, and the client, artist and
+  payment tables and mobile cards — every non-control `onClick` the slice's scan found that opened a record.
+  The clients and payments "View" buttons are gone: the name link is the opening action, one tab stop per
+  record instead of two. The card's "Charge" is now a link styled as a button (it opens a page).
+- **Return:** `ScrollRestoration` around the browser router (new pages start at the top; browser back
+  restores the list's position), and a record link focuses itself when you come back to its list by
+  browser back. A forward visit to the list (sidebar, a "Back to clients" button) starts at the top like any
+  new page. The return target is kept in memory only (going back within the app never reloads), so nothing
+  about which record was opened, or a list's search, is written to browser storage. CodeQL flagged the
+  first version, which used `sessionStorage`.
+- **C10 follows the requirement and the prototype, not a key handler on the figure.** Editable, the body
+  map is a `fieldset` with a legend, a note saying whose left and right is meant ("your own" / "the
+  client's own"), and labelled checkboxes in "Front of body" and "Back of body" groups (each name carries
+  the side, so the two "Left Shoulder"s differ). The SVG is `aria-hidden` and keeps its pointer clicks;
+  ticking a back area turns the figure to the back. Making the figure focusable as well would have added a
+  second, duplicate set of 40 tab stops for the same choices. The summary names the side in full ("Left
+  Shoulder · back"); it used `label` as its React key, which collided for those two.
+- **The front view draws the person's left on the viewer's left**, as in a mirror. Unchanged: the zone ids
+  and their meaning are stored data, and the figure's L/R labels say which is which.
+- **In passing:** the session-package status badge was `role="button"` with no tab stop or key handler, so
+  an owner couldn't toggle a package from the keyboard; it is now a real button.

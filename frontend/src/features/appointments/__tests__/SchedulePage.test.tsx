@@ -349,20 +349,35 @@ describe("SchedulePage", () => {
     expect(screen.queryByRole("button", { name: /decline request/i })).not.toBeInTheDocument();
   });
 
-  it("clicking an appointment card navigates to the detail page", async () => {
+  it("S03: an appointment opens from the keyboard — Tab to its named link, Enter", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments", () =>
-        HttpResponse.json([APPT_TODAY]),
+        HttpResponse.json([{ ...APPT_TODAY, clientName: "Ana Lopes" }]),
       ),
     );
     const user = userEvent.setup();
     renderPage(Role.Artist);
-    const card = await screen.findByRole("button", { name: /decline request/i });
-    // Click the card itself (not the action buttons inside it)
-    const cardEl = card.closest('[class*="card"]') as HTMLElement;
-    if (cardEl) await user.click(cardEl);
-    // We expect the detail page to have been navigated to
-    expect(screen.getByTestId("detail-page")).toBeInTheDocument();
+    const link = await screen.findByRole("link", { name: /ana lopes/i });
+    expect(link).toHaveAttribute("href", "/appointments/appt-001");
+    // The card is not itself a control, and its actions are siblings of the link, not inside it.
+    expect(link.closest('[role="button"]')).toBeNull();
+    expect(link.querySelector("button")).toBeNull();
+    link.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
+  });
+
+  it("a card's action button runs its action and does not open the appointment", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([{ ...APPT_TODAY, status: "Confirmed" }]),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage(Role.Artist);
+    await user.click(await screen.findByRole("button", { name: /cancel appointment/i }));
+    expect(screen.getByText("Cancel?")).toBeInTheDocument();
+    expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
   });
 
   it("confirming an appointment calls the confirm mutation", async () => {
@@ -415,7 +430,9 @@ describe("SchedulePage", () => {
       ),
     );
     renderPage(Role.Owner);
-    expect(await screen.findByRole("button", { name: /charge/i })).toBeInTheDocument();
+    // It opens a page, so it is a link (docs/03: "links navigate"), styled as a button.
+    const charge = await screen.findByRole("link", { name: /charge/i });
+    expect(charge.getAttribute("href")).toMatch(/^\/payments\/new\?appointmentId=appt-001/);
   });
 
   it("'Deposit' status badge is shown in the card when deposit has been paid", async () => {

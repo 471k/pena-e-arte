@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, CreditCard, Download, Loader2, Plus, Search } from "lucide-react";
+import { CreditCard, Download, Loader2, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Input } from "@/shared/components/ui/input";
+import { RecordLink } from "@/shared/components/RecordLink";
 import { DataTable } from "@/shared/components/DataTable";
 import { Badge } from "@/shared/components/ui/badge";
 import { cn } from "@/shared/utils/cn";
@@ -311,9 +312,9 @@ export function PaymentListPage() {
               {
                 header: "Client",
                 cell: (p) => (
-                  <span className="text-sm font-medium">
-                    {p.clientName || <span className="text-muted-foreground">—</span>}
-                  </span>
+                  <RecordLink to={`/payments/${p.appointmentId}`} className="text-sm font-medium">
+                    {p.clientName || "Payment"}
+                  </RecordLink>
                 ),
               },
               {
@@ -345,34 +346,17 @@ export function PaymentListPage() {
                 header: "Date Paid",
                 cell: (p) => (p.paidAt ? formatDate(p.paidAt) : "—"),
               },
-              {
-                header: "",
-                cell: (p) => (
-                  <div
-                    className="flex items-center justify-end"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                      onClick={() => navigate(`/payments/${p.appointmentId}`)}
-                    >
-                      View
-                      <ChevronRight className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ),
-              },
             ]}
             data={allPayments}
             keyExtractor={(p) => p.id}
-            onRowClick={(p) => navigate(`/payments/${p.appointmentId}`)}
+            rowHref={(p) => `/payments/${p.appointmentId}`}
             emptyMessage="No payments match these filters."
             mobileCard={(p) => (
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium truncate">{p.clientName || "—"}</span>
+                  <span className="text-sm font-medium truncate">
+                    <RecordLink to={`/payments/${p.appointmentId}`} stretched>{p.clientName || "Payment"}</RecordLink>
+                  </span>
                   <PaymentStatusBadge payment={p} />
                 </div>
                 <div className="flex items-center justify-between gap-2 text-sm">

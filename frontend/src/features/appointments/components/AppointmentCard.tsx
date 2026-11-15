@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { CalendarClock, Check, CreditCard, ImageIcon, Loader2, Trash2, UserX } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
@@ -22,6 +22,8 @@ import {
 } from "../appointmentsApi";
 import { NoShowConfirmDialog } from "./NoShowConfirmDialog";
 import { Money } from "@/shared/components/Money";
+import { RecordLink } from "@/shared/components/RecordLink";
+import { RECORD_ACTIONS, RECORD_CONTAINER } from "@/shared/components/recordLinkContract";
 
 interface AppointmentCardProps {
   appointment: AppointmentResponse;
@@ -52,7 +54,6 @@ function formatTime(dateStr: string, studioTimezone: string | undefined): string
 }
 
 export function AppointmentCard({ appointment, showArtist = false }: AppointmentCardProps) {
-  const navigate      = useNavigate();
   const isArtistPlus  = usePermission(Role.Artist);
   const canOwner      = usePermission(Role.Owner);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -107,22 +108,24 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
   }
 
   return (
+    // S03: the time and client are the card's named link (stretched, so the whole card still opens for a
+    // pointer); the actions are siblings above it, never nested in it.
     <Card
       className={cn(
-        "cursor-pointer hover:border-ring/50 transition-colors",
+        "hover:border-ring/50 transition-colors",
+        RECORD_CONTAINER,
         STATUS_BORDER[appointment.status],
       )}
-      onClick={() => navigate(`/appointments/${appointment.id}`)}
     >
       <CardContent className="p-4 flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">
-              {formatTime(appointment.date, studio?.timezone)} – {formatTime(appointment.endDate, studio?.timezone)}
-            </span>
-            {appointment.clientName && (
-              <span className="text-sm truncate">{appointment.clientName}</span>
-            )}
+            <RecordLink to={`/appointments/${appointment.id}`} stretched className="text-sm min-w-0">
+              <span className="font-medium">
+                {formatTime(appointment.date, studio?.timezone)} – {formatTime(appointment.endDate, studio?.timezone)}
+              </span>
+              {appointment.clientName && <span className="truncate"> {appointment.clientName}</span>}
+            </RecordLink>
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
             {appointment.status === AppointmentStatus.Pending && appointment.artistId === null && (
@@ -165,10 +168,7 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
         </div>
 
         {isArtistPlus && !isTerminal && (
-          <div
-            className="flex items-center gap-1.5 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className={cn("flex items-center gap-1.5 shrink-0", RECORD_ACTIONS)} data-record-actions>
             {isPending && appointment.artistId !== null && (
               <Button
                 variant="outline"
@@ -222,18 +222,14 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
             )}
 
             {showChargeButton && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  navigate(
-                    `/payments/new?appointmentId=${appointment.id}&clientId=${appointment.clientId}&amount=${appointment.depositAmount}`,
-                  )
-                }
-                className="h-7 px-2 text-xs gap-1.5"
-              >
-                <CreditCard className="h-3 w-3" />
-                Charge
+              <Button variant="outline" size="sm" asChild className="h-7 px-2 text-xs gap-1.5">
+                {/* Opens a page, so it's a link (docs/03: "links navigate") — styled as the button beside it. */}
+                <Link
+                  to={`/payments/new?appointmentId=${appointment.id}&clientId=${appointment.clientId}&amount=${appointment.depositAmount}`}
+                >
+                  <CreditCard className="h-3 w-3" aria-hidden="true" />
+                  Charge
+                </Link>
               </Button>
             )}
 
@@ -279,10 +275,8 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
         open={rescheduleDialogOpen}
         onOpenChange={setRescheduleDialogOpen}
       />
-      {/* React events bubble out of portals: without this, a click in the dialog opens the appointment. */}
-      <div onClick={(e) => e.stopPropagation()}>
-        <NoShowConfirmDialog appointment={appointment} open={noShowOpen} onOpenChange={setNoShowOpen} />
-      </div>
+      {/* The card has no click handler of its own (S03), so a click inside this portal can't open the record. */}
+      <NoShowConfirmDialog appointment={appointment} open={noShowOpen} onOpenChange={setNoShowOpen} />
     </Card>
   );
 }

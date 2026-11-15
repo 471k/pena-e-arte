@@ -4,6 +4,9 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { RecordLink } from "@/shared/components/RecordLink";
+import { RECORD_CONTAINER } from "@/shared/components/recordLinkContract";
+import { cn } from "@/shared/utils/cn";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
@@ -36,7 +39,6 @@ function parseFormData(raw: string): { name: string | null; dob: string | null }
 }
 
 function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
-  const navigate = useNavigate();
   const { name, dob } = parseFormData(form.formData);
 
   const headline = name ?? (
@@ -44,18 +46,20 @@ function IntakeFormRow({ form }: { form: IntakeFormResponse }) {
   );
 
   return (
-    <Card
-      className="cursor-pointer hover:bg-muted/40 transition-colors"
-      onClick={() => navigate(`/forms/intake/${form.id}`)}
-    >
+    // S03: the headline is the record's named link, stretched so the whole card still opens for a pointer.
+    <Card className={cn("hover:bg-muted/40 transition-colors", RECORD_CONTAINER)}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
             <div className="mt-0.5 shrink-0 rounded-full bg-muted p-1.5">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <User className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             </div>
             <div className="space-y-0.5 min-w-0">
-              <p className="text-sm font-medium truncate">{headline}</p>
+              <p className="text-sm font-medium truncate">
+                <RecordLink to={`/forms/intake/${form.id}`} stretched aria-label={`Intake form: ${headline}`}>
+                  {headline}
+                </RecordLink>
+              </p>
               {dob && (
                 <p className="text-xs text-muted-foreground">
                   DOB: {formatDateShort(dob)}

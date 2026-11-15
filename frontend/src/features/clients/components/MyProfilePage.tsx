@@ -183,6 +183,9 @@ export function MyProfilePage() {
                         locations={bodyMapMode === "edit" ? bodyMapDraft : profile.bodyMapLocations}
                         readOnly={bodyMapMode === "view"}
                         onChange={bodyMapMode === "edit" ? setBodyMapDraft : undefined}
+                        legend="Body map areas"
+                        legendHidden
+                        perspective="self"
                       />
                     </CardContent>
                   </Card>

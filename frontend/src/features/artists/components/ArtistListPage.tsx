@@ -12,6 +12,8 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { RecordLink } from "@/shared/components/RecordLink";
+import { RECORD_ACTIONS } from "@/shared/components/recordLinkContract";
 import { DataTable } from "@/shared/components/DataTable";
 import type { ColumnDef } from "@/shared/components/DataTable";
 import { SpecializationsField } from "@/shared/components/SpecializationsField";
@@ -157,7 +159,9 @@ export function ArtistListPage() {
           <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
             {a.firstName[0]?.toUpperCase()}{a.lastName[0]?.toUpperCase()}
           </div>
-          <span className="font-medium">{a.firstName} {a.lastName}</span>
+          <RecordLink to={`/artists/${a.id}`} className="font-medium">
+            {a.firstName} {a.lastName}
+          </RecordLink>
         </div>
       ),
     },
@@ -185,10 +189,7 @@ export function ArtistListPage() {
     {
       header: "",
       cell: (a) => (
-        <div
-          className="flex items-center justify-end gap-1"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="flex items-center justify-end gap-1" data-record-actions>
           <Button
             variant="ghost"
             size="sm"
@@ -379,16 +380,18 @@ export function ArtistListPage() {
               columns={columns}
               data={filteredArtists}
               keyExtractor={(a) => a.id}
-              onRowClick={(a) => navigate(`/artists/${a.id}`)}
+              rowHref={(a) => `/artists/${a.id}`}
               emptyMessage={tableEmptyMessage}
               mobileCard={(a) => (
-                <div className="space-y-2" onClick={(e) => { if ((e.target as HTMLElement).closest("[data-card-actions]")) e.stopPropagation(); }}>
+                <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
                       {a.firstName[0]?.toUpperCase()}{a.lastName[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{a.firstName} {a.lastName}</p>
+                      <p className="font-medium truncate">
+                        <RecordLink to={`/artists/${a.id}`} stretched>{a.firstName} {a.lastName}</RecordLink>
+                      </p>
                       <p className="text-xs text-muted-foreground truncate">{a.email}</p>
                     </div>
                   </div>
@@ -399,7 +402,7 @@ export function ArtistListPage() {
                       ))}
                     </div>
                   )}
-                  <div data-card-actions className="flex items-center justify-end gap-1 pt-1">
+                  <div data-record-actions className={cn("flex items-center justify-end gap-1 pt-1", RECORD_ACTIONS)}>
                     <Button variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => navigate(`/artists/${a.id}`)}>
                       <Pencil className="h-3.5 w-3.5" /> Edit
                     </Button>

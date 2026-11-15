@@ -299,9 +299,9 @@ describe("PaymentListPage", () => {
     expect(screen.getByTestId("new-page")).toBeInTheDocument();
   });
 
-  // ── View action button ────────────────────────────────────────────────────────
+  // ── Opening a payment (S03) ───────────────────────────────────────────────────
 
-  it("renders a View button for each loaded payment", async () => {
+  it("each payment's client name is a named link to the payment — no separate View button", async () => {
     server.use(
       http.get("http://localhost/api/v1/payments", () =>
         HttpResponse.json([PAYMENT_CARD, PAYMENT_CASH]),
@@ -309,10 +309,12 @@ describe("PaymentListPage", () => {
     );
     renderPage();
     await screen.findAllByText("Maria Silva");
-    expect(screen.getAllByRole("button", { name: /^view$/i })).toHaveLength(2);
+    const links = screen.getAllByRole("link", { name: "Maria Silva" });
+    expect(links.length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByRole("button", { name: /^view$/i })).not.toBeInTheDocument();
   });
 
-  it("clicking the View button navigates to /payments/:appointmentId", async () => {
+  it("Tab to a payment's link and Enter opens /payments/:appointmentId", async () => {
     server.use(
       http.get("http://localhost/api/v1/payments", () =>
         HttpResponse.json([PAYMENT_CARD]),
@@ -321,7 +323,10 @@ describe("PaymentListPage", () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findAllByText("Maria Silva");
-    await user.click(screen.getByRole("button", { name: /^view$/i }));
+    const link = screen.getAllByRole("link", { name: "Maria Silva" })[0];
+    expect(link).toHaveAttribute("href", `/payments/${PAYMENT_CARD.appointmentId}`);
+    link.focus();
+    await user.keyboard("{Enter}");
     expect(screen.getByTestId("detail-page")).toBeInTheDocument();
   });
 
