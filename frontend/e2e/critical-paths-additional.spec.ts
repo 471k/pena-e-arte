@@ -125,6 +125,16 @@ test.describe("Intake form — consent flow", () => {
         body: JSON.stringify({ id: "template-1", kind: "IntakeFormConsent", bodyText: "Test consent body text." }),
       });
     });
+    // The appointment picker shows dates in the studio's time zone (S01), so it needs a studio with one;
+    // the catch-all's "[]" reads as a studio whose zone can't be loaded, and the page then (correctly)
+    // shows that error, which pushed the submit button under the fixed cookie banner.
+    await page.route("**/api/v1/studios/me", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ id: STUDIO_ID, timezone: "Europe/Tirane", currency: "EUR" }),
+      });
+    });
     let submittedBody: unknown = null;
     await page.route("**/api/v1/intake-forms", async (route) => {
       if (route.request().method() === "POST") {
