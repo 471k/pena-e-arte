@@ -5,7 +5,8 @@ import { withStudioTimeZone } from "./formatInStudioTimezone";
  * calculations only: no policy, notice window or money is worked out here.
  */
 
-interface WallDate { year: number; month: number; day: number }
+/** A calendar date with no time or zone: a day as the studio's wall calendar names it. */
+export interface WallDate { year: number; month: number; day: number }
 
 function wallParts(instant: Date, timeZone: string): WallDate & { hour: number; minute: number; second: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -48,6 +49,84 @@ export function studioDayBounds(now: Date, timeZone: string | undefined): { star
     start: midnight(today, timeZone),
     end: midnight({ year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate() }, timeZone),
   };
+}
+
+// ── Studio-zone calendar (S01) ────────────────────────────────────────────────────────────────────
+// Days and weeks are named by the studio's wall calendar and only turned into instants through the
+// studio's zone, so a viewer in another zone sees the same studio day, and a week that contains a
+// daylight-saving change is 167 or 169 hours long rather than shifted by an hour.
+
+/** The studio's wall date containing `instant`. */
+export function studioWallDate(instant: Date, timeZone: string): WallDate {
+  const p = wallParts(instant, timeZone);
+  return { year: p.year, month: p.month, day: p.day };
+}
+
+/** `date` moved by `days` calendar days (wall arithmetic, no zone involved). */
+export function addWallDays(date: WallDate, days: number): WallDate {
+  const d = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
+/** The instant the studio's day `date` begins (its local midnight; DST-safe). */
+export function studioMidnight(date: WallDate, timeZone: string): Date {
+  return midnight(date, timeZone);
+}
+
+/** The Monday of the studio's week containing `now`. */
+export function studioWeekStart(now: Date, timeZone: string): WallDate {
+  const today = studioWallDate(now, timeZone);
+  const weekday = new Date(Date.UTC(today.year, today.month - 1, today.day)).getUTCDay(); // 0 = Sunday
+  return addWallDays(today, weekday === 0 ? -6 : 1 - weekday);
+}
+
+export function sameWallDate(a: WallDate, b: WallDate): boolean {
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+/** Formats a wall date as itself. It is pinned to UTC, so no zone can move it to another day. */
+export function formatWallDate(date: WallDate, options: Intl.DateTimeFormatOptions): string {
+  return new Date(Date.UTC(date.year, date.month - 1, date.day, 12))
+    .toLocaleDateString("en-GB", { ...options, timeZone: "UTC" });
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/** `instant` as a `datetime-local` value ("YYYY-MM-DDTHH:mm") on the studio's wall clock. */
+export function toStudioInputValue(instant: Date, timeZone: string): string {
+  const p = wallParts(instant, timeZone);
+  return `${p.year}-${pad2(p.month)}-${pad2(p.day)}T${pad2(p.hour)}:${pad2(p.minute)}`;
+}
+
+/**
+ * What a studio wall-clock time means as an instant. Daylight saving makes two cases explicit rather
+ * than guessed: a time skipped when the clocks go forward does not exist (`gap`), and a time that
+ * happens twice when they go back is `repeated`, with both instants.
+ */
+export type StudioWallTime =
+  | { kind: "ok"; instant: Date }
+  | { kind: "repeated"; first: Date; second: Date }
+  | { kind: "gap" }
+  | { kind: "invalid" };
+
+export function resolveStudioWallTime(value: string, timeZone: string): StudioWallTime {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!m) return { kind: "invalid" };
+  const [year, month, day, hour, minute] = m.slice(1).map(Number);
+  const wallAsUtc = Date.UTC(year, month - 1, day, hour, minute);
+  // Every offset the zone uses within a day either side; a wall time can only map through one of them.
+  const offsets = new Set([-86_400_000, 0, 86_400_000].map((d) => offsetMs(new Date(wallAsUtc + d), timeZone)));
+  const matches: number[] = [];
+  for (const offset of offsets) {
+    const candidate = new Date(wallAsUtc - offset);
+    const p = wallParts(candidate, timeZone);
+    if (p.year === year && p.month === month && p.day === day && p.hour === hour && p.minute === minute)
+      matches.push(candidate.getTime());
+  }
+  const sorted = [...new Set(matches)].sort((a, b) => a - b);
+  if (sorted.length === 0) return { kind: "gap" };
+  if (sorted.length === 1) return { kind: "ok", instant: new Date(sorted[0]) };
+  return { kind: "repeated", first: new Date(sorted[0]), second: new Date(sorted[sorted.length - 1]) };
 }
 
 /** Whether two instants fall on the same calendar day in the studio's timezone. */

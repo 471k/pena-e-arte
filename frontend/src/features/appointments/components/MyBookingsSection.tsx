@@ -25,6 +25,8 @@ import { RescheduleDialog } from "./RescheduleDialog";
 import { CancellationOutcome, DepositStatus } from "../appointment.types";
 import type { AppointmentResponse, CancellationPreviewResponse } from "../appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 
 // The notice window, and everything that follows from it (reschedule cutoff, refund), is decided by
 // the server only: GET /appointments/mine carries `selfService` per appointment, and the cancel
@@ -236,11 +238,11 @@ export function CancelArea({ appt }: { appt: AppointmentResponse }) {
   );
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-  });
-}
+// The studio's wall clock, not the viewer's (S01): a client booking from another zone sees the time the
+// studio will expect them.
+const BOOKING_TIME: Intl.DateTimeFormatOptions = {
+  weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+};
 
 // ── Deposit state per booking ─────────────────────────────────────────────
 
@@ -390,11 +392,12 @@ function BookingRow({
   appt: AppointmentResponse;
   artists: ArtistResponse[];
 }) {
+  const { zone } = useStudioZone();
   return (
     <div className="py-3 space-y-2">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium">{formatDate(appt.date)}</p>
+          <p className="text-sm font-medium">{formatStudioTime(appt.date, BOOKING_TIME, zone)}</p>
           <p className="text-xs text-muted-foreground truncate">
             {artistName(appt.artistId, artists)} · {appt.durationMinutes} min
           </p>

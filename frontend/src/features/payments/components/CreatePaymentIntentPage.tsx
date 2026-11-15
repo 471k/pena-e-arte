@@ -34,19 +34,18 @@ import type { PaymentIntentResponse, PaymentResponse } from "../payment.types";
 import { SessionSplitsEditor }             from "./SessionSplitsEditor";
 import type { AppointmentResponse }        from "@/features/appointments/appointment.types";
 import { Money } from "@/shared/components/Money";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime, type StudioZone } from "@/shared/utils/formatInStudioTimezone";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric",
-  });
+// The appointment's day and time on the studio's wall clock (S01), never the viewer's browser zone.
+function fmtDate(iso: string, zone: StudioZone) {
+  return formatStudioTime(iso, { weekday: "short", day: "numeric", month: "short", year: "numeric" }, zone);
 }
 
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-GB", {
-    hour: "2-digit", minute: "2-digit",
-  });
+function fmtTime(iso: string, zone: StudioZone) {
+  return formatStudioTime(iso, { hour: "2-digit", minute: "2-digit" }, zone);
 }
 
 // ── CheckoutLinkPanel ─────────────────────────────────────────────────────────
@@ -179,6 +178,7 @@ function AppointmentPicker({
 }) {
   const [search, setSearch] = useState("");
   const { currency } = useStudioCurrency();
+  const { zone } = useStudioZone();
 
   const { data: appointments = [], isLoading: loadingAppts } = useGetAppointmentsQuery({});
   const { data: clients      = [], isLoading: loadingClients } = useGetClientsQuery(undefined);
@@ -204,9 +204,9 @@ function AppointmentPicker({
     return enriched.filter(
       (a) =>
         a.clientName.toLowerCase().includes(q) ||
-        fmtDate(a.date).toLowerCase().includes(q)
+        fmtDate(a.date, zone).toLowerCase().includes(q)
     );
-  }, [enriched, search]);
+  }, [enriched, search, zone]);
 
   const loading = loadingAppts || loadingClients;
 
@@ -261,7 +261,7 @@ function AppointmentPicker({
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                  <span>{fmtDate(appt.date)} · {fmtTime(appt.date)}</span>
+                  <span>{fmtDate(appt.date, zone)} · {fmtTime(appt.date, zone)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -296,6 +296,7 @@ function ConfirmPanel({
   const { data: capabilities } = useGetPaymentCapabilitiesQuery();
   const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable !== false;
   const { currency } = useStudioCurrency();
+  const { zone } = useStudioZone();
 
   const [method, setMethod]         = useState<PaymentMethodChoice>("card");
   const [amount, setAmount]         = useState(
@@ -364,7 +365,7 @@ function ConfirmPanel({
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <CalendarDays className="h-4 w-4" />
-          <span>{fmtDate(appointment.date)} · {fmtTime(appointment.date)}</span>
+          <span>{fmtDate(appointment.date, zone)} · {fmtTime(appointment.date, zone)}</span>
         </div>
       </div>
 
@@ -498,6 +499,7 @@ export function CreatePaymentIntentPage() {
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
   const { currency: studioCurrency } = useStudioCurrency();
+  const { zone } = useStudioZone();
 
   const preselectedId = searchParams.get("appointmentId");
 
@@ -558,7 +560,7 @@ export function CreatePaymentIntentPage() {
               result={pageResult.data}
               appointmentId={selected?.id ?? ""}
               clientName={selected?.clientName ?? "Client"}
-              appointmentDate={selected ? fmtDate(selected.date) : ""}
+              appointmentDate={selected ? fmtDate(selected.date, zone) : ""}
               amount={pageResult.amount}
               // Non-null: ConfirmPanel's submit button is disabled for the card method until
               // studioCurrency resolves, so a "card" pageResult can't exist without it.
@@ -568,7 +570,7 @@ export function CreatePaymentIntentPage() {
             <CashResultPanel
               result={pageResult.data}
               clientName={selected?.clientName ?? "Client"}
-              appointmentDate={selected ? fmtDate(selected.date) : ""}
+              appointmentDate={selected ? fmtDate(selected.date, zone) : ""}
             />
           )
         ) : selected ? (

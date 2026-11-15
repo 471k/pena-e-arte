@@ -11,6 +11,8 @@ import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
 import { useGetConsentFormByIdQuery } from "../consentFormsApi";
 import type { ConsentFormDetailResponse } from "../form.types";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -110,6 +112,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
   const navigate = useNavigate();
   const [copied, copy] = useCopyToClipboard();
   const role = useAppSelector((s) => s.auth.role);
+  const { zone } = useStudioZone();
 
   const isPdf = form.fileUrl?.toLowerCase().endsWith(".pdf") ?? false;
   const docLabel = isPdf ? "View signed consent (PDF)" : "View document";
@@ -167,9 +170,10 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
                 to={`/appointments/${form.appointmentId}`}
                 className="font-medium hover:underline underline-offset-2 text-link"
               >
-                {new Date(form.appointmentDate).toLocaleDateString("en-GB", {
+                {/* The studio's day (S01): a late-evening session is not shown as the next day. */}
+                {formatStudioTime(form.appointmentDate, {
                   weekday: "short", day: "numeric", month: "short", year: "numeric",
-                })}
+                }, zone)}
               </Link>
               {form.artistName && (
                 <p className="text-xs text-foreground/65 mt-0.5">

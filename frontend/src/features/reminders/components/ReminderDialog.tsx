@@ -27,6 +27,8 @@ import { FAILURE_REASON_LABELS } from "../reminder.types";
 import { PhoneInput } from "@/shared/components/ui/phone-input";
 import { asPhoneCountry } from "@/shared/utils/phoneCountries";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 import { isValidE164Phone, PHONE_ERROR_MESSAGE } from "@/shared/utils/phoneValidation";
 
 interface ReminderDialogProps {
@@ -40,11 +42,10 @@ interface ReminderDialogProps {
   artistId?: string;
 }
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-  });
-}
+// History times on the studio's wall clock (S01), like every other session time in the app.
+const REMINDER_TIME: Intl.DateTimeFormatOptions = {
+  day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+};
 
 // Formats an ISO datetime string for an <input type="datetime-local"> value.
 function toDatetimeLocalValue(date: Date): string {
@@ -62,6 +63,7 @@ function isValidDateTimeLocal(value: string): boolean {
 export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, artistId }: ReminderDialogProps) {
   // Preselects the studio's own country in the phone field (the API call is cached app-wide).
   const { data: myStudio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
   const isRawContact = !appointmentId && !clientId;
 
   // A client with no assigned artist has no authoritative artist source, and an
@@ -266,7 +268,7 @@ export function ReminderDialog({ open, onOpenChange, appointmentId, clientId, ar
                     )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-muted-foreground">{formatDateTime(r.scheduledFor)}</span>
+                    <span className="text-muted-foreground">{formatStudioTime(r.scheduledFor, REMINDER_TIME, zone)}</span>
                     {r.status === "Scheduled" && (
                       <Button
                         variant="ghost"

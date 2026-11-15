@@ -1571,10 +1571,11 @@ describe("MyBookingsSection — the card loses nothing (After Hours slice 2)", (
     );
     renderMyBookings();
     expect(await screen.findByText("Luna Artista · 60 min")).toBeInTheDocument();
+    // The studio's wall clock (the stub's Europe/Tirane), not the runner's zone (S01).
     const expectedDate = new Date(FUTURE).toLocaleDateString("en-GB", {
-      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Tirane",
     });
-    expect(screen.getByText(expectedDate)).toBeInTheDocument();
+    expect(await screen.findByText(expectedDate)).toBeInTheDocument();
     expect(screen.getByText("Requested")).toBeInTheDocument();
     expect(screen.getByText("Bring the sketch")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /pay deposit/i })).toBeInTheDocument();

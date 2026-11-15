@@ -16,6 +16,9 @@ import {
   useRescheduleAppointmentMutation, useCheckSlotAvailabilityQuery, useGetReschedulePreviewQuery,
 } from "../appointmentsApi";
 import type { AppointmentResponse } from "../appointment.types";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { resolveStudioWallTime, toStudioInputValue, type StudioWallTime } from "@/shared/utils/studioDay";
 
 // Same bounds as RescheduleAppointmentValidator (30–480) and BookAppointmentForm's DURATION_OPTIONS.
 const DURATION_OPTIONS: { value: number; label: string }[] = [
@@ -39,17 +42,32 @@ interface RescheduleDialogProps {
   description?: string;
 }
 
-// Formats an ISO datetime string for an <input type="datetime-local"> value (local time, no seconds).
-function toDatetimeLocalValue(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// The input runs on the STUDIO's wall clock (S01): the value, its minimum and what it means as an
+// instant all go through the studio's zone. Before, the value was read in the viewer's browser zone and
+// the minimum was a UTC string (`new Date().toISOString().slice(0, 16)`) in a local-time input, which
+// allowed past times west of UTC and refused valid ones east of it.
+const TIME_WITH_ZONE: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", timeZoneName: "short" };
+
+function viewerTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 export function RescheduleDialog({ appointment, open, onOpenChange, description }: RescheduleDialogProps) {
-  const [newDate, setNewDate] = useState(() => toDatetimeLocalValue(appointment.date));
+  const { zone, retry: retryZone } = useStudioZone();
+  const studioTz = zone.status === "ready" ? zone.timeZone : null;
+  // null = untouched: the field shows the appointment's own studio time, derived once the zone is known
+  // rather than copied into state before it is.
+  const [editedDate, setEditedDate] = useState<string | null>(null);
+  const newDate = editedDate ?? (studioTz ? toStudioInputValue(new Date(appointment.date), studioTz) : "");
   const [newDuration, setNewDuration] = useState(appointment.durationMinutes);
   const [reschedule, { isLoading }] = useRescheduleAppointmentMutation();
+
+  // What the picked wall time means. A time skipped by the clocks going forward is refused; one that
+  // happens twice when they go back uses the first occurrence, and the dialog says so.
+  const wallTime: StudioWallTime | null = studioTz && newDate ? resolveStudioWallTime(newDate, studioTz) : null;
+  const pickedInstant =
+    wallTime?.kind === "ok" ? wallTime.instant : wallTime?.kind === "repeated" ? wallTime.first : null;
+  const pickedIso = pickedInstant?.toISOString() ?? null;
 
   // Whether this appointment can be moved at all — the server's own status and notice-window rule,
   // the same one the save applies (E04b, A02), so a refusal is explained before a time is picked
@@ -64,7 +82,7 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
-      setNewDate(toDatetimeLocalValue(appointment.date));
+      setEditedDate(null);
       setNewDuration(appointment.durationMinutes);
     }
   }
@@ -77,26 +95,27 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
     artistId?: string; date: string; durationMinutes: number; excludeAppointmentId: string;
   } | null>(null);
   useEffect(() => {
-    if (!open || !newDate || !newDuration) return;
+    if (!open || !pickedIso || !newDuration) return;
     const timer = setTimeout(() => {
       setDebouncedCheck({
         artistId: appointment.artistId ?? undefined,
-        date: new Date(newDate).toISOString(),
+        date: pickedIso,
         durationMinutes: newDuration,
         excludeAppointmentId: appointment.id,
       });
     }, 600);
     return () => clearTimeout(timer);
-  }, [open, newDate, newDuration, appointment.artistId, appointment.id]);
+  }, [open, pickedIso, newDuration, appointment.artistId, appointment.id]);
 
   const { data: slotStatus, isFetching: checkingSlot } = useCheckSlotAvailabilityQuery(debouncedCheck!, {
     skip: debouncedCheck === null || !open || !eligible,
   });
 
   async function handleSubmit() {
+    if (!pickedIso) return;
     const result = await reschedule({
       id:                 appointment.id,
-      newDate:            new Date(newDate).toISOString(),
+      newDate:            pickedIso,
       newDurationMinutes: newDuration,
       notes:              appointment.notes,
     });
@@ -156,14 +175,53 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
         {eligible && (
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="reschedule-date">New date &amp; time</Label>
-              <Input
-                id="reschedule-date"
-                type="datetime-local"
-                min={new Date().toISOString().slice(0, 16)}
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-              />
+              <Label htmlFor="reschedule-date">
+                New date &amp; time {studioTz && <span className="font-normal text-muted-foreground">(studio time, {studioTz})</span>}
+              </Label>
+              {zone.status === "error" ? (
+                <div className="flex flex-wrap items-center gap-2" role="alert">
+                  <p className="text-sm text-destructive-text">
+                    Couldn&apos;t load the studio&apos;s time zone, so a new time can&apos;t be picked safely.
+                  </p>
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={retryZone}>
+                    <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                    Try again
+                  </Button>
+                </div>
+              ) : (
+                <Input
+                  id="reschedule-date"
+                  type="datetime-local"
+                  disabled={!studioTz}
+                  min={studioTz ? toStudioInputValue(new Date(), studioTz) : undefined}
+                  value={newDate}
+                  onChange={(e) => setEditedDate(e.target.value)}
+                  aria-describedby="reschedule-date-note"
+                />
+              )}
+              <div id="reschedule-date-note" aria-live="polite">
+                {zone.status === "loading" && (
+                  <p className="text-xs text-muted-foreground">Loading the studio&apos;s time zone…</p>
+                )}
+                {wallTime?.kind === "gap" && (
+                  <p className="text-xs text-destructive-text" role="alert">
+                    That time doesn&apos;t exist on that day: the clocks go forward. Pick another time.
+                  </p>
+                )}
+                {wallTime?.kind === "repeated" && (
+                  <p className="text-xs text-warning-text">
+                    That time happens twice on that day because the clocks go back. The first one is used
+                    ({formatStudioTime(wallTime.first, TIME_WITH_ZONE, zone)}).
+                  </p>
+                )}
+                {pickedInstant && studioTz && viewerTimeZone() !== studioTz && (
+                  <p className="text-xs text-muted-foreground">
+                    That&apos;s {pickedInstant.toLocaleString("en-GB", {
+                      weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                    })} your time.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -192,7 +250,7 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || !eligible || slotStatus?.available === false}
+            disabled={isLoading || !eligible || !pickedIso || slotStatus?.available === false}
           >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm reschedule"}
           </Button>

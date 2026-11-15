@@ -146,11 +146,14 @@ afterAll(() => server.close());
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-// Mirrors RescheduleDialog's own toDatetimeLocalValue — needed to assert against the rendered <input> value.
-function toDatetimeLocalValueForTest(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// The reschedule field runs on the studio's wall clock (S01): the stub's Europe/Tirane, whatever zone the
+// test runner is in. Written out independently of the dialog's helper so the assertion isn't circular.
+function toStudioDatetimeLocalForTest(iso: string): string {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Tirane", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 function makeStore(role: Role = Role.Artist) {
@@ -484,7 +487,8 @@ describe("AppointmentDetailPage", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/reschedule appointment/i)).toBeInTheDocument();
     // The form appears once the server says the appointment can be moved (E04b).
-    expect(await screen.findByLabelText(/new date/i)).toHaveValue(toDatetimeLocalValueForTest(FUTURE));
+    const input = await screen.findByLabelText(/new date/i);
+    await waitFor(() => expect(input).toHaveValue(toStudioDatetimeLocalForTest(FUTURE)));
   });
 
   it("dialog 'Cancel' button closes without calling the mutation", async () => {

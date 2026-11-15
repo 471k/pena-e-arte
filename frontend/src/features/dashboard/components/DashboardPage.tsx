@@ -3,7 +3,7 @@ import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError"
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle, Banknote, CalendarDays, ChevronRight,
-  LayoutDashboard, Zap,
+  LayoutDashboard, RotateCw, Zap,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -20,27 +20,21 @@ import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { SetupChecklist } from "./SetupChecklist";
 import { OwnerExceptions } from "./OwnerExceptions";
 import { OwnerExceptionKind } from "../dashboard.types";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { addWallDays, studioMidnight, studioWallDate } from "@/shared/utils/studioDay";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function startOfDay(d: Date): Date {
-  const out = new Date(d);
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
-
-function addDays(d: Date, n: number): Date {
-  const out = new Date(d);
-  out.setDate(out.getDate() + n);
-  return out;
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+// "Today" and "this week" are the studio's days, not the viewer's (S01): an owner checking from another
+// zone sees the studio's today, and a day that crosses a clock change is still exactly that day.
+function studioRanges(now: Date, timeZone: string): { todayStart: Date; tomorrow: Date; weekEnd: Date } {
+  const today = studioWallDate(now, timeZone);
+  return {
+    todayStart: studioMidnight(today, timeZone),
+    tomorrow:   studioMidnight(addWallDays(today, 1), timeZone),
+    weekEnd:    studioMidnight(addWallDays(today, 7), timeZone),
+  };
 }
 
 function daysUntil(iso: string): number {
@@ -145,11 +139,12 @@ function AppointmentRowSkeleton() {
 }
 
 function TodayRow({ appt, artists }: { appt: AppointmentResponse; artists: ArtistResponse[] }) {
+  const { zone } = useStudioZone();
   return (
     <div className="flex items-center justify-between py-2.5 gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm font-medium tabular-nums shrink-0">
-          {formatTime(appt.date)}
+          {formatStudioTime(appt.date, { hour: "2-digit", minute: "2-digit" }, zone)}
         </span>
         <AppointmentStatusBadge status={appt.status} />
       </div>
@@ -165,11 +160,13 @@ function TodaySection({
   artists,
   isLoading,
   isError,
+  onRetry,
 }: {
   appointments: AppointmentResponse[] | undefined;
   artists:      ArtistResponse[];
   isLoading:    boolean;
   isError:      boolean;
+  onRetry:      () => void;
 }) {
   const navigate = useNavigate();
   const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments.");
@@ -208,7 +205,13 @@ function TodaySection({
           )}
 
           {errorMessage && (
-            <p className="text-sm text-destructive-text py-4" role="alert">{errorMessage}</p>
+            <div className="flex flex-wrap items-center gap-2 py-4" role="alert">
+              <p className="text-sm text-destructive-text">{errorMessage}</p>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onRetry}>
+                <RotateCw aria-hidden="true" className="h-3.5 w-3.5" />
+                Try again
+              </Button>
+            </div>
           )}
 
           {!isLoading && !isError && appointments?.length === 0 && (
@@ -245,7 +248,8 @@ function TodaySection({
 
 interface StatCardProps {
   label:     string;
-  value:     number;
+  /** null when the count couldn't be worked out: shown as unavailable, never as 0. */
+  value:     number | null;
   icon:      ReactNode;
   isLoading: boolean;
   testId?:   string;
@@ -264,7 +268,9 @@ function StatCard({ label, value, icon, isLoading, testId }: StatCardProps) {
       {isLoading ? (
         <Skeleton className="h-8 w-12 mt-1" />
       ) : (
-        <span className="text-3xl font-bold tabular-nums">{value}</span>
+        value === null
+          ? <span className="text-3xl font-bold tabular-nums text-muted-foreground" aria-label="Unavailable" title="Couldn't be loaded">—</span>
+          : <span className="text-3xl font-bold tabular-nums">{value}</span>
       )}
     </div>
   );
@@ -275,26 +281,33 @@ function StatCard({ label, value, icon, isLoading, testId }: StatCardProps) {
 export function DashboardPage() {
   const navigate    = useNavigate();
   const today       = useMemo(() => new Date(), []);
-  const todayStart  = useMemo(() => startOfDay(today), [today]);
-  const tomorrow    = useMemo(() => addDays(todayStart, 1), [todayStart]);
-  const weekEnd     = useMemo(() => addDays(todayStart, 7), [todayStart]);
+  const { zone, retry: retryZone } = useStudioZone();
+  const ranges      = useMemo(
+    () => (zone.status === "ready" ? studioRanges(today, zone.timeZone) : null), [today, zone]);
 
   const { data: sub } = useGetSubscriptionQuery();
   const {
     data:      todayAppts,
-    isLoading: loadingAppts,
-    isError:   apptError,
+    isLoading: apptsLoading,
+    isError:   apptsError,
+    refetch:   refetchToday,
   } = useGetAppointmentsQuery({
-    from: todayStart.toISOString(),
-    to:   tomorrow.toISOString(),
-  });
+    from: ranges?.todayStart.toISOString() ?? "",
+    to:   ranges?.tomorrow.toISOString() ?? "",
+  }, { skip: ranges === null });
   const {
     data:      weekAppts,
-    isLoading: loadingWeekAppts,
+    isLoading: weekLoading,
+    isError:   weekError,
   } = useGetAppointmentsQuery({
-    from: todayStart.toISOString(),
-    to:   weekEnd.toISOString(),
-  });
+    from: ranges?.todayStart.toISOString() ?? "",
+    to:   ranges?.weekEnd.toISOString() ?? "",
+  }, { skip: ranges === null });
+  // Until the studio's zone is known there is no "today" to ask for; if it can't be read, that is an error,
+  // never an empty day or a zero count.
+  const loadingAppts     = zone.status === "loading" || apptsLoading;
+  const loadingWeekAppts = zone.status === "loading" || weekLoading;
+  const apptError        = zone.status === "error" || apptsError;
   const { data: artists = [] } = useGetArtistsQuery(undefined);
 
   // The server's count of unpaid deposits in the next 7 days (E05a), the same number as the "Deposits
@@ -316,7 +329,7 @@ export function DashboardPage() {
           <LayoutDashboard className="h-5 w-5 shrink-0" />
           <div className="min-w-0">
             <span className="block font-semibold tracking-tight truncate">Dashboard</span>
-            <span className="block text-xs text-muted-foreground truncate" data-testid="dashboard-date">{formatDate(today)}</span>
+            <span className="block text-xs text-muted-foreground truncate" data-testid="dashboard-date">{formatStudioTime(today, { weekday: "long", day: "numeric", month: "long" }, zone)}</span>
           </div>
         </div>
         <Button size="sm" className="shrink-0" onClick={() => navigate("/schedule")}>
@@ -335,14 +348,14 @@ export function DashboardPage() {
         <div className="grid grid-cols-3 gap-3">
           <StatCard
             label="Today"
-            value={todayAppts?.length ?? 0}
+            value={apptError ? null : todayAppts?.length ?? 0}
             icon={<CalendarDays className="h-3.5 w-3.5" />}
             isLoading={loadingAppts}
             testId="stat-today"
           />
           <StatCard
             label="This Week"
-            value={weekAppts?.length ?? 0}
+            value={zone.status === "error" || weekError ? null : weekAppts?.length ?? 0}
             icon={<CalendarDays className="h-3.5 w-3.5" />}
             isLoading={loadingWeekAppts}
             testId="stat-week"
@@ -361,6 +374,7 @@ export function DashboardPage() {
           artists={artists}
           isLoading={loadingAppts}
           isError={apptError}
+          onRetry={zone.status === "error" ? retryZone : () => void refetchToday()}
         />
       </main>
     </div>
