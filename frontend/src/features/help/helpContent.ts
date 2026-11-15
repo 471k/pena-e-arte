@@ -499,9 +499,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Open Messages from the menu.",
       "Click \"New message\" and pick a contact — only your assigned or booked artist and the studio owner are available to message.",
       "Or continue an existing thread from the conversation list.",
-      "Type your message and press Enter (or click Send).",
+      "Type your message and press Enter (or click Send). Shift+Enter starts a new line instead.",
     ],
     tips: [
+      "Text you haven't sent isn't kept if you open another conversation, so it can never be sent to the wrong person. Send it first.",
+      "If your messages can't be loaded, the page says so with a \"Try again\" button. It never shows an empty inbox when the real problem is the connection.",
       "You can only start a thread with an artist you've had an appointment with or who's assigned to you — you can always reach the studio owner.",
       "If the recipient is offline, they get a one-time email so a burst of messages doesn't flood their inbox.",
       "A message you send from an appointment's page is linked to that appointment. In the thread it shows a small label above the message with the appointment's day, time and service (in the studio's local time); click it to open that appointment's page. The label appears once at the start of a run of messages about the same appointment, not on every one.",
@@ -833,6 +835,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "You can only message clients you have an appointment with or who are assigned to you — you can always reach the studio owner.",
+      "Enter sends; Shift+Enter starts a new line. Text you haven't sent isn't kept if you open another conversation, so it can never be sent to the wrong person.",
+      "If your messages can't be loaded, the page says so with a \"Try again\" button. It never shows an empty inbox when the real problem is the connection.",
       "If the recipient is offline, they get a one-time email so a burst of messages doesn't flood their inbox.",
       "When a client writes from their appointment's page, their message carries a small label with that appointment's day, time and service (in your studio's local time) — so you know which booking they mean. Click it to open the appointment's detail page. It appears once at the start of a run of messages about the same appointment, and in the conversation list when the latest message is about one. After a reschedule it shows the new date.",
     ],
@@ -1920,6 +1924,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "As the owner, you're the only role with no messaging restrictions — you can start a thread with anyone at your studio.",
+      "Enter sends; Shift+Enter starts a new line. Text you haven't sent isn't kept if you open another conversation, so it can never be sent to the wrong person.",
+      "If your messages can't be loaded, the page says so with a \"Try again\" button. It never shows an empty inbox when the real problem is the connection.",
       "When a client writes from their appointment's page, their message carries a small label with that appointment's day, time and service (in your studio's local time). Click it to open the appointment's detail page. It also shows in the conversation list when the latest message is about an appointment, and follows any reschedule.",
     ],
   },
