@@ -200,6 +200,46 @@ describe("ReminderDialog", () => {
     expect(screen.getByRole("button", { name: /schedule reminder/i })).toBeDisabled();
   });
 
+  it("S01: 'Send at' is read on the studio's clock — 22:00 at a Tokyo studio schedules 13:00 UTC", async () => {
+    let scheduledFor: unknown = null;
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "stud-0001", timezone: "Asia/Tokyo", currency: "EUR", countryCode: "PT" })),
+      http.post("http://localhost/api/v1/reminders", async ({ request }) => {
+        scheduledFor = ((await request.json()) as Record<string, unknown>).scheduledFor;
+        return HttpResponse.json({ ...SCHEDULED, id: "rem-tokyo" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderDialog({ appointmentId: "appt-001" });
+
+    await user.click(screen.getByRole("switch"));
+    expect(await screen.findByText(/studio time, Asia\/Tokyo/)).toBeInTheDocument();
+    const dateInput = screen.getByLabelText(/send at/i);
+    await waitFor(() => expect(dateInput).toBeEnabled());
+    await user.clear(dateInput);
+    await user.type(dateInput, "2030-03-05T22:00");
+    await user.click(screen.getByRole("button", { name: /schedule reminder/i }));
+
+    await waitFor(() => expect(scheduledFor).toBe("2030-03-05T13:00:00.000Z"));
+  });
+
+  it("S01: until the studio's zone loads the 'Send at' field is disabled and says so", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", async () => {
+        await new Promise((r) => setTimeout(r, 5000));
+        return HttpResponse.json({ id: "stud-0001", timezone: "Asia/Tokyo" });
+      }),
+    );
+    const user = userEvent.setup();
+    renderDialog({ appointmentId: "appt-001" });
+
+    await user.click(screen.getByRole("switch"));
+    expect(screen.getByLabelText(/send at/i)).toBeDisabled();
+    expect(screen.getByText(/Loading the studio.s time zone/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /schedule reminder/i })).toBeDisabled();
+  });
+
   // ── Submit gating ────────────────────────────────────────────────────────────
 
   it("submit is disabled in raw-contact mode until both name and phone are filled", async () => {

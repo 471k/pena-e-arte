@@ -15,7 +15,8 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { Money } from "@/shared/components/Money";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
-import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
+import { checkStudioTime, studioTimeProblem, studioZoneFrom, toStudioInputValue } from "@/shared/utils/studioDay";
+import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { useCategorizedImageUpload } from "@/shared/hooks/useCategorizedImageUpload";
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import {
@@ -35,7 +36,7 @@ import { CategorizedImagesField } from "@/features/appointments/components/Categ
 import { DesiredPlacementField } from "@/features/appointments/components/DesiredPlacementField";
 import { SlotAvailabilityIndicator } from "@/features/appointments/components/SlotAvailabilityIndicator";
 import { AppointmentAttachmentCategory } from "@/features/appointments/appointment.types";
-import { claimHandoffDefaults, type WaitlistClaimHandoff } from "@/features/waitlist/waitlistClaim";
+import { claimHandoffDefaults, claimHandoffScheduledAt, type WaitlistClaimHandoff } from "@/features/waitlist/waitlistClaim";
 import { WaitlistClaimNotice } from "@/features/waitlist/components/WaitlistClaimNotice";
 
 const VALID_DURATIONS = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480] as const;
@@ -63,10 +64,8 @@ const schema = z.object({
   phone:           z.string().min(1, "Phone number is required").refine(isValidE164Phone, PHONE_ERROR_MESSAGE),
   artistId:        z.string().nullable(),
   bookAnyArtist:   z.boolean(),
-  scheduledAt:     z.string().min(1, "Select date and time").refine(
-    (v) => new Date(v) > new Date(),
-    "Appointment must be in the future",
-  ),
+  // Read on the studio's wall clock: onSubmit checks "exists" and "in the future" with checkStudioTime (S01).
+  scheduledAt:     z.string().min(1, "Select date and time"),
   // A picked service overrides this with its own DurationMinutes (which need not be one of
   // VALID_DURATIONS) — the preset-duration rule below only applies when no service is picked,
   // matching server-side (CreateAppointmentCommand ignores this field once a service is set).
@@ -177,7 +176,10 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
   const { data: artists, isLoading: loadingArtists } = useGetPublicBookingArtistsQuery(slug);
   const { data: depositRule } = useGetPublicDepositRuleQuery(slug);
   const { data: services } = useGetPublicServicesQuery(slug);
-  const { data: publicStudio } = useGetPublicStudioQuery(slug);
+  const { data: publicStudio, isError: publicStudioFailed } = useGetPublicStudioQuery(slug);
+  // A guest has no session studio: the date & time is read on the booked studio's own zone (S01).
+  const zone = studioZoneFrom(publicStudio?.timezone, publicStudioFailed);
+  const studioTz = zone.status === "ready" ? zone.timeZone : null;
   const moneyStudio: MoneyStudio = { countryCode: publicStudio?.countryCode, currency: publicStudio?.currency };
   const [createGuestAppointment, { isLoading: submitting }] = useCreateGuestAppointmentMutation();
 
@@ -206,7 +208,7 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
   const [referenceImageError, setReferenceImageError] = useState<string | null>(null);
 
   const {
-    register, control, handleSubmit, setValue,
+    register, control, handleSubmit, setValue, getValues, setError,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -222,6 +224,12 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
   const watchedDate          = useWatch({ control, name: "scheduledAt" });
   const watchedDuration      = useWatch({ control, name: "durationMinutes" });
   const watchedServiceId     = useWatch({ control, name: "serviceId" });
+
+  // A waitlist claim's offered slot, on the studio's wall clock once the zone is known; never over a typed time.
+  const claimScheduledAt = claimHandoffScheduledAt(waitlistClaim, studioTz);
+  useEffect(() => {
+    if (claimScheduledAt && !getValues("scheduledAt")) setValue("scheduledAt", claimScheduledAt);
+  }, [claimScheduledAt, getValues, setValue]);
 
   const selectedArtist = useMemo(
     () => (artists ?? []).find((a) => a.artistId === watchedArtistId) ?? null,
@@ -241,7 +249,7 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
   }, [selectedService, setValue]);
 
   const debouncedCheck = useDebouncedSlotCheckArgs(
-    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration,
+    watchedArtistId, watchedBookAnyArtist, watchedDate, watchedDuration, studioTz,
   );
 
   const { data: slotStatus, isFetching: checkingSlot } = useCheckPublicSlotAvailabilityQuery(
@@ -259,6 +267,11 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
     setReferralSourceOtherError(referralSourceOtherError);
 
     let valid = !tattooDescriptionError && !referralSourceOtherError;
+    const at = checkStudioTime(values.scheduledAt, zone);
+    if (!at.ok) {
+      setError("scheduledAt", { message: studioTimeProblem(at.reason, "Appointment must be in the future") });
+      valid = false;
+    }
     if (areaPhotos.doneUrls().length === 0) {
       setAreaPhotoError("A photo of the area is required.");
       valid = false;
@@ -267,7 +280,7 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       setReferenceImageError("At least one reference image is required.");
       valid = false;
     }
-    if (!valid) return;
+    if (!valid || !at.ok) return;
 
     const images = [
       ...areaPhotos.doneUrls().map((url) => ({ url, category: AppointmentAttachmentCategory.AreaPhoto })),
@@ -289,7 +302,7 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
           // syntactically valid GUID, not an empty string (which fails JSON→Guid deserialization
           // and 400s the whole request before the handler ever runs).
           clientId:        "00000000-0000-0000-0000-000000000000",
-          date:            new Date(values.scheduledAt).toISOString(),
+          date:            at.instant.toISOString(),
           durationMinutes: values.durationMinutes,
           serviceId:       values.serviceId ?? null,
           notes:           values.notes || null,
@@ -493,14 +506,18 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       {/* Date & duration */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
-          <FieldLabel htmlFor="scheduledAt" required>Date &amp; Time</FieldLabel>
+          <FieldLabel htmlFor="scheduledAt" required>
+            Date &amp; Time {studioTz && <span className="font-normal text-muted-foreground">(studio time, {studioTz})</span>}
+          </FieldLabel>
           <Input
             id="scheduledAt"
             type="datetime-local"
-            min={toLocalDatetimeInputValue(new Date())}
+            min={studioTz ? toStudioInputValue(new Date(), studioTz) : undefined}
+            aria-describedby="scheduledAt-note"
             {...register("scheduledAt")}
             className={cn(errors.scheduledAt && "border-destructive")}
           />
+          <StudioDateTimeNote id="scheduledAt-note" zone={zone} value={watchedDate ?? ""} />
           {errors.scheduledAt && (
             <p className="text-xs text-destructive-text" role="alert">{errors.scheduledAt.message}</p>
           )}

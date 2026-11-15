@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   STUDIO_ID, ARTIST_ID, CLIENT_ID, APPT_ID,
-  CLIENT_TOKEN, mockAuthLogin, mockApiFallback, loginAs,
+  CLIENT_TOKEN, mockAuthLogin, mockApiFallback, mockStudioZone, loginAs,
 } from "./helpers";
 
 // Two currently-uncovered high-value flows, added per the 2026-09-05 e2e staleness review
@@ -11,6 +11,7 @@ import {
 test.describe("Deposit payment — cash", () => {
   test("client books an appointment and completes the deposit via cash", async ({ page }) => {
     await mockApiFallback(page);
+    await mockStudioZone(page);
     await mockAuthLogin(page, CLIENT_TOKEN);
 
     await page.route("**/api/v1/artists*", async (route) => {

@@ -1,4 +1,4 @@
-import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
+import { toStudioInputValue } from "@/shared/utils/studioDay";
 
 /**
  * C09: how a waitlist claim travels from the claim page to the booking form. The claim page navigates to
@@ -37,19 +37,24 @@ export function readClaimTokenFromHash(hash: string): string | null {
 
 /**
  * Prefill for the booking forms' `defaultValues`. Duration is prefilled only when it's one of the form's
- * presets (the form's own rule); otherwise the form keeps its default and the client picks. The time is
- * written in the browser's zone because the forms read the input back with `new Date(value)`, so the
- * offered instant is what gets submitted.
+ * presets (the form's own rule); otherwise the form keeps its default and the client picks. The time is NOT
+ * here: it is written on the studio's wall clock, which may still be loading when the form starts, so the
+ * forms set it with {@link claimHandoffScheduledAt} once the zone is known (S01).
  */
 export function claimHandoffDefaults(
   handoff: WaitlistClaimHandoff | null,
   validDurations: readonly number[],
-): { artistId?: string; bookAnyArtist?: boolean; scheduledAt?: string; durationMinutes?: number } {
+): { artistId?: string; bookAnyArtist?: boolean; durationMinutes?: number } {
   if (!handoff) return {};
   return {
     artistId:        handoff.artistId ?? "",
     bookAnyArtist:   handoff.artistId === null,
-    ...(handoff.slotStart ? { scheduledAt: toLocalDatetimeInputValue(new Date(handoff.slotStart)) } : {}),
     ...(validDurations.includes(handoff.durationMinutes) ? { durationMinutes: handoff.durationMinutes } : {}),
   };
+}
+
+/** The offered slot as the form's `datetime-local` value on the studio's wall clock, once the zone is known. */
+export function claimHandoffScheduledAt(handoff: WaitlistClaimHandoff | null, timeZone: string | null): string | null {
+  if (!handoff?.slotStart || !timeZone) return null;
+  return toStudioInputValue(new Date(handoff.slotStart), timeZone);
 }

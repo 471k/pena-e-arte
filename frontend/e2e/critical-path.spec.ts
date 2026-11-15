@@ -79,6 +79,8 @@ async function mockStudioMe(page: Page) {
         createdAt:            new Date().toISOString(),
         isActive:             true,
         slugLockedAt:         null,
+        // The booking form reads its date & time on the studio's clock (S01) and won't book without it.
+        timezone:             "Europe/Lisbon",
       }),
     });
   });

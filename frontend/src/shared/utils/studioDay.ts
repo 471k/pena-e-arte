@@ -1,4 +1,4 @@
-import { withStudioTimeZone } from "./formatInStudioTimezone";
+import { withStudioTimeZone, type StudioZone } from "./formatInStudioTimezone";
 
 /**
  * Calendar helpers for "today" in the studio's timezone (the artist's Today view). These are wall-clock
@@ -149,4 +149,49 @@ export function formatSessionSpan(startIso: string, endIso: string, timeZone: st
   return isSameStudioDay(start, end, timeZone)
     ? `${day(start)}, ${time(start)} – ${time(end)}`
     : `${day(start)}, ${time(start)} – ${day(end)}, ${time(end)}`;
+}
+
+/**
+ * The instant a studio wall-clock input means, by the app's one rule (S01): a time that happens twice when the
+ * clocks go back uses its first occurrence (recorded in the Decisions Log so it isn't reopened). A time the
+ * clocks skip, an invalid value or an unknown zone give null — never a guess in the viewer's own zone.
+ */
+export function studioWallInstant(value: string, timeZone: string | null | undefined): Date | null {
+  if (!timeZone || !value) return null;
+  const wall = resolveStudioWallTime(value, timeZone);
+  return wall.kind === "ok" ? wall.instant : wall.kind === "repeated" ? wall.first : null;
+}
+
+/** A studio's zone as an explicit state, from a public studio response (guest booking has no session studio). */
+export function studioZoneFrom(timeZone: string | null | undefined, failed: boolean): StudioZone {
+  if (timeZone) return { status: "ready", timeZone };
+  return failed ? { status: "error" } : { status: "loading" };
+}
+
+export type StudioTimeCheck =
+  | { ok: true; instant: Date }
+  | { ok: false; reason: "zone-loading" | "zone-error" | "invalid" | "gap" | "past" };
+
+/** Whether a picked studio wall time can be sent: the zone is known, the time exists, and it's in the future. */
+export function checkStudioTime(value: string, zone: StudioZone, now: Date = new Date()): StudioTimeCheck {
+  if (zone.status === "loading") return { ok: false, reason: "zone-loading" };
+  if (zone.status === "error") return { ok: false, reason: "zone-error" };
+  if (!value) return { ok: false, reason: "invalid" };
+  const wall = resolveStudioWallTime(value, zone.timeZone);
+  if (wall.kind === "invalid") return { ok: false, reason: "invalid" };
+  if (wall.kind === "gap") return { ok: false, reason: "gap" };
+  const instant = wall.kind === "ok" ? wall.instant : wall.first;
+  if (instant.getTime() <= now.getTime()) return { ok: false, reason: "past" };
+  return { ok: true, instant };
+}
+
+/** The sentence for a failed {@link checkStudioTime}; `past` is the caller's own ("Appointment must be in the future"). */
+export function studioTimeProblem(reason: Exclude<StudioTimeCheck, { ok: true }>["reason"], past: string): string {
+  switch (reason) {
+    case "zone-loading": return "Still loading the studio's time zone. Try again in a moment.";
+    case "zone-error":   return "Couldn't load the studio's time zone, so this time can't be used safely. Reload the page and try again.";
+    case "invalid":      return "Select date and time";
+    case "gap":          return "That time doesn't exist on that day: the clocks go forward. Pick another time.";
+    case "past":         return past;
+  }
 }

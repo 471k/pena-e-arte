@@ -3,7 +3,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GuestBookAppointmentForm } from "@/features/booking/components/GuestBookAppointmentForm";
-import { toLocalDatetimeInputValue } from "@/shared/utils/localDatetimeInput";
+import { toStudioInputValue } from "@/shared/utils/studioDay";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,10 @@ const ARTIST = {
   specializations: ["neo-traditional"], hourlyRate: 80,
 };
 
-let mockStudio: { currency: string; countryCode?: string } = { currency: "EUR" };
+// The studio is in Tokyo, which is never the test runner's zone: a value read in the browser zone would
+// submit a different instant, so these tests catch it (S01).
+const STUDIO_TZ = "Asia/Tokyo";
+let mockStudio: { currency: string; countryCode?: string; timezone?: string } = { currency: "EUR", timezone: STUDIO_TZ };
 
 const mockCreateGuestAppointment = vi.fn();
 const mockPresignGuestUpload = vi.fn();
@@ -32,7 +35,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
 });
 
 beforeEach(() => {
-  mockStudio = { currency: "EUR" };
+  mockStudio = { currency: "EUR", timezone: STUDIO_TZ };
   mockCreateGuestAppointment.mockReset();
   mockPresignGuestUpload.mockReset();
   mockPresignGuestUpload.mockReturnValue({
@@ -215,7 +218,9 @@ describe("GuestBookAppointmentForm", () => {
       waitlistClaim={{ token: "claim-tok", artistId: ARTIST.artistId, slotStart, durationMinutes: 90 }} />);
 
     expect(screen.getByRole("note")).toHaveTextContent(/isn.t held for you: whoever books it first gets it/);
-    expect(screen.getByLabelText(/date.*time/i)).toHaveValue(toLocalDatetimeInputValue(new Date(slotStart)));
+    // Prefilled on the studio's wall clock (13:00 UTC is 22:00 in Tokyo), and submitted back as the same instant.
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue(toStudioInputValue(new Date(slotStart), STUDIO_TZ));
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue("2030-03-05T22:00");
 
     await fillIdentityFields(user);
     await enter(user, screen.getByLabelText(/what are you looking to get done/i), "A small rose");
@@ -232,6 +237,60 @@ describe("GuestBookAppointmentForm", () => {
         }),
       }),
     );
+  }, FULL_FORM_TIMEOUT);
+
+  it("S01: the time is read on the studio's clock — 22:00 picked for a Tokyo studio books 13:00 UTC", async () => {
+    mockCreateGuestAppointment.mockReturnValue(
+      Promise.resolve({ data: { message: "Thanks — check your email to continue." } }) as unknown as ReturnType<typeof mockCreateGuestAppointment>,
+    );
+    const user = userEvent.setup();
+    renderForm();
+    expect(screen.getByText(/studio time, Asia\/Tokyo/)).toBeInTheDocument();
+
+    await fillIdentityFields(user);
+    await user.click(screen.getByLabelText(/^artist/i));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+    await user.type(screen.getByLabelText(/date.*time/i), "2030-03-05T22:00");
+    await enter(user, screen.getByLabelText(/what are you looking to get done/i), "A small rose");
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    await screen.findByText("Check your email");
+    expect(mockCreateGuestAppointment).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({ booking: expect.objectContaining({ date: "2030-03-05T13:00:00.000Z" }) }),
+    }));
+  }, FULL_FORM_TIMEOUT);
+
+  it("S01: while the studio's zone is unknown nothing is sent — the form says why", async () => {
+    mockStudio = { currency: "EUR" };
+    const user = userEvent.setup();
+    renderForm();
+    expect(screen.getByText(/Loading the studio.s time zone/)).toBeInTheDocument();
+
+    await fillIdentityFields(user);
+    await fillBookingFields(user);
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    expect(await screen.findByText(/Still loading the studio.s time zone/)).toBeInTheDocument();
+    expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
+  }, FULL_FORM_TIMEOUT);
+
+  it("S01: a time the clocks skip is refused, not shifted", async () => {
+    mockStudio = { currency: "EUR", timezone: "Europe/Paris" };
+    const user = userEvent.setup();
+    renderForm();
+
+    await fillIdentityFields(user);
+    await user.click(screen.getByLabelText(/^artist/i));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+    await user.type(screen.getByLabelText(/date.*time/i), "2030-03-31T02:30");
+    await enter(user, screen.getByLabelText(/what are you looking to get done/i), "A small rose");
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    expect((await screen.findAllByText(/the clocks go forward/)).length).toBeGreaterThanOrEqual(1);
+    expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
   }, FULL_FORM_TIMEOUT);
 
   it("sends no claim token on an ordinary visit", async () => {
