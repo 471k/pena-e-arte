@@ -54,6 +54,35 @@ public class WaitlistClaimJourneyIntegrationTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task ExpiryJob_SavesAndSendsWithNoTenantSet_NotAsTheLastStudio()
+    {
+        // Two studios, so "the last studio" is a real, wrong answer: the save and the sends come after the
+        // per-studio loop and must run with no tenant, as every other job does.
+        (Studio first, Guid firstArtist) = await SeedOpenStudioWithArtist();
+        await SeedNotifiedEntry(first.Id, firstArtist, DateTime.UtcNow.AddHours(-25), guestEmail: "late1@example.com");
+        await SeedWaitingEntry(first.Id, firstArtist, "next1@example.com");
+        (Studio second, Guid secondArtist) = await SeedOpenStudioWithArtist();
+        await SeedNotifiedEntry(second.Id, secondArtist, DateTime.UtcNow.AddHours(-25), guestEmail: "late2@example.com");
+        await SeedWaitingEntry(second.Id, secondArtist, "next2@example.com");
+
+        CurrentTenantService none = new();
+        List<bool> tenantSetAtSend = [];
+        ISender sender = Substitute.For<ISender>();
+        sender.Send(Arg.Any<SendWaitlistSlotAvailableNotificationCommand>(), Arg.Any<CancellationToken>())
+            .Returns(_ => { tenantSetAtSend.Add(none.IsSet); return Task.FromResult(Unit.Value); });
+
+        await using (AppDbContext db = fixture.CreateDbContext(none))
+        {
+            await new WaitlistNotificationExpiryJob(db, none, sender,
+                NullLogger<WaitlistNotificationExpiryJob>.Instance).RunAsync();
+        }
+
+        tenantSetAtSend.Should().HaveCountGreaterThanOrEqualTo(2, "both studios' next-in-line were offered the slot");
+        tenantSetAtSend.Should().AllBeEquivalentTo(false);
+        none.IsSet.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ExpiryJob_OfferedSlotBookedSince_ExpiresWithoutOfferingItToAnyone()
     {
         (Studio studio, Guid artistId) = await SeedOpenStudioWithArtist();

@@ -7044,3 +7044,25 @@ tenant before matching, and `WaitlistClaimJourneyIntegrationTests` covers it on 
   the moved appointment's new position counts), the expiry job, and a claim booked at a different time
   (the offered slot then moves to the next person). Pre-C09 rows with no recorded slot are expired, not
   cascaded.
+
+## A job that sets a tenant clears it; EF warning 10622 recorded and closed — 2026-11-15
+
+From the 15 Nov jobs tenant audit and Desktop's review of it.
+
+- **`WaitlistNotificationExpiryJob` is the only job that sets a tenant, and it now clears it** when the
+  per-studio loop ends (`try`/`finally`, `ICurrentTenant.ClearTenant()`, a default interface method so no
+  implementer changes). Before, the save and the slot-available sends after the loop ran as whichever
+  studio came last. That was safe only because the send handler happens to use `IgnoreQueryFilters()` —
+  accidental safety of exactly the kind the 14 Nov fix was about. An integration test on the real,
+  filter-configured context, with two studios, asserts no tenant is set at either send or afterwards.
+- **The rule for any future job:** set a tenant only around per-studio work, and clear it in a `finally`.
+  Anything that runs after the loop runs tenantless, the job's normal condition.
+- **The job also writes one line when it finds nothing to expire**, so an idle run can be told from a run
+  that didn't happen (it was one of three jobs silent when idle). This is the first application of the
+  logging convention proposed to Desktop, not the convention itself.
+- **EF Core warning 10622** ("entity with a global query filter is the required end of a relationship")
+  is logged for three pairs, named from the production migrate log: `Artist`←`InstagramConnection`,
+  `Artist`←`InstagramPost`, `PortfolioImage`←`SavedPortfolioImage`. One handler navigates one of them:
+  `GetSavedPortfolioImagesQuery` (saved portfolio images), already under `IgnoreQueryFilters()`. No job
+  navigates any. So the practical risk today is nil and **no change is made**; this entry exists so nobody
+  re-investigates the warning. Re-open it only if a new read navigates one of these pairs under the filter.
