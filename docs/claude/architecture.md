@@ -7068,8 +7068,9 @@ placement picker.
 - **Return:** `ScrollRestoration` around the browser router (new pages start at the top; browser back
   restores the list's position), and a record link focuses itself when you come back to its list by
   browser back. A forward visit to the list (sidebar, a "Back to clients" button) starts at the top like any
-  new page. The return target is in `sessionStorage`, every access wrapped, so blocked storage only loses
-  the focus restore.
+  new page. The return target is kept in memory only (going back within the app never reloads), so nothing
+  about which record was opened, or a list's search, is written to browser storage. CodeQL flagged the
+  first version, which used `sessionStorage`.
 - **C10 follows the requirement and the prototype, not a key handler on the figure.** Editable, the body
   map is a `fieldset` with a legend, a note saying whose left and right is meant ("your own" / "the
   client's own"), and labelled checkboxes in "Front of body" and "Back of body" groups (each name carries

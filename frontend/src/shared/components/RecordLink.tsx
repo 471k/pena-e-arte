@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import { Link, useLocation, useNavigationType } from "react-router-dom";
 import { cn } from "@/shared/utils/cn";
+import { rememberReturnTarget, takeReturnTarget } from "./recordLinkContract";
 // RECORD_CONTAINER, RECORD_ACTIONS and isInsideControl live in ./recordLinkContract (fast refresh needs a
 // component file to export only components).
 
@@ -18,33 +19,6 @@ import { cn } from "@/shared/utils/cn";
  * table cell (a `<td>` is not a positioned box, so the overlay would cover something larger); a table row
  * opens through {@link isInsideControl} instead.
  */
-const RETURN_KEY = "tattooos.recordReturn";
-
-interface ReturnTarget {
-  list: string;
-  to:   string;
-}
-
-function readReturnTarget(): ReturnTarget | null {
-  try {
-    const raw = sessionStorage.getItem(RETURN_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed === "object" && parsed !== null
-        && typeof (parsed as ReturnTarget).list === "string" && typeof (parsed as ReturnTarget).to === "string") {
-      return parsed as ReturnTarget;
-    }
-  } catch { /* storage blocked or malformed: no focus restore, nothing else breaks */ }
-  return null;
-}
-
-function writeReturnTarget(target: ReturnTarget | null): void {
-  try {
-    if (target) sessionStorage.setItem(RETURN_KEY, JSON.stringify(target));
-    else        sessionStorage.removeItem(RETURN_KEY);
-  } catch { /* storage blocked: focus simply isn't restored */ }
-}
-
 interface RecordLinkProps {
   to:         string;
   children:   ReactNode;
@@ -66,16 +40,12 @@ export function RecordLink({ to, children, stretched = false, className, "aria-l
   // the list (the sidebar, a "Back to clients" button) starts at the top as any new page does.
   useEffect(() => {
     if (navigationType !== "POP") return;
-    const target = readReturnTarget();
-    if (target && target.list === listPath && target.to === to) {
-      ref.current?.focus();
-      writeReturnTarget(null);
-    }
+    if (takeReturnTarget(listPath, to)) ref.current?.focus();
   }, [navigationType, listPath, to]);
 
   function remember(event: MouseEvent<HTMLAnchorElement>) {
     if (event.defaultPrevented) return;
-    writeReturnTarget({ list: listPath, to });
+    rememberReturnTarget(listPath, to);
   }
 
   return (

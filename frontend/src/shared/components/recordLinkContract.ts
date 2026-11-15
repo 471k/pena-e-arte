@@ -24,3 +24,25 @@ export function isInsideControl(target: EventTarget | null, container: Element):
   );
   return control !== null && container.contains(control);
 }
+
+// The record last opened from a list, in memory only: going back within the app never reloads the page, so
+// memory is enough, and nothing about which record was opened (or the list's search) is written to browser
+// storage. A full reload simply loses the focus restore.
+let returnTarget: { list: string; to: string } | null = null;
+
+/** A record link was followed from the list at `list`. */
+export function rememberReturnTarget(list: string, to: string): void {
+  returnTarget = { list, to };
+}
+
+/** True, once, when `to` is the record last opened from `list`: that link takes focus on the way back. */
+export function takeReturnTarget(list: string, to: string): boolean {
+  if (returnTarget === null || returnTarget.list !== list || returnTarget.to !== to) return false;
+  returnTarget = null;
+  return true;
+}
+
+/** Test-only: forget the remembered record between tests. */
+export function resetReturnTarget(): void {
+  returnTarget = null;
+}
