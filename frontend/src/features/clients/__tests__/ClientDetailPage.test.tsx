@@ -301,7 +301,8 @@ describe("ClientDetailPage", () => {
     expect(screen.getByText("Latex")).toBeInTheDocument();
     expect(screen.getByText("None")).toBeInTheDocument();
     expect(await screen.findByText("Body Map")).toBeInTheDocument();
-    expect(screen.getByLabelText("Chest")).not.toHaveAttribute("role", "button");
+    // Read-only: the marked areas as a list, no checkboxes to change them.
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
   it("Profile tab shows 'No profile information yet.' when there is no profile", async () => {
@@ -321,8 +322,11 @@ describe("ClientDetailPage", () => {
     await screen.findByText("Ana Ferreira");
     await screen.findByText("Body Map");
     await user.click(screen.getByTestId("edit-body-map"));
-    expect(screen.getByLabelText("Chest")).toHaveAttribute("role", "button");
-    await user.click(screen.getByLabelText("Neck"));
+    // C10: a named group, left/right stated as the client's, each area a labelled checkbox.
+    const group = screen.getByRole("group", { name: "Body map areas" });
+    expect(group).toHaveAccessibleDescription(/the client's own left and right/);
+    await user.click(screen.getByRole("checkbox", { name: "Neck, front" }));
+    expect(screen.getByRole("checkbox", { name: "Neck, front" })).toBeChecked();
     await user.click(screen.getByRole("button", { name: /save/i }));
     expect(await screen.findByTestId("edit-body-map")).toBeInTheDocument();
   });
@@ -371,7 +375,8 @@ describe("ClientDetailPage", () => {
     await user.click(screen.getByTestId("edit-body-map"));
     await user.click(screen.getByRole("button", { name: /save/i }));
     // Still in edit mode — a failed save must not silently exit edit mode.
-    expect(await screen.findByLabelText("Chest")).toHaveAttribute("role", "button");
+    expect(await screen.findByRole("group", { name: "Body map areas" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Chest, front" })).toBeInTheDocument();
   });
 
   it("'Cancel' while editing the profile returns to the tabs view without saving", async () => {

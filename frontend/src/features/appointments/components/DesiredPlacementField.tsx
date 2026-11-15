@@ -1,19 +1,13 @@
 import { BodyMap } from "@/features/clients/components/BodyMap";
-import { FieldLabel } from "./FieldLabel";
 
 interface DesiredPlacementFieldProps {
   locations: string[];
   onChange:  (locations: string[]) => void;
 }
 
-/** Thin wrapper around the existing, unmodified BodyMap picker — reused as-is for "where do
- *  you want this tattoo," scoped to this booking rather than the client's tattoo history
- *  (Decision #7). */
+/** BodyMap reused for "where do you want this tattoo", scoped to this booking rather than the client's
+ *  tattoo history (Decision #7). It names its own group (C10): a fieldset whose legend is "Desired
+ *  placement" — the old label pointed at an id nothing carried. */
 export function DesiredPlacementField({ locations, onChange }: DesiredPlacementFieldProps) {
-  return (
-    <div className="space-y-1.5">
-      <FieldLabel htmlFor="desiredPlacement">Desired placement</FieldLabel>
-      <BodyMap locations={locations} onChange={onChange} />
-    </div>
-  );
+  return <BodyMap locations={locations} onChange={onChange} legend="Desired placement" perspective="self" />;
 }

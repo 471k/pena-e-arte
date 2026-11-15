@@ -151,8 +151,24 @@ describe("MyProfilePage", () => {
     await screen.findByText("Ana Ferreira");
     expect(screen.getByText("+351 912 111 222")).toBeInTheDocument();
     expect(await screen.findByText("Body Map")).toBeInTheDocument();
-    // Body map renders read-only (no role=button on zones)
-    expect(screen.getByLabelText("Chest")).not.toHaveAttribute("role", "button");
+    // Body map renders read-only: a list of marked areas, no checkboxes.
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("C10: editing my body map gives labelled checkboxes, left and right stated as my own", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Ferreira");
+    await screen.findByText("Body Map");
+    await user.click(screen.getByRole("button", { name: /^edit$/i }));
+    const group = screen.getByRole("group", { name: "Body map areas" });
+    expect(group).toHaveAccessibleDescription(/your own left and right/);
+    // The fixture already marks the chest: it starts ticked, and Space unticks it.
+    const chest = screen.getByRole("checkbox", { name: "Chest, front" });
+    expect(chest).toBeChecked();
+    chest.focus();
+    await user.keyboard(" ");
+    expect(chest).not.toBeChecked();
   });
 
   it("Tattoo History tab shows the client's own tattoo records", async () => {

@@ -7,6 +7,7 @@ import { Archive, ArchiveRestore, ChevronRight, Download, MoreVertical, Plus, Se
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { RecordLink } from "@/shared/components/RecordLink";
 import { DataTable } from "@/shared/components/DataTable";
 import {
   Select,
@@ -242,7 +243,9 @@ export function ClientListPage() {
                     <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0 select-none">
                       {c.firstName[0]?.toUpperCase()}{c.lastName[0]?.toUpperCase()}
                     </div>
-                    <span className="font-medium">{c.firstName} {c.lastName}</span>
+                    <RecordLink to={`/clients/${c.id}`} className="font-medium">
+                      {c.firstName} {c.lastName}
+                    </RecordLink>
                     {c.archivedAt && (
                       <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
                         Archived
@@ -273,19 +276,7 @@ export function ClientListPage() {
               {
                 header: "",
                 cell: (c) => (
-                  <div
-                    className="flex items-center justify-end gap-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                      onClick={() => navigate(`/clients/${c.id}`)}
-                    >
-                      View
-                      <ChevronRight className="h-3 w-3" />
-                    </Button>
+                  <div className="flex items-center justify-end gap-1">
                     {canCreate && (
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
@@ -325,7 +316,7 @@ export function ClientListPage() {
             ]}
             data={filteredClients}
             keyExtractor={(c) => c.id}
-            onRowClick={(c) => navigate(`/clients/${c.id}`)}
+            rowHref={(c) => `/clients/${c.id}`}
             emptyMessage={emptyMessage}
             mobileCard={(c) => (
               <div className={`flex items-center gap-2 ${c.archivedAt ? "opacity-60" : ""}`}>
@@ -334,7 +325,9 @@ export function ClientListPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium truncate">
-                    {c.firstName} {c.lastName}
+                    <RecordLink to={`/clients/${c.id}`} stretched>
+                      {c.firstName} {c.lastName}
+                    </RecordLink>
                     {c.archivedAt && (
                       <span className="ml-1.5 text-xs font-normal text-muted-foreground">(Archived)</span>
                     )}
@@ -343,7 +336,7 @@ export function ClientListPage() {
                     {c.email}{c.phone ? ` · ${c.phone}` : ""} · {c.artistName ?? "Unassigned"}
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
               </div>
             )}
           />

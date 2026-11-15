@@ -6,7 +6,10 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
+import { useNavigate } from "react-router-dom";
+import type { MouseEvent } from "react";
 import { cn } from "@/shared/utils/cn";
+import { RECORD_CONTAINER, isInsideControl } from "./recordLinkContract";
 
 export interface ColumnDef<T> {
   header: string;
@@ -18,7 +21,13 @@ interface DataTableProps<T> {
   columns: ColumnDef<T>[];
   data: T[];
   keyExtractor: (row: T) => string;
-  onRowClick?: (row: T) => void;
+  /**
+   * Where a row's record opens (S03). The row is never the control: put a {@link RecordLink} on the record's
+   * title in a column (and a `stretched` one in `mobileCard`) — that is how a keyboard or screen-reader user
+   * opens it. With `rowHref` a pointer click anywhere else on the row opens it too, except on the row's own
+   * buttons and links. There is deliberately no `onRowClick`: a row that only a mouse can open is the defect.
+   */
+  rowHref?: (row: T) => string;
   emptyMessage?: string;
   /** When provided, rows render as stacked cards below the `sm` breakpoint
    *  instead of the table. Omit to keep the existing table-only behavior
@@ -31,11 +40,20 @@ export function DataTable<T>({
   columns,
   data,
   keyExtractor,
-  onRowClick,
+  rowHref,
   emptyMessage = "No results.",
   mobileCard,
 }: DataTableProps<T>) {
+  const navigate = useNavigate();
   const showCards = !!mobileCard && data.length > 0;
+
+  function openOnPointer(event: MouseEvent<HTMLElement>, row: T) {
+    if (!rowHref) return;
+    if (isInsideControl(event.target, event.currentTarget)) return;
+    // Selecting text in a row is not a request to open it.
+    if ((window.getSelection?.()?.toString() ?? "") !== "") return;
+    navigate(rowHref(row));
+  }
 
   return (
     <>
@@ -45,10 +63,11 @@ export function DataTable<T>({
             <div
               key={keyExtractor(row)}
               role="listitem"
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onClick={rowHref ? (e) => openOnPointer(e, row) : undefined}
               className={cn(
                 "rounded-lg border p-3",
-                onRowClick && "cursor-pointer active:bg-muted",
+                RECORD_CONTAINER,
+                rowHref && "cursor-pointer active:bg-muted",
               )}
             >
               {mobileCard!(row)}
@@ -77,8 +96,8 @@ export function DataTable<T>({
               data.map((row) => (
                 <TableRow
                   key={keyExtractor(row)}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={rowHref ? (e) => openOnPointer(e, row) : undefined}
+                  className={rowHref ? "cursor-pointer" : undefined}
                 >
                   {columns.map((col) => (
                     <TableCell key={col.header}>

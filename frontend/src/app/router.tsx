@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Outlet, createBrowserRouter, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, ScrollRestoration, createBrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import type { Location } from "react-router-dom";
 import { LoginPage, ForgotPasswordPage, ResetPasswordPage, ChangePasswordPage, RequestChangeEmailPage, ConfirmChangeEmailPage, VerifyEmailPage, ClientRegisterPage, MyStudiosPage } from "@/features/auth";
 import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
@@ -602,4 +602,17 @@ export const routes = [
   { path: "*", element: <NotFoundRoute /> },
 ];
 
-export const router = createBrowserRouter(routes);
+// S03: a record opened from far down a list used to open its detail page scrolled to the same depth, and
+// going back lost the list position. ScrollRestoration starts each new page at the top and puts a page you
+// return to (browser back) where you left it. It needs a data router, so it wraps the real router only;
+// tests mount `routes` and AppRoot directly.
+function ScrollRestorationRoot() {
+  return (
+    <>
+      <ScrollRestoration />
+      <Outlet />
+    </>
+  );
+}
+
+export const router = createBrowserRouter([{ element: <ScrollRestorationRoot />, children: routes }]);

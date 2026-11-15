@@ -226,23 +226,26 @@ describe("ClientListPage", () => {
     await screen.findByText(/no clients/i);
   });
 
-  // ── View action ─────────────────────────────────────────────────────────────
+  // ── Opening a client (S03) ──────────────────────────────────────────────────
 
-  it("renders a View button for each loaded client", async () => {
+  it("each client's name is a named link to the client — no separate View button", async () => {
     renderPage();
     await screen.findAllByText("João Silva");
 
-    const viewButtons = screen.getAllByRole("button", { name: /^view$/i });
-    expect(viewButtons.length).toBe(2);
+    const links = screen.getAllByRole("link", { name: "João Silva" });
+    expect(links.length).toBeGreaterThanOrEqual(1);
+    links.forEach((l) => expect(l).toHaveAttribute("href", `/clients/${CLIENT_A.id}`));
+    expect(screen.queryByRole("button", { name: /^view$/i })).not.toBeInTheDocument();
   });
 
-  it("clicking the View button navigates to /clients/:id", async () => {
+  it("Tab to a client's name and Enter opens the client", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findAllByText("João Silva");
 
-    const viewButtons = screen.getAllByRole("button", { name: /^view$/i });
-    await user.click(viewButtons[0]);
+    const link = screen.getAllByRole("link", { name: "João Silva" })[0];
+    link.focus();
+    await user.keyboard("{Enter}");
 
     expect(screen.getByTestId("client-detail")).toBeInTheDocument();
   });
