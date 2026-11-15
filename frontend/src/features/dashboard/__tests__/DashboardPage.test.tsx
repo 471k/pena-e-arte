@@ -700,3 +700,38 @@ describe("DashboardPage", () => {
     expect(card).not.toHaveTextContent(/Deposits Due/i);
   });
 });
+
+// S01: "today" and "this week" are the studio's days. The studio here is in Los Angeles, a zone that
+// differs from both a developer's machine and CI's UTC, so the old browser-day range can't pass by luck.
+describe("DashboardPage — the studio's today (S01)", () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("asks for the studio's midnight-to-midnight, not the viewer's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-16T05:00:00Z")); // Sun 15 Nov 21:00 in Los Angeles; Mon 16 Nov in Europe and UTC
+    const ranges: { from: string | null; to: string | null }[] = [];
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "stud-0001", timezone: "America/Los_Angeles", currency: "EUR" })),
+      http.get("http://localhost/api/v1/appointments", ({ request }) => {
+        const url = new URL(request.url);
+        ranges.push({ from: url.searchParams.get("from"), to: url.searchParams.get("to") });
+        return HttpResponse.json([]);
+      }),
+    );
+    renderPage();
+    expect(await screen.findByText("No appointments today.")).toBeInTheDocument();
+    // PST is UTC-8: the studio's Sun 15 Nov runs 08:00Z to 08:00Z; its week ends Sun 22 Nov 08:00Z.
+    expect(ranges).toContainEqual({ from: "2026-11-15T08:00:00.000Z", to: "2026-11-16T08:00:00.000Z" });
+    expect(ranges).toContainEqual({ from: "2026-11-15T08:00:00.000Z", to: "2026-11-22T08:00:00.000Z" });
+    expect(screen.getByTestId("dashboard-date")).toHaveTextContent("Sunday 15 November");
+  });
+
+  it("shows today's count as unavailable, never 0, when the appointments can't be loaded", async () => {
+    server.use(http.get("http://localhost/api/v1/appointments", () => HttpResponse.json({ message: "x" }, { status: 500 })));
+    renderPage();
+    const stat = await screen.findByTestId("stat-today");
+    expect(await within(stat).findByLabelText("Unavailable")).toBeInTheDocument();
+    expect(stat).not.toHaveTextContent(/\b0\b/);
+  });
+});

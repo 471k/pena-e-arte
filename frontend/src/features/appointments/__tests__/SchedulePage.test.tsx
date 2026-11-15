@@ -18,6 +18,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { SchedulePage } from "@/features/appointments/components/SchedulePage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
+import { addWallDays, formatWallDate, studioWeekStart, type WallDate } from "@/shared/utils/studioDay";
 import { Role } from "@/shared/types/roles";
 
 // ── SignalR mock ───────────────────────────────────────────────────────────────
@@ -140,20 +141,12 @@ function renderPage(role: Role = Role.Artist, initialPath = "/") {
 }
 
 // Helper: build a week label for the current week
+// The studio's week (the stub's Europe/Tirane), not the runner's: since S01 the schedule is laid out on
+// the studio's wall calendar.
 function currentWeekLabel(): RegExp {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-
-  return new RegExp(`${fmt(monday)}.*${fmt(sunday)}`);
+  const monday = studioWeekStart(new Date(), "Europe/Tirane");
+  const fmt = (d: WallDate) => formatWallDate(d, { day: "numeric", month: "short", year: "numeric" });
+  return new RegExp(`${fmt(monday)}.*${fmt(addWallDays(monday, 6))}`);
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -165,9 +158,16 @@ describe("SchedulePage", () => {
     expect(screen.getByText("Schedule")).toBeInTheDocument();
   });
 
-  it("shows the current week label in the header", () => {
-    renderPage();
-    expect(screen.getByText(currentWeekLabel())).toBeInTheDocument();
+  it("shows the current week label in the header", async () => {
+    // A fixed clock (clock-flake class): Wed 18 Nov 2026 is in the studio's week of 16–22 Nov.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-18T12:00:00Z"));
+    try {
+      renderPage();
+      expect(await screen.findByText(/16 Nov 2026.*22 Nov 2026/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows a skeleton while fetching", () => {

@@ -12,6 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 import { SubmitIntakeFormPage } from "@/features/forms/components/SubmitIntakeFormPage";
 import { IntakeFormListPage } from "@/features/forms/components/IntakeFormListPage";
@@ -69,6 +70,7 @@ const ACTIVE_INTAKE_CONSENT_TEMPLATE = {
 };
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPOINTMENT])),
   http.post("http://localhost/api/v1/intake-forms", () => HttpResponse.json(SUBMITTED_FORM, { status: 201 })),
   http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([SUBMITTED_FORM, PLAIN_TEXT_FORM])),
@@ -96,12 +98,14 @@ function makeStore(role: Role = Role.Client) {
       [intakeFormsApi.reducerPath]: intakeFormsApi.reducer,
       [consentFormsApi.reducerPath]: consentFormsApi.reducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
     middleware: (gd) =>
       gd()
         .concat(intakeFormsApi.middleware)
         .concat(consentFormsApi.middleware)
-        .concat(appointmentsApi.middleware),
+        .concat(appointmentsApi.middleware)
+        .concat(studiosApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u-001", email: "test@test.com" },

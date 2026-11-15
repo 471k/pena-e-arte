@@ -12,6 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { intakeFormsApi } from "@/features/forms/intakeFormsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { SubmitIntakeFormPage } from "@/features/forms/components/SubmitIntakeFormPage";
 import type { IntakeFormResponse } from "@/features/forms/form.types";
 
@@ -44,6 +45,7 @@ const FULL_TEMPLATE = {
 let capturedBody: Record<string, unknown> | undefined;
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/consent-forms/active-template", () => HttpResponse.json(NO_CONSENT_TEMPLATE)),
   http.get("http://localhost/api/v1/intake-forms/active-template", () => HttpResponse.json(null)),
@@ -67,9 +69,10 @@ function makeStore() {
       [appointmentsApi.reducerPath]:  appointmentsApi.reducer,
       [consentFormsApi.reducerPath]:  consentFormsApi.reducer,
       [intakeFormsApi.reducerPath]:   intakeFormsApi.reducer,
+      [studiosApi.reducerPath]:       studiosApi.reducer,
     },
     middleware: (gd) => gd().concat(
-      appointmentsApi.middleware, consentFormsApi.middleware, intakeFormsApi.middleware,
+      appointmentsApi.middleware, consentFormsApi.middleware, intakeFormsApi.middleware, studiosApi.middleware,
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

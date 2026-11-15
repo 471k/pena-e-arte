@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Download, MessageSquarePlus, PenLine } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Download, MessageSquarePlus, PenLine, RotateCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useAppSelector } from "@/app/hooks";
@@ -15,6 +15,10 @@ import { AppointmentCard } from "./AppointmentCard";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import { ARTIST_MODE_PARAM, resolveScheduleScope, withArtistFilter } from "../scheduleScope";
 import { ScheduleScopeBar } from "./ScheduleScopeBar";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import {
+  addWallDays, formatWallDate, sameWallDate, studioMidnight, studioWallDate, studioWeekStart,
+} from "@/shared/utils/studioDay";
 
 function SchedulePageSkeleton() {
   return (
@@ -30,35 +34,20 @@ function SchedulePageSkeleton() {
   );
 }
 
-function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth()    === b.getMonth()    &&
-    a.getDate()     === b.getDate()
-  );
-}
+// The week, its days and "today" are the studio's (S01): Monday-to-Monday on the studio's wall calendar,
+// turned into instants only through its zone. A viewer in another zone sees the studio's days, and a
+// week with a clock change is 167 or 169 hours long instead of shifting every later day by an hour.
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function SchedulePage() {
   useDocumentMeta({ title: "Schedule — TattooOS", canonical: "/schedule" });
 
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  // Weeks away from the studio's current week (0 = this week); a number, so it means the same thing
+  // before and after the studio's zone has loaded.
+  const [weekOffset, setWeekOffset] = useState(0);
+  const now = useMemo(() => new Date(), []);
+  const { zone, retry: retryZone } = useStudioZone();
   const [quickReminderOpen, setQuickReminderOpen] = useState(false);
   const { role, token, tenantId } = useAppSelector((s) => s.auth);
   // Whose appointments this is (E05c, O03; see scheduleScope.ts). `?artistId=` is an owner's own
@@ -101,27 +90,42 @@ export function SchedulePage() {
     }
   }
 
-  const weekEnd = addDays(weekStart, 7);
+  const week = useMemo(() => {
+    if (zone.status !== "ready") return null;
+    const tz = zone.timeZone;
+    const start = addWallDays(studioWeekStart(now, tz), weekOffset * 7);
+    return {
+      tz,
+      start,
+      days:  Array.from({ length: 7 }, (_, i) => addWallDays(start, i)),
+      from:  studioMidnight(start, tz),
+      to:    studioMidnight(addWallDays(start, 7), tz),
+      today: studioWallDate(now, tz),
+    };
+  }, [zone, now, weekOffset]);
 
-  const { data: appointments, isLoading, isError } = useGetAppointmentsQuery({
-    from: weekStart.toISOString(),
-    to:   weekEnd.toISOString(),
+  const { data: appointments, isLoading: apptsLoading, isError: apptsError } = useGetAppointmentsQuery({
+    from: week?.from.toISOString() ?? "",
+    to:   week?.to.toISOString() ?? "",
     artistId: requestArtistId,
-  }, { skip: ownArtistPending });
+  }, { skip: ownArtistPending || week === null });
+  const isLoading = zone.status === "loading" || apptsLoading;
+  const isError = apptsError;
 
   const errorMessage = useSuspensionAwareError(isError, "Failed to load appointments. Please try again.");
 
-  const weekLabel =
-    weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) +
-    " – " +
-    addDays(weekStart, 6).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const weekLabel = week
+    ? formatWallDate(week.start, { day: "numeric", month: "short", year: "numeric" }) +
+      " – " +
+      formatWallDate(week.days[6], { day: "numeric", month: "short", year: "numeric" })
+    : "…";
 
-  const today = new Date();
-  const isCurrentWeek = weekStart.getTime() === getWeekStart(today).getTime();
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const isCurrentWeek = weekOffset === 0;
+  const days = week?.days ?? [];
+  const studioDayOf = (iso: string) => studioWallDate(new Date(iso), week!.tz);
 
   const weekHasAppointments = days.some((day) =>
-    (appointments ?? []).some((a) => isSameDay(new Date(a.date), day))
+    (appointments ?? []).some((a) => sameWallDate(studioDayOf(a.date), day))
   );
 
   // Until the owner's own artist id is known, neither the scope nor the header's buttons are settled.
@@ -141,7 +145,7 @@ export function SchedulePage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setWeekStart((w) => addDays(w, -7))}
+              onClick={() => setWeekOffset((w) => w - 1)}
               aria-label="Previous week"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -155,7 +159,7 @@ export function SchedulePage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setWeekStart((w) => addDays(w, 7))}
+              onClick={() => setWeekOffset((w) => w + 1)}
               aria-label="Next week"
             >
               <ChevronRight className="h-4 w-4" />
@@ -167,7 +171,7 @@ export function SchedulePage() {
             size="sm"
             className="ml-2 text-xs"
             disabled={isCurrentWeek}
-            onClick={() => setWeekStart(getWeekStart(new Date()))}
+            onClick={() => setWeekOffset(0)}
           >
             Today
           </Button>
@@ -226,13 +230,25 @@ export function SchedulePage() {
         <SchedulePageSkeleton />
       ) : (
         <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+          {zone.status === "error" && (
+            <div className="flex flex-col items-center gap-3 py-16 text-center" role="alert">
+              <p className="text-sm text-destructive-text">
+                Couldn&apos;t load the studio&apos;s time zone, so the schedule can&apos;t be laid out by day.
+              </p>
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={retryZone}>
+                <RotateCw aria-hidden="true" className="h-3.5 w-3.5" />
+                Try again
+              </Button>
+            </div>
+          )}
+
           {errorMessage && (
             <p className="text-center text-sm text-destructive-text py-16" role="alert">
               {errorMessage}
             </p>
           )}
 
-          {!isError && !weekHasAppointments && appointments !== undefined && (
+          {week && !isError && !weekHasAppointments && appointments !== undefined && (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <CalendarDays className="h-9 w-9 text-muted-foreground/40" />
               <p className="text-sm font-medium">No appointments this week</p>
@@ -242,20 +258,20 @@ export function SchedulePage() {
             </div>
           )}
 
-          {!isError && weekHasAppointments && days.map((day, i) => {
-            const isToday = isSameDay(day, today);
+          {week && !isError && weekHasAppointments && days.map((day, i) => {
+            const isToday = sameWallDate(day, week.today);
             const dayAppointments = (appointments ?? [])
-              .filter((a) => isSameDay(new Date(a.date), day))
+              .filter((a) => sameWallDate(studioDayOf(a.date), day))
               .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
             return (
-              <section key={day.toISOString()}>
+              <section key={`${day.year}-${day.month}-${day.day}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`text-sm font-semibold ${isToday ? "text-link" : "text-foreground"}`}>
                     {DAY_NAMES[i]}
                   </span>
                   <span className={`text-sm ${isToday ? "text-link" : "text-muted-foreground"}`}>
-                    {day.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    {formatWallDate(day, { day: "numeric", month: "short" })}
                   </span>
                   {isToday && (
                     <span className="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5 font-medium">

@@ -11,6 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { consentFormsApi } from "@/features/forms/consentFormsApi";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 import { SignConsentFormPage } from "@/features/forms/components/SignConsentFormPage";
 import { ConsentFormListPage } from "@/features/forms/components/ConsentFormListPage";
@@ -73,6 +74,7 @@ const PENDING_FORM_DETAIL: ConsentFormDetailResponse = {
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPOINTMENT])),
   http.post("http://localhost/api/v1/consent-forms", () => HttpResponse.json(SIGNED_FORM, { status: 201 })),
   http.get("http://localhost/api/v1/consent-forms", () => HttpResponse.json([SIGNED_FORM, PENDING_FORM])),
@@ -96,9 +98,10 @@ function makeStore(role: Role = Role.Client) {
       ui: uiReducer,
       [consentFormsApi.reducerPath]: consentFormsApi.reducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
     middleware: (gd) =>
-      gd().concat(consentFormsApi.middleware).concat(appointmentsApi.middleware),
+      gd().concat(consentFormsApi.middleware).concat(appointmentsApi.middleware).concat(studiosApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u-001", email: "test@test.com" },

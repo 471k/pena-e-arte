@@ -10,6 +10,7 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { RescheduleDialog } from "@/features/appointments/components/RescheduleDialog";
 import type { AppointmentResponse, ReschedulePreviewResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
@@ -33,6 +34,7 @@ function preview(overrides: Partial<ReschedulePreviewResponse> = {}): Reschedule
 
 let slotRequests: URL[] = [];
 const server = setupServer(
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/appointments/:id/reschedule-preview", () => HttpResponse.json(preview())),
   http.get("http://localhost/api/v1/appointments/check-slot", ({ request }) => {
     slotRequests.push(new URL(request.url));
@@ -51,8 +53,9 @@ function renderDialog(appt: AppointmentResponse = APPT) {
       ui: uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(appointmentsApi.middleware).concat(paymentsApi.middleware),
+    middleware: (gd) => gd().concat(appointmentsApi.middleware).concat(paymentsApi.middleware).concat(studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-1", email: "a@test.com" }, token: "t", tenantId: "s-001", role: Role.Artist, pendingReferralCode: null, impersonation: null } as any,

@@ -19,6 +19,9 @@ import { cn } from "@/shared/utils/cn";
 import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { AppointmentPickerProblem } from "./AppointmentPickerProblem";
 import { useSignConsentFormMutation, useGetActiveConsentTemplateQuery } from "../consentFormsApi";
 
 const schema = z.object({
@@ -38,7 +41,11 @@ export function SignConsentFormPage() {
   const [searchParams] = useSearchParams();
   const preselectedAppointmentId = searchParams.get("appointmentId") ?? "";
 
-  const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
+  const { data: appointments, isLoading: apptsLoading, isError: apptsError, refetch: refetchAppts } =
+    useGetMyAppointmentsQuery();
+  // Dates show in the studio's zone (S01), so the picker waits for it like it waits for the list.
+  const { zone, retry: retryZone } = useStudioZone();
+  const loadingAppts = apptsLoading || zone.status === "loading";
   const { data: activeTemplate } = useGetActiveConsentTemplateQuery({ kind: "AppointmentConsent" });
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
@@ -163,9 +170,7 @@ export function SignConsentFormPage() {
                   <SelectContent>
                     {relevantAppointments?.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        {new Date(a.date).toLocaleDateString("en-GB", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
+                        {formatStudioTime(a.date, { day: "numeric", month: "short", year: "numeric" }, zone)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -175,6 +180,8 @@ export function SignConsentFormPage() {
             {errors.appointmentId && (
               <p className="text-xs text-destructive-text">{errors.appointmentId.message}</p>
             )}
+            {apptsError && <AppointmentPickerProblem reason="appointments" onRetry={() => void refetchAppts()} />}
+            {!apptsError && zone.status === "error" && <AppointmentPickerProblem reason="timezone" onRetry={retryZone} />}
             {!loadingAppts && relevantAppointments?.length === 0 && (
               <p className="text-xs text-muted-foreground">
                 No pending appointments found. Book an appointment before signing a consent form.

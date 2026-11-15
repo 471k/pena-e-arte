@@ -49,6 +49,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check \"My Bookings\" below the form to see your pending and upcoming appointments (once you're signed in).",
     ],
     tips: [
+      "Under \"My Bookings\", each booking's date and time are the studio's local time, so they match what the studio expects even if you're in another time zone.",
       "Your booking is a request, not a confirmed slot — the studio replies within 24 hours.",
       "At studios in Albania that price in euros, prices and deposits also show the amount in lek (≈), at the Bank of Albania's latest official rate. The lek amount is fixed when you pay.",
       "Images upload as soon as you pick them — wait for each thumbnail to finish before submitting.",
@@ -147,6 +148,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Reschedule is only available with enough notice (the studio's configured window, 48 hours by default). Closer than that, the button is disabled and you'll need to contact the studio directly. The dialog says how many hours the window is.",
       "Rescheduling doesn't change the appointment's status — a Confirmed appointment stays Confirmed.",
+      "The date and time you pick are the studio's local time: the field's label names the studio's time zone. If you're in a different time zone, a line underneath says what that is in your own time. A time the clocks skip that night (when they go forward) can't be picked; a time that happens twice (when they go back) uses the first of the two, and the dialog says so.",
     ],
   },
   {
@@ -575,6 +577,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "The line under the header reads \"Showing your own appointments\": the schedule only ever shows the sessions assigned to you.",
       "Days with no appointments show \"No appointments\"; the current day is highlighted with a \"Today\" badge.",
+      "Days, weeks and \"Today\" follow your studio's calendar and time zone, so a session is always on the studio's day for it, wherever you're viewing from. A week with a clock change still runs midnight to midnight each day. If the studio's time zone can't be loaded, the page says so with a \"Try again\" button instead of showing an empty week.",
     ],
     relatedArticleIds: ["artist-today", "artist-availability"],
   },
@@ -612,7 +615,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Message [client name]\" to start or continue a chat thread with the client, if they have a linked login.",
       "Click \"Add to Calendar\" to download an .ics file for the appointment.",
       "Click \"Confirm appointment\" or \"Mark as complete\" to advance its status.",
-      "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The new time has to be within the studio's and the artist's hours and not on a closure or day off; that applies to staff too. The client isn't told automatically, so let them know.",
+      "Click \"Reschedule\" to pick a new date/time. The dialog first checks whether the appointment can still be moved: a completed, cancelled or no-show appointment can't, and it says so before you pick a time. The availability check ignores the appointment's own current time, so moving it by an hour works even if the times overlap. The new time has to be within the studio's and the artist's hours and not on a closure or day off; that applies to staff too. The client isn't told automatically, so let them know. The new date and time are studio time (the label names the studio's time zone); clock changes are handled explicitly — a skipped time can't be picked and a repeated one uses the first.",
       "Click \"Mark no-show\" if the client didn't attend. Before anything happens, a confirmation shows what it will do to the deposit (for example that the studio keeps a deposit already paid, or that a deposit held on the card is charged), with the amount. Click \"Mark no-show\" there to confirm, or \"Keep the appointment\" to back out. Once confirmed, it shows what was actually done.",
       "Click \"Cancel appointment\" and confirm if it needs to be cancelled.",
       "Check \"Client communication\". After a reschedule it shows whether a message about the appointment has been sent to the client (they aren't told automatically) and has a box to write to them. For a completed session it shows whether aftercare was sent or failed, per email and text message.",
@@ -860,6 +863,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Scroll to \"Today\" to see today's bookings, or click \"View schedule\" for the full calendar.",
     ],
     tips: [
+      "\"Today\" and \"This Week\" are your studio's days in its time zone, and the times in today's list are studio time, wherever you're viewing from. If the studio's time zone or today's appointments can't be loaded, the counts show \"—\" and the list offers \"Try again\": never a zero that isn't real.",
       "The number next to each group is the full count for your studio, not just the rows shown. Each group shows the three soonest; click \"Show more\" for the next few, and if there are more still, the group says how many and where to find them all.",
       "Groups always appear in the same order, by what happens if you leave them: a request with no artist can't go ahead, a client waiting for confirmation may book elsewhere, an unpaid deposit is money at risk this week, preparation can still be fixed before the day, and cash to confirm is bookkeeping for money already promised in person. Inside each group, the soonest appointment comes first.",
       "\"Cash to confirm\" is last but not hidden: each promise for a session that has already happened says how long ago the session was, and promises still unconfirmed a week or more after the session are highlighted, with a count under the group's title.",
@@ -1340,6 +1344,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Picking one artist leaves out requests with no artist yet, and the line under the header says so.",
       "Picking an artist is only a filter: it doesn't let you send reminders as them or change their hours. If you also work as an artist, your own artist view of the schedule (from the Owner/Artist switch) says \"your artist view\" and has an \"Availability\" button for your own working hours and time off. Another artist's hours and time off are on their profile's Availability tab.",
       "The artist you pick isn't remembered: opening Schedule from the menu shows the whole studio again.",
+      "Days, weeks and \"Today\" follow your studio's calendar and time zone, wherever you're viewing from, and every time on the page is studio time. If the studio's time zone can't be loaded, the page says so with a \"Try again\" button instead of showing an empty week.",
     ],
     relatedArticleIds: ["owner-appointments-assign-artist"],
   },
@@ -1535,7 +1540,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Your NIPT is never shown to clients or on your public booking page — it's for invoicing and business verification only.",
       "Your street address is shown on your public studio page with a \"Get directions\" link, so make sure it's accurate.",
-      "Your timezone controls how appointment times are shown in emails, texts, and reports — pick the zone your studio actually operates in. The list shows each zone with its UTC offset and a readable name, for example \"(UTC+01:00) Tirane — Central European Time\", sorted by offset, with your country's zones listed first under \"Suggested\". Type a city's first letters to jump to it, or drag the scrollbar. If your studio has no timezone yet, one is preselected from where you are (your internet connection's location, or your browser's timezone); check it and press Save changes.",
+      "Your timezone controls how appointment times are shown everywhere: in the app (schedule, dashboard, bookings, forms, payments, reminders), in emails and texts, and in reports — pick the zone your studio actually operates in. Someone viewing from another time zone still sees studio time. The list shows each zone with its UTC offset and a readable name, for example \"(UTC+01:00) Tirane — Central European Time\", sorted by offset, with your country's zones listed first under \"Suggested\". Type a city's first letters to jump to it, or drag the scrollbar. If your studio has no timezone yet, one is preselected from where you are (your internet connection's location, or your browser's timezone); check it and press Save changes.",
       "The country on a new registration is also filled in from where you are, and the phone prefix and the currency follow the country. The studio's timezone is set to match the country you register with, so appointment times are right from day one; you can change it later in Studio Settings. You can change any of them: pick another country, or use \"Change currency\".",
       "To manage your studio's Instagram, TikTok, Facebook, X, and YouTube links, use the \"Social Media\" card at the end of \"Business details\" — see \"Verify your studio's or artist's social media accounts\".",
     ],

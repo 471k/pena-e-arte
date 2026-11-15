@@ -20,6 +20,9 @@ import { useCurrentUser } from "@/shared/hooks/useCurrentUser";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyAppointmentsQuery } from "@/features/appointments/appointmentsApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { AppointmentPickerProblem } from "./AppointmentPickerProblem";
 import { useGetActiveConsentTemplateQuery } from "@/features/forms/consentFormsApi";
 import { useSubmitIntakeFormMutation, useGetActiveIntakeFormTemplateQuery } from "../intakeFormsApi";
 import type { IntakeFormFieldDefinition } from "../form.types";
@@ -141,7 +144,11 @@ export function SubmitIntakeFormPage() {
   const goBack = useGoBack("/book");
   const user = useCurrentUser();
 
-  const { data: appointments, isLoading: loadingAppts } = useGetMyAppointmentsQuery();
+  const { data: appointments, isLoading: apptsLoading, isError: apptsError, refetch: refetchAppts } =
+    useGetMyAppointmentsQuery();
+  // Dates show in the studio's zone (S01), so the picker waits for it like it waits for the list.
+  const { zone, retry: retryZone } = useStudioZone();
+  const loadingAppts = apptsLoading || zone.status === "loading";
   const relevantAppointments = appointments?.filter(
     (a) => a.status === "Pending" || a.status === "Confirmed",
   );
@@ -321,15 +328,15 @@ export function SubmitIntakeFormPage() {
                     <SelectItem value="__none__">Not linked to an appointment</SelectItem>
                     {relevantAppointments?.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        {new Date(a.date).toLocaleDateString("en-GB", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
+                        {formatStudioTime(a.date, { day: "numeric", month: "short", year: "numeric" }, zone)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             />
+            {apptsError && <AppointmentPickerProblem reason="appointments" onRetry={() => void refetchAppts()} />}
+            {!apptsError && zone.status === "error" && <AppointmentPickerProblem reason="timezone" onRetry={retryZone} />}
             {!loadingAppts && relevantAppointments?.length === 0 && (
               <p className="text-xs text-muted-foreground">
                 You don't have any upcoming appointments to link this form to.
