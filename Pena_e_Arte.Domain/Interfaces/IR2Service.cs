@@ -26,5 +26,12 @@ public interface IR2Service
     /// </summary>
     IReadOnlyList<string> GetKnownPublicUrls(string objectKey);
 
+    /// <summary>
+    /// The object key behind a stored URL on any address this bucket is or was served from; null when the
+    /// value is on no known address (an external link, or not a URL). For matching rows to objects by key.
+    /// </summary>
+    string? TryGetObjectKey(string storedUrl);
+
+    /// <summary>Every object under the prefix ("" lists the whole bucket), across all result pages.</summary>
     Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct);
 }

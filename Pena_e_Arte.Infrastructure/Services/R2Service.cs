@@ -95,6 +95,14 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
     public IReadOnlyList<string> GetKnownPublicUrls(string objectKey) =>
         KnownPrefixes().Select(p => p + objectKey).ToList();
 
+    public string? TryGetObjectKey(string storedUrl)
+    {
+        if (string.IsNullOrEmpty(storedUrl)) return null;
+        string? prefix = KnownPrefixes()
+            .FirstOrDefault(p => storedUrl.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+        return prefix is null || storedUrl.Length == prefix.Length ? null : storedUrl[prefix.Length..];
+    }
+
     public async Task UploadAsync(string objectKey, byte[] data, string contentType, CancellationToken ct)
     {
         using MemoryStream stream = new(data);
@@ -113,19 +121,32 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
 
     public async Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct)
     {
-        ListObjectsV2Request request = new()
+        // ListObjectsV2 returns at most 1,000 keys per call. Until 17 Nov 2026 only the first page was read,
+        // so a studio with more than 1,000 objects was under-counted by StorageReconciliationJob, and a
+        // whole-bucket listing (OrphanedObjectSweepJob) would have stopped at 1,000. Follow the token.
+        List<R2ObjectInfo> objects = [];
+        string? continuationToken = null;
+        do
         {
-            BucketName = _opts.BucketName,
-            Prefix = prefix,
-        };
+            ListObjectsV2Request request = new()
+            {
+                BucketName = _opts.BucketName,
+                Prefix = prefix,
+                ContinuationToken = continuationToken,
+            };
 
-        ListObjectsV2Response response = await s3.ListObjectsV2Async(request, ct);
+            ListObjectsV2Response response = await s3.ListObjectsV2Async(request, ct);
 
-        return (response.S3Objects ?? [])
-            .Select(o => new R2ObjectInfo(
-                o.Key,
-                o.LastModified ?? DateTime.UtcNow,
-                o.Size ?? 0L))
-            .ToList();
+            objects.AddRange((response.S3Objects ?? [])
+                .Select(o => new R2ObjectInfo(
+                    o.Key,
+                    o.LastModified ?? DateTime.UtcNow,
+                    o.Size ?? 0L)));
+
+            continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
+        }
+        while (!string.IsNullOrEmpty(continuationToken));
+
+        return objects;
     }
 }

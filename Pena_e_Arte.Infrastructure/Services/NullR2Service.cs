@@ -13,6 +13,8 @@ internal sealed class NullR2Service : IR2Service
 
     public bool IsR2Url(string url) => false;
 
+    public string? TryGetObjectKey(string storedUrl) => null;
+
     public IReadOnlyList<string> GetKnownPublicUrls(string objectKey)
         => throw new InvalidOperationException("Cloudflare R2 is not configured.");
 
