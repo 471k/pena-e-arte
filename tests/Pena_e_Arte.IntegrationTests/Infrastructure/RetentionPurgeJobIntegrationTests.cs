@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -216,10 +217,57 @@ public class RetentionPurgeJobIntegrationTests(DatabaseFixture fixture)
         exists.Should().BeFalse(because: "the profile is past the grace window");
     }
 
-    private async Task RunJobAsync(Guid tenantId, IR2Service r2, RetentionOptions opts)
+    // A deleted appointment is not activity: the client's only live appointment is 3000 days old, so the
+    // profile expires even though a deleted one is recent. Before the DeletedAt predicate, the deleted
+    // appointment kept the profile (health data) alive forever.
+    [Fact]
+    public async Task RetentionPurgeJob_DeletedAppointment_DoesNotCountAsLastActivity()
+    {
+        Guid tenantId = Guid.NewGuid();
+        (Guid clientId, _) = await SeedSignedConsentFormAsync(tenantId, signedDaysAgo: 3000);
+        await using (AppDbContext seed = fixture.CreateDbContext(tenantId))
+        {
+            Appointment old = await seed.Appointments.IgnoreQueryFilters().FirstAsync(a => a.ClientId == clientId);
+            seed.Appointments.Add(new Appointment
+            {
+                StudioId = tenantId,
+                ClientId = clientId,
+                ArtistId = old.ArtistId,
+                Date = DateTime.UtcNow.AddDays(-10),
+                EndDate = DateTime.UtcNow.AddDays(-10).AddHours(2),
+                DurationMinutes = 120,
+                DeletedAt = DateTime.UtcNow.AddDays(-5),
+            });
+            await seed.SaveChangesAsync();
+        }
+        RetentionOptions opts = new() { ConsentForms = 730, BodyMaps = 2555, GracePeriodBeforeHardPurge = 30 };
+
+        await RunJobAsync(tenantId, Substitute.For<IR2Service>(), opts);
+
+        await using AppDbContext verify = fixture.CreateDbContext(tenantId);
+        ClientProfile profile = await verify.ClientProfiles.IgnoreQueryFilters().FirstAsync(p => p.ClientId == clientId);
+        profile.DeletedAt.Should().NotBeNull(because: "the only live appointment is past the body-map window");
+    }
+
+    // One line per run, zeros included: each pass used to log only when it did something.
+    [Fact]
+    public async Task RetentionPurgeJob_EveryRun_WritesExactlyOneSummaryLine()
+    {
+        ListLogger<RetentionPurgeJob> logger = new();
+
+        await RunJobAsync(Guid.NewGuid(), Substitute.For<IR2Service>(), Opts(), logger);
+
+        logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().StartWith("RetentionPurgeJob finished: soft-deleted ")
+            .And.Contain("anonymized ");
+    }
+
+    private async Task RunJobAsync(Guid tenantId, IR2Service r2, RetentionOptions opts,
+        ILogger<RetentionPurgeJob>? logger = null)
     {
         await using AppDbContext db = fixture.CreateDbContext(tenantId);
-        RetentionPurgeJob job = new(db, r2, NoOpIdentity, Options.Create(opts), NullLogger<RetentionPurgeJob>.Instance);
+        RetentionPurgeJob job = new(db, r2, NoOpIdentity, Options.Create(opts),
+            logger ?? NullLogger<RetentionPurgeJob>.Instance);
         await job.RunAsync();
     }
 

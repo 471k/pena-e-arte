@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -14,6 +15,18 @@ public class BoothRentChargeJobTests
     private readonly Guid _artistId = Guid.NewGuid();
 
     private BoothRentChargeJob CreateSut() => new(_db, NullLogger<BoothRentChargeJob>.Instance);
+
+    // Was silent when nothing was due, so an idle day looked like a job that never ran.
+    [Fact]
+    public async Task RunAsync_NothingDue_StillLogsOneLine()
+    {
+        ListLogger<BoothRentChargeJob> logger = new();
+
+        await new BoothRentChargeJob(_db, logger).RunAsync();
+
+        logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().Contain("created 0 charges");
+    }
 
     [Fact]
     public async Task RunAsync_DueWeeklySchedule_CreatesExactlyOneCharge()

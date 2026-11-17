@@ -162,6 +162,8 @@ describe("AppointmentCard", () => {
 - No `Console.WriteLine` or `Debug.WriteLine`
 - No `Thread.Sleep` — use `Task.Delay` or Hangfire scheduling
 - No synchronous I/O in async methods
+- No Hangfire job that can finish without its one outcome line, zero and "skipped" included
+  (`architecture.md` "Jobs: one line per run"). Silence must mean "it didn't run", never "nothing to do"
 
 **Frontend**
 - No `useEffect` for data fetching — use RTK Query
@@ -169,6 +171,10 @@ describe("AppointmentCard", () => {
 - No `console.log` committed to the repo
 - No hardcoded API URLs — always from environment config
 - No role checks in component render logic — use `usePermission` hook
+- No record ids and no list URLs in browser storage (`sessionStorage`, `localStorage`, IndexedDB).
+  A list URL carries the search term, which on a clients list is a person's name. Keep return
+  targets in memory, as `recordLinkContract.ts` does (CodeQL failed the `sessionStorage` version in
+  PR #375)
 
 **Every feature, regardless of layer (CLAUDE.md rules #6/#7 — not optional)**
 - No shipping a pattern that falls behind this category's current industry

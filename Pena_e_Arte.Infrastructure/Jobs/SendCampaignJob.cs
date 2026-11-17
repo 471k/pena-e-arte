@@ -37,7 +37,7 @@ public class SendCampaignJob(
 
         if (campaign is null)
         {
-            logger.LogWarning("SendCampaignJob: campaign {@CampaignId} not found, skipping", campaignId);
+            logger.LogWarning("SendCampaignJob {CampaignId}: skipped, campaign not found", campaignId);
             return;
         }
 
@@ -82,5 +82,8 @@ public class SendCampaignJob(
         }
 
         await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "SendCampaignJob {CampaignId}: {Status}, {Delivered} of {Recipients} delivered",
+            campaignId, campaign.Status, campaign.DeliveredCount, campaign.RecipientCount);
     }
 }

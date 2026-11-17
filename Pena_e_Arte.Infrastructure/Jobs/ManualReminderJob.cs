@@ -155,6 +155,9 @@ public class ManualReminderJob(
         await realtime.NotifyStudioAsync(
             reminder.StudioId, "NotificationReceived",
             ToResponse(log, reminder.RecipientName), ct);
+
+        logger.LogInformation("ManualReminderJob {ManualReminderId}: SMS {Outcome}",
+            manualReminderId, success ? "sent" : "failed at the provider");
     }
 
     private static NotificationLogResponse ToResponse(NotificationLog log, string recipientName) => new(

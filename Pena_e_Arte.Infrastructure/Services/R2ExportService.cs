@@ -73,7 +73,7 @@ public class R2ExportService(
         // otherwise degrade to "every object fails, every night, forever" with nothing but
         // WARNING-level logs nobody watches. Throwing here when literally everything failed (as
         // opposed to occasional flakiness) surfaces it as a real Hangfire Failed job, which
-        // HangfireJobFailureLogFilter logs and the alerting-runbook's Hangfire rule can page on.
+        // HangfireJobOutcomeLogFilter logs and the alerting-runbook's Hangfire rule can page on.
         if (failed > 0 && copied == 0 && skipped == 0)
         {
             throw new InvalidOperationException(

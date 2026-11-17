@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Infrastructure.Jobs;
@@ -10,7 +11,7 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 [Collection("Database")]
 public class GracePeriodEndJobTests(DatabaseFixture fixture)
 {
-    private GracePeriodEndJob CreateSut(AppDbContext db) => new(db);
+    private GracePeriodEndJob CreateSut(AppDbContext db) => new(db, NullLogger<GracePeriodEndJob>.Instance);
 
     [Fact]
     public async Task ExecuteAsync_GracePeriodSubscription_TransitionsToCancelled()

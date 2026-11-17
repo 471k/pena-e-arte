@@ -70,6 +70,11 @@ public class AppointmentReminderJob(
         foreach (NotificationLog log in logs)
             await realtime.NotifyStudioAsync(
                 appointment.StudioId, "NotificationReceived", ToResponse(log, recipientName), ct);
+
+        logger.LogInformation(
+            "AppointmentReminderJob {AppointmentId}: {ReminderType} reminder, email sent {EmailSent}, SMS {SmsOutcome}",
+            appointment.Id, type, emailSuccess,
+            logs.Count == 1 ? "not attempted (no phone)" : logs[1].IsSuccess ? "sent" : "failed");
     }
 
     private static NotificationLogResponse ToResponse(NotificationLog log, string? recipientName) => new(

@@ -25,6 +25,8 @@ public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider
                      && p.DeletedAt == null)
             .ToListAsync(ct);
 
+        int confirmed = 0;
+        int failed = 0;
         foreach (PackagePurchase purchase in pending)
         {
             try
@@ -36,6 +38,7 @@ public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider
                     purchase.SessionsRemaining = purchase.Package.SessionCount;
                     purchase.ConfirmedAt = DateTime.UtcNow;
                     purchase.UpdatedAt = DateTime.UtcNow;
+                    confirmed++;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -43,9 +46,13 @@ public class PackagePurchaseReconciliationJob(IAppDbContext db, IPaymentProvider
                 // One studio's provider failure must not abort reconciliation for every other
                 // studio's package purchases in this batch — log and move on, picked up on the next run.
                 logger.LogError(ex, "Failed to reconcile package purchase {PurchaseId} for studio {StudioId}.", purchase.Id, purchase.StudioId);
+                failed++;
             }
         }
 
         await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "PackagePurchaseReconciliationJob checked {Checked} unconfirmed purchase(s): {Confirmed} confirmed, {Failed} failed to check",
+            pending.Count, confirmed, failed);
     }
 }

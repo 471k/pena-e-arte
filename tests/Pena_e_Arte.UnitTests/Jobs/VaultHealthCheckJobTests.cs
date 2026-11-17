@@ -59,13 +59,21 @@ public class VaultHealthCheckJobTests
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 
+    // Healthy used to log nothing; since 17 Nov every run writes one outcome line (architecture.md
+    // "Jobs: one line per run"). Only the failure lines carry the VaultHealthCheckFailed alert marker.
+    private void ShouldLogOnlyTheOkLine() =>
+        _logger.Entries.Should().ContainSingle()
+            .Which.Should().Be(new LogEntry(LogLevel.Information, OkLine));
+
+    private const string OkLine = "VaultHealthCheckJob: Vault, the app's token and its POK-key permissions are ok";
+
     [Fact]
-    public async Task Healthy_LogsNothing()
+    public async Task Healthy_LogsOnlyTheOkLine()
     {
         await CreateSut(() => new HttpResponseMessage(HttpStatusCode.OK)).RunAsync();
 
         _requests.Should().ContainSingle().Which.PathAndQuery.Should().Be("/v1/sys/health?standbyok=true");
-        _logger.Entries.Should().BeEmpty();
+        ShouldLogOnlyTheOkLine();
     }
 
     [Theory]
@@ -96,18 +104,19 @@ public class VaultHealthCheckJobTests
         await CreateSut(() => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable), address: "").RunAsync();
 
         _requests.Should().BeEmpty();
-        _logger.Entries.Should().BeEmpty();
+        _logger.Entries.Should().ContainSingle()
+            .Which.Should().Be(new LogEntry(LogLevel.Information, "VaultHealthCheckJob skipped: no Vault address configured"));
     }
 
     [Fact]
-    public async Task ValidTokenWithFullPermissions_LogsNothingAndDoesNotRenew()
+    public async Task ValidTokenWithFullPermissions_LogsOnlyTheOkLineAndDoesNotRenew()
     {
         await CreateSut(Vault(), token: Token).RunAsync();
 
         _requests.Select(r => r.Path).Should().Equal("/v1/sys/health", "/v1/auth/token/lookup-self", "/v1/sys/capabilities-self");
         _requests.Skip(1).Should().OnlyContain(r => r.TokenHeader == Token);
         _requests[2].Body.Should().Contain(ProbePath);
-        _logger.Entries.Should().BeEmpty();
+        ShouldLogOnlyTheOkLine();
     }
 
     [Fact]
@@ -135,9 +144,11 @@ public class VaultHealthCheckJobTests
         await CreateSut(Vault(lookup: Lookup(ttl: 1_000_000, period: 2_592_000)), token: Token).RunAsync();
 
         _requests.Should().Contain(r => r.Path == "/v1/auth/token/renew-self" && r.Method == "POST" && r.TokenHeader == Token);
-        LogEntry entry = _logger.Entries.Should().ContainSingle().Subject;
+        _logger.Entries.Should().HaveCount(2);
+        LogEntry entry = _logger.Entries.First();
         entry.Level.Should().Be(LogLevel.Information);
         entry.Message.Should().StartWith("VaultTokenRenewed: the app's Vault token had 277 h left and was renewed for another 720 h");
+        _logger.Entries.Last().Should().Be(new LogEntry(LogLevel.Information, OkLine));
     }
 
     [Fact]
@@ -158,7 +169,7 @@ public class VaultHealthCheckJobTests
         await CreateSut(Vault(lookup: Lookup(ttl: 0, period: 0, renewable: false), capabilities: ["root"]), token: Token).RunAsync();
 
         _requests.Should().NotContain(r => r.Path == "/v1/auth/token/renew-self");
-        _logger.Entries.Should().BeEmpty();
+        ShouldLogOnlyTheOkLine();
     }
 
     [Fact]
