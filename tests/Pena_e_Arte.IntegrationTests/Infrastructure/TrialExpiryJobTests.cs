@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -10,7 +11,9 @@ namespace Pena_e_Arte.IntegrationTests.Infrastructure;
 [Collection("Database")]
 public class TrialExpiryJobTests(DatabaseFixture fixture)
 {
-    private TrialExpiryJob CreateSut(AppDbContext db) => new(db);
+    private readonly ListLogger<TrialExpiryJob> _logger = new();
+
+    private TrialExpiryJob CreateSut(AppDbContext db) => new(db, _logger);
 
     [Fact]
     public async Task ExecuteAsync_TrialingSubscription_TransitionsToGracePeriod()
@@ -23,6 +26,8 @@ public class TrialExpiryJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         Subscription? sub = await verify.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == studioId);
         sub!.Status.Should().Be(SubscriptionStatus.GracePeriod);
+        _logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().Be($"TrialExpiryJob {studioId}: trial ended, moved to GracePeriod");
     }
 
     [Fact]
@@ -36,6 +41,9 @@ public class TrialExpiryJobTests(DatabaseFixture fixture)
         await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
         Subscription? sub = await verify.Subscriptions.FirstOrDefaultAsync(s => s.StudioId == studioId);
         sub!.Status.Should().Be(SubscriptionStatus.GracePeriod);
+        // Scheduled once per trial: the skip line is what says it ran and chose not to act.
+        _logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().Be($"TrialExpiryJob {studioId}: skipped, status is GracePeriod");
     }
 
     [Fact]

@@ -68,7 +68,7 @@ if that growth becomes a real cost concern — not needed at current scale.
 
 If literally every object in a run fails to copy (as opposed to occasional per-object flakiness),
 `R2ExportService` deliberately throws rather than swallowing it — this surfaces as a real
-Hangfire `Failed` job via `HangfireJobFailureLogFilter`, which the Hangfire-failure-rate alert in
+Hangfire `Failed` job via `HangfireJobOutcomeLogFilter`, which the Hangfire-failure-rate alert in
 `docs/infra/alerting-runbook.md` catches. A systemic problem (bucket deleted, token lost access)
 pages someone; it does not silently degrade to warning-level logs nobody watches.
 

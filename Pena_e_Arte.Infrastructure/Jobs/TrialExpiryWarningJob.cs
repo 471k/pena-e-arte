@@ -57,6 +57,9 @@ public class TrialExpiryWarningJob(
 
         await realtime.NotifyStudioAsync(
             studio.Id, "NotificationReceived", ToResponse(log, studio.Name), ct);
+
+        logger.LogInformation("TrialExpiryWarningJob {StudioId}: warning email {Outcome}",
+            studioId, success ? "sent" : "failed");
     }
 
     private static NotificationLogResponse ToResponse(NotificationLog log, string? recipientName) => new(

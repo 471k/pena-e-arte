@@ -33,7 +33,13 @@ git config core.hooksPath .githooks
 
 The hook uses a local `gitleaks` binary if installed, otherwise the official gitleaks Docker image
 (Docker is already required here). It **fails closed** — if neither is available it blocks the
-commit rather than skipping the scan. See [`docs/infra/ADR-0002-secrets-management.md`](./docs/infra/ADR-0002-secrets-management.md).
+commit rather than skipping the scan.
+
+**A green hook in a git worktree proves nothing when it uses Docker.** In a worktree, `.git` is a
+file pointing at the main clone's git directory by a host path the container can't see, so the
+Docker scan finds no staged changes and passes having scanned 0 bytes (seen 15 Nov 2026). The hook
+now prints a warning in that case. From a worktree, either install a local `gitleaks` binary, which
+reads the worktree correctly, or treat CI's gitleaks step as the only scan. See [`docs/infra/ADR-0002-secrets-management.md`](./docs/infra/ADR-0002-secrets-management.md).
 
 ## Required CI checks (`.github/workflows/ci.yml`)
 

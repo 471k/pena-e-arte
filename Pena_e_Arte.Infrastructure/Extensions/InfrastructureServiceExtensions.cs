@@ -95,8 +95,8 @@ public static class InfrastructureServiceExtensions
                 // Migrations/20260904210000_AddHangfireSchema.cs. Found and fixed 2026-09-04.
                 PrepareSchemaIfNecessary = false
             }))
-            .UseFilter(new HangfireJobFailureLogFilter(
-                serviceProvider.GetRequiredService<ILogger<HangfireJobFailureLogFilter>>())));
+            .UseFilter(new HangfireJobOutcomeLogFilter(
+                serviceProvider.GetRequiredService<ILogger<HangfireJobOutcomeLogFilter>>())));
         services.AddHangfireServer();
 
         // Redis backplane: production runs two API replicas, so a hub message sent from one pod

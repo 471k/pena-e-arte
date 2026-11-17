@@ -32,7 +32,11 @@ public class WebhookDeliveryJob(
     {
         WebhookEndpoint? endpoint = await db.WebhookEndpoints.IgnoreQueryFilters()
             .FirstOrDefaultAsync(w => w.StudioId == studioId && w.DeletedAt == null && w.IsActive, ct);
-        if (endpoint is null) return; // no active endpoint configured — nothing to deliver, nothing to log
+        if (endpoint is null)
+        {
+            Outcome(studioId, eventType, "skipped, no active endpoint");
+            return;
+        }
 
         object? data = eventType == "ping"
             ? new { message = "This is a test event from your webhook configuration." }
@@ -41,8 +45,8 @@ public class WebhookDeliveryJob(
         if (data is null)
         {
             logger.LogWarning(
-                "WebhookDeliveryJob: resource {ResourceId} for event {EventType} not found, skipping",
-                resourceId, eventType);
+                "WebhookDeliveryJob {StudioId}: resource {ResourceId} for event {EventType} not found, skipping",
+                studioId, resourceId, eventType);
             return;
         }
 
@@ -54,6 +58,7 @@ public class WebhookDeliveryJob(
         {
             await RecordAttemptAsync(endpoint, eventType, resourceId, null, false,
                 "URL failed delivery-time validation.", ct);
+            Outcome(studioId, eventType, "not sent, the URL failed delivery-time validation");
             return; // the URL itself is unsafe/invalid — retrying changes nothing, so don't
         }
 
@@ -78,6 +83,7 @@ public class WebhookDeliveryJob(
             if (response.IsSuccessStatusCode)
             {
                 await RecordAttemptAsync(endpoint, eventType, resourceId, statusCode, true, null, ct);
+                Outcome(studioId, eventType, $"delivered, HTTP {statusCode}");
             }
             else
             {
@@ -92,6 +98,11 @@ public class WebhookDeliveryJob(
             throw; // transient transport failure — let Hangfire retry
         }
     }
+
+    // The failing paths throw (Hangfire retries and HangfireJobOutcomeLogFilter logs them), so they
+    // need no outcome line of their own.
+    private void Outcome(Guid studioId, string eventType, string outcome) =>
+        logger.LogInformation("WebhookDeliveryJob {StudioId} {EventType}: {Outcome}", studioId, eventType, outcome);
 
     private async Task<object?> BuildPayloadAsync(
         Guid studioId, string eventType, Guid resourceId, CancellationToken ct)

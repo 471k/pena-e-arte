@@ -57,9 +57,15 @@ was written. Before 2026-09-05, only two jobs (`GuestPendingUploadCleanupJob`,
 `ManualReminderJob`) had their own internal `try`/`catch` + `LogWarning` — every other job's
 unhandled exception was visible only in the Hangfire dashboard itself, never in Loki, so no
 Loki-based "a Hangfire job failed" alert could actually have fired on anything. A global
-`IApplyStateFilter` (`Pena_e_Arte.Infrastructure/Jobs/HangfireJobFailureLogFilter.cs`) now emits
+`IApplyStateFilter` (`Pena_e_Arte.Infrastructure/Jobs/HangfireJobOutcomeLogFilter.cs`) now emits
 one `LogError` (job id, type, failure reason) whenever *any* job transitions to Hangfire's
 `Failed` state — that's the `"HangfireJobFailed"` line the Loki query above matches.
+
+Since 2026-11-17 the same filter (renamed from `HangfireJobFailureLogFilter`) also logs
+`"HangfireJobSucceeded" {Type}.{Method} {DurationMs}` for every job, and each job writes its own
+one-line outcome, zero included (`docs/claude/architecture.md` "Jobs: one line per run"). To check
+that a job ran: `{namespace="tattooos"} |= "HangfireJobSucceeded" |= "RetentionPurgeJob"`. No alert
+uses the success line yet. A "no success in 26 h" rule is a later, one-line addition if wanted.
 
 ## What a responder should do first
 

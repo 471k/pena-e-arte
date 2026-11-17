@@ -1,13 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Persistence;
 
 namespace Pena_e_Arte.Infrastructure.Jobs;
 
-public class IndustryReportJob(AppDbContext db, IR2Service r2)
+public class IndustryReportJob(AppDbContext db, IR2Service r2, ILogger<IndustryReportJob> logger)
 {
     private const string ReportPrefix = "reports/industry/";
     private const int MinCohortSize = 10;
@@ -106,6 +107,9 @@ public class IndustryReportJob(AppDbContext db, IR2Service r2)
 
         string key = $"{ReportPrefix}{now.Year}-{now.Month:D2}.json";
         await r2.UploadAsync(key, json, "application/json", ct);
+        logger.LogInformation(
+            "IndustryReportJob wrote {Key} ({Bytes} bytes) from a cohort of {CohortSize} active studios; metrics suppressed: {Suppressed}",
+            key, json.Length, totalActive, totalActive < MinCohortSize);
     }
 
     internal static IndustryReportDocument BuildDocument(IndustryAggregates data, DateTime generatedAt)

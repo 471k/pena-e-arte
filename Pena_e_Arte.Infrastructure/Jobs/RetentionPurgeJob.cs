@@ -30,15 +30,24 @@ public class RetentionPurgeJob(
 
     public async Task RunAsync(CancellationToken ct = default)
     {
-        await SoftPurgeExpiredAsync(ct);
-        await HardPurgeConsentFormsAsync(ct);
-        await HardPurgeClientProfilesAsync(ct);
-        await AnonymizeErasedClientsAsync(ct);
+        (int formsSoft, int profilesSoft) = await SoftPurgeExpiredAsync(ct);
+        (int formsHard, int formsDeferred) = await HardPurgeConsentFormsAsync(ct);
+        int profilesHard = await HardPurgeClientProfilesAsync(ct);
+        int anonymized = await AnonymizeErasedClientsAsync(ct);
+
+        // One line per run, zeros included (architecture.md "Jobs: one line per run"). Each pass used to
+        // log only when it did something, so a quiet day and a job that never ran looked the same — and
+        // the anonymized count is the only evidence the system produces that erasure requests are carried out.
+        logger.LogInformation(
+            "RetentionPurgeJob finished: soft-deleted {FormsSoftDeleted} consent forms and {ProfilesSoftDeleted} client profiles past retention; " +
+            "hard-purged {FormsHardPurged} consent forms ({FormsDeferred} deferred after a storage error) and {ProfilesHardPurged} client profiles " +
+            "past the {GraceDays}-day grace window; anonymized {ClientsAnonymized} erased client(s)",
+            formsSoft, profilesSoft, formsHard, formsDeferred, profilesHard, _opts.GracePeriodBeforeHardPurge, anonymized);
     }
 
     // ── Pass 1: soft-delete rows past their retention window ──────────────────────
 
-    private async Task SoftPurgeExpiredAsync(CancellationToken ct)
+    private async Task<(int Forms, int Profiles)> SoftPurgeExpiredAsync(CancellationToken ct)
     {
         DateTime now = DateTime.UtcNow;
 
@@ -57,9 +66,13 @@ public class RetentionPurgeJob(
         // Client profiles (body map + medical notes/allergies/DOB) are retained relative to the
         // client's LAST appointment (or the profile's creation, if they never booked). One grouped
         // query for the last-appointment date per client, then filter in memory — no N+1.
+        // DeletedAt == null: a deleted appointment is not activity. Without it, a client whose appointments
+        // were all deleted would look active forever and their health data would never expire. Latent on
+        // 17 Nov 2026: nothing in the code soft-deletes an appointment yet. It holds the moment something does.
         DateTime bodyMapCutoff = now.AddDays(-_opts.BodyMaps);
         Dictionary<Guid, DateTime> lastApptByClient = await db.Appointments
             .IgnoreQueryFilters()
+            .Where(a => a.DeletedAt == null)
             .GroupBy(a => a.ClientId)
             .Select(g => new { ClientId = g.Key, Last = g.Max(a => a.Date) })
             .ToDictionaryAsync(x => x.ClientId, x => x.Last, ct);
@@ -83,17 +96,14 @@ public class RetentionPurgeJob(
         }
 
         if (expiredForms.Count > 0 || profilesExpired > 0)
-        {
             await db.SaveChangesAsync(ct);
-            logger.LogInformation(
-                "RetentionPurgeJob soft-deleted {Forms} consent forms and {Profiles} client profiles past their retention windows",
-                expiredForms.Count, profilesExpired);
-        }
+
+        return (expiredForms.Count, profilesExpired);
     }
 
     // ── Pass 2a: hard-purge soft-deleted consent forms (delete R2 file first) ─────
 
-    private async Task HardPurgeConsentFormsAsync(CancellationToken ct)
+    private async Task<(int Purged, int Deferred)> HardPurgeConsentFormsAsync(CancellationToken ct)
     {
         DateTime cutoff = DateTime.UtcNow.AddDays(-_opts.GracePeriodBeforeHardPurge);
 
@@ -103,6 +113,7 @@ public class RetentionPurgeJob(
             .ToListAsync(ct);
 
         int purged = 0;
+        int deferred = 0;
         foreach (ConsentForm form in purgeable)
         {
             if (!string.IsNullOrEmpty(form.FileUrl))
@@ -119,6 +130,7 @@ public class RetentionPurgeJob(
                     logger.LogWarning(ex,
                         "RetentionPurgeJob could not delete the R2 object for consent form {FormId}; will retry next run",
                         form.Id);
+                    deferred++;
                     continue;
                 }
             }
@@ -128,17 +140,14 @@ public class RetentionPurgeJob(
         }
 
         if (purged > 0)
-        {
             await db.SaveChangesAsync(ct);
-            logger.LogInformation(
-                "RetentionPurgeJob hard-purged {Count} consent forms past the {Days}-day grace window",
-                purged, _opts.GracePeriodBeforeHardPurge);
-        }
+
+        return (purged, deferred);
     }
 
     // ── Pass 2b: hard-purge soft-deleted client profiles (the actual health data) ─
 
-    private async Task HardPurgeClientProfilesAsync(CancellationToken ct)
+    private async Task<int> HardPurgeClientProfilesAsync(CancellationToken ct)
     {
         DateTime cutoff = DateTime.UtcNow.AddDays(-_opts.GracePeriodBeforeHardPurge);
 
@@ -150,18 +159,16 @@ public class RetentionPurgeJob(
             .Where(p => p.DeletedAt != null && p.DeletedAt < cutoff)
             .ToListAsync(ct);
 
-        if (purgeable.Count == 0) return;
+        if (purgeable.Count == 0) return 0;
 
         db.ClientProfiles.RemoveRange(purgeable);
         await db.SaveChangesAsync(ct);
-        logger.LogInformation(
-            "RetentionPurgeJob hard-purged {Count} client profiles past the {Days}-day grace window",
-            purgeable.Count, _opts.GracePeriodBeforeHardPurge);
+        return purgeable.Count;
     }
 
     // ── Pass 2c: anonymize the PII of erased Clients past the grace window ─────────
 
-    private async Task AnonymizeErasedClientsAsync(CancellationToken ct)
+    private async Task<int> AnonymizeErasedClientsAsync(CancellationToken ct)
     {
         DateTime cutoff = DateTime.UtcNow.AddDays(-_opts.GracePeriodBeforeHardPurge);
 
@@ -170,7 +177,7 @@ public class RetentionPurgeJob(
             .Where(c => c.ErasureRequestedAt != null && c.ErasureRequestedAt < cutoff)
             .ToListAsync(ct);
 
-        if (toAnonymize.Count == 0) return;
+        if (toAnonymize.Count == 0) return 0;
 
         // The Client row can't be removed (appointments/payments FK-reference it with RESTRICT), so
         // scrub its PII in place. Capture the Identity user id before nulling it, to delete the login.
@@ -192,8 +199,6 @@ public class RetentionPurgeJob(
         foreach (Guid uid in userIdsToDelete)
             await identity.DeleteUserAsync(uid, ct);
 
-        logger.LogInformation(
-            "RetentionPurgeJob anonymized {Count} erased client(s) past the {Days}-day grace window and deleted their logins",
-            toAnonymize.Count, _opts.GracePeriodBeforeHardPurge);
+        return toAnonymize.Count;
     }
 }

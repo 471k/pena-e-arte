@@ -169,6 +169,28 @@ _backgroundJobs.Schedule<AppointmentReminderJob>(
     appointment.Date.AddHours(-48));
 ```
 
+### Jobs: one line per run (since 2026-11-17)
+
+Every job, recurring or scheduled per entity, writes **exactly one Information line per run that says
+what it examined and what it did, zero and "skipped" included**. Without it, an idle run and a run that
+never happened look the same.
+
+- **Sweeps** (recurring, cross-tenant): `"{Job} checked {N} ...: {M} changed, {F} failed"`, logged
+  after the work. An early return for "nothing to do" logs its own zero line first.
+- **Per-entity jobs** (`Schedule`/`Enqueue` in `JobScheduler`): `"{Job} {EntityId}: {Outcome}"`. When
+  there are several early returns, put the work in a private method that returns the outcome string,
+  and let the public method log it once (`TrialExpiryJob` shows the shape).
+- **Failures throw.** `HangfireJobOutcomeLogFilter` logs `HangfireJobFailed`, which the alert in
+  `docs/infra/alerting-runbook.md` matches. Only a failure the job swallows on purpose needs its own
+  Warning or Error line.
+- **Ids only, never PII** (CLAUDE.md rule 3).
+- **The filter also logs `HangfireJobSucceeded {Type}.{Method} {DurationMs}` for every job**, so
+  "did it run?" is one Loki query without any per-job code.
+- **What this does not answer:** whether a job scheduled once (a trial's end, a grace period's end)
+  ran *when it should have*. A lost scheduled job leaves no line at all. That needs reconciliation
+  ("a trial past its end still Trialing"), which is not built. It is recorded here so nobody assumes
+  the heartbeat covers it.
+
 ---
 
 ## SignalR Event Naming Convention
@@ -7134,6 +7156,32 @@ change with the helpers slice 3 added.
 - The schemas keep only "a time was picked"; "exists" and "in the future" need the zone, so `onSubmit` checks
   them. The input's `min` still stops a past time natively; the check covers a page left open past its own
   minimum.
+
+## Every job writes one line per run; the filter logs success; retention ignores deleted appointments — 2026-11-17
+
+Desktop's 17 Nov decision on the logging convention, scoped to all jobs rather than only the recurring ones.
+
+- **The global filter is renamed `HangfireJobOutcomeLogFilter`** and now logs `HangfireJobSucceeded`
+  for every job, alongside the unchanged `HangfireJobFailed` line the alert matches. **It covers all jobs
+  because recurring ones can't be told apart cheaply.** `RecurringJobId` is a job parameter, and
+  Hangfire.MySqlStorage 2.0.3 never fills `BackgroundJob.ParametersSnapshot`: the string doesn't occur
+  in its assembly. So reading the parameter inside `OnStateApplied` would be a storage round-trip on
+  every state change. Desktop's stated fallback for that case was "the heartbeat on all jobs". Volume
+  follows traffic for per-event jobs; at the current scale that is noise, not cost.
+- **Every job writes one outcome line per run** (the convention under "Hangfire Job Conventions"). Two
+  sweeps were fully silent when idle (`RetentionPurgeJob`, `BoothRentChargeJob`). Most per-entity jobs
+  logged nothing on success, and some logged nothing at all (`TrialExpiryJob`, `GracePeriodEndJob`,
+  `DesignRevisionTimeoutJob`, `IndustryReportJob`).
+- **`RetentionPurgeJob`'s four passes return their counts**, and the run ends with one line. Its
+  anonymized-client count, zero included, is the first evidence the system produces that erasure
+  requests are carried out.
+- **Retention no longer counts a deleted appointment as "last activity"** (`DeletedAt == null` on the
+  last-appointment read). Otherwise a client whose appointments were all deleted would look active
+  forever, and their client profile (health data) would never expire. **Latent, not live:** nothing in
+  the code soft-deletes an appointment today. No writer sets `Appointment.DeletedAt`, and there is no
+  interceptor or bulk update that does. The predicate holds as soon as something does.
+- **`SendArtistInviteJob` no longer logs the invitee's email address** when it can't make a token. It
+  logs the studio id instead.
 
 ## Removed files: a sweep, not a delete at each remove site (orphaned objects, Phases 1–2, report-only) — 2026-11-17
 

@@ -30,6 +30,7 @@ public class InstagramSyncJob(
         logger.LogInformation(
             "InstagramSyncJob starting. Active connections: {Count}", connections.Count);
 
+        int failed = 0;
         foreach (InstagramConnection conn in connections)
         {
             try
@@ -39,10 +40,12 @@ public class InstagramSyncJob(
             catch (Exception ex)
             {
                 logger.LogError(ex, "Instagram sync failed for artist {ArtistId}", conn.ArtistId);
+                failed++;
             }
         }
 
-        logger.LogInformation("InstagramSyncJob complete.");
+        logger.LogInformation(
+            "InstagramSyncJob complete: {Count} connection(s), {Failed} failed", connections.Count, failed);
     }
 
     private async Task SyncConnectionAsync(InstagramConnection conn, CancellationToken ct)

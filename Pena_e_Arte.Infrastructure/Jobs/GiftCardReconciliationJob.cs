@@ -27,6 +27,8 @@ public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymen
                      && g.DeletedAt == null)
             .ToListAsync(ct);
 
+        int activated = 0;
+        int failed = 0;
         foreach (GiftCard giftCard in pending)
         {
             try
@@ -37,6 +39,7 @@ public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymen
                 {
                     giftCard.Status = GiftCardStatus.Active;
                     giftCard.UpdatedAt = DateTime.UtcNow;
+                    activated++;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -44,9 +47,13 @@ public class GiftCardReconciliationJob(IAppDbContext db, IPaymentProvider paymen
                 // One studio's provider failure must not abort reconciliation for every other
                 // studio's gift cards in this batch — log and move on, picked up on the next run.
                 logger.LogError(ex, "Failed to reconcile gift card {GiftCardId} for studio {StudioId}.", giftCard.Id, giftCard.StudioId);
+                failed++;
             }
         }
 
         await db.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "GiftCardReconciliationJob checked {Checked} pending gift card(s): {Activated} activated, {Failed} failed to check",
+            pending.Count, activated, failed);
     }
 }

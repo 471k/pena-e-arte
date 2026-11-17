@@ -17,6 +17,12 @@ public class ChatNotificationJob(
 {
     public async Task SendNewMessageEmailAsync(Guid chatMessageId, CancellationToken ct = default)
     {
+        string outcome = await SendAsync(chatMessageId, ct);
+        logger.LogInformation("ChatNotificationJob {ChatMessageId}: {Outcome}", chatMessageId, outcome);
+    }
+
+    private async Task<string> SendAsync(Guid chatMessageId, CancellationToken ct)
+    {
         // IgnoreQueryFilters is used here — not because of an admin cross-tenant read (this
         // feature adds none, see Decision 2), but because this job runs with no ICurrentTenant
         // scope at all (Hangfire jobs are not HTTP requests). With no tenant the filter doesn't
@@ -26,30 +32,27 @@ public class ChatNotificationJob(
         ChatMessage? message = await db.ChatMessages
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(m => m.Id == chatMessageId && m.DeletedAt == null, ct);
-        if (message is null)
-        {
-            logger.LogWarning("ChatMessage {@ChatMessageId} not found for new-message email job", chatMessageId);
-            return;
-        }
+        if (message is null) return "skipped, message not found or deleted";
 
         Conversation? conversation = await db.Conversations
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == message.ConversationId && c.DeletedAt == null, ct);
-        if (conversation is null) return;
+        if (conversation is null) return "skipped, conversation not found or deleted";
 
         (Guid recipientUserId, _) = conversation.OtherParticipant(message.SenderUserId);
 
         bool enabled = await prefs.IsEnabledAsync(
             message.StudioId, NotificationType.MessageReceived, NotificationChannel.Email, ct);
-        if (!enabled) return;
+        if (!enabled) return "skipped, the studio turned message emails off";
 
         string? email = await identity.GetUserEmailAsync(recipientUserId, ct);
-        if (string.IsNullOrEmpty(email)) return;
+        if (string.IsNullOrEmpty(email)) return "skipped, recipient has no email";
 
         string body =
             $"<p>You have a new message waiting for you.</p>" +
             $"<p><a href=\"{appSettings.BaseUrl}/messages\">Log in to reply</a></p>";
 
         await notifications.SendEmailAsync(email, "You have a new message", body, ct);
+        return "email sent";
     }
 }

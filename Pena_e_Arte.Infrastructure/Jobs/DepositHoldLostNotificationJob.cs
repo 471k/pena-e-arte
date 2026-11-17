@@ -58,7 +58,10 @@ public class DepositHoldLostNotificationJob(
         bool emailEnabled = await prefs.IsEnabledAsync(
             studio.Id, NotificationType.DepositHoldLost, NotificationChannel.Email, ct);
         if (!emailEnabled)
+        {
+            logger.LogInformation("Deposit hold lost notification skipped for payment {PaymentId}: the studio turned this email off.", payment.Id);
             return;
+        }
 
         DateTime localDate = TimezoneUtils.ToStudioLocal(payment.Appointment.Date, studio.Timezone);
         string body = emailRenderer.RenderDepositHoldLost(
