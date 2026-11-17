@@ -20,8 +20,14 @@ public class PaymentReconciliationJob(
 {
     public async Task RunAsync(CancellationToken ct = default)
     {
-        await ReconcileHeldAsync(ct);
-        await ReconcilePendingAsync(ct);
+        (int held, int heldFailed) = await ReconcileHeldAsync(ct);
+        (int pending, int pendingFailed) = await ReconcilePendingAsync(ct);
+
+        // Each transition has its own line above; this one says the run happened and how much it saw,
+        // zero included (architecture.md "Jobs: one line per run").
+        logger.LogInformation(
+            "PaymentReconciliationJob checked {Held} held and {Pending} pending card payment(s); {Failed} failed to check",
+            held, pending, heldFailed + pendingFailed);
     }
 
     /// <summary>
@@ -31,8 +37,9 @@ public class PaymentReconciliationJob(
     /// release a hold left on a CANCELLED appointment, or refund it in full if it was captured there
     /// (unless it is a forfeit, which the studio keeps).
     /// </summary>
-    private async Task ReconcileHeldAsync(CancellationToken ct)
+    private async Task<(int Checked, int Failed)> ReconcileHeldAsync(CancellationToken ct)
     {
+        int failed = 0;
         List<Payment> held = await db.Payments
             .IgnoreQueryFilters()
             .Include(p => p.Appointment)
@@ -157,8 +164,10 @@ public class PaymentReconciliationJob(
             {
                 // One studio's provider failure must not abort reconciliation for every other studio.
                 logger.LogError(ex, "Failed to reconcile held payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
+                failed++;
             }
         }
+        return (held.Count, failed);
     }
 
     /// <summary>
@@ -169,8 +178,9 @@ public class PaymentReconciliationJob(
     /// more than three days in the past) or whose appointment was cancelled. Replaces the former
     /// CancelStalePending/ReleaseExpiredHolds passes, which cancelled authorised holds without checking.
     /// </summary>
-    private async Task ReconcilePendingAsync(CancellationToken ct)
+    private async Task<(int Checked, int Failed)> ReconcilePendingAsync(CancellationToken ct)
     {
+        int failed = 0;
         List<Payment> pending = await db.Payments
             .IgnoreQueryFilters()
             .Include(p => p.Appointment)
@@ -291,8 +301,10 @@ public class PaymentReconciliationJob(
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Failed to reconcile pending payment {PaymentId} for studio {StudioId}.", payment.Id, payment.StudioId);
+                failed++;
             }
         }
+        return (pending.Count, failed);
     }
 
     /// <summary>

@@ -33,6 +33,7 @@ public class StorageReconciliationJob(
             .Where(s => s.IsActive)
             .ToListAsync(ct);
 
+        int failed = 0;
         foreach (Studio studio in studios)
         {
             try
@@ -48,12 +49,14 @@ public class StorageReconciliationJob(
                 // StorageUsageBytes simply stays at yesterday's value until the next run.
                 logger.LogWarning(ex,
                     "StorageReconciliationJob: failed to list objects for studio {@StudioId}", studio.Id);
+                failed++;
             }
         }
 
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "StorageReconciliationJob reconciled storage usage for {StudioCount} studios", studios.Count);
+            "StorageReconciliationJob reconciled storage usage for {StudioCount} studios, {Failed} failed to list",
+            studios.Count, failed);
     }
 }

@@ -70,6 +70,13 @@ public class AppointmentReminderJob(
         foreach (NotificationLog log in logs)
             await realtime.NotifyStudioAsync(
                 appointment.StudioId, "NotificationReceived", ToResponse(log, recipientName), ct);
+
+        // Nothing derived from the client's contact details goes in this line (CodeQL flags even a
+        // send-success flag as private data); each channel's result is in its NotificationLog row and
+        // a failed send already logs its own Warning above.
+        logger.LogInformation(
+            "AppointmentReminderJob {AppointmentId}: {ReminderType} reminder processed, results recorded in the notification log",
+            appointment.Id, type);
     }
 
     private static NotificationLogResponse ToResponse(NotificationLog log, string? recipientName) => new(

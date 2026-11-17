@@ -21,6 +21,13 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 if command -v gitleaks >/dev/null 2>&1; then
     gitleaks $SCAN
 elif command -v docker >/dev/null 2>&1; then
+    # In a git worktree, .git is a FILE pointing at the main clone's git dir by a host path the
+    # container can't see, so the scan below finds nothing staged and passes having scanned 0 bytes.
+    # Say so, so a green hook here is not read as evidence (CONTRIBUTING.md, seen 15 Nov 2026).
+    if [ -f "$REPO_ROOT/.git" ]; then
+        echo "pre-commit: WARNING - this is a git worktree; the Docker gitleaks scan cannot see its" >&2
+        echo "git dir and will scan 0 bytes. Install a local gitleaks binary, or rely on CI gitleaks." >&2
+    fi
     # MSYS_NO_PATHCONV stops Git-Bash-on-Windows mangling the container path (/repo ->
     # C:/Program Files/Git/repo); harmless on Linux/macOS. GIT_CONFIG_* injects
     # safe.directory so the container's git trusts the bind-mounted repo (root vs host uid).

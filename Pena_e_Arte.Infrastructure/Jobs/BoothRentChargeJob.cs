@@ -24,7 +24,13 @@ public class BoothRentChargeJob(IAppDbContext db, ILogger<BoothRentChargeJob> lo
             .Where(s => s.IsActive && s.DeletedAt == null && s.NextChargeDate <= now)
             .ToListAsync(ct);
 
-        if (due.Count == 0) return;
+        if (due.Count == 0)
+        {
+            // One line per run, zero included (architecture.md "Jobs: one line per run"): without it
+            // an idle day and a job that never ran look the same.
+            logger.LogInformation("BoothRentChargeJob found no booth-rent schedules due; created 0 charges");
+            return;
+        }
 
         // One query for every due studio's currency, not N+1 — Studio has no tenant filter, so
         // no IgnoreQueryFilters() needed here (only BoothRentSchedules/Charges are tenant-scoped).

@@ -44,6 +44,7 @@ public class VaultHealthCheckJob(
         VaultOptions opts = options.Value;
         if (string.IsNullOrWhiteSpace(opts.Address))
         {
+            logger.LogInformation("VaultHealthCheckJob skipped: no Vault address configured");
             return;
         }
 
@@ -66,6 +67,7 @@ public class VaultHealthCheckJob(
 
         if (result.state == "ok")
         {
+            logger.LogInformation("VaultHealthCheckJob: Vault, the app's token and its POK-key permissions are ok");
             return;
         }
 

@@ -18,7 +18,8 @@ public class SendArtistInviteJob(
         (_, string? token, _) = await identity.GeneratePasswordResetTokenAsync(email);
         if (token is null)
         {
-            logger.LogWarning("Could not generate invite token for {Email} — user may not exist", email);
+            // Studio id only: the address is PII (CLAUDE.md rule 3), and this line logged it until 17 Nov 2026.
+            logger.LogWarning("SendArtistInviteJob {StudioId}: skipped, could not generate an invite token (user may not exist)", studioId);
             return;
         }
 
@@ -41,5 +42,6 @@ public class SendArtistInviteJob(
         // Let send failures propagate so Hangfire's automatic-retry policy kicks in —
         // swallowing them here made every failed invite look "succeeded" in the dashboard.
         await notifications.SendEmailAsync(email, subject, html, ct);
+        logger.LogInformation("SendArtistInviteJob {StudioId}: invite sent (rejoining: {IsRejoining})", studioId, isRejoiningArtist);
     }
 }

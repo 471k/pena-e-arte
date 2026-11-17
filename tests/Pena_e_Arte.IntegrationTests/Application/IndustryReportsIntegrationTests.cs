@@ -100,7 +100,7 @@ public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
             });
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        IndustryReportJob job = new(db, r2);
+        IndustryReportJob job = new(db, r2, Microsoft.Extensions.Logging.Abstractions.NullLogger<IndustryReportJob>.Instance);
         await job.RunAsync();
 
         captured.Should().NotBeNullOrEmpty();
@@ -126,7 +126,7 @@ public class IndustryReportsIntegrationTests(DatabaseFixture fixture)
             .Do(c => captured = c.ArgAt<byte[]>(1));
 
         await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
-        IndustryReportJob job = new(db, r2);
+        IndustryReportJob job = new(db, r2, Microsoft.Extensions.Logging.Abstractions.NullLogger<IndustryReportJob>.Instance);
         await job.RunAsync();
 
         string json = Encoding.UTF8.GetString(captured!);

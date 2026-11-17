@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -14,7 +15,44 @@ public class DesignRevisionTimeoutJobTests
     private readonly IRealtimeNotifier _realtime = Substitute.For<IRealtimeNotifier>();
     private readonly Guid _studioId = Guid.NewGuid();
 
-    private DesignRevisionTimeoutJob CreateSut() => new(_db, _realtime);
+    private readonly ListLogger<DesignRevisionTimeoutJob> _logger = new();
+
+    private DesignRevisionTimeoutJob CreateSut() => new(_db, _realtime, _logger);
+
+    // One outcome line per run, the skipped paths included (architecture.md "Jobs: one line per run").
+    [Fact]
+    public async Task ExecuteAsync_Expires_LogsOneOutcomeLine()
+    {
+        Guid revisionId = await SeedRevision();
+
+        await CreateSut().ExecuteAsync(revisionId);
+
+        _logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().Be($"DesignRevisionTimeoutJob {revisionId}: expired");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AlreadyApproved_LogsTheSkip()
+    {
+        Guid revisionId = await SeedRevision();
+        await SeedApproval(revisionId, DesignApprovalStatus.Approved);
+
+        await CreateSut().ExecuteAsync(revisionId);
+
+        _logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().Be($"DesignRevisionTimeoutJob {revisionId}: skipped, already Approved");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RevisionNotFound_LogsTheSkip()
+    {
+        Guid revisionId = Guid.NewGuid();
+
+        await CreateSut().ExecuteAsync(revisionId);
+
+        _logger.Messages(LogLevel.Information).Should().ContainSingle()
+            .Which.Should().Be($"DesignRevisionTimeoutJob {revisionId}: skipped, revision not found or deleted");
+    }
 
     [Fact]
     public async Task ExecuteAsync_NoPriorApproval_CreatesExpiredApproval()

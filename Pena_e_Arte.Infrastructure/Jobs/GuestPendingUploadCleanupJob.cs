@@ -27,11 +27,16 @@ public class GuestPendingUploadCleanupJob(
     public async Task RunAsync(CancellationToken ct = default)
     {
         IReadOnlyList<R2ObjectInfo> objects = await r2.ListByPrefixAsync(Prefix, ct);
-        if (objects.Count == 0) return;
 
         DateTime cutoff = DateTime.UtcNow - MinAge;
         List<R2ObjectInfo> candidates = objects.Where(o => o.LastModified < cutoff).ToList();
-        if (candidates.Count == 0) return;
+        if (candidates.Count == 0)
+        {
+            logger.LogInformation(
+                "GuestPendingUploadCleanupJob listed {Listed} objects, none older than 48h; deleted 0",
+                objects.Count);
+            return;
+        }
 
         // Cross-tenant, IgnoreQueryFilters: this Hangfire job runs with no request/tenant scope
         // at all, and a guest-pending upload isn't attached to any studio's tenant yet at the
@@ -73,7 +78,7 @@ public class GuestPendingUploadCleanupJob(
         }
 
         logger.LogInformation(
-            "GuestPendingUploadCleanupJob scanned {Scanned} objects, deleted {Deleted} orphaned guest-pending uploads",
-            candidates.Count, deleted);
+            "GuestPendingUploadCleanupJob listed {Listed} objects, {Scanned} older than 48h, deleted {Deleted} orphaned guest-pending uploads",
+            objects.Count, candidates.Count, deleted);
     }
 }
