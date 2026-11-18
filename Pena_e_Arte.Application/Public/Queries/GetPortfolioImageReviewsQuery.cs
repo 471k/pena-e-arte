@@ -14,10 +14,15 @@ public class GetPortfolioImageReviewsHandler(IAppDbContext db)
     public async Task<ReviewListResponse> Handle(
         GetPortfolioImageReviewsQuery query, CancellationToken ct)
     {
-        // Approved: public review read — cross-tenant.
+        // Approved: public review read, cross-tenant — see architecture.md IgnoreQueryFilters entry 21.
+        // DeletedAt == null is a no-op today, kept for consistency with the artist lookup in
+        // GetArtistReviewsQuery: nothing sets PortfolioImage.DeletedAt (removal is a hard RemoveRange in
+        // UpdateArtistPortfolioCommand), so no soft-deleted image exists for it to exclude. It becomes
+        // correct, not dead, the day portfolio images are soft-deleted. Deliberately untested: a test
+        // would assert behaviour that cannot occur.
         Domain.Entities.PortfolioImage? image = await db.PortfolioImages
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(p => p.Id == query.ImageId, ct);
+            .FirstOrDefaultAsync(p => p.Id == query.ImageId && p.DeletedAt == null, ct);
 
         if (image is null) return new ReviewListResponse([], null, 0);
 

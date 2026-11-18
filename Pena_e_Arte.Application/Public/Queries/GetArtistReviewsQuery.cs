@@ -14,7 +14,7 @@ public class GetArtistReviewsHandler(IAppDbContext db)
     public async Task<ReviewListResponse> Handle(
         GetArtistReviewsQuery query, CancellationToken ct)
     {
-        // Approved: public review read — see architecture.md AllowAnonymous Exceptions.
+        // Approved: public review read — see architecture.md AllowAnonymous Exceptions and IgnoreQueryFilters entry 19.
         Domain.Entities.Artist? artist = await db.Artists
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(a => a.Slug == query.Slug && a.DeletedAt == null, ct);
