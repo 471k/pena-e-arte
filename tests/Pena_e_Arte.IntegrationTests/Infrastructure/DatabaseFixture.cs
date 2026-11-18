@@ -36,7 +36,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public AppDbContext CreateDbContext(CurrentTenantService tenant)
     {
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
+            .UseMySql(ConnectionString, DatabaseServerVersion.MySql)
             .Options;
 
         return new AppDbContext(options, tenant);

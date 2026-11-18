@@ -187,7 +187,7 @@ public class BookingRaceIntegrationTests(DatabaseFixture fixture)
     private AppDbContext CreateGatedDbContext(CurrentTenantService tenant, WriteRendezvous gate)
     {
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
+            .UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql)
             .AddInterceptors(gate)
             .Options;
         return new AppDbContext(options, tenant);

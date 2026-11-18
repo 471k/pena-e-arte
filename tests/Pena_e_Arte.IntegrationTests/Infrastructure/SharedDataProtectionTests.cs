@@ -19,7 +19,7 @@ public class SharedDataProtectionTests(DatabaseFixture fixture)
         ServiceCollection services = new();
         services.AddLogging();
         services.AddDbContext<AppDbContext>(opts =>
-            opts.UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 4, 0))));
+            opts.UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql));
         services.AddScoped<Microsoft.AspNetCore.Http.IHttpContextAccessor,
                            Microsoft.AspNetCore.Http.HttpContextAccessor>();
         services.AddScoped<Pena_e_Arte.Domain.Interfaces.ICurrentTenant, CurrentTenantService>();

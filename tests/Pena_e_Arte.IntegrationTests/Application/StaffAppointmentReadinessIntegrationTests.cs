@@ -82,7 +82,7 @@ public class StaffAppointmentReadinessIntegrationTests(DatabaseFixture fixture)
         CurrentTenantService tenant = new();
         tenant.SetTenant(s.StudioId);
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
+            .UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql)
             .AddInterceptors(counter)
             .Options;
         await using AppDbContext db = new(options, tenant);

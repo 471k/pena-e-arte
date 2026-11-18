@@ -25,12 +25,13 @@ public class PokCredentialResolutionIntegrationTests(DatabaseFixture fixture)
 {
     private const string CachedToken = "cached-token";
 
-    // Production declares MySQL 8.4 (InfrastructureServiceExtensions), so EF writes this lookup's correlated
-    // subquery as a LATERAL join. DatabaseFixture declares 8.0.0, under which EF cannot translate it at all,
-    // so a fixture context would test a query production never runs. Same server, prod's declared version.
+    // Under the declared MySQL 8.4 (DatabaseServerVersion), EF writes this lookup's correlated subquery as a
+    // LATERAL join. Below 8.0.14 it cannot translate it at all, which is how this query went untested while
+    // the fixture declared 8.0.0. This context is built here, not via fixture.CreateDbContext, only because
+    // it predates the shared constant. Moving self-built contexts onto the fixture is a separate backlog item.
     private AppDbContext JobContext() => new(
         new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 4, 0)))
+            .UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql)
             .Options,
         new CurrentTenantService());
 

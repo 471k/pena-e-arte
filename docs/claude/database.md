@@ -64,6 +64,21 @@ public class AppDbContext(
 }
 ```
 
+### Server version: declared once (2026-11-18)
+
+Every `UseMySql(...)` call, in production and in tests alike, passes
+`DatabaseServerVersion.MySql` (`Infrastructure/Persistence/DatabaseServerVersion.cs`). Never write a
+`new MySqlServerVersion(...)` literal anywhere else. Pomelo generates different SQL for different
+declared versions: a correlated subquery becomes a LATERAL join from 8.0.14 and can't be translated
+below that. Before this rule, production declared 8.4.0 twice, and the integration tests declared
+8.0.0 in 31 files and 8.4.0 in 5. The suite could not run the POK credential query that runs on every
+card payment, and nobody saw it.
+
+The constant must match the servers the repo runs against: `docker-compose.yml` and
+`.github/workflows/ci.yml` both use `mysql:8.4`. Raising the constant lets EF emit SQL an older server
+can't run. LATERAL needs 8.0.14 and `CAST(... AS DOUBLE)` needs 8.0.17, so run local integration tests
+on compose's 8.4 server: a different local server is a third version nobody declares.
+
 ---
 
 ## Studio Entity Fields
