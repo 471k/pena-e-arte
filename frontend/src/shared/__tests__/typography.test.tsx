@@ -9,7 +9,7 @@ import { Wordmark } from "@/shared/components/Wordmark";
 // jsdom cannot load a webfont or compute a used font, so this pins the SOURCE contract; the
 // rendered pass in the PR is the proof that the faces actually paint.
 
-const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/<!--[\s\S]*?-->/g, "");
+const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "");
 const css = stripComments(indexCss);
 
 const appSources = import.meta.glob<string>(
