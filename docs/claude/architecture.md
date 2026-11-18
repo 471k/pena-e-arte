@@ -7236,3 +7236,31 @@ Desktop's 17 Nov decision on the logging convention, scoped to all jobs rather t
   deleted client files 30 days before permanent deletion. **Recorded as product judgment:** a removed file
   should stop counting and stop being fetchable within days, by a sweep that can prove nothing references
   it, and the delay is the safety margin, not a restore feature.
+
+## C08 — the payment result page reads the server before it claims anything — 2026-11-18
+
+`/payment-result` claimed "your card has been charged" from a query-string parameter on a public route. It
+now calls `POST /payments/{id}/confirm` and renders only what the server returns; the URL's `status` is not
+read, not even as a loading hint (a heading is itself a claim). `/confirm` returns the new narrowed
+`PaymentConfirmationResponse` instead of `PaymentResponse`, which stops `ClientToken`, `ClientName` and
+`CashNote` reaching this page. "Try again" follows the server status, so it is never offered on a held,
+charged or refunded payment. A signed-out payer gets an honest page and a sign-in link: **no anonymous
+payment read was added**, a deliberate divergence from OWASP's "always verify server-side" because the
+alternative is a new public money endpoint, which needs its own rule-2 row and Phi's decision. `Failed`
+says what the bank reported rather than asserting no charge exists.
+
+- **A copy defect, not a settlement defect.** Nothing was ever fulfilled from the redirect: settlement is the
+  webhook plus `PaymentReconciliationJob` (ADR-0001). The system never believed the URL; only the page did.
+- **`AppointmentCancelled` is the handler's own `owedBack`**, so it is true only for a Pending or held card
+  payment on a cancelled (not forfeited) appointment — exactly the rows the job releases or refunds in full.
+  On a payment already Paid/Refunded/Failed it is false: a cancellation after payment is settled by the
+  studio's cancellation policy, and nothing returns it automatically, so the page must not say it will.
+- **The response also carries `ReferenceCurrency` and `ReferenceRate`** beside `ReferenceAmount`: without the
+  currency `frozenReference()` shows no lek at all, and the rate converts a refunded part at the frozen rate.
+  Neither identifies anyone. A reflection test pins the member list, so a new member is a deliberate choice.
+- **The page reads through a query endpoint (`getPaymentResult`) over the same POST**, not the mutation, so
+  the read starts from the RTK Query hook with no effect-driven fetch, and "Refresh" is `refetch()`. The POST
+  is safe to repeat: it only moves a payment toward what POK reports, and returns early once resolved.
+- **The same defect on the sibling screen is closed too.** `DepositCheckoutPage` rendered "Deposit paid — your
+  card has been charged" from a Stripe-era `?status=complete` that nothing produces any more. That URL now
+  redirects to `/payment-result?payment=<id>`.

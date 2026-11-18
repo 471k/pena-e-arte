@@ -43,6 +43,23 @@ export interface PaymentResponse {
   depositStatus?:        string | null;
 }
 
+/** What POST /payments/{id}/confirm returns (C08): one payment's server-side status, and nothing that
+ * identifies the client. The in-checkout success and /payment-result both render only from this. */
+export interface PaymentConfirmationResponse {
+  paymentId:            string;
+  status:               PaymentStatus;
+  amount:               number;
+  currency:             string;
+  /** Cancelled (not forfeited) while the payment was going through: the money is being returned
+   * automatically by reconciliation. Outranks status on /payment-result. */
+  appointmentCancelled: boolean;
+  refundedAmount?:      number | null;
+  /** Lek frozen when the client paid (Albanian EUR studios only; null otherwise). */
+  referenceAmount?:     number | null;
+  referenceCurrency?:   string | null;
+  referenceRate?:       number | null;
+}
+
 export interface PaymentIntentResponse {
   paymentId:    string;
   clientToken: string;
