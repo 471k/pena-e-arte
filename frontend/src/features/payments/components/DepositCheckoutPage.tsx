@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { GuestCheckoutForm } from "@nebula-ltd/pok-payments-js/react";
 import type { PaymentErrorResponse } from "@nebula-ltd/pok-payments-js";
 import { CreditCard, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
@@ -126,7 +126,6 @@ export function DepositCheckoutPage() {
   useDocumentMeta({ title: "Deposit Payment — TattooOS", canonical: "/pay" });
 
   const { paymentId }  = useParams<{ paymentId: string }>();
-  const navigate        = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectStatus = searchParams.get("status");
 
@@ -141,25 +140,11 @@ export function DepositCheckoutPage() {
   const pokEnvironment = capabilities?.pokEnvironment;
   const cardPaymentsAvailable = capabilities?.cardPaymentsAvailable === true && !!pokEnvironment;
 
+  // A Stripe-era return (?status=complete) that nothing produces any more. It used to render "Deposit
+  // paid — your card has been charged" from the URL alone (C08's defect on this screen). Any old link now
+  // lands on /payment-result, which asks the server before it says anything about money.
   if (redirectStatus === "complete") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <CheckCircle2 aria-hidden="true" className="h-12 w-12 text-green-500" />
-              <h2 className="text-lg font-semibold">Deposit paid</h2>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                {DEPOSIT_PAID_TEXT}
-              </p>
-              <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
-                Back to booking
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <Navigate to={`/payment-result?payment=${encodeURIComponent(paymentId ?? "")}`} replace />;
   }
 
   return (

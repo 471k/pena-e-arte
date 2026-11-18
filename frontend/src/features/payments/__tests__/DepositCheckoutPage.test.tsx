@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -76,12 +76,18 @@ function makeStore() {
   });
 }
 
+function ResultProbe() {
+  const location = useLocation();
+  return <p data-testid="result-page">{location.pathname + location.search}</p>;
+}
+
 function renderPage(paymentId: string, search = "") {
   render(
     <Provider store={makeStore()}>
       <MemoryRouter initialEntries={[`/pay/${paymentId}${search}`]}>
         <Routes>
           <Route path="/pay/:paymentId" element={<DepositCheckoutPage />} />
+          <Route path="/payment-result" element={<ResultProbe />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -192,9 +198,11 @@ describe("DepositCheckoutPage", () => {
     expect(screen.queryByText(/deposit authorised/i)).not.toBeInTheDocument();
   });
 
-  // ── Redirect complete state ──────────────────────────────────────────────────
+  // ── Legacy ?status=complete (C08) ────────────────────────────────────────────
+  // Nothing produces this return any more. It used to render "Deposit paid — your card has been
+  // charged" from the URL alone; now it hands over to /payment-result, which asks the server first.
 
-  it("shows success state when ?status=complete without fetching the client secret", async () => {
+  it("?status=complete claims nothing and hands over to /payment-result for this payment", async () => {
     let secretFetched = false;
     server.use(
       http.get("http://localhost/api/v1/payments/:id/client-token", () => {
@@ -203,25 +211,12 @@ describe("DepositCheckoutPage", () => {
       }),
     );
 
-    renderPage("pay-001", "?status=complete");
-
-    expect(await screen.findByText(/deposit paid/i)).toBeInTheDocument();
-    expect(screen.getByText(/your card has been charged/i)).toBeInTheDocument();
-    expect(secretFetched).toBe(false);
-  });
-
-  it("success state does NOT show the POK form", async () => {
-    renderPage("pay-001", "?status=complete");
-    await screen.findByText(/deposit paid/i);
-    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /authorise/i })).not.toBeInTheDocument();
-  });
-
-  // ── Probe: ?amount with status=complete ──────────────────────────────────────
-
-  it("success state works even when ?amount is also present", async () => {
     renderPage("pay-001", "?status=complete&amount=75.00+EUR");
-    expect(await screen.findByText(/deposit paid/i)).toBeInTheDocument();
+
+    expect(await screen.findByTestId("result-page")).toHaveTextContent("/payment-result?payment=pay-001");
+    expect(document.body.textContent).not.toMatch(/deposit paid|has been charged/i);
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
+    expect(secretFetched).toBe(false);
   });
 
   // ── Capabilities guard ───────────────────────────────────────────────────────
