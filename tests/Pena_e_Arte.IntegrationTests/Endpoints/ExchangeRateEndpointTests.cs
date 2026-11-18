@@ -140,7 +140,7 @@ public class ExchangeRateEndpointTests(DatabaseFixture fixture)
                     services.AddSingleton(Substitute.For<IUserAgentParser>());
 
                     services.AddDbContext<AppDbContext>(options =>
-                        options.UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0))));
+                        options.UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql));
                     services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
                     services.AddSingleton(TimeProvider.System);
                     services.AddScoped<IExchangeRateProvider, ExchangeRateProvider>();

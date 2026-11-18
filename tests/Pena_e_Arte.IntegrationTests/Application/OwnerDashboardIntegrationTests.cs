@@ -80,7 +80,7 @@ public class OwnerDashboardIntegrationTests(DatabaseFixture fixture)
     {
         CommandCounter counter = new();
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
+            .UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql)
             .AddInterceptors(counter)
             .Options;
         CurrentTenantService tenant = Tenant(s.StudioId);

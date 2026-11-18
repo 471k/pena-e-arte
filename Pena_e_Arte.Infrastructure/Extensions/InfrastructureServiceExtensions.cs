@@ -38,7 +38,7 @@ public static class InfrastructureServiceExtensions
         services.AddDbContext<AppDbContext>((sp, options) =>
             options.UseMySql(
                 connectionString,
-                new MySqlServerVersion(new Version(8, 4, 0)),
+                DatabaseServerVersion.MySql,
                 mysql => mysql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName))
             .AddInterceptors(sp.GetRequiredService<SubscriptionCacheInvalidationInterceptor>()));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());

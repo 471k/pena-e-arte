@@ -179,7 +179,7 @@ public class FeedbackSubmitterEndpointTests(DatabaseFixture fixture)
                     services.AddSingleton(subscriptions);
 
                     services.AddDbContext<AppDbContext>(options =>
-                        options.UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0))));
+                        options.UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql));
                     services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
                     Assembly applicationAssembly = typeof(ValidationBehavior<,>).Assembly;

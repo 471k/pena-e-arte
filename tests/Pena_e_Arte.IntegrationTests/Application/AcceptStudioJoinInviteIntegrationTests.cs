@@ -42,7 +42,7 @@ public class AcceptStudioJoinInviteIntegrationTests(DatabaseFixture fixture)
     {
         ServiceCollection services = new();
         services.AddDbContext<AppDbContext>(opts =>
-            opts.UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 0, 0))));
+            opts.UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql));
         services.AddScoped<Microsoft.AspNetCore.Http.IHttpContextAccessor,
                            Microsoft.AspNetCore.Http.HttpContextAccessor>();
         services.AddScoped<ICurrentTenant, CurrentTenantService>();

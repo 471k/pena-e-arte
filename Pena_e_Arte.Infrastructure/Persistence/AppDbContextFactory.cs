@@ -11,7 +11,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseMySql(
                 "Server=localhost;Port=3306;Database=pena_e_arte_dev;User=root;Password=root;AllowPublicKeyRetrieval=true;",
-                new MySqlServerVersion(new Version(8, 4, 0)))
+                DatabaseServerVersion.MySql)
             .Options;
 
         return new AppDbContext(options, new DesignTimeTenant());

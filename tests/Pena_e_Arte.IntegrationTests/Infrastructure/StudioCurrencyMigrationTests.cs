@@ -35,7 +35,7 @@ public sealed class StudioCurrencyMigrationTests : IAsyncLifetime
     private AppDbContext CreateContext()
     {
         DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySql(ConnectionString, new MySqlServerVersion(new Version(8, 0, 0)))
+            .UseMySql(ConnectionString, DatabaseServerVersion.MySql)
             .Options;
         return new AppDbContext(options, new CurrentTenantService());
     }

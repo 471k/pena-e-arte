@@ -19,7 +19,7 @@ public class AdminBootstrapperTests(DatabaseFixture fixture)
         ServiceCollection services = new();
 
         services.AddDbContext<AppDbContext>(opts =>
-            opts.UseMySql(fixture.ConnectionString, new MySqlServerVersion(new Version(8, 4, 0))));
+            opts.UseMySql(fixture.ConnectionString, DatabaseServerVersion.MySql));
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<Microsoft.AspNetCore.Http.IHttpContextAccessor,
                            Microsoft.AspNetCore.Http.HttpContextAccessor>();
