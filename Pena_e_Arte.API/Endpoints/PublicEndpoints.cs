@@ -202,7 +202,7 @@ public static class PublicEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        List<ReviewResponse> result =
+        ReviewListResponse result =
             await mediator.Send(new GetStudioReviewsQuery(slug), ct);
         return Results.Ok(result);
     }
@@ -212,7 +212,7 @@ public static class PublicEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        List<ReviewResponse> result =
+        ReviewListResponse result =
             await mediator.Send(new GetArtistReviewsQuery(slug), ct);
         return Results.Ok(result);
     }
@@ -422,7 +422,7 @@ public static class PublicEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        List<ReviewResponse> result =
+        ReviewListResponse result =
             await mediator.Send(new GetPortfolioImageReviewsQuery(imageId), ct);
         return Results.Ok(result);
     }

@@ -223,7 +223,7 @@ public class GetPublicStudioHandlerTests
         PublicStudioResponse? result =
             await CreateSut().Handle(new GetPublicStudioQuery("test-studio"), default);
 
-        result!.AverageRating.Should().Be(4.0);
+        result!.AverageRating.Should().Be(4.0m);
         result.ReviewCount.Should().Be(2);
     }
 
@@ -247,7 +247,7 @@ public class GetPublicStudioHandlerTests
 
         PublicArtistSummary? summary = result!.Artists.FirstOrDefault(a => a.Slug == "ana-sousa");
         summary.Should().NotBeNull();
-        summary!.AverageRating.Should().Be(3.0);
+        summary!.AverageRating.Should().Be(3.0m);
         summary.ReviewCount.Should().Be(2);
     }
 

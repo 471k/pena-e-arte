@@ -141,6 +141,17 @@ export interface ReviewResponse {
   ownerResponseAt:   string | null;
 }
 
+/**
+ * A public review list with its own summary. `reviews` is the newest 50; `averageRating` and
+ * `reviewCount` cover every review and come from the server's one rounding rule (exact mean, one
+ * decimal, half up), so this header and the page's own rating are always the same number.
+ */
+export interface ReviewListResponse {
+  reviews:       ReviewResponse[];
+  averageRating: number | null;  // null = no reviews
+  reviewCount:   number;
+}
+
 export interface DesignCatalogItemResponse {
   id:          string;
   title:       string;
@@ -390,11 +401,11 @@ export const publicApi = createApi({
     recordArtistView: builder.mutation<void, string>({
       query: (slug) => ({ url: `artists/${slug}/view`, method: "POST" }),
     }),
-    getStudioReviews: builder.query<ReviewResponse[], string>({
+    getStudioReviews: builder.query<ReviewListResponse, string>({
       query: (slug) => `studios/${slug}/reviews`,
       providesTags: (_result, _err, slug) => [{ type: "StudioReviews", id: slug }],
     }),
-    getArtistReviews: builder.query<ReviewResponse[], string>({
+    getArtistReviews: builder.query<ReviewListResponse, string>({
       query: (slug) => `artists/${slug}/reviews`,
       providesTags: (_result, _err, slug) => [{ type: "ArtistReviews", id: slug }],
     }),
@@ -415,7 +426,8 @@ export const publicApi = createApi({
         method: "POST",
         body:   { appointmentId, rating, body },
       }),
-      invalidatesTags: (_result, _err, { slug }) => [{ type: "StudioReviews", id: slug }],
+      // The studio page's own rating changes too, not only the list.
+      invalidatesTags: (_result, _err, { slug }) => [{ type: "StudioReviews", id: slug }, "PublicStudio"],
     }),
     createArtistReview: builder.mutation<void, CreateReviewArgs>({
       query: ({ slug, appointmentId, rating, body }) => ({
@@ -423,9 +435,10 @@ export const publicApi = createApi({
         method: "POST",
         body:   { appointmentId, rating, body },
       }),
-      invalidatesTags: (_result, _err, { slug }) => [{ type: "ArtistReviews", id: slug }],
+      // The artist page's rating and the studio page's artist card change too.
+      invalidatesTags: (_result, _err, { slug }) => [{ type: "ArtistReviews", id: slug }, "PublicArtist", "PublicStudio"],
     }),
-    getPortfolioImageReviews: builder.query<ReviewResponse[], string>({
+    getPortfolioImageReviews: builder.query<ReviewListResponse, string>({
       query: (imageId) => `portfolio/${imageId}/reviews`,
       providesTags: (_result, _err, imageId) => [{ type: "PortfolioImageReviews", id: imageId }],
     }),

@@ -18,7 +18,7 @@ public record PublicStudioResponse(
     string? Description,
     string? CoverImageUrl,
     string? PhoneNumber,
-    double? AverageRating,
+    decimal? AverageRating,
     int ReviewCount,
     IReadOnlyList<string> GalleryImages,
     IReadOnlyList<PublicArtistSummary> Artists,

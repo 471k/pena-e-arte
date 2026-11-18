@@ -9,7 +9,7 @@ public record PublicArtistResponse(
     IReadOnlyList<ArtistPortfolioImageResponse> PortfolioImages,
     List<string> Specializations,
     decimal? HourlyRate,
-    double? AverageRating,
+    decimal? AverageRating,
     int ReviewCount,
     string StudioName,
     string StudioSlug,

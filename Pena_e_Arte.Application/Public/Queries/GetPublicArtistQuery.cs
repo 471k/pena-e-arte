@@ -37,7 +37,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
         var reviewStats = await db.Reviews
             .Where(r => r.ArtistId == artist.Id)
             .GroupBy(_ => 1)
-            .Select(g => new { Avg = g.Average(r => (double)r.Rating), Count = g.Count() })
+            .Select(g => new { Sum = g.Sum(r => r.Rating), Count = g.Count() })
             .FirstOrDefaultAsync(ct);
 
         bool isOwnProfile = query.CurrentUserId.HasValue
@@ -66,7 +66,7 @@ public class GetPublicArtistHandler(IAppDbContext db)
                 .ToList(),
             artist.Specializations,
             artist.HourlyRate,
-            reviewStats is { Count: > 0 } ? Math.Round(reviewStats.Avg, 1) : null,
+            RatingDisplay.Average(reviewStats?.Sum ?? 0, reviewStats?.Count ?? 0),
             reviewStats?.Count ?? 0,
             studio.Name,
             studio.Slug,

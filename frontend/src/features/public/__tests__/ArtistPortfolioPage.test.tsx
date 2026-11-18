@@ -28,7 +28,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useCreateStudioReviewMutation:         () => [vi.fn(), { isLoading: false }],
     useCreateArtistReviewMutation:         () => [vi.fn(), { isLoading: false }],
     useCreatePortfolioImageReviewMutation: () => [vi.fn(), { isLoading: false }],
-    useGetPortfolioImageReviewsQuery:      () => ({ data: [], isLoading: false }),
+    useGetPortfolioImageReviewsQuery:      () => ({ data: { reviews: [], averageRating: null, reviewCount: 0 }, isLoading: false }),
     useGetReviewableArtistAppointmentsQuery: () => ({ data: [], isLoading: false }),
     useGetReviewableStudioAppointmentsQuery: () => ({ data: [], isLoading: false }),
     useRecordArtistViewMutation:           () => [vi.fn(), { isLoading: false }],
@@ -88,7 +88,7 @@ function renderPage(token: string | null = null) {
 describe("ArtistPortfolioPage", () => {
   beforeEach(() => {
     mockUseGetPublicArtistQuery.mockReturnValue({ data: ARTIST, isLoading: false, isError: false });
-    mockUseGetArtistReviewsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockUseGetArtistReviewsQuery.mockReturnValue({ data: { reviews: [], averageRating: null, reviewCount: 0 }, isLoading: false });
     mockUseGetDesignCatalogQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
