@@ -184,7 +184,7 @@ export function PaymentResultPage() {
 
   // Signed out: no call at all (the endpoint needs a sign-in, and there is an honest thing to say
   // without one). A malformed id never reaches the API.
-  const { data, isFetching, isError, refetch } = useGetPaymentResultQuery(paymentId ?? "", {
+  const { data, isUninitialized, isFetching, isError, refetch } = useGetPaymentResultQuery(paymentId ?? "", {
     skip: !signedIn || paymentId === null,
     refetchOnMountOrArgChange: true,
   });
@@ -193,7 +193,11 @@ export function PaymentResultPage() {
   const view: View =
     !signedIn ? SIGNED_OUT
     : paymentId === null ? COULD_NOT_CHECK
-    : isFetching ? CHECKING
+    // isUninitialized: a render before the request is in flight has tried nothing, so it must not say
+    // "we couldn't check". RTK Query 2.x already reports an un-skipped uninitialized query as fetching,
+    // so today this never decides; it keeps the page true if that ever changes. Pinned by the
+    // first-paint test (Desktop's C08 review 1.2).
+    : isUninitialized || isFetching ? CHECKING
     : isError || !data ? COULD_NOT_CHECK
     : viewFor(data) ?? COULD_NOT_CHECK;
 

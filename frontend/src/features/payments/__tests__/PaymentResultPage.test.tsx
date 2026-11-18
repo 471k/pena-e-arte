@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -44,7 +45,18 @@ afterEach(() => {
 });
 afterAll(() => server.close());
 
-function renderAt(search: string, role: string | null = Role.Client) {
+// Records the page's text at its FIRST commit. A layout effect in a later sibling runs after the page's
+// DOM is committed and before any passive effect (which is where the query subscribes), so this sees the
+// very first paint. An assertion straight after render() cannot: RTL wraps render in act(), which has
+// already flushed effects by the time it returns.
+function FirstCommitProbe({ into }: { into: string[] }) {
+  useLayoutEffect(() => {
+    into.push(document.body.textContent ?? "");
+  }, [into]);
+  return null;
+}
+
+function renderAt(search: string, role: string | null = Role.Client, firstCommit?: string[]) {
   const store = configureStore({
     reducer: { auth: authReducer, ui: uiReducer, [paymentsApi.reducerPath]: paymentsApi.reducer },
     middleware: (gd) => gd().concat(paymentsApi.middleware),
@@ -57,6 +69,7 @@ function renderAt(search: string, role: string | null = Role.Client) {
     <Provider store={store}>
       <MemoryRouter initialEntries={[`/payment-result${search}`]}>
         <PaymentResultPage />
+        {firstCommit && <FirstCommitProbe into={firstCommit} />}
       </MemoryRouter>
     </Provider>,
   );
@@ -171,6 +184,21 @@ describe("PaymentResultPage (C08)", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(pageText()).not.toMatch(/received|charged/i);
     expect(document.title).toBe("Payment — TattooOS");
+  });
+
+  it("the first paint, before the request is in flight, says it is checking and never 'couldn't check'", () => {
+    server.use(http.post(CONFIRM_URL, async () => { await delay("infinite"); return HttpResponse.json(next); }));
+    const firstCommit: string[] = [];
+    renderAt(`?status=paid&payment=${PAYMENT}`, Role.Client, firstCommit);
+
+    // Synchronous on purpose (Desktop's C08 review 1.2): findBy* retries, so it cannot rule out a first
+    // render that showed the neutral block before the request started.
+    expect(firstCommit.length).toBeGreaterThan(0);
+    expect(firstCommit[0]).toMatch(/checking your payment/i);
+    expect(firstCommit[0]).not.toMatch(/couldn't check/i);
+    expect(firstCommit[0]).not.toMatch(/received|charged/i);
+    expect(pageText()).toMatch(/checking your payment/i);
+    expect(pageText()).not.toMatch(/couldn't check/i);
   });
 
   it("Refresh asks the server again and shows the new answer", async () => {
