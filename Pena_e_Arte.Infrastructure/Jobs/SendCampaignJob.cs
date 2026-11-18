@@ -31,13 +31,16 @@ public class SendCampaignJob(
 
     public async Task RunAsync(Guid campaignId, CancellationToken ct = default)
     {
-        // IgnoreQueryFilters(): Hangfire job, no ambient tenant scope.
+        // IgnoreQueryFilters(): Hangfire job, no ambient tenant scope. The bypass drops the soft-delete half of
+        // the filter too, so DeletedAt == null is restated: a deleted scheduled campaign must not go out. No
+        // code deletes a campaign yet (17 Nov 2026); every ordinary read is covered by the global filter, so
+        // this is the one read that would have been missed the day campaign delete is added.
         Campaign? campaign = await db.Campaigns.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == campaignId, ct);
+            .FirstOrDefaultAsync(c => c.Id == campaignId && c.DeletedAt == null, ct);
 
         if (campaign is null)
         {
-            logger.LogWarning("SendCampaignJob {CampaignId}: skipped, campaign not found", campaignId);
+            logger.LogWarning("SendCampaignJob {CampaignId}: skipped, campaign not found or deleted", campaignId);
             return;
         }
 

@@ -129,8 +129,13 @@ public sealed class PokAuthClient(
             .Select(s => new
             {
                 s.PokMerchantId,
+                // DeletedAt == null restated, since the bypass drops it (latent: disconnect hard-removes
+                // today, ConnectPokAccountCommand). Without it, a soft-deleted credential would still be used
+                // for payments while ConnectPokAccountCommand, which reads under the filter, could not see it
+                // and would hit the unique (StudioId, Provider) index on reconnect.
                 CredentialRef = db.StudioCredentialRefs.IgnoreQueryFilters()
-                    .FirstOrDefault(c => c.StudioId == studioId && c.Provider == CredentialProvider.Pok)
+                    .FirstOrDefault(c => c.StudioId == studioId && c.Provider == CredentialProvider.Pok
+                                         && c.DeletedAt == null)
             })
             .FirstOrDefaultAsync(ct);
 
