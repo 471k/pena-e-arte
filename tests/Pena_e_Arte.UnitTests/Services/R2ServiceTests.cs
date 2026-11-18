@@ -119,4 +119,73 @@ public class R2ServiceTests
         result[0].LastModified.Should().Be(lastModified);
         result[0].SizeBytes.Should().Be(1024L);
     }
+
+    // ListObjectsV2 returns at most 1,000 keys per call; only the first page used to be read.
+    [Fact]
+    public async Task ListByPrefixAsync_FollowsTheContinuationTokenAcrossPages()
+    {
+        _s3.ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.ContinuationToken == null), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response
+            {
+                S3Objects = [new S3Object { Key = "s1/a.jpg", Size = 1L }],
+                IsTruncated = true,
+                NextContinuationToken = "page-2",
+            });
+        _s3.ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.ContinuationToken == "page-2"), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response
+            {
+                S3Objects = [new S3Object { Key = "s1/b.jpg", Size = 2L }],
+                IsTruncated = false,
+            });
+
+        IReadOnlyList<R2ObjectInfo> result = await CreateSut().ListByPrefixAsync("s1/", default);
+
+        result.Select(o => o.Key).Should().Equal("s1/a.jpg", "s1/b.jpg");
+    }
+
+    // LastModified leaves the listing as Kind.Utc whatever Kind the SDK hands back, so the sweep's age
+    // comparison never depends on the pod's time zone (Desktop, 18 Nov).
+    [Fact]
+    public async Task ListByPrefixAsync_ReturnsUtc_ForLocalUnspecifiedAndUtcTimestamps_AtTheSameInstant()
+    {
+        DateTime instant = new(2026, 11, 1, 10, 30, 0, DateTimeKind.Utc);
+        _s3.ListObjectsV2Async(Arg.Any<ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response
+            {
+                S3Objects =
+                [
+                    new S3Object { Key = "utc", LastModified = instant },
+                    new S3Object { Key = "local", LastModified = instant.ToLocalTime() },
+                    new S3Object { Key = "unspecified", LastModified = DateTime.SpecifyKind(instant, DateTimeKind.Unspecified) },
+                ],
+            });
+
+        IReadOnlyList<R2ObjectInfo> result = await CreateSut().ListByPrefixAsync("", default);
+
+        result.Should().OnlyContain(o => o.LastModified.Kind == DateTimeKind.Utc && o.LastModified == instant);
+    }
+
+    [Fact]
+    public async Task ListByPrefixAsync_MissingTimestamp_ReadsAsNow_SoNeverOldEnoughToSweep()
+    {
+        _s3.ListObjectsV2Async(Arg.Any<ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { S3Objects = [new S3Object { Key = "k", LastModified = null }] });
+
+        IReadOnlyList<R2ObjectInfo> result = await CreateSut().ListByPrefixAsync("", default);
+
+        result[0].LastModified.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
+    [Theory]
+    [InlineData("https://media.example.com/s1/portfolio/a.jpg", "s1/portfolio/a.jpg")]
+    [InlineData("https://bucket.old-worker.example.dev/s1/a.jpg", "s1/a.jpg")]
+    [InlineData("https://MEDIA.example.com/s1/a.jpg", "s1/a.jpg")]
+    [InlineData("https://media.example.com.evil.test/s1/a.jpg", null)]
+    [InlineData("https://elsewhere.test/s1/a.jpg", null)]
+    [InlineData("https://media.example.com/", null)]
+    [InlineData("", null)]
+    public void TryGetObjectKey_OnlyForAKnownAddress(string url, string? expected)
+    {
+        CreateMovedSut(OldAddress).TryGetObjectKey(url).Should().Be(expected);
+    }
 }

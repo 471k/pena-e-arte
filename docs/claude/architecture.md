@@ -1218,6 +1218,7 @@ Never add a new one without updating this table and the Decisions Log.
 | 52 | `StartImpersonationHandler`, `EndImpersonationSessionHandler`, `GetImpersonationSessionsHandler` | AdminOnly cross-tenant `Studio`/`ImpersonationSession` lookups — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing sessions (they are not impersonating yet, or ever, for these three commands themselves), so the normal tenant filter would match nothing | AdminOnly |
 | 53 | `GetNotificationsQuery` (admin branch) | Cross-tenant `NotificationLog` read — the admin's own `tenant_id` claim would otherwise silently scope this to one arbitrary studio instead of returning every `RecipientType.Admin` row platform-wide | AdminOnly |
 | 54 | `StudioCurrencyLock.IsLockedAsync` (`Payment`, `GiftCard`, `PackagePurchase`, `BoothRentCharge`) | The tenant filter also hides soft-deleted rows, but a soft-deleted payment/gift-card/package-purchase/booth-rent-charge still means money moved in this currency — the lock must see those rows too. Mitigation: explicit `StudioId == tenant.StudioId` predicate on every one of the four queries; read-only `AnyAsync`; no data returned. Used by `UpdateStudioCurrencyCommand` (rejects a change once locked) and every `StudioResponse`/`GET /studios/me` builder (`CurrencyLocked` field) | OwnerOnly (the change) / whoever can already read the StudioResponse (the read) |
+| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -7186,3 +7187,52 @@ Desktop's 17 Nov decision on the logging convention, scoped to all jobs rather t
   interceptor or bulk update that does. The predicate holds as soon as something does.
 - **`SendArtistInviteJob` no longer logs the invitee's email address** when it can't make a token. It
   logs the studio id instead.
+
+## Removed files: a sweep, not a delete at each remove site (orphaned objects, Phases 1–2, report-only) — 2026-11-17
+
+`docs/claude/overnight-prompt-orphaned-object-cleanup-2026-11-15.md`; Phase 0 accepted by Desktop on 15 Nov, Phase 1 go on 17 Nov.
+
+- **The defect is a class.** Every user-initiated remove deletes the row and leaves the object (portfolio,
+  design revision, a photo dropped from a tattoo record's list, every abandoned `pending/` upload), and only
+  `appointments/guest-pending/` and `consent/` are ever cleaned. Removed files stay in the bucket, stay
+  fetchable at their public address, and keep counting against the studio's storage quota, because
+  `StorageReconciliationJob` sums the bucket, not the rows.
+- **A sweep, not `DeleteAsync` at each remove site.** (1) Objects are shared between rows: the catalog flow
+  puts one design object in three rows, two audiences, and `IsR2Url` is a host check only, so any validated
+  URL column can hold any object. Deleting on one row's removal breaks the others. (2) A delete-on-remove
+  fixes nothing already orphaned; a sweep recovers it. (3) Remove sites are N and growing, each able to
+  forget — the branding-entitlement shape.
+- **`StoredObjectReferenceReader`** is the one place that answers "is this key referenced?", built from the
+  Phase 0 table (11 columns, found as a superset over all 278 string columns minus the ones that cannot hold
+  a reference). Every key is checked against every column. Soft-deleted rows count. It is cross-tenant
+  (`IgnoreQueryFilters` usage #55, seven calls). It matches on the key, never one address form: a stored
+  value yields the key behind any known address **and** the path after its host, so a URL on an address
+  nobody recorded still protects its object (extra candidates can only protect more). It catches nothing:
+  a source that cannot be read fails the run rather than reading as "nothing references it". **A new column
+  that stores an object's address must be added to it**, or its objects become orphans; the unit tests have
+  one test per source to make that loud.
+- **`OrphanedObjectSweepJob` is report-only** (daily 05:30 UTC, after the guest cleanup): it has no delete
+  call. It lists the bucket first and reads references after, so a row saved in between can only protect
+  more, and skips objects younger than **7 days**, which holds two constraints: longer than the guest job's 48 h, so that
+  job always acts first, and longer than a form holding an upload sits unsaved (abandoned Friday, finished
+  Monday). An object exactly at the cutoff is still too young. `R2Service.ListByPrefixAsync` returns every
+  `LastModified` as `Kind.Utc` (Unspecified is labelled UTC, not converted, since S3 sends UTC), so the age
+  test does not depend on the pod's time zone; the unsafe direction of a skew would make live files look old. Excluded: `consent/` (RetentionPurgeJob deletes
+  it on a legal grace clock that "unreferenced" would race) and `reports/industry/` (read by key, no row).
+  `appointments/guest-pending/` is deliberately **not** excluded: both deleters use the same unreferenced
+  test and the 48 h job fires first, so the sweep is a slower net (Desktop, 17 Nov). It logs counts and
+  bytes per studio and area, never a key or URL.
+- **`R2Service.ListByPrefixAsync` now follows the continuation token.** It read only the first page (1,000
+  keys), so a studio with more objects was under-counted by the quota job, and a whole-bucket listing would
+  stop at 1,000. Not a formula change: the quota still sums the listed bytes, now of all of them.
+- **Not yet:** deletion (Phase 3, per environment behind configuration, after Desktop reads a staging and a
+  production run and with Phi's go, after the private-storage migration), the quota invariant (Phase 4),
+  and any bulk deletion of existing production orphans (a separate decision). The reader does not yet parse
+  `https://private.invalid/{key}` (0 such values exist); private-storage phase 1 must add it.
+- **Benchmark (rule 6): nothing authoritative found.** Searched 17 Nov for Vagaro, Fresha, Mindbody and
+  Boulevard documentation on whether deleting a client or portfolio photo frees storage. None of the four
+  publishes it; Fresha documents deleting client profiles, not files. Adjacent vendors, not in the
+  benchmark set: PhotoBiz says deleted images stop counting toward the storage limit, and Splose keeps
+  deleted client files 30 days before permanent deletion. **Recorded as product judgment:** a removed file
+  should stop counting and stop being fetchable within days, by a sweep that can prove nothing references
+  it, and the delay is the safety margin, not a restore feature.

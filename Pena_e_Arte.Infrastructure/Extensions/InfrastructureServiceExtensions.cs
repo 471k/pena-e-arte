@@ -172,6 +172,8 @@ public static class InfrastructureServiceExtensions
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
         services.AddTransient<GuestPendingUploadCleanupJob>();
+        services.AddTransient<StoredObjectReferenceReader>();
+        services.AddTransient<OrphanedObjectSweepJob>();
 
         // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).
         // Real VaultClient construction is deferred to first use via LazyVaultClient — its

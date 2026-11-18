@@ -159,6 +159,13 @@ try
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 5)); // staggered after retention-purge (4am)
 
+        // REPORT-ONLY: logs what it would delete and deletes nothing (orphaned-object cleanup, Phase 2).
+        // After guest-pending-upload-cleanup (5am), which acts first on its own prefix.
+        recurringJobs.AddOrUpdate<OrphanedObjectSweepJob>(
+            "orphaned-object-sweep",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 5, minute: 30));
+
         recurringJobs.AddOrUpdate<R2ExportJob>(
             "r2-export",
             j => j.RunAsync(CancellationToken.None),
