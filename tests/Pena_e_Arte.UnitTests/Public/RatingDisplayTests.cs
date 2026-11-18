@@ -37,6 +37,13 @@ public class RatingDisplayTests
     // GB); those are the same class of issue and deliberately out of scope here. PlanLimitService's value is
     // the odd one out: it goes into a PlanUsageSnapshot, which something may compare against a plan limit,
     // so check that one for a decision path rather than assuming it is only displayed.
+    //
+    // How much these scans carry: the first guard is the compiler. RatingDisplay.Average takes (int, int), so a
+    // double mean cannot be handed to it, and any site that uses the helper refuses the mutation at build time.
+    // The scans below cover the code that never reaches the helper at all. They read one line at a time, so an
+    // aggregate whose lambda is split across lines is missed; dotnet format --verify-no-changes (blocking in
+    // ci.yml) keeps lambdas this short on one line. If a second rule ever needs this kind of scan, reconsider
+    // a Roslyn syntax walk then, not for one rule.
 
     [Fact]
     public void EveryAverageRatingField_OnThePublicContracts_IsADecimal()
@@ -83,7 +90,11 @@ public class RatingDisplayTests
         // The positive half. A scan that only looks for the wrong shape passes a file that computes nothing,
         // and passes when it finds no files at all. So: rating aggregates exist, every one is
         // g.Sum(r => r.Rating) with no cast, and each sits in a file that hands the sum to RatingDisplay.
-        Regex aggregatesARating = new(@"\.(Sum|Average|Min|Max)\(.*\.Rating\b");
+        // Sum and Average only: Review.Rating is an int, so Min and Max over it return an int and cannot carry a
+        // double (a cast inside them is caught by the negative scan's ratingAsDouble). "Highest rated" is fine.
+        // The \1 backreference is deliberate: the lambda's parameter must be the thing whose Rating is summed,
+        // which also catches g.Sum(r => x.Rating), the wrong-variable bug. Do not simplify it to \w+.
+        Regex aggregatesARating = new(@"\.(Sum|Average)\(.*\.Rating\b");
         Regex integerSum = new(@"\.Sum\(\s*(\w+)\s*=>\s*\1\.Rating\s*\)");
 
         List<SourceLine> lines = ServerSourceLines().ToList();
@@ -103,7 +114,8 @@ public class RatingDisplayTests
 
         offenders.Should().BeEmpty(
             because: "a rating aggregate is an integer sum (with a count) handed to RatingDisplay.Average; "
-                   + "any other aggregate over Rating is a second, double-valued copy of the rule");
+                   + "an Average over Rating is a double-valued copy of the rule, and a Sum over anything but the "
+                   + "lambda's own Rating sums the wrong thing");
     }
 
     private sealed record SourceLine(string File, int Number, string Text)
