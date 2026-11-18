@@ -140,7 +140,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
             objects.AddRange((response.S3Objects ?? [])
                 .Select(o => new R2ObjectInfo(
                     o.Key,
-                    o.LastModified ?? DateTime.UtcNow,
+                    ToUtc(o.LastModified),
                     o.Size ?? 0L)));
 
             continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
@@ -149,4 +149,19 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
 
         return objects;
     }
+
+    /// <summary>
+    /// Every LastModified leaves here as DateTimeKind.Utc. Callers compare it with a UTC cutoff, and DateTime
+    /// comparison ignores Kind, so a Local or Unspecified value would be correct only while the pod's clock
+    /// happens to be UTC. OrphanedObjectSweepJob's minimum age depends on it, and the unsafe direction (an
+    /// object looking older than it is) moves live files into the delete set. S3 sends UTC on the wire, so an
+    /// Unspecified value is LABELLED Utc, not converted; a Local one is converted. A missing timestamp reads
+    /// as "now": brand new, so never old enough to sweep.
+    /// </summary>
+    internal static DateTime ToUtc(DateTime? lastModified) => lastModified switch
+    {
+        null => DateTime.UtcNow,
+        { Kind: DateTimeKind.Unspecified } lm => DateTime.SpecifyKind(lm, DateTimeKind.Utc),
+        { } lm => lm.ToUniversalTime(),
+    };
 }

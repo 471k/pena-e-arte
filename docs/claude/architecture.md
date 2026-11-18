@@ -7208,8 +7208,11 @@ Desktop's 17 Nov decision on the logging convention, scoped to all jobs rather t
   one test per source to make that loud.
 - **`OrphanedObjectSweepJob` is report-only** (daily 05:30 UTC, after the guest cleanup): it has no delete
   call. It lists the bucket first and reads references after, so a row saved in between can only protect
-  more, and skips objects younger than **7 days** (an object is uploaded before its row is saved; longer
-  than the guest job's 48 h so that job always acts first). Excluded: `consent/` (RetentionPurgeJob deletes
+  more, and skips objects younger than **7 days**, which holds two constraints: longer than the guest job's 48 h, so that
+  job always acts first, and longer than a form holding an upload sits unsaved (abandoned Friday, finished
+  Monday). An object exactly at the cutoff is still too young. `R2Service.ListByPrefixAsync` returns every
+  `LastModified` as `Kind.Utc` (Unspecified is labelled UTC, not converted, since S3 sends UTC), so the age
+  test does not depend on the pod's time zone; the unsafe direction of a skew would make live files look old. Excluded: `consent/` (RetentionPurgeJob deletes
   it on a legal grace clock that "unreferenced" would race) and `reports/industry/` (read by key, no row).
   `appointments/guest-pending/` is deliberately **not** excluded: both deleters use the same unreferenced
   test and the 48 h job fires first, so the sweep is a slower net (Desktop, 17 Nov). It logs counts and

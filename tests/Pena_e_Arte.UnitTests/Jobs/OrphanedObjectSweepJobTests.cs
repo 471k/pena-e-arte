@@ -71,6 +71,48 @@ public class OrphanedObjectSweepJobTests
         Summary.Should().Contain("1 younger than 7 days").And.Contain("0 unreferenced");
     }
 
+    // The boundary: exactly at the cutoff is still too young (>=), one second past it is a candidate.
+    [Fact]
+    public async Task AnObjectExactlyAtTheCutoff_IsStillTooYoung_OneSecondOlderIsACandidate()
+    {
+        DateTime cutoff = Now.UtcDateTime - OrphanedObjectSweepJob.MinimumAge;
+        Bucket(
+            new R2ObjectInfo($"{_studio}/portfolio/a/at.jpg", cutoff, 10),
+            new R2ObjectInfo($"{_studio}/portfolio/a/past.jpg", cutoff.AddSeconds(-1), 20));
+
+        await Run();
+
+        Summary.Should().Contain("1 younger than 7 days").And.Contain("1 unreferenced (20 bytes)");
+    }
+
+    // The G-1 shape: the same instant arriving with a non-UTC Kind must give the same verdict. Runs the real
+    // R2Service listing (S3 faked). Both sides of the cutoff, because a zone ahead of UTC shifts a Local value
+    // one way and a wrong ToUniversalTime() on an Unspecified value shifts it the other: on a non-UTC machine
+    // (Paris here) one of the two cases flips if the normalization regresses. On a UTC runner they agree.
+    [Theory]
+    [InlineData(30, 3, 0)]   // 30 min younger than the cutoff: all three too young
+    [InlineData(-30, 0, 3)]  // 30 min older: all three candidates
+    public async Task TheSameInstantInAnyKind_GetsTheSameVerdict(int minutesFromCutoff, int young, int unreferenced)
+    {
+        DateTime justYoung = Now.UtcDateTime - OrphanedObjectSweepJob.MinimumAge + TimeSpan.FromMinutes(minutesFromCutoff);
+        IAmazonS3 s3 = Substitute.For<IAmazonS3>();
+        s3.ListObjectsV2Async(Arg.Any<Amazon.S3.Model.ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new Amazon.S3.Model.ListObjectsV2Response
+            {
+                S3Objects =
+                [
+                    new Amazon.S3.Model.S3Object { Key = $"{_studio}/portfolio/a/utc.jpg", LastModified = justYoung, Size = 1 },
+                    new Amazon.S3.Model.S3Object { Key = $"{_studio}/portfolio/a/local.jpg", LastModified = justYoung.ToLocalTime(), Size = 1 },
+                    new Amazon.S3.Model.S3Object { Key = $"{_studio}/portfolio/a/unspec.jpg", LastModified = DateTime.SpecifyKind(justYoung, DateTimeKind.Unspecified), Size = 1 },
+                ],
+            });
+        R2Service r2 = new(s3, Options.Create(new R2Options { BucketName = "b", PublicUrl = Address }));
+
+        await new OrphanedObjectSweepJob(r2, new StoredObjectReferenceReader(_db, r2), new FixedTimeProvider(Now), _logger).RunAsync();
+
+        Summary.Should().Contain($"{young} younger than 7 days").And.Contain($"{unreferenced} unreferenced");
+    }
+
     [Theory]
     [InlineData("consent/{0}/form.pdf")]
     [InlineData("reports/industry/2026-11.json")]

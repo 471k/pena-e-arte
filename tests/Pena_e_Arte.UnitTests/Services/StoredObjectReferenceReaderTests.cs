@@ -245,6 +245,22 @@ public class StoredObjectReferenceReaderTests
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
+    // Pins which stored shapes protect an object (Desktop, 18 Nov, accepted residual risk). The last two are
+    // NOT decoded: unreachable while the columns are IsR2Url-validated. If a validator is relaxed so one of
+    // them can be stored, this test is where the gap shows up; decode the shape before relaxing.
+    [Theory]
+    [InlineData("https://media.example.com/s1/portfolio/a.jpg", true)]
+    [InlineData("https://media.example.com/s1/portfolio/a.jpg?v=2", true)]
+    [InlineData("https://media.example.com/s1/portfolio/a.jpg#frag", true)]
+    [InlineData("https://unrecorded.example.net/s1/portfolio/a.jpg", true)]
+    [InlineData("s1/portfolio/a.jpg", true)]
+    [InlineData("/s1/portfolio/a.jpg", false)]
+    [InlineData("//media.example.com/s1/portfolio/a.jpg", false)]
+    public void CandidateKeys_DecodableShapes(string stored, bool protects)
+    {
+        StoredObjectReferenceReader.CandidateKeys(stored, _r2).Contains("s1/portfolio/a.jpg").Should().Be(protects);
+    }
+
     [Theory]
     [InlineData("https://media.example.com/s1/portfolio/a.jpg", "s1/portfolio/a.jpg")]
     [InlineData("https://MEDIA.example.com/s1/portfolio/a.jpg", "s1/portfolio/a.jpg")]

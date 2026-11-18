@@ -143,6 +143,39 @@ public class R2ServiceTests
         result.Select(o => o.Key).Should().Equal("s1/a.jpg", "s1/b.jpg");
     }
 
+    // LastModified leaves the listing as Kind.Utc whatever Kind the SDK hands back, so the sweep's age
+    // comparison never depends on the pod's time zone (Desktop, 18 Nov).
+    [Fact]
+    public async Task ListByPrefixAsync_ReturnsUtc_ForLocalUnspecifiedAndUtcTimestamps_AtTheSameInstant()
+    {
+        DateTime instant = new(2026, 11, 1, 10, 30, 0, DateTimeKind.Utc);
+        _s3.ListObjectsV2Async(Arg.Any<ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response
+            {
+                S3Objects =
+                [
+                    new S3Object { Key = "utc", LastModified = instant },
+                    new S3Object { Key = "local", LastModified = instant.ToLocalTime() },
+                    new S3Object { Key = "unspecified", LastModified = DateTime.SpecifyKind(instant, DateTimeKind.Unspecified) },
+                ],
+            });
+
+        IReadOnlyList<R2ObjectInfo> result = await CreateSut().ListByPrefixAsync("", default);
+
+        result.Should().OnlyContain(o => o.LastModified.Kind == DateTimeKind.Utc && o.LastModified == instant);
+    }
+
+    [Fact]
+    public async Task ListByPrefixAsync_MissingTimestamp_ReadsAsNow_SoNeverOldEnoughToSweep()
+    {
+        _s3.ListObjectsV2Async(Arg.Any<ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { S3Objects = [new S3Object { Key = "k", LastModified = null }] });
+
+        IReadOnlyList<R2ObjectInfo> result = await CreateSut().ListByPrefixAsync("", default);
+
+        result[0].LastModified.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+    }
+
     [Theory]
     [InlineData("https://media.example.com/s1/portfolio/a.jpg", "s1/portfolio/a.jpg")]
     [InlineData("https://bucket.old-worker.example.dev/s1/a.jpg", "s1/a.jpg")]

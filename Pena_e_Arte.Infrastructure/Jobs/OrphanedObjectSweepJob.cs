@@ -26,6 +26,11 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// clock that "unreferenced" would race) and reports/industry/ (read by key, no row ever points at it).
 /// appointments/guest-pending/ is deliberately NOT excluded: GuestPendingUploadCleanupJob applies the same
 /// unreferenced test at 48 hours, so it always acts first and this sweep is a slower net behind it.
+/// The backup bucket needs no exclusion: every R2Service call pins BucketName to the primary bucket, so the
+/// backup is unreachable from this service at all. Structural, not configured.
+///
+/// LastModified arrives as DateTimeKind.Utc (R2Service.ToUtc) and the cutoff is UTC, so the age comparison
+/// does not depend on the pod's time zone. An object exactly at the cutoff is still too young.
 ///
 /// Logs counts, bytes, studio ids and area names only, never a key or a URL.
 /// </summary>
@@ -36,8 +41,9 @@ public class OrphanedObjectSweepJob(
     ILogger<OrphanedObjectSweepJob> logger)
 {
     /// <summary>
-    /// Longer than GuestPendingUploadCleanupJob's 48 hours on purpose: it must always act first on its own
-    /// prefix, and a booking or revision form left open over a weekend must not lose its upload.
+    /// Two constraints: longer than GuestPendingUploadCleanupJob's 48 hours, so that job always acts first on
+    /// its own prefix; and longer than the longest time a form holding an upload sits unsaved (a booking
+    /// abandoned on a Friday and finished on a Monday). Change it only with both in mind.
     /// </summary>
     internal static readonly TimeSpan MinimumAge = TimeSpan.FromDays(7);
 

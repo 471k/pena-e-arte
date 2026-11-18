@@ -63,6 +63,12 @@ public class StoredObjectReferenceReader(IAppDbContext db, IR2Service r2)
         values.AddRange(await db.AppointmentAttachments.IgnoreQueryFilters()
             .Select(a => a.ImageUrl).ToListAsync(ct));
 
+        // Sources 5, 6 and 11 take NO IgnoreQueryFilters() because ConductReport, FeedbackReport and Studio have
+        // no query filter at all (AppDbContext: "No HasQueryFilter" on the first two; Studio has no entity
+        // block). That absence is load-bearing: if a tenant filter is ever added to one of them, this read
+        // returns nothing under a job (StudioId == Guid.Empty) and every object it references looks orphaned.
+        // Add the bypass here in the same change.
+
         // 5. ConductReport.AttachmentUrls — JSON list; no tenant filter on this entity.
         foreach (List<string> urls in await db.ConductReports
                      .Select(c => c.AttachmentUrls).ToListAsync(ct))
@@ -114,6 +120,16 @@ public class StoredObjectReferenceReader(IAppDbContext db, IR2Service r2)
     /// <summary>
     /// Every key a stored value might name: the key behind a known address, the path after the host of
     /// any absolute http(s) URL, and the value itself when it is not a URL at all (a bare key).
+    ///
+    /// The path-after-host candidate is load-bearing, not just generous. TryGetObjectKey returns everything
+    /// after the address, query string included, so "https://media.tattooos.co/{studioId}/portfolio/x.jpg?v=2"
+    /// yields "{studioId}/portfolio/x.jpg?v=2", which matches no key. The path candidate stops at '?' and '#'
+    /// and yields "{studioId}/portfolio/x.jpg", which is what protects that object. Do not remove it.
+    ///
+    /// Not decoded (accepted residual risk, Desktop 18 Nov): a leading-slash relative path ("/{studioId}/...")
+    /// or a protocol-relative URL ("//host/{studioId}/..."). Unreachable today, because nine of the eleven
+    /// columns are validated by IsR2Url (a known address) and PortfolioImage holds either a presigned upload
+    /// URL or an external link. CandidateKeys_DecodableShapes pins this; relaxing a validator must revisit it.
     /// </summary>
     internal static IEnumerable<string> CandidateKeys(string value, IR2Service r2)
     {
