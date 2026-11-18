@@ -183,9 +183,14 @@ never happened look the same.
 - **Failures throw.** `HangfireJobOutcomeLogFilter` logs `HangfireJobFailed`, which the alert in
   `docs/infra/alerting-runbook.md` matches. Only a failure the job swallows on purpose needs its own
   Warning or Error line.
-- **Ids only, never PII** (CLAUDE.md rule 3).
+- **Ids only, never PII** (CLAUDE.md rule 3). **When the outcome is per-recipient or per-channel, the line
+  carries the entity id and the outcome lives in rows** (e.g. `NotificationLog`): not even a send-success flag
+  derived from contact details goes in the line (CodeQL flagged exactly that in `AppointmentReminderJob`).
 - **The filter also logs `HangfireJobSucceeded {Type}.{Method} {DurationMs}` for every job**, so
   "did it run?" is one Loki query without any per-job code.
+  **Volume trigger:** this line follows traffic for per-event jobs. If job log lines pass roughly a third of
+  total Loki ingest (measured ~18 MB/day in Nov 2026), drop the success line for per-event jobs and keep it
+  for the recurring ones.
 - **What this does not answer:** whether a job scheduled once (a trial's end, a grace period's end)
   ran *when it should have*. A lost scheduled job leaves no line at all. That needs reconciliation
   ("a trial past its end still Trialing"), which is not built. It is recorded here so nobody assumes

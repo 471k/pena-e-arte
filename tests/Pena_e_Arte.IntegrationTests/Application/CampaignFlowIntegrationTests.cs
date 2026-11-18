@@ -45,7 +45,8 @@ public class CampaignFlowIntegrationTests(DatabaseFixture fixture)
         IMarketingOptOutSigner signer = Substitute.For<IMarketingOptOutSigner>();
         signer.Sign(Arg.Any<Guid>()).Returns("signed-token");
 
-        await using AppDbContext jobDb = fixture.CreateDbContext(studioId);
+        // The job's own condition: no tenant set (the jobs audit found this test ran with one).
+        await using AppDbContext jobDb = fixture.CreateDbContext(Guid.Empty);
         SendCampaignJob job = new(jobDb, notifications, signer, NullLogger<SendCampaignJob>.Instance);
         await job.RunAsync(draft.Id);
 
@@ -95,6 +96,36 @@ public class CampaignFlowIntegrationTests(DatabaseFixture fixture)
 
         await using AppDbContext verify2 = fixture.CreateDbContext(studioId);
         (await verify2.Campaigns.FirstAsync(c => c.Id == draft.Id)).DeliveredCount.Should().Be(0);
+    }
+
+    // A deleted scheduled campaign must not go out. Under job conditions (no tenant) the read bypasses the
+    // global filter, so only an explicit DeletedAt predicate stops it.
+    [Fact]
+    public async Task SoftDeletedCampaign_UnderJobConditions_IsNotSent()
+    {
+        Guid studioId = await SeedStudio();
+        await SeedActiveSubscription(studioId, allowMarketingCampaigns: true);
+        await SeedClient(studioId, marketingOptIn: true);
+        CampaignResponse draft = await RunCreateCampaign(studioId, new CreateCampaignRequest(
+            "Withdrawn", "<p>Hi</p>", nameof(CampaignAudience.AllClients)));
+        await RunSendCampaign(studioId, draft.Id, Substitute.For<IJobScheduler>());
+        await using (AppDbContext delete = fixture.CreateDbContext(studioId))
+        {
+            Campaign c = await delete.Campaigns.FirstAsync(x => x.Id == draft.Id);
+            c.DeletedAt = DateTime.UtcNow;
+            await delete.SaveChangesAsync();
+        }
+
+        INotificationService notifications = Substitute.For<INotificationService>();
+        await using AppDbContext jobDb = fixture.CreateDbContext(Guid.Empty);
+        await new SendCampaignJob(jobDb, notifications, Substitute.For<IMarketingOptOutSigner>(),
+            NullLogger<SendCampaignJob>.Instance).RunAsync(draft.Id);
+
+        await notifications.DidNotReceive().SendEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await using AppDbContext verify = fixture.CreateDbContext(Guid.Empty);
+        (await verify.Campaigns.IgnoreQueryFilters().FirstAsync(c => c.Id == draft.Id)).Status
+            .Should().NotBe(CampaignStatus.Sent);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
