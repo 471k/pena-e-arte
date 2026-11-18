@@ -1,5 +1,5 @@
 export { publicApi, useGetPublicPlansQuery, useGetPublicStudioQuery, useGetPublicArtistQuery, useGetSharedDesignQuery, useGetNearbyStudiosQuery, useGetStudioReviewsQuery, useGetArtistReviewsQuery, useCreateStudioReviewMutation, useCreateArtistReviewMutation } from "./publicApi";
-export type { PublicPlanResponse, PublicPlanPriceResponse, PublicStudioResponse, PublicArtistResponse, PublicArtistSummary, SharedDesignResponse, NearbyStudioResponse, ReviewResponse, NearbyStudiosArgs, CreateReviewArgs, PortfolioImageResponse, PortfolioFeedArgs } from "./publicApi";
+export type { PublicPlanResponse, PublicPlanPriceResponse, PublicStudioResponse, PublicArtistResponse, PublicArtistSummary, SharedDesignResponse, NearbyStudioResponse, ReviewResponse, ReviewListResponse, NearbyStudiosArgs, CreateReviewArgs, PortfolioImageResponse, PortfolioFeedArgs } from "./publicApi";
 export { savedImagesApi, useGetSavedImageIdsQuery, useGetSavedImagesQuery, useSaveImageMutation, useUnsaveImageMutation } from "./savedImagesApi";
 export { StudioPortfolioPage } from "./components/StudioPortfolioPage";
 export { ArtistPortfolioPage } from "./components/ArtistPortfolioPage";

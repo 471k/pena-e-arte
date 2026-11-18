@@ -16,6 +16,7 @@ import {
   useCreateArtistReviewMutation,
   useCreatePortfolioImageReviewMutation,
   type ReviewResponse,
+  type ReviewListResponse,
 } from "../publicApi";
 
 const PAGE_SIZE = 10;
@@ -375,54 +376,37 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
   );
 }
 
+// The average and count above a list are the server's (the same rule and number as the page's own
+// rating, over every review). Never recompute them from `reviews`: that is only the newest 50, and a
+// client-side mean rounds differently, which is how one studio once showed 4.2 and 4.3 on one page.
 function StudioReviewList({ slug, canRespond }: { slug: string; canRespond?: boolean }) {
-  const { data: reviews, isLoading } = useGetStudioReviewsQuery(slug);
-  const averageRating = reviews && reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : null;
-  return (
-    <ReviewList
-      reviews={reviews} isLoading={isLoading} averageRating={averageRating} canRespond={canRespond}
-    />
-  );
+  const { data, isLoading } = useGetStudioReviewsQuery(slug);
+  return <ReviewList data={data} isLoading={isLoading} canRespond={canRespond} />;
 }
 
 function ArtistReviewList({ slug, canRespond }: { slug: string; canRespond?: boolean }) {
-  const { data: reviews, isLoading } = useGetArtistReviewsQuery(slug);
-  const averageRating = reviews && reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : null;
-  return (
-    <ReviewList
-      reviews={reviews} isLoading={isLoading} averageRating={averageRating} canRespond={canRespond}
-    />
-  );
+  const { data, isLoading } = useGetArtistReviewsQuery(slug);
+  return <ReviewList data={data} isLoading={isLoading} canRespond={canRespond} />;
 }
 
 function PortfolioImageReviewList({ imageId, canRespond }: { imageId: string; canRespond?: boolean }) {
-  const { data: reviews, isLoading } = useGetPortfolioImageReviewsQuery(imageId);
-  const averageRating = reviews && reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : null;
-  return (
-    <ReviewList
-      reviews={reviews} isLoading={isLoading} averageRating={averageRating} canRespond={canRespond}
-    />
-  );
+  const { data, isLoading } = useGetPortfolioImageReviewsQuery(imageId);
+  return <ReviewList data={data} isLoading={isLoading} canRespond={canRespond} />;
 }
 
 function ReviewList({
-  reviews,
+  data,
   isLoading,
-  averageRating,
   canRespond,
 }: {
-  reviews:       ReviewResponse[] | undefined;
-  isLoading:     boolean;
-  averageRating: number | null;
-  canRespond?:   boolean;
+  data:        ReviewListResponse | undefined;
+  isLoading:   boolean;
+  canRespond?: boolean;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const reviews: ReviewResponse[] | undefined = data?.reviews;
+  const averageRating = data?.averageRating ?? null;
+  const reviewCount   = data?.reviewCount ?? 0;
 
   const visible = !reviews
     ? []
@@ -434,14 +418,14 @@ function ReviewList({
 
   return (
     <>
-      {averageRating !== null && reviews && reviews.length > 0 && (
+      {averageRating !== null && reviewCount > 0 && (
         <div className="flex items-center gap-2 pb-3">
           <StarRating value={Math.round(averageRating)} size="sm" />
           <span className="text-sm font-semibold tabular-nums">
             {averageRating.toFixed(1)}
           </span>
           <span className="text-xs text-muted-foreground">
-            · {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+            · {reviewCount} review{reviewCount !== 1 ? "s" : ""}
           </span>
         </div>
       )}

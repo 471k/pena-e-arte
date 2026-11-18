@@ -9,9 +9,9 @@ public record PortfolioImageResponse(
     string ArtistSlug,
     string StudioName,
     string StudioSlug,
-    double? AverageRating,      // artist-level rating; null = no reviews yet
+    decimal? AverageRating,      // artist-level rating; null = no reviews yet
     int ReviewCount,        // artist-level
-    double? ImageAverageRating, // rating for this specific image; null = no reviews
+    decimal? ImageAverageRating, // rating for this specific image; null = no reviews
     int ImageReviewCount,   // review count for this specific image
     double? DistanceKm,         // null when no location context provided
     long ViewCount);         // from Redis; 0 when not yet viewed

@@ -109,17 +109,17 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
         List<Guid> artistIds = images.Select(p => p.ArtistId).Distinct().ToList();
 
         // 3. Per-image review aggregates.
-        Dictionary<Guid, (double Sum, int Count)> imageReviews = await db.Reviews
+        Dictionary<Guid, (int Sum, int Count)> imageReviews = await db.Reviews
             .Where(r => r.PortfolioImageId.HasValue && imageIds.Contains(r.PortfolioImageId!.Value))
             .GroupBy(r => r.PortfolioImageId!.Value)
-            .Select(g => new { Id = g.Key, Sum = g.Sum(r => (double)r.Rating), Count = g.Count() })
+            .Select(g => new { Id = g.Key, Sum = g.Sum(r => r.Rating), Count = g.Count() })
             .ToDictionaryAsync(x => x.Id, x => (x.Sum, x.Count), ct);
 
         // 4. Artist-level review aggregates.
-        Dictionary<Guid, (double Sum, int Count)> artistReviews = await db.Reviews
+        Dictionary<Guid, (int Sum, int Count)> artistReviews = await db.Reviews
             .Where(r => r.ArtistId.HasValue && artistIds.Contains(r.ArtistId!.Value))
             .GroupBy(r => r.ArtistId!.Value)
-            .Select(g => new { Id = g.Key, Sum = g.Sum(r => (double)r.Rating), Count = g.Count() })
+            .Select(g => new { Id = g.Key, Sum = g.Sum(r => r.Rating), Count = g.Count() })
             .ToDictionaryAsync(x => x.Id, x => (x.Sum, x.Count), ct);
 
         // 5. Redis view counts — batch MGET (falls back to 0 if Redis is unavailable).
@@ -151,12 +151,13 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
             .Where(img => studiosById.ContainsKey(img.Artist.StudioId))
             .Select(img =>
             {
-                imageReviews.TryGetValue(img.Id, out (double Sum, int Count) ir);
-                artistReviews.TryGetValue(img.ArtistId, out (double Sum, int Count) ar);
+                imageReviews.TryGetValue(img.Id, out (int Sum, int Count) ir);
+                artistReviews.TryGetValue(img.ArtistId, out (int Sum, int Count) ar);
                 viewCounts.TryGetValue(img.ArtistId, out long views);
 
-                double imageAvg = ir.Count > 0 ? ir.Sum / ir.Count : 3.5;
-                double artistAvg = ar.Count > 0 ? ar.Sum / ar.Count : 3.5;
+                // Ranking, not display: a double mean with a 3.5 prior. The shown numbers come from RatingDisplay below.
+                double imageAvg = ir.Count > 0 ? (double)ir.Sum / ir.Count : 3.5;
+                double artistAvg = ar.Count > 0 ? (double)ar.Sum / ar.Count : 3.5;
                 double blended = ir.Count > 0 ? imageAvg * 0.6 + artistAvg * 0.4 : artistAvg;
                 double bayesian = (ir.Count * blended + 5 * 3.5) / (ir.Count + 5);
                 double score = bayesian * 0.7 + Math.Log10(views + 1) * 0.3;
@@ -182,9 +183,9 @@ public class GetPortfolioFeedHandler(IAppDbContext db, IConnectionMultiplexer re
                     ArtistSlug: a.Slug!,
                     StudioName: studio.Name,
                     StudioSlug: studio.Slug,
-                    AverageRating: x.Ar.Count > 0 ? Math.Round(x.Ar.Sum / x.Ar.Count, 1) : null,
+                    AverageRating: RatingDisplay.Average(x.Ar.Sum, x.Ar.Count),
                     ReviewCount: x.Ar.Count,
-                    ImageAverageRating: x.Ir.Count > 0 ? Math.Round(x.Ir.Sum / x.Ir.Count, 1) : null,
+                    ImageAverageRating: RatingDisplay.Average(x.Ir.Sum, x.Ir.Count),
                     ImageReviewCount: x.Ir.Count,
                     DistanceKm: distKm,
                     ViewCount: x.Views);

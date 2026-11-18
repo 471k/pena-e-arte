@@ -16,7 +16,7 @@ public class SeoShellHtmlWriterTests
         string? coverImageUrl = "https://cdn.example.com/cover.jpg",
         double latitude = 41.1579,
         double longitude = -8.6291,
-        double? averageRating = 4.5,
+        decimal? averageRating = 4.5m,
         int reviewCount = 3,
         IReadOnlyList<PublicArtistSummary>? artists = null,
         IReadOnlyList<PublicStudioHoursResponse>? hours = null) =>
@@ -34,7 +34,7 @@ public class SeoShellHtmlWriterTests
         string studioName = "Ink Studio",
         string studioSlug = "ink-studio") =>
         new(
-            Guid.NewGuid(), name, slug, bio, profileImageUrl, [], [], null, 4.8, 5,
+            Guid.NewGuid(), name, slug, bio, profileImageUrl, [], [], null, 4.8m, 5,
             studioName, studioSlug, true, false, [], "EUR");
 
     // ── Studio shell ─────────────────────────────────────────────────────────────
@@ -177,6 +177,18 @@ public class SeoShellHtmlWriterTests
         JsonDocument doc = JsonDocument.Parse(ExtractJsonLd(html));
 
         doc.RootElement.TryGetProperty("aggregateRating", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BuildStudioShell_JsonLd_RatingValueIsTheSameNumberThePageShows()
+    {
+        // Search engines read the same rounded average the studio page prints, as a JSON number.
+        string html = SeoShellHtmlWriter.BuildStudioShell(MakeStudio(reviewCount: 4, averageRating: 4.3m), Base);
+        JsonDocument doc = JsonDocument.Parse(ExtractJsonLd(html));
+
+        JsonElement rating = doc.RootElement.GetProperty("aggregateRating").GetProperty("ratingValue");
+        rating.ValueKind.Should().Be(JsonValueKind.Number);
+        rating.GetRawText().Should().Be("4.3");
     }
 
     [Fact]

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import { ReviewSection } from "@/features/public/components/ReviewSection";
-import type { ReviewResponse, ReviewableAppointmentResponse } from "@/features/public/publicApi";
+import type { ReviewListResponse, ReviewResponse, ReviewableAppointmentResponse } from "@/features/public/publicApi";
 import { toast } from "sonner";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
@@ -14,7 +14,15 @@ const mockCreateStudioReview         = vi.fn();
 const mockCreatePortfolioImageReview = vi.fn();
 const mockRespondToReview            = vi.fn();
 
-const mockArtistReviewsResult = { data: [] as ReviewResponse[], isLoading: false };
+// The list the artist query returns; the summary defaults to "no reviews" unless a test sets one, so it
+// is never derived from the list here either.
+const mockArtistReviewsResult = {
+  data: [] as ReviewResponse[],
+  isLoading: false,
+  averageRating: null as number | null,
+  reviewCount: 0,
+};
+const EMPTY_LIST: ReviewListResponse = { reviews: [], averageRating: null, reviewCount: 0 };
 
 // Defaults to a single eligible visit so most tests exercise the form directly,
 // without needing to interact with the "which visit?" picker.
@@ -24,9 +32,16 @@ const mockReviewableAppointmentsResult =
   { data: [ELIGIBLE_APPOINTMENT] as ReviewableAppointmentResponse[], isLoading: false };
 
 vi.mock("@/features/public/publicApi", () => ({
-  useGetArtistReviewsQuery:                () => mockArtistReviewsResult,
-  useGetStudioReviewsQuery:                () => ({ data: [] as ReviewResponse[], isLoading: false }),
-  useGetPortfolioImageReviewsQuery:        () => ({ data: [] as ReviewResponse[], isLoading: false }),
+  useGetArtistReviewsQuery:                () => ({
+    isLoading: mockArtistReviewsResult.isLoading,
+    data: {
+      reviews:       mockArtistReviewsResult.data,
+      averageRating: mockArtistReviewsResult.averageRating,
+      reviewCount:   mockArtistReviewsResult.reviewCount,
+    } satisfies ReviewListResponse,
+  }),
+  useGetStudioReviewsQuery:                () => ({ data: EMPTY_LIST, isLoading: false }),
+  useGetPortfolioImageReviewsQuery:        () => ({ data: EMPTY_LIST, isLoading: false }),
   useGetReviewableStudioAppointmentsQuery: () => mockReviewableAppointmentsResult,
   useGetReviewableArtistAppointmentsQuery: () => mockReviewableAppointmentsResult,
   useCreateArtistReviewMutation:         () => [mockCreateArtistReview,         { isLoading: false }],
@@ -61,6 +76,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockArtistReviewsResult.data = [];
   mockArtistReviewsResult.isLoading = false;
+  mockArtistReviewsResult.averageRating = null;
+  mockArtistReviewsResult.reviewCount = 0;
   mockReviewableAppointmentsResult.data = [ELIGIBLE_APPOINTMENT];
   mockReviewableAppointmentsResult.isLoading = false;
 });
@@ -218,6 +235,42 @@ describe("ReviewSection — Post Review button state", () => {
     await user.keyboard("{Enter}");
     expect(await screen.findByRole("alert")).toHaveTextContent(/please select a star rating/i);
     expect(mockCreateArtistReview).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReviewSection — rating summary", () => {
+  const REVIEW: ReviewResponse = {
+    id: "r-1", authorName: "Ana Costa", rating: 5, body: "Fantastic work",
+    createdAt: "2026-06-01T00:00:00Z", isVerifiedBooking: true, ownerResponse: null, ownerResponseAt: null,
+  };
+
+  it("shows the server's average and count, not a mean of the reviews it lists", () => {
+    // The list holds only the newest 50; here one 5-star review, while the server's summary covers 51
+    // reviews averaging 4.9. A client-side mean would print 5.0 and "1 review".
+    mockArtistReviewsResult.data = [REVIEW];
+    mockArtistReviewsResult.averageRating = 4.9;
+    mockArtistReviewsResult.reviewCount = 51;
+    renderSection();
+
+    expect(screen.getByText("4.9")).toBeInTheDocument();
+    expect(screen.getByText(/51 reviews/)).toBeInTheDocument();
+    expect(screen.queryByText("5.0")).not.toBeInTheDocument();
+  });
+
+  it("prints the server's 4.3 for ratings 4, 4, 4, 5, the number the studio page shows", () => {
+    mockArtistReviewsResult.data = [4, 4, 4, 5].map((rating, i) => ({ ...REVIEW, id: `r-${i}`, rating }));
+    mockArtistReviewsResult.averageRating = 4.3;
+    mockArtistReviewsResult.reviewCount = 4;
+    renderSection();
+
+    expect(screen.getByText("4.3")).toBeInTheDocument();
+    expect(screen.getByText(/4 reviews/)).toBeInTheDocument();
+  });
+
+  it("shows no summary when the server says there are no reviews", () => {
+    renderSection();
+    expect(screen.getByText(/no reviews yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/· \d+ review/)).not.toBeInTheDocument();
   });
 });
 

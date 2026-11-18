@@ -371,6 +371,12 @@ and on every money record's own response (`PaymentResponse`, `GiftCardResponse`,
 
 ---
 
+## Testing "X never appears before Y"
+
+A test that asserts something is never shown before something else (a first paint, a flash of the wrong state) can use neither `findBy*` nor a plain assertion straight after `render()`. Both see the screen after effects have run: `findBy*` retries until it matches, and RTL wraps `render()` in `act()`, which flushes effects before it returns. Either would pass on a page that does flash. Record the first commit instead, from a `useLayoutEffect` in a probe component mounted after the component under test, and assert on what it captured (see `FirstCommitProbe` in `features/payments/__tests__/PaymentResultPage.test.tsx`). Prove the probe works with a mutation check: make the page show X on its first render only, and check the test fails.
+
+---
+
 ## TypeScript Rules
 
 - `strict: true` in `tsconfig.json` — no exceptions.

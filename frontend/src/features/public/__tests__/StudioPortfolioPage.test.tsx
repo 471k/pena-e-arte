@@ -30,7 +30,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useCreateStudioReviewMutation:         () => [vi.fn(), { isLoading: false }],
     useCreateArtistReviewMutation:         () => [vi.fn(), { isLoading: false }],
     useCreatePortfolioImageReviewMutation: () => [vi.fn(), { isLoading: false }],
-    useGetPortfolioImageReviewsQuery:      () => ({ data: [], isLoading: false }),
+    useGetPortfolioImageReviewsQuery:      () => ({ data: { reviews: [], averageRating: null, reviewCount: 0 }, isLoading: false }),
     useGetReviewableArtistAppointmentsQuery: () => ({ data: [], isLoading: false }),
     useGetReviewableStudioAppointmentsQuery: () => ({ data: [], isLoading: false }),
   };
@@ -122,7 +122,7 @@ function renderPage(token: string | null = null) {
 describe("StudioPortfolioPage", () => {
   beforeEach(() => {
     mockUseGetPublicStudioQuery.mockReturnValue({ data: STUDIO, isLoading: false, isError: false });
-    mockUseGetStudioReviewsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockUseGetStudioReviewsQuery.mockReturnValue({ data: { reviews: [], averageRating: null, reviewCount: 0 }, isLoading: false });
     mockNavigate.mockClear();
   });
 

@@ -8,5 +8,5 @@ public record NearbyStudioResponse(
     string? CoverImageUrl,
     double DistanceKm,
     int ArtistCount,
-    double? AverageRating,   // null = no reviews yet
+    decimal? AverageRating,   // null = no reviews yet
     int ReviewCount);

@@ -33,10 +33,10 @@ public class GetArtistReviewsHandlerTests
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
 
-        List<ReviewResponse> result = await CreateSut().Handle(
+        ReviewListResponse result = await CreateSut().Handle(
             new GetArtistReviewsQuery(artist.Slug!), CancellationToken.None);
 
-        result.Should().ContainSingle(r =>
+        result.Reviews.Should().ContainSingle(r =>
             r.OwnerResponse == "Thanks for coming in!" && r.OwnerResponseAt != null);
     }
 
@@ -47,9 +47,9 @@ public class GetArtistReviewsHandlerTests
         _db.Reviews.Add(Review.ForArtist(artist.Id, Guid.NewGuid(), Guid.NewGuid(), "Ana Silva", 5, "Great session!"));
         await _db.SaveChangesAsync();
 
-        List<ReviewResponse> result = await CreateSut().Handle(
+        ReviewListResponse result = await CreateSut().Handle(
             new GetArtistReviewsQuery(artist.Slug!), CancellationToken.None);
 
-        result.Should().ContainSingle(r => r.OwnerResponse == null && r.OwnerResponseAt == null);
+        result.Reviews.Should().ContainSingle(r => r.OwnerResponse == null && r.OwnerResponseAt == null);
     }
 }

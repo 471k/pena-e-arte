@@ -38,18 +38,18 @@ public class GetPublicStudioHandler(IAppDbContext db)
 
         // Per-artist review aggregates.
         // Approved: public portfolio query.
-        Dictionary<Guid, (double Avg, int Count)> artistReviewStats = await db.Reviews
+        Dictionary<Guid, (int Sum, int Count)> artistReviewStats = await db.Reviews
             .Where(r => r.ArtistId != null && artistIds.Contains(r.ArtistId.Value))
             .GroupBy(r => r.ArtistId!.Value)
-            .Select(g => new { ArtistId = g.Key, Avg = g.Average(r => (double)r.Rating), Count = g.Count() })
-            .ToDictionaryAsync(x => x.ArtistId, x => (x.Avg, x.Count), ct);
+            .Select(g => new { ArtistId = g.Key, Sum = g.Sum(r => r.Rating), Count = g.Count() })
+            .ToDictionaryAsync(x => x.ArtistId, x => (x.Sum, x.Count), ct);
 
         // Studio-level review aggregate.
         // Approved: public portfolio query.
         var studioReviewStats = await db.Reviews
             .Where(r => r.StudioId == studio.Id)
             .GroupBy(_ => 1)
-            .Select(g => new { Avg = g.Average(r => (double)r.Rating), Count = g.Count() })
+            .Select(g => new { Sum = g.Sum(r => r.Rating), Count = g.Count() })
             .FirstOrDefaultAsync(ct);
 
         // Gallery: up to 3 images per artist, max 9 total, round-robin so no single artist dominates.
@@ -99,7 +99,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
         IReadOnlyList<PublicArtistSummary> artistSummaries = artists
             .Select(a =>
             {
-                (double avg, int count) = artistReviewStats.GetValueOrDefault(a.Id, (0, 0));
+                (int sum, int count) = artistReviewStats.GetValueOrDefault(a.Id, (0, 0));
                 return new PublicArtistSummary(
                     a.Id,
                     $"{a.FirstName} {a.LastName}",
@@ -107,7 +107,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
                     a.Bio,
                     a.ProfileImageUrl,
                     a.Specializations,
-                    count > 0 ? Math.Round(avg, 1) : null,
+                    RatingDisplay.Average(sum, count),
                     count);
             })
             .ToList();
@@ -122,7 +122,7 @@ public class GetPublicStudioHandler(IAppDbContext db)
             studio.Description,
             studio.CoverImageUrl,
             studio.PhoneNumber,
-            studioReviewStats is { Count: > 0 } ? Math.Round(studioReviewStats.Avg, 1) : null,
+            RatingDisplay.Average(studioReviewStats?.Sum ?? 0, studioReviewStats?.Count ?? 0),
             studioReviewStats?.Count ?? 0,
             galleryImages,
             artistSummaries,

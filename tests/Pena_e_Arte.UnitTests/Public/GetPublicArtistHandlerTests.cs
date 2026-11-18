@@ -166,7 +166,7 @@ public class GetPublicArtistHandlerTests
             new GetPublicArtistQuery("maria-silva", null), CancellationToken.None);
 
         result!.ReviewCount.Should().Be(2);
-        result.AverageRating.Should().Be(4.0);
+        result.AverageRating.Should().Be(4.0m);
     }
 
     [Fact]
