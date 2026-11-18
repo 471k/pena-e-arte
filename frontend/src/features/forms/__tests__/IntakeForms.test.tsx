@@ -24,6 +24,9 @@ import { Role } from "@/shared/types/roles";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
+// The page renders appointment dates in the studio's zone (S01), so the expected label must be
+// formatted in that zone too, not the runner's: in UTC, 23:00-24:00 lands on the previous day.
+const STUDIO_TZ = "Europe/Tirane";
 const FUTURE = new Date(Date.now() + 7 * 86_400_000).toISOString();
 const FUTURE_END = new Date(Date.now() + 7 * 86_400_000 + 3_600_000).toISOString();
 
@@ -70,7 +73,7 @@ const ACTIVE_INTAKE_CONSENT_TEMPLATE = {
 };
 
 const server = setupServer(
-  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: STUDIO_TZ })),
   http.get("http://localhost/api/v1/appointments/mine", () => HttpResponse.json([APPOINTMENT])),
   http.post("http://localhost/api/v1/intake-forms", () => HttpResponse.json(SUBMITTED_FORM, { status: 201 })),
   http.get("http://localhost/api/v1/intake-forms", () => HttpResponse.json([SUBMITTED_FORM, PLAIN_TEXT_FORM])),
@@ -173,7 +176,7 @@ describe("SubmitIntakeFormPage", () => {
   it("lists appointments in the appointment selector", async () => {
     renderWithRoute(<SubmitIntakeFormPage />);
     expect(await screen.findByText(new Date(FUTURE).toLocaleDateString("en-GB", {
-      day: "numeric", month: "short", year: "numeric",
+      day: "numeric", month: "short", year: "numeric", timeZone: STUDIO_TZ,
     }))).toBeInTheDocument();
   });
 
