@@ -3,6 +3,7 @@ import { baseQuery } from "@/shared/api/baseQuery";
 import { appointmentsApi } from "@/features/appointments/appointmentsApi";
 import type {
   PaymentResponse,
+  PaymentConfirmationResponse,
   PaymentIntentResponse,
   ClientTokenResponse,
   CreatePaymentIntentRequest,
@@ -101,9 +102,18 @@ export const paymentsApi = createApi({
     }),
     // Called right after the POK widget's own onSuccess fires — that callback is UX only, never
     // a source of truth (ADR-0001). Re-fetches the real status from POK before reporting success.
-    confirmCardPayment: builder.mutation<PaymentResponse, string>({
+    confirmCardPayment: builder.mutation<PaymentConfirmationResponse, string>({
       query: (id) => ({ url: `payments/${id}/confirm`, method: "POST" }),
       invalidatesTags: ["Payment"],
+    }),
+    // The same POST, as a query, for /payment-result (C08): the page reads the server on arrival and on
+    // "Refresh", and says nothing about money until this answers. A query rather than the mutation so the
+    // read starts from the hook (no effect-driven fetch) and refetch() re-asks POK. The POST is safe to
+    // repeat: it only ever moves a payment toward what POK reports, and returns early once resolved.
+    // Never cached between visits: a stale answer on a money page is the defect this replaces.
+    getPaymentResult: builder.query<PaymentConfirmationResponse, string>({
+      query: (id) => ({ url: `payments/${id}/confirm`, method: "POST" }),
+      keepUnusedDataFor: 0,
     }),
     getPaymentCapabilities: builder.query<PaymentCapabilitiesResponse, void>({
       query: () => "payments/capabilities",
@@ -144,6 +154,7 @@ export const {
   useUpdateSessionSplitsMutation,
   useGetPaymentClientTokenQuery,
   useConfirmCardPaymentMutation,
+  useGetPaymentResultQuery,
   useDownloadInvoiceMutation,
   useGetPaymentCapabilitiesQuery,
   useConnectPokAccountMutation,

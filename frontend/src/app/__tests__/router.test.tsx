@@ -10,13 +10,17 @@ import { setSessionExpired } from "@/features/ui/uiSlice";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { RoleGuard, AppRoot, getRoleRedirectPath, loginPathFor, routes } from "@/app/router";
 import { contactApi } from "@/features/public/contactApi";
+import { paymentsApi } from "@/features/payments/paymentsApi";
 import { Role } from "@/shared/types/roles";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function makeAuthStore(role: string | null) {
   return configureStore({
-    reducer: { auth: authReducer },
+    // paymentsApi: /payment-result reads the payment through it (C08), and an RTK Query hook needs its
+    // middleware registered even while skipped (signed out).
+    reducer: { auth: authReducer, [paymentsApi.reducerPath]: paymentsApi.reducer },
+    middleware: (getDefault) => getDefault().concat(paymentsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: role ? { id: "u1", email: "user@test.com" } : null, token: role ? "fake" : null, tenantId: role ? "t1" : null, role, pendingReferralCode: null, impersonation: null } as any,
@@ -387,9 +391,10 @@ describe("unknown URLs", () => {
     expect(screen.queryByRole("link", { name: /discover studios/i })).not.toBeInTheDocument();
   });
 
-  it("serves the public payment return page at /payment-result (G-12)", async () => {
+  it("serves the public payment return page at /payment-result (G-12), and the URL's status decides nothing (C08)", async () => {
     const testRouter = renderAt("/payment-result?status=paid&payment=00000000-0000-0000-0000-000000000001&orderId=x", null);
-    expect(await screen.findByRole("heading", { name: /payment received/i })).toBeInTheDocument();
+    expect(await screen.findByText(/can't confirm this payment here/i)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /payment received/i })).not.toBeInTheDocument();
     expect(testRouter.state.location.pathname).toBe("/payment-result");
   });
 });

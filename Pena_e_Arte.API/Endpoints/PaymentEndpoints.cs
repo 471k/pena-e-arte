@@ -223,7 +223,7 @@ public static class PaymentEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        PaymentResponse result = await mediator.Send(new ConfirmCardPaymentCommand(id), ct);
+        PaymentConfirmationResponse result = await mediator.Send(new ConfirmCardPaymentCommand(id), ct);
         return Results.Ok(result);
     }
 

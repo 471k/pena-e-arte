@@ -32,7 +32,7 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-1", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Authorized);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Captured.ToString());
         _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Captured);
@@ -46,7 +46,7 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-2", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Captured);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Paid.ToString());
         _db.Payments.Single(p => p.Id == paymentId).PaidAt.Should().NotBeNull();
@@ -64,7 +64,7 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-c", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Captured);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Pending.ToString());
         _db.Payments.Single(p => p.Id == paymentId).PaidAt.Should().BeNull();
@@ -82,7 +82,7 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-held-c", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Captured);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Captured.ToString());
         _db.Payments.Single(p => p.Id == paymentId).PaidAt.Should().BeNull();
@@ -99,7 +99,7 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-auth-c", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Authorized);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Pending.ToString());
         _jobs.Received(1).TriggerPaymentReconciliationNow();
@@ -114,12 +114,74 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-forfeit", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Captured);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Paid.ToString());
         _db.Appointments.Single(a => a.Id == appointmentId).DepositStatus.Should().Be(DepositStatus.Forfeited);
         _jobs.DidNotReceive().TriggerPaymentReconciliationNow();
         _jobs.DidNotReceive().EnqueueDepositPaidNotification(Arg.Any<Guid>());
+    }
+
+    // C08: AppointmentCancelled is the handler's own owedBack, the same two-way split it makes before
+    // healing. /payment-result renders "money coming back" from it, ahead of any status.
+    [Theory]
+    [InlineData(DepositStatus.Pending, true)]
+    [InlineData(DepositStatus.Forfeited, false)]
+    public async Task Handle_CancelledAppointment_ReportsAppointmentCancelledUnlessForfeited(
+        DepositStatus depositStatus, bool expected)
+    {
+        Guid appointmentId = await SeedAppointmentAsync(AppointmentStatus.Cancelled, depositStatus);
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Captured, "order-split", appointmentId);
+        _provider.GetStatusAsync(_studioId, "order-split", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
+
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.AppointmentCancelled.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task Handle_LiveAppointment_ReportsAppointmentNotCancelled()
+    {
+        Guid appointmentId = await SeedAppointmentAsync();
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Pending, "order-live", appointmentId);
+        _provider.GetStatusAsync(_studioId, "order-live", Arg.Any<CancellationToken>())
+            .Returns(PaymentProviderStatus.Captured);
+
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.AppointmentCancelled.Should().BeFalse();
+        result.PaymentId.Should().Be(paymentId);
+        result.Amount.Should().Be(50m);
+    }
+
+    // A payment already Paid when the appointment was cancelled is settled by the studio's cancellation
+    // policy (the cancel command), not returned by PaymentReconciliationJob, which acts on Pending and held
+    // rows only. So the page must not be told "being returned automatically" for it.
+    [Fact]
+    public async Task Handle_AlreadyPaidOnACancelledAppointment_DoesNotReportOwedBack()
+    {
+        Guid appointmentId = await SeedAppointmentAsync(AppointmentStatus.Cancelled);
+        Guid paymentId = await SeedPaymentAsync(PaymentStatus.Paid, "order-paid-c", appointmentId);
+
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+
+        result.Status.Should().Be(PaymentStatus.Paid.ToString());
+        result.AppointmentCancelled.Should().BeFalse();
+    }
+
+    // C08: /payment-result is a public route, so the response it reads must carry no client identity
+    // and no studio free text. This is the test that stops those fields coming back.
+    [Fact]
+    public void Response_CarriesNoClientIdentityOrStudioFreeText()
+    {
+        string[] members = typeof(PaymentConfirmationResponse).GetProperties().Select(p => p.Name).ToArray();
+
+        members.Should().NotContain(["ClientName", "ClientToken", "CashNote", "ProviderReferenceId", "Splits"]);
+        members.Should().BeEquivalentTo(
+            ["PaymentId", "Status", "Amount", "Currency", "AppointmentCancelled", "RefundedAmount",
+             "ReferenceAmount", "ReferenceCurrency", "ReferenceRate"],
+            "a new member is a decision to send more to a public-route page; add it here on purpose");
     }
 
     [Fact]
@@ -129,7 +191,7 @@ public class ConfirmCardPaymentHandlerTests
         _provider.GetStatusAsync(_studioId, "order-3", Arg.Any<CancellationToken>())
             .Returns(PaymentProviderStatus.Pending);
 
-        PaymentResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
+        PaymentConfirmationResponse result = await CreateSut().Handle(new ConfirmCardPaymentCommand(paymentId), default);
 
         result.Status.Should().Be(PaymentStatus.Pending.ToString());
         _db.Payments.Single(p => p.Id == paymentId).Status.Should().Be(PaymentStatus.Pending);
