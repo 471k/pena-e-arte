@@ -7264,3 +7264,33 @@ says what the bank reported rather than asserting no charge exists.
 - **The same defect on the sibling screen is closed too.** `DepositCheckoutPage` rendered "Deposit paid — your
   card has been charged" from a Stripe-era `?status=complete` that nothing produces any more. That URL now
   redirects to `/payment-result?payment=<id>`.
+
+## After Hours slice 5 — DM Sans, a Bodoni wordmark, 3px radius, page breakpoints beside the shell — 2026-11-18
+
+The app rendered every form label, table header and data value in Fraunces, a display serif, against
+docs/03's rule that ornamental lettering is for the wordmark only. Spec:
+`docs/claude/spec-slice5-typography-and-design-reconciliation-2026-11-18.md`.
+
+- **DM Sans replaces Fraunces app-wide**, and Fraunces is removed: the Google Fonts link, both `index.css`
+  declarations, and an inline SVG label in `BodyMap.tsx` the spec had not listed.
+- **Bodoni Moda 700 is scoped to the wordmark by its own token** (`--font-wordmark`), with one consumer:
+  the new `shared/components/Wordmark.tsx`, which replaces the 11 hand-styled "TattooOS" spans. They are
+  in the three role layouts, four auth pages, register-studio, the map, HomePage and the public page header.
+  The footer's copyright line is prose, not the wordmark.
+- **The fonts are self-hosted as woff2, with their OFL files beside them** (docs/11), and only the
+  faces the scale names: DM Sans 400/500/600 and Bodoni 700. Google Fonts shipped no licence and requested
+  every Fraunces weight in roman and italic. It was also the only third-party origin a future CSP would
+  have needed for fonts.
+- **Radius 3px, across the whole scale the app uses.** The spec set `--radius` alone and expected it to
+  propagate. In Tailwind v4 it reaches only the bare `rounded` utility (42 uses) and the toasts. The ~320
+  `rounded-sm/-md/-lg/-xl` uses read `--radius-*`, so those are set to 3px too. `rounded-xs` stays 2px for
+  nested corners, and `rounded-full` is unchanged.
+- **Breakpoints: 420/800/1100 added as `page-sm`/`page-md`/`page-lg`, beside sm/md/lg rather than
+  replacing them** (Phi's call, 18 Nov). The spec redefined sm/md/lg. docs/03 says to keep the existing
+  shared shell and use these as content-driven page breakpoints, and redefining them would have moved
+  three bands at once: 420-639 (134 `sm:` uses in 43 files, the header and drawer included), 768-799
+  (iPad portrait loses `md:`) and 1024-1099. Two tour helpers also hard-code 640/1024 in JS. The JSON's
+  720/1050 are legacy.
+- **Control heights are unchanged.** docs/03's 46px frequent-control minimum is a project target, not
+  WCAG (AA is 24x24 with spacing exceptions, docs/08). The rendered pass measured which controls fall
+  short. Raising them is a global layout change, which belongs with S05's toolbar reflow in slice 6.

@@ -34,6 +34,7 @@ import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
 import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
 
@@ -241,7 +242,7 @@ export function OwnerLayout() {
       <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
-        <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
+        <Wordmark className="max-[359px]:hidden" />
 
         {hasArtistProfile && myArtist && (
           <div className="hidden sm:flex ml-2 shrink-0">

@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
 import { PublicContentLayout } from "./PublicContentLayout";
 import { SITE_TAGLINE, SITE_META_DESCRIPTION } from "@/shared/constants/legalEntity";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 // First-touch public landing surface for unauthenticated root visits. Replaces the
 // previous behaviour of bouncing every guest at "/" straight into /discover.
 export function HomePage() {
   return (
     <PublicContentLayout title={SITE_TAGLINE} description={SITE_META_DESCRIPTION} canonicalPath="/">
-      <h1 className="text-3xl font-semibold tracking-tight">TattooOS</h1>
+      <h1 className="text-3xl">
+        <Wordmark />
+      </h1>
       <p className="mt-3 text-muted-foreground">
         Booking, deposits, digital consent forms, design approvals, and studio management
         built for tattoo studios and their clients.

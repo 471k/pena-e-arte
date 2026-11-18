@@ -24,6 +24,7 @@ import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 export function ArtistLayout() {
   const dispatch = useAppDispatch();
@@ -64,7 +65,7 @@ export function ArtistLayout() {
       <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
-        <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
+        <Wordmark className="max-[359px]:hidden" />
 
         <NavDrawer sections={navSections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 

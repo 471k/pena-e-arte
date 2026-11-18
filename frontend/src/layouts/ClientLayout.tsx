@@ -19,6 +19,7 @@ import { NotificationBell } from "@/features/notifications";
 import { HelpMenu } from "@/features/help";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const ICON = "h-4 w-4";
 
@@ -107,7 +108,7 @@ export function ClientLayout() {
       <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
-        <span className="font-semibold tracking-tight max-[359px]:hidden">TattooOS</span>
+        <Wordmark className="max-[359px]:hidden" />
 
         <NavDrawer sections={sections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 

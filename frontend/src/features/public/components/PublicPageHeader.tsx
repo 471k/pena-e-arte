@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath }           from "@/app/router";
 import { logout }                        from "@/features/auth/authSlice";
 import type { Role }                     from "@/shared/types/roles";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 // ── Brand mark ─────────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ export function BrandMark() {
         <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
         <line x1="8" y1="9" x2="16" y2="9" />
       </svg>
-      <span className="font-semibold tracking-tight text-sm">TattooOS</span>
+      <Wordmark className="text-sm" />
     </Link>
   );
 }
