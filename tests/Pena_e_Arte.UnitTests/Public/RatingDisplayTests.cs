@@ -33,8 +33,10 @@ public class RatingDisplayTests
 
     // ── Guard: one rule, everywhere a rating average is shown ─────────────────────────────────────────
     // Scoped to ratings on purpose. Math.Round on doubles with the default mode also appears on admin-facing
-    // numbers (GetPlanUsageReportQuery storage GB, GetPlatformStatsQuery percentages); those are the same
-    // class of issue and deliberately out of scope here.
+    // numbers (GetPlanUsageReportQuery storage GB, GetPlatformStatsQuery percentages, PlanLimitService storage
+    // GB); those are the same class of issue and deliberately out of scope here. PlanLimitService's value is
+    // the odd one out: it goes into a PlanUsageSnapshot, which something may compare against a plan limit,
+    // so check that one for a decision path rather than assuming it is only displayed.
 
     [Fact]
     public void EveryAverageRatingField_OnThePublicContracts_IsADecimal()
@@ -54,14 +56,65 @@ public class RatingDisplayTests
     [Fact]
     public void NoRatingAverage_IsRoundedOrAveragedAsADouble_OutsideRatingDisplay()
     {
-        // A line that rounds and mentions a rating or an average, or any Rating cast to double for an
-        // aggregate, is a second copy of the rule. RatingDisplay.cs itself is the one allowed place.
+        // A line that rounds and mentions a rating or an average, any Rating cast to double for an aggregate,
+        // or LINQ's Average over a Rating is a second copy of the rule. Review.Rating is an int, so
+        // g.Average(r => r.Rating) is a double mean with no cast and no Math.Round on the line: the shortest
+        // way to write it, and invisible to the first two patterns. Use .* not [^)]* after "Average(":
+        // "(double)" contains a paren. RatingDisplay.cs itself is the one allowed place.
         Regex rounds = new(@"Math\.Round\(");
         Regex mentionsARating = new(@"rating|avg|average", RegexOptions.IgnoreCase);
         Regex ratingAsDouble = new(@"\(double\)\s*\w+\.Rating\b");
+        Regex averagesARating = new(@"Average\(.*\.Rating\b");
 
+        List<string> offenders = ServerSourceLines()
+            .Where(l => (rounds.IsMatch(l.Text) && mentionsARating.IsMatch(l.Text))
+                        || ratingAsDouble.IsMatch(l.Text) || averagesARating.IsMatch(l.Text))
+            .Select(l => $"{l.Where}: {l.Text.Trim()}")
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "every displayed rating average goes through RatingDisplay.Average (exact decimal mean, "
+                   + "one decimal, half up); rounding a double elsewhere lets two pages show two numbers");
+    }
+
+    [Fact]
+    public void EveryRatingAggregate_IsAnIntegerSum_InAFileThatUsesRatingDisplay()
+    {
+        // The positive half. A scan that only looks for the wrong shape passes a file that computes nothing,
+        // and passes when it finds no files at all. So: rating aggregates exist, every one is
+        // g.Sum(r => r.Rating) with no cast, and each sits in a file that hands the sum to RatingDisplay.
+        Regex aggregatesARating = new(@"\.(Sum|Average|Min|Max)\(.*\.Rating\b");
+        Regex integerSum = new(@"\.Sum\(\s*(\w+)\s*=>\s*\1\.Rating\s*\)");
+
+        List<SourceLine> lines = ServerSourceLines().ToList();
+        List<SourceLine> aggregates = lines.Where(l => aggregatesARating.IsMatch(l.Text)).ToList();
+        HashSet<string> filesUsingTheRule = lines
+            .Where(l => l.Text.Contains("RatingDisplay.Average(", StringComparison.Ordinal))
+            .Select(l => l.File)
+            .ToHashSet();
+
+        aggregates.Should().NotBeEmpty(
+            because: "the public pages aggregate ratings; finding none means the scan is looking in the wrong place");
+
+        List<string> offenders = aggregates
+            .Where(l => !integerSum.IsMatch(l.Text) || !filesUsingTheRule.Contains(l.File))
+            .Select(l => $"{l.Where}: {l.Text.Trim()}")
+            .ToList();
+
+        offenders.Should().BeEmpty(
+            because: "a rating aggregate is an integer sum (with a count) handed to RatingDisplay.Average; "
+                   + "any other aggregate over Rating is a second, double-valued copy of the rule");
+    }
+
+    private sealed record SourceLine(string File, int Number, string Text)
+    {
+        public string Where => $"{File}:{Number}";
+    }
+
+    // Production server code only. RatingDisplay.cs is left out because it is the rule itself.
+    private static IEnumerable<SourceLine> ServerSourceLines()
+    {
         string repoRoot = FindRepoRoot();
-        List<string> offenders = [];
         foreach (string project in new[] { "Pena_e_Arte.Application", "Pena_e_Arte.API", "Pena_e_Arte.Infrastructure" })
         {
             foreach (string path in Directory.EnumerateFiles(Path.Combine(repoRoot, project), "*.cs", SearchOption.AllDirectories))
@@ -73,16 +126,9 @@ public class RatingDisplayTests
 
                 string[] lines = File.ReadAllLines(path);
                 for (int i = 0; i < lines.Length; i++)
-                {
-                    if ((rounds.IsMatch(lines[i]) && mentionsARating.IsMatch(lines[i])) || ratingAsDouble.IsMatch(lines[i]))
-                        offenders.Add($"{relative}:{i + 1}: {lines[i].Trim()}");
-                }
+                    yield return new SourceLine(relative, i + 1, lines[i]);
             }
         }
-
-        offenders.Should().BeEmpty(
-            because: "every displayed rating average goes through RatingDisplay.Average (exact decimal mean, "
-                   + "one decimal, half up); rounding a double elsewhere lets two pages show two numbers");
     }
 
     private static string FindRepoRoot()
