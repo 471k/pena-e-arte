@@ -1,0 +1,252 @@
+name: Clock sweep
+
+# Runs the test suites with the clock faked to the moments where time-of-day bugs live: the studio's
+# midnight, UTC midnight, month/year end, both DST changes and a leap day. Code and tests read the real
+# clock (`DateTime.UtcNow`), so a test can pass at 10:00 and fail at 23:30. This has happened three times
+# (PR #358's four patches, the 14 Nov blocked deploy, PR #396). This workflow finds the members of that
+# class by name instead of waiting for CI to land in the wrong hour.
+#
+# It is REPORT-ONLY: it is not a required check, it never runs on ordinary PRs, and CD does not wait for it
+# (cd.yml follows the workflow named "CI" only). A red leg means "this test depends on the time of day".
+#
+# How the clock is faked: libfaketime via LD_PRELOAD on the test step only. Restore, build and the MySQL
+# container run on the real clock. Checked locally against .NET 10 on 19 Nov: DateTime.UtcNow, DateTime.Now,
+# DateTimeOffset.UtcNow and TimeProvider.System all report the fake time and tick forward from it, and
+# Task.Delay works. FAKETIME_DONT_FAKE_MONOTONIC=1 keeps timers, delays and timeouts on the real monotonic
+# clock. MySQL's own clock is never consulted by app code (no HasDefaultValueSql/NOW() outside migrations),
+# so the database not being faked doesn't matter.
+#
+# The `midday` leg is the CONTROL. A test that fails there is broken by faketime itself or is failing for
+# some other reason, not a time-of-day bug, so judge every other leg against it.
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # real time doesn't matter (the clock is faked); off the hour to avoid the queue rush
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/clock-sweep.yml" # so a change to this file is tried before it merges
+
+concurrency:
+  group: clock-sweep-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Debian/Ubuntu path of the libfaketime package's shared object.
+  FAKETIME_LIB: /usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1
+
+jobs:
+  backend:
+    name: Backend @ ${{ matrix.moment.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        moment: &moments
+          # All starts are UTC (TZ=UTC below). Tirane is UTC+1 in winter, UTC+2 in summer.
+          - { name: midday, start: "2026-11-25 10:00:00" } # control
+          - { name: tirane-midnight, start: "2026-11-25 22:30:00" } # 23:30 Tirane: crosses the studio's midnight
+          - { name: utc-midnight, start: "2026-11-25 23:30:00" } # the window that blocked the 14 Nov deploy
+          - { name: year-end, start: "2026-12-31 23:30:00" } # 00:30 Tirane on 1 Jan: month + year roll over
+          - { name: dst-spring, start: "2027-03-26 22:30:00" } # Fri night; clocks go forward Sun 28 Mar
+          - { name: dst-autumn, start: "2027-10-29 21:30:00" } # Fri night; clocks go back Sun 31 Oct
+          - { name: leap-day, start: "2028-02-28 22:30:00" } # +1 day lands on 29 Feb
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install libfaketime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq faketime
+          test -f "$FAKETIME_LIB" || { echo "::error::libfaketime not at $FAKETIME_LIB"; exit 1; }
+
+      - name: Restore + build (real clock)
+        run: |
+          dotnet restore "Pena e Arte.slnx"
+          dotnet build "Pena e Arte.slnx" --configuration Release --no-restore
+
+      - name: Start MySQL 8.4 (real clock; same flags as ci.yml)
+        run: |
+          docker run -d --name ci-mysql \
+            -e MYSQL_ROOT_PASSWORD=root \
+            -e MYSQL_DATABASE=pena_e_arte_test \
+            -p 3306:3306 \
+            mysql:8.4 \
+            --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+          # Two pings a couple of seconds apart: see ci.yml for why one is not enough.
+          for i in $(seq 1 60); do
+            if docker exec ci-mysql mysqladmin ping -uroot -proot --silent 2>/dev/null; then
+              sleep 2
+              if docker exec ci-mysql mysqladmin ping -uroot -proot --silent 2>/dev/null; then
+                echo "MySQL is ready."; exit 0
+              fi
+            fi
+            sleep 2
+          done
+          echo "MySQL did not become ready in time"; docker logs ci-mysql; exit 1
+
+      - name: Prove the clock is faked
+        env:
+          TZ: UTC
+          LD_PRELOAD: ${{ env.FAKETIME_LIB }}
+          FAKETIME: "@${{ matrix.moment.start }}"
+          FAKETIME_DONT_FAKE_MONOTONIC: "1"
+        run: |
+          now=$(date -u '+%Y-%m-%d %H:%M')
+          echo "faked date: $now (wanted ${{ matrix.moment.start }})"
+          [ "$now" = "$(echo '${{ matrix.moment.start }}' | cut -c1-16)" ] || { echo "::error::clock is not faked"; exit 1; }
+
+      # Both suites run even if the first fails (`always()` on the second), so one red leg names every
+      # failing test rather than only the unit ones.
+      - name: Unit tests (faked clock)
+        env:
+          TZ: UTC
+          LD_PRELOAD: ${{ env.FAKETIME_LIB }}
+          FAKETIME: "@${{ matrix.moment.start }}"
+          FAKETIME_DONT_FAKE_MONOTONIC: "1"
+        run: >
+          dotnet test tests/Pena_e_Arte.UnitTests/Pena_e_Arte.UnitTests.csproj
+          --configuration Release --no-build
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory test-results
+
+      - name: Integration tests (faked clock)
+        if: always()
+        env:
+          TZ: UTC
+          LD_PRELOAD: ${{ env.FAKETIME_LIB }}
+          FAKETIME: "@${{ matrix.moment.start }}"
+          FAKETIME_DONT_FAKE_MONOTONIC: "1"
+        run: >
+          dotnet test tests/Pena_e_Arte.IntegrationTests/Pena_e_Arte.IntegrationTests.csproj
+          --configuration Release --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory test-results
+
+      - name: Stop MySQL
+        if: always()
+        run: docker rm -f ci-mysql || true
+
+      - name: Name the failing tests
+        if: always()
+        run: |
+          python3 - "${{ matrix.moment.name }}" "${{ matrix.moment.start }}" <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob, sys, xml.etree.ElementTree as ET
+          name, start = sys.argv[1], sys.argv[2]
+          ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+          print(f"### Backend @ {name} (fake start {start} UTC)\n")
+          total = 0
+          failed = []
+          for path in sorted(glob.glob("test-results/*.trx")):
+              root = ET.parse(path).getroot()
+              for r in root.iterfind(".//t:UnitTestResult", ns):
+                  total += 1
+                  if r.get("outcome") == "Failed":
+                      msg = r.find(".//t:Message", ns)
+                      first = (msg.text or "").strip().splitlines()[0][:200] if msg is not None and msg.text else ""
+                      failed.append((r.get("testName"), first))
+          print(f"{total} results, **{len(failed)} failed**\n")
+          if failed:
+              print("| Test | First line of the failure |\n|---|---|")
+              for t, m in sorted(failed):
+                  print(f"| `{t}` | {m.replace('|', '/')} |")
+          PY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: clock-sweep-backend-${{ matrix.moment.name }}
+          path: test-results/*.trx
+          retention-days: 14
+
+  frontend:
+    name: Frontend @ ${{ matrix.moment.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        moment: *moments
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Enable pnpm (pinned version — must match frontend/Dockerfile)
+        run: corepack enable && corepack prepare pnpm@11.5.1 --activate
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install libfaketime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq faketime
+          test -f "$FAKETIME_LIB" || { echo "::error::libfaketime not at $FAKETIME_LIB"; exit 1; }
+
+      - name: Install (frozen lockfile, real clock)
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      # The runner's zone is UTC, as on CI. The browser-zone bugs (S01) are the case where a test formats an
+      # expected value in the runner's zone while the page uses the studio's.
+      - name: Unit / component tests (faked clock)
+        working-directory: frontend
+        env:
+          TZ: UTC
+          LD_PRELOAD: ${{ env.FAKETIME_LIB }}
+          FAKETIME: "@${{ matrix.moment.start }}"
+          FAKETIME_DONT_FAKE_MONOTONIC: "1"
+        run: |
+          echo "faked date: $(date -u '+%Y-%m-%d %H:%M')"
+          pnpm exec vitest run --reporter=default --reporter=junit --outputFile.junit=../test-results/vitest.xml
+
+      - name: Name the failing tests
+        if: always()
+        run: |
+          python3 - "${{ matrix.moment.name }}" "${{ matrix.moment.start }}" <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import os, sys, xml.etree.ElementTree as ET
+          name, start = sys.argv[1], sys.argv[2]
+          print(f"### Frontend @ {name} (fake start {start} UTC)\n")
+          path = "test-results/vitest.xml"
+          if not os.path.exists(path):
+              print("No JUnit file: the run did not get as far as reporting. See the step log.")
+              sys.exit(0)
+          total, failed = 0, []
+          for case in ET.parse(path).getroot().iter("testcase"):
+              total += 1
+              f = case.find("failure")
+              if f is None:
+                  f = case.find("error")
+              if f is not None:
+                  first = (f.get("message") or f.text or "").strip().splitlines()
+                  failed.append((case.get("classname", ""), case.get("name", ""), first[0][:200] if first else ""))
+          print(f"{total} results, **{len(failed)} failed**\n")
+          if failed:
+              print("| File | Test | First line of the failure |\n|---|---|---|")
+              for c, t, m in sorted(failed):
+                  print(f"| `{c}` | {t.replace('|', '/')} | {m.replace('|', '/')} |")
+          PY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: clock-sweep-frontend-${{ matrix.moment.name }}
+          path: test-results/vitest.xml
+          retention-days: 14
