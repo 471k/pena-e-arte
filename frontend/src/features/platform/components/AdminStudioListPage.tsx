@@ -36,7 +36,7 @@ import type { PlanResponse } from "@/features/billing/billing.types";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
 import { ExtendTrialReview } from "./ExtendTrialReview";
-import { CASH_ACTIVATABLE, knowSubscriptionStatus, type SubscriptionKnowledge } from "./subscriptionKnowledge";
+import { CASH_ACTIVATABLE, TRIAL_EXTENDABLE, knowSubscriptionStatus, type SubscriptionKnowledge } from "./subscriptionKnowledge";
 
 // ── Status display config ──────────────────────────────────────────────────────
 
@@ -154,7 +154,7 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
   const [receipt,    setReceipt]    = useState<ActivationReceipt | null>(null);
 
 
-  const canExtendTrial = subKnown && subStatus !== "Active";
+  const canExtendTrial = subKnown && TRIAL_EXTENDABLE.has(subStatus);
   const canActivate    = subKnown && CASH_ACTIVATABLE.has(subStatus);
   const canCancel      = subKnown && CANCELLABLE.has(subStatus);
   const anyExpanded    = extending || activating || confirming || confirmPlatform !== null;

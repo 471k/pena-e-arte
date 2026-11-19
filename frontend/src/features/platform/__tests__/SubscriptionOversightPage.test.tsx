@@ -307,6 +307,20 @@ describe("SubscriptionOversightPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("a past-due studio is not offered Extend trial, and keeps Activate and Exclude From Dunning", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[1], studioId: "pd1", studioName: "Overdue Studio", status: "PastDue" }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Overdue Studio");
+    // ExtendTrialHandler refuses PastDue (Phi, 19 Nov): a trial date can't restore a past-due studio's access.
+    expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /activate subscription for overdue studio/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /exclude overdue studio from dunning/i })).toBeInTheDocument();
+  });
+
   it("shows aria-label with studio name on Extend Trial button", async () => {
     renderPage();
     await screen.findByText("Trialing Studio");

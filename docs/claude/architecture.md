@@ -7465,8 +7465,12 @@ list and oversight cancels sent no refund rule and showed nothing about money; n
   that would accept "1" as AdminFull. An unknown value is now a 422.
 - **Extend trial says when a date changes nothing.** `ExtendTrialHandler` permits a past-due studio but leaves it
   PastDue, and `TenantMiddleware` blocks PastDue regardless of the trial date. The review says so rather than letting
-  the admin believe access was restored. (The handler's own behaviour is unchanged: whether it should refuse is a
-  product question, listed in the PR.)
+  the admin believe access was restored. **Superseded the same day by Phi's decision 3 (PR after #406):**
+  `ExtendTrialHandler` now refuses PastDue with a 422 whose message names the two moves that do restore access
+  (the overdue payment being paid, or a cash payment recorded with Activate), and `TRIAL_EXTENDABLE` hides the
+  button at all four entry points. Exclude From Dunning is deliberately not named as a fix: it only stops
+  `PastDueReminderJob`'s emails. A 422 in the review (the studio became past due after the page loaded) shows the
+  server's message with no Try again, since retrying would be refused again.
 - **Cancel's access consequence is the middleware's, not a guess:** Cancelled falls through to "Your studio
   subscription has expired", so the studio loses access at once and its data is kept.
 

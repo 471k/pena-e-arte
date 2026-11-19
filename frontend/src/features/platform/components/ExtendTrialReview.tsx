@@ -7,6 +7,11 @@ import { useExtendTrialMutation } from "@/features/platform/platformApi";
 import { ConsequenceReview, ReviewAlert } from "./ConsequenceReview";
 import { DAY_MS, extendedTrialEnd, formatUtc } from "./subscriptionConsequences";
 
+/** A 422 is ExtendTrialHandler's business rule refusing (days are checked before sending, so not the validator). */
+function isRuleRefusal(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "status" in err && (err as { status: unknown }).status === 422;
+}
+
 interface ExtendTrialReviewProps {
   studioId:        string;
   studioName:      string;
@@ -24,7 +29,7 @@ export function ExtendTrialReview({
   studioId, studioName, idSuffix, status, currentTrialEnd, onDone, onBack,
 }: ExtendTrialReviewProps) {
   const [days,    setDays]    = useState("7");
-  const [failure, setFailure] = useState<{ message: string; attempt: number } | null>(null);
+  const [failure, setFailure] = useState<{ message: string; attempt: number; refused: boolean } | null>(null);
   const [extendTrial, { isLoading }] = useExtendTrialMutation();
 
   const id      = `extend-${idSuffix}`;
@@ -44,6 +49,7 @@ export function ExtendTrialReview({
       setFailure((prev) => ({
         message: extractErrorMessage(err, "The trial wasn't extended."),
         attempt: (prev?.attempt ?? 0) + 1,
+        refused: isRuleRefusal(err),
       }));
     }
   }
@@ -58,10 +64,6 @@ export function ExtendTrialReview({
           : []),
         ...(status === "GracePeriod" ? ["The studio goes back to Trialing and can make changes again."] : []),
         ...(status === "Trialing" && expired ? ["The studio can use TattooOS again until then."] : []),
-        // ExtendTrialHandler moves the date but leaves PastDue as it is, and a past-due studio stays blocked.
-        ...(status === "PastDue"
-          ? ["The studio is past due, so this only moves its trial date: it stays blocked until its payment is sorted out."]
-          : []),
       ];
 
   return (
@@ -73,13 +75,21 @@ export function ExtendTrialReview({
       permanent={["The days can't be taken back: a trial can't be shortened from here."]}
       alert={failure ? (
         <ReviewAlert key={failure.attempt}>
-          <p className="font-medium">Extension failed: {failure.message}</p>
-          <p>Your number of days is kept, so you can try again.</p>
+          {failure.refused ? (
+            // The server's rule said no (e.g. the studio became past due after this page loaded). Its
+            // message says what to do instead; trying again would only be refused again.
+            <p className="font-medium">The trial wasn't extended: {failure.message}</p>
+          ) : (
+            <>
+              <p className="font-medium">Extension failed: {failure.message}</p>
+              <p>Your number of days is kept, so you can try again.</p>
+            </>
+          )}
         </ReviewAlert>
       ) : null}
-      confirmLabel={failure ? "Try again" : "Extend trial"}
+      confirmLabel={failure && !failure.refused ? "Try again" : "Extend trial"}
       busy={isLoading}
-      confirmDisabled={!valid}
+      confirmDisabled={!valid || (failure?.refused ?? false)}
       onConfirm={() => void submit()}
       onBack={onBack}
     >

@@ -41,7 +41,7 @@ import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } f
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
 import { ExtendTrialReview } from "./ExtendTrialReview";
 import { RecentRefundsList } from "./RefundInvestigation";
-import { CASH_ACTIVATABLE, knowSubscriptionStatus } from "./subscriptionKnowledge";
+import { CASH_ACTIVATABLE, TRIAL_EXTENDABLE, knowSubscriptionStatus } from "./subscriptionKnowledge";
 import { describeLoadError } from "./describeLoadError";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -136,7 +136,7 @@ export function AdminStudioDetailPage() {
   const codeMinDateStr = codeMinDate.toISOString().split("T")[0];
 
   const subKnown       = subKnowledge.kind === "known";
-  const canExtendTrial = subKnown && subStatus !== "Active";
+  const canExtendTrial = subKnown && TRIAL_EXTENDABLE.has(subStatus);
   const canActivate    = subKnown && CASH_ACTIVATABLE.has(subStatus);
   const canCancel      = subKnown && CANCELLABLE.has(subStatus);
   const anyExpanded    = extending || activating || confirming || confirmPlatform !== null || impersonating;

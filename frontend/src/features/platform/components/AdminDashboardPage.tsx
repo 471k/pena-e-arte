@@ -25,6 +25,7 @@ import { MrrChart } from "./MrrChart";
 import { MrrMovementsChart } from "./MrrMovementsChart";
 import { KpiCard, KpiSkeleton } from "./KpiCard";
 import { ExtendTrialReview } from "./ExtendTrialReview";
+import { TRIAL_EXTENDABLE } from "./subscriptionKnowledge";
 import { FailedRefundsCard } from "./RefundInvestigation";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
@@ -127,7 +128,9 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {!extending && (
+          {/* Not for a past-due row: the server refuses it (a trial date can't restore access). The arrow opens
+              the studio, where Activate records a cash payment. */}
+          {!extending && TRIAL_EXTENDABLE.has(sub.status) && (
             <button
               onClick={() => setExtending(true)}
               className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
@@ -145,7 +148,7 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
         </div>
       </div>
 
-      {/* The shared consequence review (D03). For a past-due studio it says plainly that a trial date changes nothing. */}
+      {/* The shared consequence review (D03). */}
       {extending && (
         <ExtendTrialReview
           studioId={sub.studioId}

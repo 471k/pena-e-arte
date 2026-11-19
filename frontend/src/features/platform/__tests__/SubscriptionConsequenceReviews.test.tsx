@@ -187,7 +187,7 @@ describe("ExtendTrialReview", () => {
 
   it("a failure keeps the days and says so", async () => {
     server.use(http.patch(TRIAL_URL, () => HttpResponse.json(
-      { status: 422, message: "Trial extension is not applicable to studios with an active subscription." }, { status: 422 },
+      { status: 500, message: "Something went wrong." }, { status: 500 },
     )));
     const user = userEvent.setup();
     const review = renderExtend("Trialing", "2099-01-01T00:00:00Z");
@@ -196,8 +196,28 @@ describe("ExtendTrialReview", () => {
     await user.type(within(review()).getByRole("spinbutton"), "14");
     await user.click(within(review()).getByRole("button", { name: /^extend trial$/i }));
 
-    expect(await within(review()).findByRole("alert")).toHaveTextContent(/not applicable to studios with an active subscription/i);
+    expect(await within(review()).findByRole("alert")).toHaveTextContent(/you can try again/i);
     expect(within(review()).getByRole("spinbutton")).toHaveValue(14);
+    expect(within(review()).getByRole("button", { name: /^try again$/i })).toBeEnabled();
+  });
+
+  it("a refusal (the studio became past due after the page loaded) shows the server's next step and offers no retry", async () => {
+    const message =
+      "This studio's subscription payment is overdue, so a trial extension wouldn't restore access. "
+      + "Access comes back when the overdue payment is paid (the owner updates their billing details), "
+      + "or when you record a cash payment with Activate on the studio's page.";
+    server.use(http.patch(TRIAL_URL, () => HttpResponse.json({ status: 422, message }, { status: 422 })));
+    const user = userEvent.setup();
+    const review = renderExtend("Trialing", "2099-01-01T00:00:00Z");
+
+    await user.click(within(review()).getByRole("button", { name: /^extend trial$/i }));
+
+    const alert = await within(review()).findByRole("alert");
+    expect(alert).toHaveTextContent(/record a cash payment with activate/i);
+    expect(alert).not.toHaveTextContent(/try again/i);
+    expect(within(review()).queryByRole("button", { name: /^try again$/i })).not.toBeInTheDocument();
+    expect(within(review()).getByRole("button", { name: /^extend trial$/i })).toBeDisabled();
+    expect(within(review()).getByRole("button", { name: /back/i })).toBeEnabled();
   });
 });
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Platform.Commands;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Domain.Entities;
@@ -90,6 +91,28 @@ public class ExtendTrialHandlerTests
             new ExtendTrialCommand(studioId, new ExtendTrialRequest(7)), default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
+    }
+
+    [Fact]
+    public async Task Handle_PastDueSubscription_RefusesAndChangesNothing()
+    {
+        Guid studioId = Guid.NewGuid();
+        DateTime originalTrial = DateTime.UtcNow.AddDays(-20);
+        await SeedStudio(studioId, SubscriptionStatus.PastDue, originalTrial);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new ExtendTrialCommand(studioId, new ExtendTrialRequest(7)), default);
+
+        // The refusal says where to go next (Phi's decision 3, Desktop's condition): not a bare no.
+        (await act.Should().ThrowAsync<BusinessRuleViolationException>())
+            .Which.Message.Should().Be(ExtendTrialHandler.PastDueMessage)
+            .And.Contain("Activate");
+
+        Studio studio = await _db.Studios.Include(s => s.Subscription).SingleAsync(s => s.Id == studioId);
+        studio.TrialExpiresAt.Should().BeCloseTo(originalTrial, TimeSpan.FromSeconds(1));
+        studio.Subscription!.Status.Should().Be(SubscriptionStatus.PastDue);
+        studio.Subscription.TrialExpiresAt.Should().BeCloseTo(originalTrial, TimeSpan.FromSeconds(1));
+        studio.Subscription.GracePeriodEnd.Should().BeCloseTo(originalTrial.AddDays(7), TimeSpan.FromSeconds(1));
     }
 
     [Fact]

@@ -1960,7 +1960,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Gross and Net Revenue Retention measure the last full calendar month (the tile names it, e.g. \"August 2026\"), never the month in progress — a rate over a half-finished month would read near 100% early on and drift down. They compare that month's contraction and churn (gross), plus expansion (net), against the MRR that existed at the start of it. New and reactivated studios aren't counted. They show \"—\" until a full month of recorded revenue exists.",
       "Suspended studios' revenue is shown as \"paused\" on the Suspended card, not in MRR.",
       "\"Discounts this month\" sums referral discounts and credits actually applied to paid invoices — it doesn't reduce MRR (MRR is contracted revenue).",
-      "For a past-due studio, the Extend trial review says plainly that a new trial date changes nothing: the studio stays blocked until its payment is sorted out.",
+      "A past-due studio isn't offered Extend trial: a new trial date wouldn't give it access back. Access returns when the overdue payment is paid (the owner updates their billing details) or when you record a cash payment with Activate on the studio's page. Exclude From Dunning only stops the reminder emails; the studio stays blocked.",
     ],
   },
   {
@@ -2118,12 +2118,13 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Find the studio on the Dashboard, Studios list, Subscriptions list, or its detail page.",
       "Click \"Extend Trial (+7 days)\" (shown as \"Grant Extension\" if the trial already expired).",
       "Enter the number of extra days (defaults to 7, 1–90 allowed).",
-      "Read \"What happens\": the new trial end (counted from now if the trial has already ended), when the grace period after it now ends, and what it does to the studio's access. A studio in its grace period goes back to Trialing; for a past-due studio it says the new date changes nothing.",
+      "Read \"What happens\": the new trial end (counted from now if the trial has already ended), when the grace period after it now ends, and what it does to the studio's access. A studio in its grace period goes back to Trialing.",
       "Click \"Extend trial\".",
     ],
     tips: [
       "Days can't be taken back: there's no way to shorten a trial from here.",
       "If extending fails, the review stays open with your number of days and says why.",
+      "Extend trial isn't offered for an active or a past-due studio. A past-due studio gets access back when its overdue payment is paid, or when you record a cash payment with Activate. If a studio became past due after you opened the page, TattooOS refuses the extension and says so.",
     ],
   },
   {
