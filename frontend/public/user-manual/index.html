@@ -4002,7 +4002,7 @@ ol.steps li { margin: 6px 0; }
 <li>Search by name/slug, and/or filter by status or plan. The <span class="step-title">Quick views</span> links open the Past due, Grace period and Suspended studios in one click.</li>
 <li>Click <span class="step-title">View</span> to open the full studio detail. Its <span class="step-title">Studios</span> link brings you back to the same filters and page, with that studio highlighted.</li>
 <li>Click <span class="step-title">Extend Trial</span>, enter a day count, and confirm.</li>
-<li>Click <span class="step-title">Activate</span> to manually record a cash subscription — pick a plan and optional note.</li>
+<li>Click <span class="step-title">Activate</span> to manually record a cash subscription — pick a plan and optional note. A green receipt stays on the row until you dismiss it, with the new status and plan, the time (UTC) and a link to the audit log. If activation fails, the form keeps your plan and note and says why; TattooOS re-checks the studio first, and only offers <span class="step-title">Try again</span> if it still needs activating.</li>
 <li>Click <span class="step-title">Suspend</span> / <span class="step-title">Reactivate</span> to lock a studio out (or restore it). Suspending also pauses its card billing; reactivating resumes it at the next renewal.</li>
 <li>Click <span class="step-title">Cancel Subscription</span> to end it permanently (with confirmation).</li>
 </ol>
@@ -4035,7 +4035,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Review studio info: slug, city, registration date, branding setting, plan, and subscription status.</li>
 <li>Click <span class="step-title">View public portfolio</span> to see what clients see.</li>
-<li>Use the <span class="step-title">Actions</span> card for the same extend/activate/suspend/cancel controls as the list view.</li>
+<li>Use the <span class="step-title">Actions</span> card for the same extend/activate/suspend/cancel controls as the list view. The subscription actions appear only once the subscription status has loaded. If it couldn't be loaded, the page says <strong>Subscription unknown</strong> (never "No subscription") with a Retry button.</li>
+<li>If the studio itself can't be opened, the page says why: <strong>Studio not found</strong> when it doesn't exist, no access, or a connection or server problem with <span class="step-title">Try again</span>.</li>
 <li>Use the <span class="step-title">Referral codes</span> card to generate, deactivate, reactivate, or delete this studio's referral code without leaving the page.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-referrals">Manage platform referral codes</a>, <a href="#admin-impersonation">Impersonate a studio</a></div>
