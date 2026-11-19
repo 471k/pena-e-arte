@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 
@@ -10,7 +11,7 @@ namespace Pena_e_Arte.Application.Payments.Queries;
 
 public record GetPaymentClientTokenQuery(Guid PaymentId) : IRequest<PaymentClientTokenResponse>;
 
-public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser currentUser)
+public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser currentUser, IJobScheduler jobs)
     : IRequestHandler<GetPaymentClientTokenQuery, PaymentClientTokenResponse>
 {
     public async Task<PaymentClientTokenResponse> Handle(
@@ -30,6 +31,46 @@ public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser current
             if (client is null || client.Id != payment.ClientId)
                 throw new UnauthorizedAccessException("You can only access your own payment details.");
         }
+
+        // Only after not-found and ownership, so an unauthorised caller learns nothing about the payment's
+        // state. The token is what /pay/{id} opens the card form with: never serve one for money that is no
+        // longer owed. Same rule and reconciliation trigger as CreateDepositPaymentCommand's cancelled guard.
+        AppointmentStatus? appointmentStatus = await db.Appointments
+            .Where(a => a.Id == payment.AppointmentId)
+            .Select(a => (AppointmentStatus?)a.Status)
+            .FirstOrDefaultAsync(ct);
+
+        if (appointmentStatus is null)
+            throw new NotFoundException(nameof(Appointment), payment.AppointmentId);
+
+        if (appointmentStatus == AppointmentStatus.Cancelled)
+        {
+            // A card payment still in flight is settled by PaymentReconciliationJob: released, or refunded
+            // in full if it was charged. A client arriving at the dead link is a good moment to run it.
+            if (payment is { Method: ClientPaymentMethod.Card, Status: PaymentStatus.Pending, ProviderReferenceId: not null })
+                jobs.TriggerPaymentReconciliationNow();
+            throw new BusinessRuleViolationException("This appointment was cancelled, so there is nothing to pay.");
+        }
+
+        // Only Pending is payable. Captured is an authorised hold (legacy, card deposits before 22 Oct 2026):
+        // nothing resumes from it (ResolveOrCreateHoldAsync resumes a stored Pending only) and capture is the
+        // studio's action, so a token would only invite a second authorisation on the same booking - the C08
+        // rule. Paid and Refunded are settled. Failed is only ever set once the POK order behind this token is
+        // dead (PaymentReconciliationJob), so it needs a fresh hold, which My Bookings' "Pay deposit" mints
+        // on the same row. CashPending is not a card payment. Each message says what is true and where to go.
+        string? refusal = payment.Status switch
+        {
+            PaymentStatus.Pending => null,
+            PaymentStatus.Captured =>
+                "This deposit is already authorised, and the studio will charge it. There is nothing more to pay.",
+            PaymentStatus.Failed =>
+                "This card payment can no longer be completed. To pay the deposit, use \"Pay deposit\" on the booking in My Bookings, or pay the studio in cash.",
+            PaymentStatus.CashPending =>
+                "This deposit is being paid in cash at the studio. To pay by card instead, use \"Pay by card instead\" on the booking in My Bookings.",
+            _ => "This payment has already been settled.",
+        };
+        if (refusal is not null)
+            throw new BusinessRuleViolationException(refusal);
 
         if (payment.ClientToken is null)
             throw new NotFoundException("ClientToken", query.PaymentId);

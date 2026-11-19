@@ -15,6 +15,7 @@ import {
   useConfirmCardPaymentMutation,
 } from "../paymentsApi";
 import { PaymentStatus } from "../payment.types";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 
 // Spec D6: POK's own card page shows euros only; this is the line our page adds right before paying.
 export const CARD_CHARGED_IN_EUR_TEXT =
@@ -129,9 +130,16 @@ export function DepositCheckoutPage() {
   const [searchParams] = useSearchParams();
   const redirectStatus = searchParams.get("status");
 
-  const { data, isLoading, isError } = useGetPaymentClientTokenQuery(paymentId!, {
+  const { data, isLoading, isError, error } = useGetPaymentClientTokenQuery(paymentId!, {
     skip: !paymentId || redirectStatus === "complete",
   });
+  // 422 = the server refused because nothing is owed (the appointment was cancelled, or the payment is
+  // already settled), and its message says which. Every other error keeps the generic line, so a
+  // stranger's 401 or a 404 reveals nothing about the payment.
+  const refusal =
+    error && "status" in error && error.status === 422
+      ? extractErrorMessage(error, "There is nothing to pay for this link.")
+      : null;
   const { data: capabilities } = useGetPaymentCapabilitiesQuery(undefined, {
     skip: redirectStatus === "complete",
   });
@@ -167,7 +175,14 @@ export function DepositCheckoutPage() {
               </div>
             )}
 
-            {isError && (
+            {refusal && (
+              <div role="status" className="flex flex-col items-center gap-3 py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm">{refusal}</p>
+              </div>
+            )}
+
+            {isError && !refusal && (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-destructive" />
                 <p className="text-sm text-destructive-text">

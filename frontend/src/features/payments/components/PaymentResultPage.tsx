@@ -30,7 +30,8 @@ interface View {
   neutralTitle?: boolean;
   /** Row 2: announced to screen readers, and no way to leave mid-check. */
   checking?:     boolean;
-  tryAgain?:     boolean;
+  /** "pay": this payment's card form at /pay/{id}. "bookings": a fresh hold from My bookings (clients only). */
+  tryAgain?:     "pay" | "bookings";
   refresh?:      boolean;
   signIn?:       boolean;
 }
@@ -41,7 +42,9 @@ function Amount({ result, value }: { result: PaymentConfirmationResponse; value:
 
 // The spec's table (docs/claude/spec-c08-payment-result-honesty-2026-11-18.md §5), rows 3-9. "Try again"
 // only where paying again is correct: never on a held, charged or refunded payment, and never once the
-// appointment is cancelled — that would invite a second payment on the same booking.
+// appointment is cancelled — that would invite a second payment on the same booking. Where it goes depends
+// on the status: a Pending payment's card form still works ("pay" = /pay/{id}); a Failed one's order is
+// dead and /pay/{id} refuses it (Finding A), so the fresh hold comes from "Pay deposit" in My Bookings.
 function viewFor(result: PaymentConfirmationResponse): View | null {
   if (result.appointmentCancelled) {
     return {
@@ -98,10 +101,10 @@ function viewFor(result: PaymentConfirmationResponse): View | null {
       return {
         heading:  "Payment not completed",
         icon:     "cross",
-        tryAgain: true,
+        tryAgain: "bookings",
         body: (
           <p className="text-sm text-muted-foreground">
-            {"Your bank reported that this payment didn't go through, so you shouldn't see a charge for it. You can try again, or pay the studio in cash. If a charge does appear, contact the studio."}
+            {"Your bank reported that this payment didn't go through, so you shouldn't see a charge for it. You can try again with \"Pay deposit\" on the booking in My bookings, or pay the studio in cash. If a charge does appear, contact the studio."}
           </p>
         ),
       };
@@ -109,7 +112,7 @@ function viewFor(result: PaymentConfirmationResponse): View | null {
       return {
         heading:  "Payment not confirmed yet",
         icon:     "info",
-        tryAgain: true,
+        tryAgain: "pay",
         refresh:  true,
         body: (
           <p className="text-sm text-muted-foreground">
@@ -212,7 +215,14 @@ export function PaymentResultPage() {
     return () => { document.title = previous; };
   }, [title]);
 
-  const primary = view.tryAgain || view.signIn;
+  const retry = view.tryAgain === "pay" && paymentId
+    ? { to: `/pay/${paymentId}`, label: "Try again" }
+    : view.tryAgain === "bookings" && role === Role.Client
+      ? { to: "/book", label: "Try again in My bookings" }
+      : null;
+  // The bookings retry already goes where "Go to My bookings" would: one link, not two.
+  const showHome = view.signIn || retry?.to !== home.to;
+  const primary = retry !== null || view.signIn;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -237,17 +247,19 @@ export function PaymentResultPage() {
                 <Link to={loginPathFor(location)}>Sign in</Link>
               </Button>
             )}
-            {view.tryAgain && paymentId && (
+            {retry && (
               <Button asChild className="bg-violet-600 hover:bg-violet-700 text-white">
-                <Link to={`/pay/${paymentId}`}>Try again</Link>
+                <Link to={retry.to}>{retry.label}</Link>
               </Button>
             )}
             {view.refresh && (
               <Button variant="outline" onClick={() => void refetch()}>Refresh</Button>
             )}
-            <Button asChild variant={primary ? "outline" : "default"}>
-              <Link to={view.signIn ? "/" : home.to}>{view.signIn ? "Back to TattooOS" : home.label}</Link>
-            </Button>
+            {showHome && (
+              <Button asChild variant={primary ? "outline" : "default"}>
+                <Link to={view.signIn ? "/" : home.to}>{view.signIn ? "Back to TattooOS" : home.label}</Link>
+              </Button>
+            )}
           </div>
         )}
       </main>

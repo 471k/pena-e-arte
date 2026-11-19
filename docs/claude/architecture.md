@@ -7314,6 +7314,34 @@ docs/03's rule that ornamental lettering is for the wordmark only. Spec:
   if they are static text, 2.5.8 does not apply to them) and the "Show archived clients" switch (36x20;
   it is a control). Neither is recorded as a violation before the first step.
 
+## Finding A — a client token is refused for a cancelled or settled payment — 2026-11-19
+
+`GetPaymentClientTokenHandler` checked neither the payment's status nor the appointment's, so any
+`/pay/{id}` link for a cancelled booking served a working card form; the client was charged and refunded
+in full by the reconciliation job days later. It now refuses with 422, mirroring
+`CreateDepositPaymentCommand.cs:91-97` including its reconciliation trigger.
+
+- **Order:** not-found, then ownership, then the guard, so an unauthorised caller still gets 401 and learns
+  nothing about the payment's state. The checkout page shows the server's message for a 422 only; every
+  other error keeps the generic "not found or no access" line.
+- **Payable = `Pending` only.** `Captured` is refused ("already authorised, and the studio will charge
+  it"): it is an authorised hold (legacy, card deposits before 22 Oct 2026), `ResolveOrCreateHoldAsync`
+  resumes a stored `Pending` only, and capture is the studio's action, so a token would invite a second
+  authorisation on the same booking. That is C08's rule (never offer a retry on `Captured`, `Paid` or
+  `Refunded`); the Finding A spec's test 6 said the opposite and was corrected in review.
+  `Paid`/`Refunded` say "already been settled". `Failed` and `CashPending` get their own messages, because
+  "settled" is false for both: `Failed` is only set once the POK order behind the token is dead, and My
+  Bookings' "Pay deposit" mints a fresh hold on the same row; `CashPending` points to "Pay by card instead".
+- **`/payment-result`'s "Try again" on a `Failed` payment goes to My Bookings**, not `/pay/{id}`, which
+  now refuses a `Failed` payment. It is shown to clients only (My Bookings is the client's page).
+  `PaymentConfirmationResponse` carries no `AppointmentId`, so it cannot deep-link the booking. `Pending`
+  keeps `/pay/{id}`, which is still payable.
+- **An appointment hidden by its query filter** (the only way `Payment.AppointmentId`, a required FK, finds
+  nothing) is a 404, not a refusal message. Nothing sets `Appointment.DeletedAt` today, so this is
+  unreachable in production; the test is named for the condition, not for soft-delete.
+- **Earlier than most checkouts guard:** we refuse at the token read rather than at the charge, because the
+  token read is the first server call `/pay/{id}` makes.
+
 ## Admin audit log: reachable and readable (slice 8 phase 1a, D01) — 2026-11-19
 
 The admin audit log asked for 50 rows and offered no way past them, matched free-text action and target

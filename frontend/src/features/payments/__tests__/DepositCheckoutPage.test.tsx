@@ -122,6 +122,34 @@ describe("DepositCheckoutPage", () => {
     expect(await screen.findByText(/payment not found/i)).toBeInTheDocument();
   });
 
+  it("says there is nothing to pay, with no card form, when the server refuses a cancelled appointment (422)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments/:id/client-token", () =>
+        HttpResponse.json(
+          { message: "This appointment was cancelled, so there is nothing to pay." },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderPage("pay-001");
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "This appointment was cancelled, so there is nothing to pay.",
+    );
+    expect(screen.queryByText(/payment not found/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("pok-checkout-form")).not.toBeInTheDocument();
+  });
+
+  it("keeps the generic line for a 401, so a stranger learns nothing about the payment", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/payments/:id/client-token", () =>
+        HttpResponse.json({ message: "You can only access your own payment details." }, { status: 401 }),
+      ),
+    );
+    renderPage("pay-001");
+    expect(await screen.findByText(/payment not found/i)).toBeInTheDocument();
+    expect(screen.queryByText(/your own payment details/i)).not.toBeInTheDocument();
+  });
+
   // ── Card form ────────────────────────────────────────────────────────────────
 
   it("shows the POK checkout widget with the order id from the client-token response", async () => {
