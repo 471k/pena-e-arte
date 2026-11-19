@@ -7441,3 +7441,25 @@ lived, cleared the plan and note on failure and reported only by toast.
   outcomes still report by toast. Bringing every admin mutation onto receipts can follow the same component.
 - **Help correction found on the way:** the cash-activation article and its FAQ said the Dashboard row has
   an Activate button. It never did; both now name the three real places.
+
+## Admin audit log names staff actors by their current account name (slice 8, D01 follow-up) — 2026-11-19
+
+Phi's decision (19 Nov), on Desktop's framing of the trade-off: the admin audit log shows a staff actor's **current**
+name, looked up when the page is read, and **never stores a copy** with the entry.
+
+- **Why not a write-time snapshot:** the id is the record and never changes; the name is a label on it. A stored name
+  would copy personal data into an append-only table, against `AuditMetadataBuilder`'s rule that entries carry no
+  names, and would be stuck there if an account is erased (the erasure question open with Legal). A snapshot can
+  still be added later for staff roles alone if a compliance need appears.
+- **Who is named:** `owner`, `artist`, `admin`, `admin-impersonating` (named as the real admin). A **client is never
+  named**: the log is read across every tenant and a client's name is the most sensitive identity in it. Never an
+  email for anyone.
+- **Source:** `IIdentityService.GetAccountGivenNamesAsync`. One read for the accounts, then one claims read per
+  account found, over the page's distinct staff ids only. No account means `ActorAccountDeleted` ("Deleted user").
+  An account with no given-name claim means "No name on file".
+- **Known limit, stated in Help:** the name is the account's given-name claim, which is the first name given when the
+  account was created. Editing an artist's profile name does not update it today, so "current" means the account's
+  current name, not the artist profile's. Reading `Artist.FirstName/LastName` instead would need a cross-tenant read
+  of a filtered table, which means a new `IgnoreQueryFilters` registry row, and that is not taken here.
+- The owner's own-studio audit read (`GetMyStudioAuditLogQuery`) is unchanged; it leaves the new fields at their
+  defaults.

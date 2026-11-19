@@ -14,7 +14,8 @@ public class GetAuditLogReachabilityTests
 {
     private readonly FakeDbContext _db = FakeDbContext.Create();
 
-    private GetAuditLogHandler CreateSut() => new(_db);
+    // No accounts known: names are covered by GetAuditLogActorNameTests; these tests are about the records.
+    private GetAuditLogHandler CreateSut() => new(_db, AuditLogTestIdentity.NoAccounts());
 
     private async Task<AuditLogEntry> SeedAt(DateTime createdAtUtc, Guid? studioId = null, Guid? actorUserId = null)
     {

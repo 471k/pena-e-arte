@@ -40,6 +40,22 @@ function hasMetadata(raw: string): boolean {
   return trimmed !== "" && trimmed !== "{}";
 }
 
+/** "admin-impersonating" reads as a role, not a slug. */
+function roleLabel(role: string): string {
+  return role === "admin-impersonating" ? "admin (impersonating)" : role;
+}
+
+/**
+ * Who acted, as the admin read resolved it: a staff member's current account name, "Deleted user" when the account
+ * is gone, "No name on file" when there is none. A client is always just "Client": this log is read across every
+ * studio, and a client's name is the most sensitive identity that could appear in it.
+ */
+function actorLabel(row: AuditLogEntryResponse): string {
+  if (row.actorRole === "client") return "Client";
+  if (row.actorAccountDeleted) return "Deleted user";
+  return row.actorName ?? "No name on file";
+}
+
 function AuditRowDetail({
   row, onOnlyActor, onOnlyStudio,
 }: {
@@ -57,7 +73,7 @@ function AuditRowDetail({
         <dt className="text-muted-foreground">Studio</dt>
         <dd>{row.studioId ? <>{row.studioName ?? "Unknown studio"} · <span className="font-mono break-all">{row.studioId}</span></> : "Platform-wide"}</dd>
         <dt className="text-muted-foreground">Actor</dt>
-        <dd><span className="capitalize">{row.actorRole}</span> · <span className="font-mono break-all">{row.actorUserId}</span></dd>
+        <dd>{actorLabel(row)} · <span className="capitalize">{roleLabel(row.actorRole)}</span> · <span className="font-mono break-all">{row.actorUserId}</span></dd>
         <dt className="text-muted-foreground">When</dt>
         <dd>{formatUtc(row.createdAt)}</dd>
       </dl>
@@ -104,7 +120,7 @@ function AuditLogTable({
             <th className="px-3 py-2 font-medium">Action</th>
             <th className="px-3 py-2 font-medium">Target</th>
             <th className="px-3 py-2 font-medium">Studio</th>
-            <th className="px-3 py-2 font-medium">Actor role</th>
+            <th className="px-3 py-2 font-medium">Actor</th>
           </tr>
         </thead>
         <tbody>
@@ -141,7 +157,9 @@ function AuditLogTable({
                       ? (row.studioName ?? <span className="font-mono text-[10px]">{row.studioId.slice(0, 8)}</span>)
                       : "Platform-wide"}
                   </td>
-                  <td className="px-3 py-2 capitalize text-muted-foreground">{row.actorRole}</td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {actorLabel(row)} <span className="capitalize">· {roleLabel(row.actorRole)}</span>
+                  </td>
                 </tr>
                 {open && (
                   <tr id={`audit-detail-${row.id}`} className="border-b last:border-b-0">
