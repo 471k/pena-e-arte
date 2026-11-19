@@ -22,6 +22,11 @@ public record ExtendTrialCommand(Guid StudioId, ExtendTrialRequest Request) : IR
 public class ExtendTrialHandler(IAppDbContext db)
     : IRequestHandler<ExtendTrialCommand>
 {
+    public const string PastDueMessage =
+        "This studio's subscription payment is overdue, so a trial extension wouldn't restore access. "
+        + "Access comes back when the overdue payment is paid (the owner updates their billing details), "
+        + "or when you record a cash payment with Activate on the studio's page.";
+
     public async Task Handle(ExtendTrialCommand command, CancellationToken ct)
     {
         // IgnoreQueryFilters approved: usage #5 — trial extension cross-tenant, AdminOnly. See architecture.md.
@@ -34,6 +39,14 @@ public class ExtendTrialHandler(IAppDbContext db)
         if (studio.Subscription?.Status == SubscriptionStatus.Active)
             throw new BusinessRuleViolationException(
                 "Trial extension is not applicable to studios with an active subscription.");
+
+        // Phi's decision (19 Nov): refuse rather than write a date that has no effect. A past-due studio
+        // stays PastDue here, TenantMiddleware blocks PastDue whatever the trial date, and
+        // GracePeriodEndJob skips anything not in GracePeriod. The message names the two moves that do
+        // restore access. Exclude From Dunning is deliberately not offered as one: it only stops the
+        // reminder emails (PastDueReminderJob), the studio stays blocked.
+        if (studio.Subscription?.Status == SubscriptionStatus.PastDue)
+            throw new BusinessRuleViolationException(PastDueMessage);
 
         int days = command.Request.AdditionalDays;
 

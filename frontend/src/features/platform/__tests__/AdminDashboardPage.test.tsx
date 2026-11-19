@@ -437,12 +437,12 @@ describe("AdminDashboardPage", () => {
     expect(within(review).getByRole("button", { name: /^extend trial$/i })).toBeInTheDocument();
   });
 
-  it("At-Risk row: for a past-due studio the review says a trial date changes nothing", async () => {
-    const user = userEvent.setup();
+  it("At-Risk row: a past-due studio is not offered Extend trial, and still links to the studio", async () => {
     renderPage();
     const row = (await screen.findByText("PastDue Studio")).closest(".border-b") as HTMLElement;
-    await user.click(within(row).getByRole("button", { name: /extend trial/i }));
-    expect(within(row).getByText(/stays blocked until its payment is sorted out/i)).toBeInTheDocument();
+    // ExtendTrialHandler refuses PastDue (Phi, 19 Nov). The arrow opens the studio, where Activate is.
+    expect(within(row).queryByRole("button", { name: /extend trial/i })).not.toBeInTheDocument();
+    expect(within(row).getByTitle("Open studio")).toBeInTheDocument();
   });
 
   it("shows the Failed refunds card, empty when there are none", async () => {

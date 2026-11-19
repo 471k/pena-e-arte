@@ -29,7 +29,7 @@ import { DataMaintenanceCard } from "./DataMaintenanceCard";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
 import { ExtendTrialReview } from "./ExtendTrialReview";
-import { CASH_ACTIVATABLE } from "./subscriptionKnowledge";
+import { CASH_ACTIVATABLE, TRIAL_EXTENDABLE } from "./subscriptionKnowledge";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -212,7 +212,7 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
                 View
               </Button>
             </Link>
-            {sub.status !== "Active" && !extending && !activating && !confirming && (
+            {TRIAL_EXTENDABLE.has(sub.status) && !extending && !activating && !confirming && (
               <Button
                 size="sm"
                 variant="outline"
