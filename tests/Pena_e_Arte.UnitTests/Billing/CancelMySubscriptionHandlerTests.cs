@@ -165,12 +165,19 @@ public class CancelMySubscriptionHandlerTests
             StripeInvoiceId = $"in_{stripeId}",
             AmountPaid = amountPaid,
             Currency = "eur",
-            // Halfway through month N (N = periodStartMonthsAgo, at least 1): N-1 monthly
-            // anniversaries have passed and the Nth is about two weeks away, so MonthsUsed is N
-            // whatever the date. The old "AddMonths(-N) plus 5 minutes" failed on the 29th-31st,
-            // because AddMonths clamps: 31 Dec minus 3 months is 30 Sep, and its 3rd anniversary
-            // (30 Dec) has already passed, so MonthsUsed was 4. The calculator was right; the
-            // seed was not. Found by the clock sweep's year-end leg (.github/workflows/clock-sweep.yml).
+            // Seeded so MonthsUsed is N (N = periodStartMonthsAgo, at least 1) on any day.
+            // The old seed was "AddMonths(-N) plus 5 minutes": the Nth anniversary fell five
+            // minutes after now. But AddMonths clamps month-end dates, and the clamp can move an
+            // anniversary by up to three days (31 May minus 3 months is 28 Feb). At 31 Dec, minus
+            // 3 months is 30 Sep, so the 3rd anniversary was 30 Dec, a full day BEFORE now, and
+            // MonthsUsed was 4. The guard was sized to the wrong threat: five minutes against a
+            // shift of up to three days, so no wider margin of minutes could have fixed it.
+            // The new seed sits in the middle of month N instead. Checked over every day of
+            // 2026-2028 for N = 1..12 (13,152 cases): the (N-1)th anniversary is always at least
+            // 12 days in the past and the Nth at least 13 days ahead. The clamp still happens
+            // (from the 1st-15th the seed can land on the 29th-31st) but it can't reach either.
+            // The calculator was right (A1, a started month counts in full); the seed was not.
+            // Found by the clock sweep's year-end leg (.github/workflows/clock-sweep.yml).
             PaidAt = DateTime.UtcNow.AddMonths(-(periodStartMonthsAgo - 1)).AddDays(-15),
             PeriodStart = DateTime.UtcNow.AddMonths(-(periodStartMonthsAgo - 1)).AddDays(-15),
             MonthlyReferencePrice = monthlyRef,
