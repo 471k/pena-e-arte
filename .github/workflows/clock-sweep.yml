@@ -105,30 +105,48 @@ jobs:
           echo "faked date: $now (wanted ${{ matrix.moment.start }})"
           [ "$now" = "$(echo '${{ matrix.moment.start }}' | cut -c1-16)" ] || { echo "::error::clock is not faked"; exit 1; }
 
+      # Fake the clock in the TEST HOST only, never in vstest.console. With LD_PRELOAD on `dotnet test`
+      # itself, vstest gives up connecting to its testhost with "failed to connect to testhost process after
+      # 90 seconds" after ~10 real seconds: libfaketime distorts the runner's connection wait. That happened
+      # on every leg of the first run (19 Nov) and reproduced locally. RunConfiguration.EnvironmentVariables
+      # sets variables on the testhost process alone, so the runner keeps the real clock and the tests get
+      # the fake one (checked locally: a test saw 2026-11-25T22:30:03Z and passed).
+      - name: Write the faked-clock runsettings
+        run: |
+          cat > "$RUNNER_TEMP/fake-clock.runsettings" <<EOF
+          <RunSettings>
+            <RunConfiguration>
+              <EnvironmentVariables>
+                <LD_PRELOAD>${FAKETIME_LIB}</LD_PRELOAD>
+                <FAKETIME>@${{ matrix.moment.start }}</FAKETIME>
+                <FAKETIME_DONT_FAKE_MONOTONIC>1</FAKETIME_DONT_FAKE_MONOTONIC>
+                <TZ>UTC</TZ>
+              </EnvironmentVariables>
+            </RunConfiguration>
+          </RunSettings>
+          EOF
+          cat "$RUNNER_TEMP/fake-clock.runsettings"
+
       # Both suites run even if the first fails (`always()` on the second), so one red leg names every
       # failing test rather than only the unit ones.
-      - name: Unit tests (faked clock)
+      - name: Unit tests (faked clock in the test host)
         env:
           TZ: UTC
-          LD_PRELOAD: ${{ env.FAKETIME_LIB }}
-          FAKETIME: "@${{ matrix.moment.start }}"
-          FAKETIME_DONT_FAKE_MONOTONIC: "1"
         run: >
           dotnet test tests/Pena_e_Arte.UnitTests/Pena_e_Arte.UnitTests.csproj
           --configuration Release --no-build
+          --settings "$RUNNER_TEMP/fake-clock.runsettings"
           --logger "trx;LogFileName=unit-tests.trx"
           --results-directory test-results
 
-      - name: Integration tests (faked clock)
+      - name: Integration tests (faked clock in the test host)
         if: always()
         env:
           TZ: UTC
-          LD_PRELOAD: ${{ env.FAKETIME_LIB }}
-          FAKETIME: "@${{ matrix.moment.start }}"
-          FAKETIME_DONT_FAKE_MONOTONIC: "1"
         run: >
           dotnet test tests/Pena_e_Arte.IntegrationTests/Pena_e_Arte.IntegrationTests.csproj
           --configuration Release --no-build
+          --settings "$RUNNER_TEMP/fake-clock.runsettings"
           --logger "trx;LogFileName=integration-tests.trx"
           --results-directory test-results
 
@@ -146,14 +164,25 @@ jobs:
           print(f"### Backend @ {name} (fake start {start} UTC)\n")
           total = 0
           failed = []
+          starts = []
           for path in sorted(glob.glob("test-results/*.trx")):
               root = ET.parse(path).getroot()
-              for r in root.iterfind(".//t:UnitTestResult", ns):
+              results = list(root.iterfind(".//t:UnitTestResult", ns))
+              if not results:
+                  # The first run (19 Nov) reported "0 failed" while no test had run at all.
+                  info = root.find(".//t:RunInfo/t:Text", ns)
+                  print(f"**NO TESTS RAN in {path}**: {(info.text or '').strip()[:300] if info is not None else 'no run info'}\n")
+              for r in results:
                   total += 1
+                  if r.get("startTime"):
+                      starts.append(r.get("startTime"))
                   if r.get("outcome") == "Failed":
                       msg = r.find(".//t:Message", ns)
                       first = (msg.text or "").strip().splitlines()[0][:200] if msg is not None and msg.text else ""
                       failed.append((r.get("testName"), first))
+          # startTime is stamped inside the test host, so it shows the clock the tests saw.
+          if starts:
+              print(f"Test-host clock: first test started {min(starts)} (should be just after {start})\n")
           print(f"{total} results, **{len(failed)} failed**\n")
           if failed:
               print("| Test | First line of the failure |\n|---|---|")
