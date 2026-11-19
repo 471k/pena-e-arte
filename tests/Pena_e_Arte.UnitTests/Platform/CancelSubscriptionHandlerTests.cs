@@ -238,12 +238,12 @@ public class CancelSubscriptionHandlerTests
             StripeInvoiceId = $"in_{stripeId}",
             AmountPaid = amountPaid,
             Currency = "eur",
-            // Halfway through month N (N = monthsAgo, at least 1): N-1 monthly anniversaries
-            // have passed and the Nth is about two weeks away, so MonthsUsed is N whatever the
-            // date. The old "AddMonths(-N) plus 5 minutes" failed on the 29th-31st, because
-            // AddMonths clamps (31 Dec minus 3 months is 30 Sep, whose 3rd anniversary has
-            // already passed). YearlyRefundCalculator itself is correct; see
-            // CancelMySubscriptionHandlerTests.SeedYearly and the clock sweep's year-end leg.
+            // MonthsUsed is N (N = monthsAgo, at least 1) on any day. The old "AddMonths(-N) plus
+            // 5 minutes" guarded against five minutes while AddMonths' month-end clamp moves an
+            // anniversary by up to three days (31 Dec minus 3 months is 30 Sep, whose 3rd
+            // anniversary is a day before now). The new seed keeps both neighbouring anniversaries
+            // at least 12 days away, which the clamp can't reach. YearlyRefundCalculator itself is
+            // correct; see CancelMySubscriptionHandlerTests.SeedYearly for the full check.
             PaidAt = DateTime.UtcNow.AddMonths(-(monthsAgo - 1)).AddDays(-15),
             PeriodStart = DateTime.UtcNow.AddMonths(-(monthsAgo - 1)).AddDays(-15),
             MonthlyReferencePrice = monthlyRef,

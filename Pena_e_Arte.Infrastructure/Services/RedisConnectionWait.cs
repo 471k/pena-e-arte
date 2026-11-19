@@ -10,14 +10,22 @@ namespace Pena_e_Arte.Infrastructure.Services;
 /// in 7 days, all within ~2-4 s of a pod starting) and risking a pod that misses the other replica's
 /// hub messages. Waiting briefly for the connection before subscribing removes the race; if Redis
 /// really is down, the caller carries on after <paramref name="max"/> exactly as before.
+///
+/// The wait is a DURATION, so it is measured on the monotonic clock (GetTimestamp/GetElapsedTime), never the
+/// wall clock. It used to compute a deadline as DateTime.UtcNow + max: a wall-clock step (NTP, a VM resume)
+/// stretches or cuts that deadline, and a clock stepped back would hold pod start for as long as the step.
+/// TimeProvider.GetUtcNow() would not fix that; it is the same wall clock behind an abstraction. See
+/// backend.md, "Clocks", for the two clock defect classes.
 /// </summary>
 public static class RedisConnectionWait
 {
     public static async Task WaitUntilConnectedAsync(
-        IConnectionMultiplexer connection, TimeSpan max, TimeSpan pollInterval, CancellationToken ct = default)
+        IConnectionMultiplexer connection, TimeSpan max, TimeSpan pollInterval, CancellationToken ct = default,
+        TimeProvider? timeProvider = null)
     {
-        DateTime until = DateTime.UtcNow + max;
-        while (!connection.IsConnected && DateTime.UtcNow < until)
-            await Task.Delay(pollInterval, ct);
+        TimeProvider clock = timeProvider ?? TimeProvider.System;
+        long started = clock.GetTimestamp();
+        while (!connection.IsConnected && clock.GetElapsedTime(started) < max)
+            await Task.Delay(pollInterval, clock, ct);
     }
 }

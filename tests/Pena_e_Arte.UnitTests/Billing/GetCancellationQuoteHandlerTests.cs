@@ -64,7 +64,8 @@ public class GetCancellationQuoteHandlerTests
             StripeInvoiceId = "in_1",
             AmountPaid = 790m,
             Currency = "eur",
-            // Halfway through the 3rd month: see CancelMySubscriptionHandlerTests.SeedYearly's comment.
+            // MonthsUsed is 3 on any day, month-end clamping included: see
+            // CancelMySubscriptionHandlerTests.SeedYearly's comment for why and how it was checked.
             PaidAt = DateTime.UtcNow.AddMonths(-2).AddDays(-15),
             PeriodStart = DateTime.UtcNow.AddMonths(-2).AddDays(-15),
             MonthlyReferencePrice = 79m,
