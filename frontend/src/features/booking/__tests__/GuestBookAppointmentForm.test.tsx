@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { GuestBookAppointmentForm } from "@/features/booking/components/GuestBookAppointmentForm";
@@ -19,6 +19,15 @@ let mockStudio: { currency: string; countryCode?: string; timezone?: string } = 
 
 const mockCreateGuestAppointment = vi.fn();
 const mockPresignGuestUpload = vi.fn();
+// The slot list (C03). Default: nothing offered, so the existing tests type the time by hand as before.
+const mockSlotsRefetch = vi.fn();
+interface SlotsResult {
+  data?: { from: string; to: string; durationMinutes: number; stepMinutes: number; days: { date: string; starts: string[] }[]; nextAvailable: string | null };
+  isFetching: boolean;
+  isError: boolean;
+  refetch: () => unknown;
+}
+let mockSlots: (args: unknown) => SlotsResult = () => ({ data: undefined, isFetching: false, isError: false, refetch: mockSlotsRefetch });
 
 vi.mock("@/features/public/publicApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/public/publicApi")>();
@@ -26,6 +35,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     ...actual,
     useGetPublicBookingArtistsQuery: () => ({ data: [ARTIST], isLoading: false }),
     useCheckPublicSlotAvailabilityQuery: () => ({ data: { available: true, reason: null }, isFetching: false }),
+    useGetPublicAvailableSlotsQuery: (args: unknown) => mockSlots(args),
     useGetPublicDepositRuleQuery: () => ({ data: null }),
     useGetPublicServicesQuery: () => ({ data: [] }),
     useGetPublicStudioQuery: () => ({ data: mockStudio }),
@@ -38,6 +48,8 @@ beforeEach(() => {
   mockStudio = { currency: "EUR", timezone: STUDIO_TZ };
   mockCreateGuestAppointment.mockReset();
   mockPresignGuestUpload.mockReset();
+  mockSlotsRefetch.mockReset();
+  mockSlots = () => ({ data: undefined, isFetching: false, isError: false, refetch: mockSlotsRefetch });
   mockPresignGuestUpload.mockReturnValue({
     unwrap: () => Promise.resolve({ uploadUrl: "https://r2.example.com/upload", publicUrl: "https://cdn.example.com/img.png" }),
   });
@@ -386,4 +398,104 @@ describe("GuestBookAppointmentForm", () => {
     expect(await screen.findByText("Check your email")).toBeInTheDocument();
     expect(screen.queryByText(/already exists/i)).not.toBeInTheDocument();
   }, FULL_FORM_TIMEOUT);
+});
+
+// ── The slot list (C03): a preview, not a reservation ──────────────────────────────────────────
+
+/** A week of days from the request's own `from`, with 10:00 and 13:00 Tokyo open on the third day. */
+function weekWithTwoOpenTimes(args: unknown): SlotsResult {
+  // RTK Query's skipToken (no artist chosen yet) carries no range: nothing to list.
+  if (typeof args !== "object" || args === null) return { data: undefined, isFetching: false, isError: false, refetch: mockSlotsRefetch };
+  const { from } = args as { from: string };
+  const start = new Date(`${from}T00:00:00Z`);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(start.getTime() + i * 86_400_000).toISOString().slice(0, 10);
+    // Tokyo is UTC+9 all year: 10:00 there is 01:00 UTC on the same date, 13:00 is 04:00 UTC.
+    return { date, starts: i === 2 ? [`${date}T01:00:00.000Z`, `${date}T04:00:00.000Z`] : [] };
+  });
+  return {
+    data: { from, to: days[6].date, durationMinutes: 60, stepMinutes: 60, days, nextAvailable: days[2].starts[0] },
+    isFetching: false, isError: false, refetch: mockSlotsRefetch,
+  };
+}
+
+const openDay = () => {
+  const today = new Date(new Date().toLocaleString("en-US", { timeZone: STUDIO_TZ }));
+  return new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() + 2)).toISOString().slice(0, 10);
+};
+
+describe("GuestBookAppointmentForm — open times (C03)", () => {
+  async function chooseArtist(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByLabelText(/^artist/i));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+  }
+
+  it("asks for an artist first, then picking an open time fills Date & Time on the studio's clock", async () => {
+    mockSlots = weekWithTwoOpenTimes;
+    const user = userEvent.setup();
+    renderForm();
+    expect(screen.getByText(/choose an artist, or let the studio choose, to see open times/i)).toBeInTheDocument();
+
+    await chooseArtist(user);
+    await user.click(await screen.findByRole("button", { name: "10:00" }));
+
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue(`${openDay()}T10:00`);
+    expect(screen.getByRole("button", { name: "10:00" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("a time taken before submitting keeps every entered value, offers the nearest open times, and submits nothing by itself", async () => {
+    mockSlots = weekWithTwoOpenTimes;
+    mockCreateGuestAppointment.mockReturnValueOnce(Promise.resolve({
+      error: { status: 409, data: { code: "SLOT_ALREADY_BOOKED", message: "The selected time slot is no longer available." } },
+    }));
+    const user = userEvent.setup();
+    renderForm();
+
+    await fillIdentityFields(user);
+    await chooseArtist(user);
+    await user.click(await screen.findByRole("button", { name: "10:00" }));
+    await enter(user, screen.getByLabelText(/what are you looking to get done/i), "A small rose");
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    // Said plainly, with a fresh list asked for, and the chosen time NOT moved.
+    expect(await screen.findByText(/was just booked by someone else/i)).toBeInTheDocument();
+    expect(mockSlotsRefetch).toHaveBeenCalled();
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue(`${openDay()}T10:00`);
+    expect(screen.getByText("That time was just booked. Choose another time.")).toBeInTheDocument();
+    // Every other value is kept.
+    expect(screen.getByLabelText(/first name/i)).toHaveValue("Jamie");
+    expect(screen.getByLabelText(/^email/i)).toHaveValue("jamie@example.com");
+    expect(screen.getByLabelText(/what are you looking to get done/i)).toHaveValue("A small rose");
+    expect(screen.getAllByRole("img")).toHaveLength(2);
+
+    // Choosing the offered alternative only fills the field: nothing is sent until the person submits.
+    const takenAlert = screen.getByText(/was just booked by someone else/i).closest("[role='alert']") as HTMLElement;
+    const alternative = within(takenAlert).getByRole("button", { name: /13:00/ });
+    await user.click(alternative);
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue(`${openDay()}T13:00`);
+    expect(mockCreateGuestAppointment).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/was just booked by someone else/i)).not.toBeInTheDocument();
+
+    mockCreateGuestAppointment.mockReturnValueOnce(Promise.resolve({ data: { message: "ok" } }));
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+    await screen.findByText("Check your email");
+    expect(mockCreateGuestAppointment).toHaveBeenLastCalledWith(expect.objectContaining({
+      body: expect.objectContaining({ booking: expect.objectContaining({ date: `${openDay()}T04:00:00.000Z` }) }),
+    }));
+  }, FULL_FORM_TIMEOUT);
+
+  it("when open times can't load, it says so, offers Try again, and the time can still be typed", async () => {
+    mockSlots = () => ({ data: undefined, isFetching: false, isError: true, refetch: mockSlotsRefetch });
+    const user = userEvent.setup();
+    renderForm();
+    await chooseArtist(user);
+
+    expect(screen.getByText(/couldn.t load open times\. you can still type a time below/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /try again/i }));
+    expect(mockSlotsRefetch).toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText(/date.*time/i), "2030-03-05T22:00");
+    expect(screen.getByLabelText(/date.*time/i)).toHaveValue("2030-03-05T22:00");
+  });
 });

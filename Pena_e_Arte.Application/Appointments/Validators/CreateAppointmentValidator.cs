@@ -12,7 +12,7 @@ public class CreateAppointmentValidator : AbstractValidator<CreateAppointmentCom
     {
         RuleFor(x => x.Request.ClientId).NotEmpty();
         RuleFor(x => x.Request.Date)
-            .GreaterThan(DateTime.UtcNow.AddMinutes(30))
+            .GreaterThan(DateTime.UtcNow.AddMinutes(BookingContentValidationRules.MinimumLeadMinutes))
             .WithMessage("Appointment must be at least 30 minutes in the future.");
         RuleFor(x => x.Request.DurationMinutes)
             .Must(d => BookingContentValidationRules.ValidDurations.Contains(d))

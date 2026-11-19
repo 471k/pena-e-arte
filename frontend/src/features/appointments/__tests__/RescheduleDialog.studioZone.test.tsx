@@ -33,6 +33,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/appointments/:id/reschedule-preview", () => HttpResponse.json({
     appointmentId: "appt-1", canReschedule: true, block: null, message: null, noticeWindowHours: 48, noticeWindowApplies: false,
   })),
+  // The slot list (C03): none by default, so the picker shows its empty state and the typed field is used.
+  http.get("http://localhost/api/v1/appointments/available-slots", () => HttpResponse.json({ from: "2026-01-01", to: "2026-01-07", durationMinutes: 60, stepMinutes: 60, days: [], nextAvailable: null })),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   http.patch("http://localhost/api/v1/appointments/:id/reschedule", async ({ request }) => {
     saved = (await request.json()) as { newDate: string };

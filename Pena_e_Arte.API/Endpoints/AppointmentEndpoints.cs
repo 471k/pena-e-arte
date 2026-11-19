@@ -1,6 +1,7 @@
 using MediatR;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Appointments.Queries;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Enums;
@@ -18,6 +19,7 @@ public static class AppointmentEndpoints
         group.MapGet("/export.csv", ExportAppointmentsCsv).RequireAuthorization("OwnerOnly");
         group.MapGet("/mine", GetMyAppointments).RequireAuthorization("ClientAndAbove");
         group.MapGet("/check-slot", CheckSlotAvailability).RequireAuthorization("ClientAndAbove");
+        group.MapGet("/available-slots", GetAvailableSlots).RequireAuthorization("ClientAndAbove");
         group.MapGet("{id:guid}", GetAppointment).RequireAuthorization("ArtistAndAbove");
         group.MapPost("/", CreateAppointment).RequireAuthorization("ClientAndAbove");
         group.MapDelete("{id:guid}", CancelAppointment).RequireAuthorization("ClientAndAbove");
@@ -234,5 +236,20 @@ public static class AppointmentEndpoints
         SlotAvailabilityResult result = await mediator.Send(
             new CheckSlotAvailabilityQuery(artistId, date, durationMinutes, excludeAppointmentId), ct);
         return Results.Ok(new SlotAvailabilityResponse(result.Available, result.Reason));
+    }
+
+    // C03 (slice 7): the slot list. Same policy as check-slot, its yes/no sibling.
+    private static async Task<IResult> GetAvailableSlots(
+        Guid? artistId,
+        DateOnly from,
+        DateOnly to,
+        int durationMinutes,
+        Guid? excludeAppointmentId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AvailableSlotsResult result = await mediator.Send(
+            new GetAvailableSlotsQuery(artistId, from, to, durationMinutes, excludeAppointmentId), ct);
+        return Results.Ok(result.ToResponse());
     }
 }

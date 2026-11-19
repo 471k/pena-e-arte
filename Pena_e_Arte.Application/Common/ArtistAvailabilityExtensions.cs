@@ -46,8 +46,7 @@ public static class ArtistAvailabilityExtensions
 
         StudioHours? studioHours = await db.StudioHours.IgnoreQueryFilters().FirstOrDefaultAsync(
             h => h.StudioId == studioId && h.DeletedAt == null && h.DayOfWeek == day, ct);
-        if (studioHours is null || !studioHours.IsOpen) return false;
-        if (startTime < studioHours.StartTime || endTime > studioHours.EndTime) return false;
+        if (StudioHoursRefusal(w, studioHours) is not null) return false;
 
         List<Guid> candidateArtistIds = await db.Artists
             .IgnoreQueryFilters()
@@ -116,42 +115,67 @@ public static class ArtistAvailabilityExtensions
     {
         SlotWindow w = await db.ToStudioWindowAsync(studioId, date, durationMinutes, ct);
         DayOfWeek day = w.Day;
-        TimeSpan startTime = w.StartTime;
-        TimeSpan endTime = w.EndTime;
 
         bool studioClosed = await db.StudioClosures.IgnoreQueryFilters().AnyAsync(
             c => c.StudioId == studioId && c.DeletedAt == null
                  && c.StartDate <= w.LocalDate && c.EndDate >= w.LocalDate, ct);
         if (studioClosed)
-            return (false, "Studio is closed that day.");
+            return (false, StudioClosedReason);
 
         StudioHours? studioHours = await db.StudioHours.IgnoreQueryFilters().FirstOrDefaultAsync(
             h => h.StudioId == studioId && h.DeletedAt == null && h.DayOfWeek == day, ct);
-        if (studioHours is null || !studioHours.IsOpen)
-            return (false, "Studio is closed that day.");
-        if (startTime < studioHours.StartTime || endTime > studioHours.EndTime)
-            return (false, $"Outside studio hours ({studioHours.StartTime:hh\\:mm}–{studioHours.EndTime:hh\\:mm}).");
+        if (StudioHoursRefusal(w, studioHours) is string hoursRefusal)
+            return (false, hoursRefusal);
 
-        var schedule = await db.ArtistSchedules
+        ArtistSchedule? schedule = await db.ArtistSchedules
             .IgnoreQueryFilters()
             .Where(s => s.StudioId == studioId && s.DeletedAt == null && s.ArtistId == artistId &&
                         s.DayOfWeek == day && s.IsAvailable)
             .FirstOrDefaultAsync(ct);
 
-        if (schedule is null)
-            return (false, $"Artist is not available on {day}s.");
-
-        if (startTime < schedule.StartTime || endTime > schedule.EndTime)
-            return (false, $"Outside artist's hours ({schedule.StartTime:hh\\:mm}–{schedule.EndTime:hh\\:mm}).");
+        if (ArtistScheduleRefusal(w, schedule) is string scheduleRefusal)
+            return (false, scheduleRefusal);
 
         bool onLeave = await db.ArtistTimeOffs.IgnoreQueryFilters().AnyAsync(
             t => t.StudioId == studioId && t.DeletedAt == null && t.ArtistId == artistId &&
                  t.StartDate <= w.LocalDate && t.EndDate >= w.LocalDate, ct);
 
         if (onLeave)
-            return (false, "Artist is on leave that day.");
+            return (false, OnLeaveReason);
 
         return (true, null);
+    }
+
+    // ── The rule steps, shared by the one-slot chain above and AvailableSlots (C03, slice 7) ──
+    // The chain reads one row at a time; AvailableSlots reads a range of rows once. Both decide with these
+    // functions, so the slot list cannot grow a second idea of what "open" means.
+
+    internal const string StudioClosedReason = "Studio is closed that day.";
+    internal const string OnLeaveReason = "Artist is on leave that day.";
+    internal const string AlreadyBookedReason = "That slot is already booked.";
+
+    /// <summary>Null when the studio's hours for the window's day hold the whole window.</summary>
+    internal static string? StudioHoursRefusal(SlotWindow w, StudioHours? studioHours)
+    {
+        if (studioHours is null || !studioHours.IsOpen)
+            return StudioClosedReason;
+        if (w.StartTime < studioHours.StartTime || w.EndTime > studioHours.EndTime)
+            return $"Outside studio hours ({studioHours.StartTime:hh\\:mm}–{studioHours.EndTime:hh\\:mm}).";
+        return null;
+    }
+
+    /// <summary>
+    /// Null when the artist's available schedule row for the window's day holds the whole window. The row
+    /// passed must be the artist's IsAvailable row for that day (uix_artist_schedule_artist_day allows one
+    /// per artist and day), or null.
+    /// </summary>
+    internal static string? ArtistScheduleRefusal(SlotWindow w, ArtistSchedule? schedule)
+    {
+        if (schedule is null)
+            return $"Artist is not available on {w.Day}s.";
+        if (w.StartTime < schedule.StartTime || w.EndTime > schedule.EndTime)
+            return $"Outside artist's hours ({schedule.StartTime:hh\\:mm}–{schedule.EndTime:hh\\:mm}).";
+        return null;
     }
 
     /// <summary>
@@ -184,7 +208,7 @@ public static class ArtistAvailabilityExtensions
             a.Status != AppointmentStatus.Cancelled, ct);
 
         if (conflict)
-            return (false, "That slot is already booked.");
+            return (false, AlreadyBookedReason);
 
         return (true, null);
     }
@@ -203,11 +227,19 @@ public static class ArtistAvailabilityExtensions
     internal static async Task<SlotWindow> ToStudioWindowAsync(
         this IAppDbContext db, Guid studioId, DateTime date, int durationMinutes, CancellationToken ct)
     {
-        string? timezone = await db.Studios.IgnoreQueryFilters()
+        string? timezone = await db.StudioTimezoneAsync(studioId, ct);
+        return ToStudioWindow(timezone, date, durationMinutes);
+    }
+
+    internal static Task<string?> StudioTimezoneAsync(this IAppDbContext db, Guid studioId, CancellationToken ct) =>
+        db.Studios.IgnoreQueryFilters()
             .Where(s => s.Id == studioId)
             .Select(s => s.Timezone)
             .FirstOrDefaultAsync(ct);
 
+    /// <summary>The window for a requested start in a studio's zone. Pure, so AvailableSlots builds it identically.</summary>
+    internal static SlotWindow ToStudioWindow(string? timezone, DateTime date, int durationMinutes)
+    {
         DateTime utcStart = TimezoneUtils.AsUtc(date);
         DateTime utcEnd = utcStart.AddMinutes(durationMinutes);
         DateTime localStart = TimezoneUtils.ToStudioLocalForRules(utcStart, timezone);
