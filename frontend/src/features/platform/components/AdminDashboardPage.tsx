@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
   AlertCircle,
@@ -21,11 +20,12 @@ import {
   useGetPlatformStatsQuery,
   useGetPlatformSubscriptionsQuery,
   useGetRevenueRetentionQuery,
-  useExtendTrialMutation,
 } from "@/features/platform/platformApi";
 import { MrrChart } from "./MrrChart";
 import { MrrMovementsChart } from "./MrrMovementsChart";
 import { KpiCard, KpiSkeleton } from "./KpiCard";
+import { ExtendTrialReview } from "./ExtendTrialReview";
+import { FailedRefundsCard } from "./RefundInvestigation";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 function KpiGridSkeleton() {
@@ -92,20 +92,6 @@ function ExpiryLabel({ dateStr, status }: { dateStr: string; status: string }) {
 
 function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
   const [extending,  setExtending]  = useState(false);
-  const [days,       setDays]       = useState("7");
-  const [extendTrial, { isLoading }] = useExtendTrialMutation();
-
-  async function handleExtend() {
-    const additionalDays = parseInt(days, 10);
-    if (isNaN(additionalDays) || additionalDays < 1 || additionalDays > 90) return;
-    try {
-      await extendTrial({ studioId: sub.studioId, additionalDays }).unwrap();
-      toast.success(`Trial extended by ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`);
-      setExtending(false);
-    } catch {
-      toast.error("Failed to extend trial");
-    }
-  }
 
   return (
     <div className="py-2 border-b last:border-0 space-y-1.5">
@@ -159,31 +145,17 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
         </div>
       </div>
 
+      {/* The shared consequence review (D03). For a past-due studio it says plainly that a trial date changes nothing. */}
       {extending && (
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min="1"
-            max="90"
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            className="h-7 w-16 rounded border border-input bg-background px-2 text-xs"
-          />
-          <span className="text-xs text-muted-foreground">days</span>
-          <button
-            onClick={handleExtend}
-            disabled={isLoading}
-            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {isLoading ? "…" : "Confirm"}
-          </button>
-          <button
-            onClick={() => setExtending(false)}
-            className="text-xs px-2 py-1 rounded hover:bg-muted transition-colors text-muted-foreground"
-          >
-            Cancel
-          </button>
-        </div>
+        <ExtendTrialReview
+          studioId={sub.studioId}
+          studioName={sub.studioName}
+          idSuffix={`atrisk-${sub.studioId}`}
+          status={sub.status}
+          currentTrialEnd={sub.trialExpiresAt ?? null}
+          onDone={() => setExtending(false)}
+          onBack={() => setExtending(false)}
+        />
       )}
     </div>
   );
@@ -427,6 +399,9 @@ export function AdminDashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Failed refunds across studios (D07) */}
+        <FailedRefundsCard />
 
         <Link
           to="/platform/help-insights"

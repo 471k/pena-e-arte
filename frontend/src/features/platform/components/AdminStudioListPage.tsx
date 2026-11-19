@@ -29,13 +29,13 @@ import {
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import {
   useGetPlatformSubscriptionsQuery,
-  useExtendTrialMutation,
-  useCancelSubscriptionMutation,
 } from "@/features/platform/platformApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlanResponse } from "@/features/billing/billing.types";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
+import { ExtendTrialReview } from "./ExtendTrialReview";
 import { CASH_ACTIVATABLE, knowSubscriptionStatus, type SubscriptionKnowledge } from "./subscriptionKnowledge";
 
 // ── Status display config ──────────────────────────────────────────────────────
@@ -151,11 +151,8 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
   const [extending,  setExtending]  = useState(false);
   const [activating, setActivating] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [days,       setDays]       = useState("7");
   const [receipt,    setReceipt]    = useState<ActivationReceipt | null>(null);
 
-  const [extendTrial,      { isLoading: extending_  }] = useExtendTrialMutation();
-  const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
 
   const canExtendTrial = subKnown && subStatus !== "Active";
   const canActivate    = subKnown && CASH_ACTIVATABLE.has(subStatus);
@@ -174,28 +171,6 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
       toast.error(confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio");
     } finally {
       setConfirmPlatform(null);
-    }
-  }
-
-  async function handleExtend() {
-    const d = parseInt(days, 10);
-    if (isNaN(d) || d < 1) return;
-    try {
-      await extendTrial({ studioId: studio.id, additionalDays: d }).unwrap();
-      toast.success(`Trial extended by ${d} day${d !== 1 ? "s" : ""}`);
-      setExtending(false);
-    } catch {
-      toast.error("Failed to extend trial");
-    }
-  }
-
-  async function handleCancel() {
-    try {
-      await cancelSub({ studioId: studio.id }).unwrap();
-      toast.success("Subscription cancelled");
-      setConfirming(false);
-    } catch {
-      toast.error("Failed to cancel subscription");
     }
   }
 
@@ -360,26 +335,17 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
           </div>
         </div>
 
-        {/* ── Extend trial form ────────────────────────────────────────── */}
+        {/* ── Extend trial: the shared consequence review (D03) ───────────── */}
         {extending && (
-          <div className="flex items-center gap-2 pt-1 border-t">
-            <span className="text-xs text-muted-foreground">
-              {trialExpired ? "Grant extension of" : "Extend trial by"}
-            </span>
-            <Input
-              type="number" min="1" max="90"
-              value={days} onChange={(e) => setDays(e.target.value)}
-              className="h-7 w-20 text-xs"
-            />
-            <span className="text-xs text-muted-foreground">days</span>
-            <Button size="sm" className="h-7 px-2 text-xs" disabled={extending_} onClick={handleExtend}>
-              {extending_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-              onClick={() => setExtending(false)}>
-              Cancel
-            </Button>
-          </div>
+          <ExtendTrialReview
+            studioId={studio.id}
+            studioName={studio.name}
+            idSuffix={studio.id}
+            status={subStatus}
+            currentTrialEnd={trialDate ?? null}
+            onDone={() => setExtending(false)}
+            onBack={() => setExtending(false)}
+          />
         )}
 
         {/* ── Activate (cash) form ─────────────────────────────────────── */}
@@ -389,6 +355,7 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
             studioName={studio.name}
             plans={plans}
             idSuffix={studio.id}
+            status={subStatus}
             notePlaceholder="e.g. Cash paid in person on 2026-06-13"
             knowledge={knowledge}
             checking={subsChecking}
@@ -399,21 +366,15 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
         )}
         {receipt && <ActivationReceiptNotice receipt={receipt} onDismiss={() => setReceipt(null)} />}
 
-        {/* ── Cancel subscription confirm ──────────────────────────────── */}
+        {/* ── Cancel subscription: the shared consequence review (D03) ───── */}
         {confirming && (
-          <div className="flex items-center gap-2 pt-1 border-t">
-            <span className="text-xs text-destructive-text font-medium">Cancel subscription permanently?</span>
-            <Button
-              size="sm" variant="destructive" className="h-7 px-2 text-xs"
-              disabled={cancelling_} onClick={handleCancel}
-            >
-              {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-              onClick={() => setConfirming(false)}>
-              Back
-            </Button>
-          </div>
+          <CancelSubscriptionReview
+            studioId={studio.id}
+            studioName={studio.name}
+            idSuffix={studio.id}
+            onDone={() => setConfirming(false)}
+            onBack={() => setConfirming(false)}
+          />
         )}
 
       </CardContent>

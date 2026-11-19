@@ -110,10 +110,67 @@ export interface RevenueRetentionResponse {
 }
 
 export interface RecentRefundResponse {
-  amount:        number;
-  status:        "Pending" | "Succeeded" | "Failed";
-  createdAt:     string;
-  failureReason: string | null;
+  amount:           number;
+  /** The refund's own currency (D07): never assumed. */
+  currency:         string;
+  status:           "Pending" | "Succeeded" | "Failed";
+  createdAt:        string;
+  /** When the row last changed: for a Failed refund, when it failed. */
+  updatedAt:        string | null;
+  failureReason:    string | null;
+  /** The Stripe invoice the refund was issued against. */
+  invoiceReference: string;
+  /** Whether Stripe accepted the refund request. A Failed one that didn't may or may not have been made. */
+  reachedStripe:    boolean;
+}
+
+/** D07: a failed yearly-cancellation refund on the platform-wide list. */
+export interface FailedSubscriptionRefundResponse {
+  id:               string;
+  studioId:         string;
+  studioName:       string;
+  amount:           number;
+  currency:         string;
+  rule:             "YearlyFormula" | "AdminFull" | "AdminNone";
+  createdAt:        string;
+  failedAt:         string;
+  failureReason:    string | null;
+  invoiceReference: string;
+  reachedStripe:    boolean;
+}
+
+export interface FailedSubscriptionRefundsResponse {
+  items:      FailedSubscriptionRefundResponse[];
+  /** All failed refunds; items holds at most the newest 50. */
+  totalCount: number;
+}
+
+/**
+ * D03: what an admin cancellation will do. Admin cancellation is immediate. refundApplies is true only for a Yearly,
+ * Stripe-billed subscription with a paid invoice; otherwise every rule refunds nothing.
+ */
+export interface AdminCancellationQuoteResponse {
+  status:              string;
+  planName:            string | null;
+  billingInterval:     "Monthly" | "Yearly";
+  billedThroughStripe: boolean;
+  refundApplies:       boolean;
+  currency:            string | null;
+  formulaRefund:       number;
+  fullRefund:          number;
+  monthsUsed:          number | null;
+  amountPaid:          number | null;
+  invoiceId:           string | null;
+}
+
+export type CancelRefundChoice = "formula" | "AdminFull" | "AdminNone";
+
+export interface CancelSubscriptionArgs {
+  studioId:  string;
+  override?: "AdminFull" | "AdminNone";
+  reason?:   string;
+  /** The consequence the admin reviewed; the server refuses (409) when it no longer holds. */
+  confirmed: { status: string; invoiceId: string | null; refundAmount: number };
 }
 
 export interface AdminStudioSummaryResponse {

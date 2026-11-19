@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -210,8 +210,9 @@ describe("SubscriptionOversightPage", () => {
     const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
     await user.click(extendBtns[0]);
 
-    expect(screen.getByRole("spinbutton")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /confirm/i })).toBeInTheDocument();
+    const review = screen.getByRole("region", { name: /extend trial|grant trial extension/i });
+    expect(within(review).getByRole("spinbutton")).toBeInTheDocument();
+    expect(within(review).getByRole("button", { name: /^extend trial$/i })).toBeInTheDocument();
   });
 
   it("calls PATCH subscriptions/:id/trial with additionalDays", async () => {
@@ -230,12 +231,14 @@ describe("SubscriptionOversightPage", () => {
 
     const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
     await user.click(extendBtns[0]);
-    await user.click(screen.getByRole("button", { name: /confirm/i }));
+    const review = screen.getByRole("region", { name: /extend trial|grant trial extension/i });
+    await user.click(within(review).getByRole("button", { name: /^extend trial$/i }));
 
     await waitFor(() => expect(extendSpy).toHaveBeenCalledWith({ additionalDays: 7 }));
   });
 
-  it("shows cancel confirmation when clicking Cancel subscription", async () => {
+  it("shows the cancel consequence review when clicking Cancel subscription", async () => {
+    server.use(quoteFor({ status: "Active", billingInterval: "Monthly", billedThroughStripe: true }));
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Active Studio");
@@ -244,15 +247,18 @@ describe("SubscriptionOversightPage", () => {
       screen.getByRole("button", { name: /cancel subscription for active studio/i })
     );
 
-    // Text spans a <strong> child; check via the confirmation panel's textContent
-    const yesBtn = screen.getByRole("button", { name: /yes, cancel/i });
-    expect(yesBtn.closest("div")?.textContent).toMatch(/cancel subscription for active studio/i);
-    expect(screen.getByRole("button", { name: /keep/i })).toBeInTheDocument();
+    // D03: the same review as the studio list and detail pages: to whom, what happens, what can't be undone.
+    const review = screen.getByRole("region", { name: /^cancel subscription$/i });
+    expect(within(review).getByText(/for active studio/i)).toBeInTheDocument();
+    expect(await within(review).findByText(/its stripe subscription is cancelled too/i)).toBeInTheDocument();
+    expect(within(review).getByText(/the cancellation can't be reversed/i)).toBeInTheDocument();
+    expect(within(review).getByRole("button", { name: /^back$/i })).toBeInTheDocument();
   });
 
   it("calls PATCH subscriptions/:id/cancel on confirm", async () => {
     const cancelSpy = vi.fn();
     server.use(
+      quoteFor({ status: "Active" }),
       http.patch("http://localhost/api/v1/platform/subscriptions/s1/cancel", () => {
         cancelSpy();
         return new HttpResponse(null, { status: 204 });
@@ -266,7 +272,9 @@ describe("SubscriptionOversightPage", () => {
     await user.click(
       screen.getByRole("button", { name: /cancel subscription for active studio/i })
     );
-    await user.click(screen.getByRole("button", { name: /yes, cancel/i }));
+    const review = screen.getByRole("region", { name: /^cancel subscription$/i });
+    await within(review).findByText(/cancelled immediately/i);
+    await user.click(within(review).getByRole("button", { name: /^cancel subscription$/i }));
 
     await waitFor(() => expect(cancelSpy).toHaveBeenCalledOnce());
   });
@@ -395,7 +403,7 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.queryByText("GracePeriod", { selector: "span" })).not.toBeInTheDocument();
   });
 
-  it("extend trial form shows 'Extend trial by' label", async () => {
+  it("extend trial review shows the 'Extend by' days label", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Trialing Studio");
@@ -403,10 +411,10 @@ describe("SubscriptionOversightPage", () => {
     const extendBtns = screen.getAllByRole("button", { name: /extend trial/i });
     await user.click(extendBtns[0]);
 
-    expect(screen.getByText(/extend trial by/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^(extend by|grant)$/i)).toHaveAttribute("type", "number");
   });
 
-  it("'Record Cash Payment' form header appears when Activate is clicked", async () => {
+  it("the activation review has the same title here as everywhere else", async () => {
     server.use(
       http.get("http://localhost/api/v1/platform/subscriptions", () =>
         HttpResponse.json([
@@ -431,7 +439,7 @@ describe("SubscriptionOversightPage", () => {
 
     await user.click(screen.getByRole("button", { name: /activate subscription for grace studio/i }));
 
-    expect(screen.getByText(/record cash payment/i)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /activate \(cash payment\)/i })).toBeInTheDocument();
   });
 
   it("shows Suspended (amber pill) for a studio with isSuspended: true", async () => {
@@ -621,3 +629,14 @@ describe("SubscriptionOversightPage", () => {
     });
   });
 });
+
+/** D03: the admin cancellation quote the review reads before it lets anyone confirm. */
+function quoteFor(fields: Record<string, unknown>) {
+  return http.get("http://localhost/api/v1/platform/studios/:studioId/subscription/cancel-quote", () =>
+    HttpResponse.json({
+      status: "Active", planName: "Pro", billingInterval: "Monthly", billedThroughStripe: false,
+      refundApplies: false, currency: "eur", formulaRefund: 0, fullRefund: 0, monthsUsed: null,
+      amountPaid: null, invoiceId: null, ...fields,
+    }),
+  );
+}

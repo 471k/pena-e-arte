@@ -361,7 +361,11 @@ describe("AdminStudioListPage", () => {
     const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
     await user.click(extendBtns[0]);
 
-    expect(screen.getByText(/extend trial by/i)).toBeInTheDocument();
+    // D03: the shared consequence review, with what happens and what can't be undone.
+    const review = screen.getByRole("region", { name: /extend trial|grant trial extension/i });
+    expect(within(review).getByText(/what happens/i)).toBeInTheDocument();
+    expect(within(review).getByText(/can't be undone/i)).toBeInTheDocument();
+    expect(within(review).getByText(/a trial can't be shortened from here/i)).toBeInTheDocument();
   });
 
   it("calls PATCH subscriptions/:id/trial when confirming trial extension", async () => {
@@ -381,7 +385,8 @@ describe("AdminStudioListPage", () => {
     const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
     await user.click(extendBtns[0]);
 
-    await user.click(screen.getByRole("button", { name: /confirm/i }));
+    const review = screen.getByRole("region", { name: /extend trial|grant trial extension/i });
+    await user.click(within(review).getByRole("button", { name: /^extend trial$/i }));
 
     await waitFor(() => expect(extendSpy).toHaveBeenCalledWith({ additionalDays: 7 }));
   });
@@ -432,12 +437,21 @@ describe("AdminStudioListPage", () => {
     expect(suspendIdx).toBeLessThan(cancelIdx);
   });
 
-  it("clicking Cancel Subscription shows a confirmation step, and Confirm calls the cancel mutation", async () => {
+  it("clicking Cancel Subscription shows the consequence, and confirming sends back what was shown", async () => {
     let cancelledStudioId: string | null = null;
+    let body: unknown = null;
     server.use(
-      http.patch("http://localhost/api/v1/platform/subscriptions/:studioId/cancel", ({ params }) => {
+      http.get("http://localhost/api/v1/platform/studios/:studioId/subscription/cancel-quote", () =>
+        HttpResponse.json({
+          status: "Active", planName: "Pro", billingInterval: "Monthly", billedThroughStripe: false,
+          refundApplies: false, currency: "eur", formulaRefund: 0, fullRefund: 0, monthsUsed: null,
+          amountPaid: null, invoiceId: null,
+        }),
+      ),
+      http.patch("http://localhost/api/v1/platform/subscriptions/:studioId/cancel", async ({ params, request }) => {
         cancelledStudioId = params.studioId as string;
-        return HttpResponse.json({});
+        body = await request.json();
+        return new HttpResponse(null, { status: 204 });
       }),
     );
     const user = userEvent.setup();
@@ -448,10 +462,17 @@ describe("AdminStudioListPage", () => {
     const row = document.querySelector<HTMLElement>('[data-studio-id="s1"]')!;
 
     await user.click(within(row).getByRole("button", { name: /cancel subscription/i }));
-    expect(within(row).getByText(/cancel subscription permanently\?/i)).toBeInTheDocument();
+    const review = within(row).getByRole("region", { name: /^cancel subscription$/i });
+    expect(await within(review).findByText(/cancelled immediately, not at the end of the period/i)).toBeInTheDocument();
+    expect(within(review).getByText(/no refund: only a yearly plan paid through stripe has one/i)).toBeInTheDocument();
+    // The list row offers the same review as the detail page; with nothing to refund, no refund rule is offered.
+    expect(within(review).queryByRole("radio")).not.toBeInTheDocument();
 
-    await user.click(within(row).getByRole("button", { name: /^confirm$/i }));
+    await user.click(within(review).getByRole("button", { name: /^cancel subscription$/i }));
     await waitFor(() => expect(cancelledStudioId).toBe("s1"));
+    expect(body).toEqual({
+      override: null, reason: null, confirmedStatus: "Active", confirmedInvoiceId: null, confirmedRefundAmount: 0,
+    });
   });
 
   it("shows 'No studios registered yet' when there are genuinely zero studios (not just filtered out)", async () => {
@@ -480,7 +501,9 @@ describe("AdminStudioListPage", () => {
     const dayInput = screen.getByRole("spinbutton");
     await user.clear(dayInput);
     await user.type(dayInput, "0");
-    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    const review = screen.getByRole("region", { name: /extend trial|grant trial extension/i });
+    expect(within(review).getByRole("button", { name: /^extend trial$/i })).toBeDisabled();
+    expect(within(review).getByText(/enter between 1 and 90 days/i)).toBeInTheDocument();
 
     expect(extendCalled).toBe(false);
   });

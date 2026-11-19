@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Loader2, X } from "lucide-react";
-import { Button } from "@/shared/components/ui/button";
+import { CheckCircle2, X } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { useActivateSubscriptionManuallyMutation } from "@/features/platform/platformApi";
 import type { PlanResponse } from "@/features/billing/billing.types";
+import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { CASH_ACTIVATABLE, type SubscriptionKnowledge } from "./subscriptionKnowledge";
+import { ConsequenceReview, ReviewAlert } from "./ConsequenceReview";
+import { formatUtc } from "./subscriptionConsequences";
+
+/** MrrRules.PlatformCurrency: a cash activation is recorded in the platform currency. */
+const PLATFORM_CURRENCY = "EUR";
 
 export interface ActivationReceipt {
   studioId:   string;
@@ -15,12 +20,6 @@ export interface ActivationReceipt {
   planName:   string;
   status:     string;
   at:         string;
-}
-
-function formatUtc(iso: string): string {
-  return `${new Date(iso).toLocaleString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC",
-  })} UTC`;
 }
 
 /**
@@ -55,6 +54,8 @@ interface CashActivationFormProps {
   idSuffix:         string;
   notePlaceholder?: string;
   heading?:         string;
+  /** The subscription status before activating, for the consequence ("NoSubscription" when there is none). */
+  status?:          string;
   /** The subscription as the page now knows it, used to decide whether a retry is still meaningful. */
   knowledge:        SubscriptionKnowledge;
   /** True while the subscription is being re-read (the query's isFetching): old data must not decide a retry. */
@@ -71,8 +72,8 @@ interface CashActivationFormProps {
  * have gone through), the retry is withheld rather than sent a second time.
  */
 export function CashActivationForm({
-  studioId, studioName, plans, idSuffix, notePlaceholder = "e.g. Cash paid in person", heading = "Activate — Cash Payment",
-  knowledge, checking, onRecheck, onClose, onActivated,
+  studioId, studioName, plans, idSuffix, notePlaceholder = "e.g. Cash paid in person", heading = "Activate (cash payment)",
+  status, knowledge, checking, onRecheck, onClose, onActivated,
 }: CashActivationFormProps) {
   const [planId, setPlanId]   = useState("");
   const [note, setNote]       = useState("");
@@ -106,9 +107,51 @@ export function CashActivationForm({
     }
   }
 
+  // What ActivateSubscriptionManuallyHandler does: Active on the chosen plan, Monthly, the plan's monthly price in the
+  // platform currency, paid through one month from now, trial cleared, and an activation row in the revenue ledger.
+  const plan         = plans.find((p) => p.id === planId);
+  const monthlyPrice = plan?.prices.find((p) => p.interval === "Monthly" && p.isActive)?.price ?? 0;
+  const paidThrough  = new Date();
+  paidThrough.setUTCMonth(paidThrough.getUTCMonth() + 1);
+
+  const happens = !plan
+    ? ["Choose a plan to see what activating will do."]
+    : [
+        `${studioName} is on ${plan.name} from now, billed in cash at ${formatCurrency(monthlyPrice, PLATFORM_CURRENCY)} a month, paid through ${formatUtc(paidThrough)}.`,
+        status === "Trialing" || status === "GracePeriod"
+          ? "Its trial ends, and the studio has full access straight away."
+          : "The studio has full access straight away.",
+        "Nothing is charged: this records cash the studio has already paid.",
+      ];
+
+  const alert = failure ? (
+    // Keyed by attempt so each new failure remounts the alert and takes focus again.
+    <ReviewAlert key={failure.attempt}>
+      <p className="font-medium">Activation failed: {failure.message}</p>
+      <p>
+        {rechecking && "Checking the studio's current status before you retry…"}
+        {recheckFailed && "The current status couldn't be checked, so retrying is paused. Reload the page to check again."}
+        {noLongerActivatable && knowledge.kind === "known"
+          && `The studio's subscription is now ${knowledge.status}, so there is nothing to activate. The earlier attempt may have gone through: check the audit log.`}
+        {stillActivatable && "Your plan and note are kept. The studio still needs activating, so you can try again."}
+      </p>
+    </ReviewAlert>
+  ) : null;
+
   return (
-    <div className="pt-2 space-y-2 border-t">
-      <p className="text-xs font-medium text-muted-foreground">{heading}</p>
+    <ConsequenceReview
+      id={`activate-${idSuffix}`}
+      title={heading}
+      studioName={studioName}
+      happens={happens}
+      permanent={["It's recorded as revenue. Cancelling later records the loss as churn; it doesn't remove this."]}
+      alert={alert}
+      confirmLabel={failure ? "Try again" : "Activate subscription"}
+      busy={isLoading}
+      confirmDisabled={!planId || rechecking || recheckFailed || noLongerActivatable}
+      onConfirm={() => void submit()}
+      onBack={onClose}
+    >
       <div className="space-y-1">
         <Label htmlFor={`plan-${idSuffix}`} className="text-xs">Plan</Label>
         <select
@@ -126,30 +169,6 @@ export function CashActivationForm({
         <Input id={`note-${idSuffix}`} value={note} onChange={(e) => setNote(e.target.value)}
           placeholder={notePlaceholder} className="h-8 text-xs" />
       </div>
-
-      {failure && (
-        // Keyed by attempt so each new failure remounts the alert and takes focus again.
-        <div key={failure.attempt} role="alert" tabIndex={-1} ref={(el) => el?.focus()}
-          className="rounded-md border border-destructive/40 px-2 py-1.5 text-xs text-destructive-text space-y-0.5">
-          <p className="font-medium">Activation failed: {failure.message}</p>
-          <p>
-            {rechecking && "Checking the studio's current status before you retry…"}
-            {recheckFailed && "The current status couldn't be checked, so retrying is paused. Reload the page to check again."}
-            {noLongerActivatable && knowledge.kind === "known"
-              && `The studio's subscription is now ${knowledge.status}, so there is nothing to activate. The earlier attempt may have gone through: check the audit log.`}
-            {stillActivatable && "Your plan and note are kept. The studio still needs activating, so you can try again."}
-          </p>
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Button size="sm" className="h-7 px-2 text-xs flex-1"
-          disabled={isLoading || !planId || rechecking || recheckFailed || noLongerActivatable}
-          onClick={() => void submit()}>
-          {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : failure ? "Try again" : "Activate subscription"}
-        </Button>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onClose}>Cancel</Button>
-      </div>
-    </div>
+    </ConsequenceReview>
   );
 }

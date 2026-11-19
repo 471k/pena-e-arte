@@ -47,14 +47,17 @@ public class GetAdminStudioSummaryHandler(IAppDbContext db, IIdentityService ide
             .Where(a => a.StudioId == query.StudioId)
             .CountAsync(ct);
 
-        // A6 — "visible on the studio's admin page" for a Failed refund. Last 5, most recent
+        // A6 — "visible on the studio's admin page" for a Failed refund; D07 carries the currency (never assumed),
+        // the invoice it was issued against and when it last changed, so the page can say what failed and when. Last 5, most recent
         // first. SubscriptionRefund is not a TenantEntity (same class as Subscription itself),
         // so this reads db.SubscriptionRefunds directly — no IgnoreQueryFilters() needed.
         List<RecentRefundResponse> recentRefunds = await db.SubscriptionRefunds
             .Where(r => r.StudioId == query.StudioId)
             .OrderByDescending(r => r.CreatedAt)
             .Take(5)
-            .Select(r => new RecentRefundResponse(r.Amount, r.Status.ToString(), r.CreatedAt, r.FailureReason))
+            .Select(r => new RecentRefundResponse(
+                r.Amount, r.Currency, r.Status.ToString(), r.CreatedAt, r.UpdatedAt, r.FailureReason, r.StripeInvoiceId,
+                r.StripeRefundId != null))
             .ToListAsync(ct);
 
         return new AdminStudioSummaryResponse(

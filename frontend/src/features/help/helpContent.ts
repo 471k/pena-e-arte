@@ -1947,7 +1947,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "View the KPI cards for totals (Total Studios, Active Subscriptions, MRR, ARPA).",
       "View the pipeline cards (Trialing, Grace Period, Past Due, Cancelled).",
       "Scroll to the MRR chart.",
-      "Check \"At-Risk Studios\" and use \"Extend trial\" inline, or click through to that studio.",
+      "Check \"At-Risk Studios\" and use \"Extend trial\" inline (it shows what extending will do before you confirm), or click through to that studio.",
+      "Check \"Failed refunds\": every yearly-cancellation refund that failed, across all studios, newest first, with the studio, amount, when it failed, why, the Stripe invoice, and what to do next.",
     ],
     tips: [
       "Clicking most KPI cards jumps straight to a pre-filtered Studios or Subscriptions list.",
@@ -1959,6 +1960,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Gross and Net Revenue Retention measure the last full calendar month (the tile names it, e.g. \"August 2026\"), never the month in progress — a rate over a half-finished month would read near 100% early on and drift down. They compare that month's contraction and churn (gross), plus expansion (net), against the MRR that existed at the start of it. New and reactivated studios aren't counted. They show \"—\" until a full month of recorded revenue exists.",
       "Suspended studios' revenue is shown as \"paused\" on the Suspended card, not in MRR.",
       "\"Discounts this month\" sums referral discounts and credits actually applied to paid invoices — it doesn't reduce MRR (MRR is contracted revenue).",
+      "For a past-due studio, the Extend trial review says plainly that a new trial date changes nothing: the studio stays blocked until its payment is sorted out.",
     ],
   },
   {
@@ -1971,7 +1973,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Search by studio name or slug, and filter by status or plan. The \"Quick views\" links open the Past due, Grace period and Suspended studios in one click.",
       "Browse studios, grouped by status.",
-      "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly. The detail page's \"Studios\" link brings you back to the same filters and page, with that studio highlighted.",
+      "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly (the subscription actions show what they'll do before you confirm). The detail page's \"Studios\" link brings you back to the same filters and page, with that studio highlighted.",
     ],
     tips: [
       "Use the copy icon next to a studio's slug to quickly copy it.",
@@ -1990,8 +1992,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Review the Studio Overview card (owner name/email, artist/client/appointment counts).",
       "Generate or manage referral codes for this studio.",
       "Use the Actions panel on the right for Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription.",
+      "Under \"Recent refunds\", a failed refund shows why it failed, when, the Stripe invoice it was for, and what to do next, as text you can read without hovering. Amounts are in the refund's own currency.",
     ],
-    tips: ["Click \"View public portfolio\" to open the studio's live public page in a new tab."],
+    tips: [
+      "Click \"View public portfolio\" to open the studio's live public page in a new tab.",
+      "Every subscription action (Extend Trial, Activate, Cancel Subscription) opens the same review before you confirm, wherever you start it: who it's for, what will happen, and what can't be undone.",
+    ],
   },
   {
     id: "admin-suspend-studio",
@@ -2093,7 +2099,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Filter by status using the chips at the top (Active, Trialing, Grace Period, Past Due, Cancelled, etc.).",
       "Search by studio name or slug.",
       "Sort by trial end date, period end date, days overdue, or studio name. The status, the sort and the page are kept in the page's address, so a reload or a shared link opens the same view; the search box isn't, so what you type never goes in an address.",
-      "Use each row's Extend Trial, Activate, or Cancel Subscription buttons as needed.",
+      "Use each row's Extend Trial, Activate, or Cancel Subscription buttons as needed. Each opens the same review as on the Studios list and the studio's page: who it's for, what will happen, and what can't be undone.",
       "For a Past Due studio, the row shows how many days overdue it is, and an \"Exclude From Dunning\" button — use it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you're handling their case manually). Click \"Re-enable Reminders\" to turn them back on.",
       "At the bottom of the page, the \"Data maintenance\" card runs two one-time backfills for subscriptions that existed before those features: Step 1 records what each subscription is actually billed, Step 2 seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Step 1 also lists every cash-billed studio it assumed a price for, by studio name and slug with the assumed monthly price, each linking to that studio's page so you can review it. Both are safe to run again — only data that's still missing is filled in.",
     ],
@@ -2112,7 +2118,47 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Find the studio on the Dashboard, Studios list, Subscriptions list, or its detail page.",
       "Click \"Extend Trial (+7 days)\" (shown as \"Grant Extension\" if the trial already expired).",
       "Enter the number of extra days (defaults to 7, 1–90 allowed).",
-      "Click \"Confirm\".",
+      "Read \"What happens\": the new trial end (counted from now if the trial has already ended), when the grace period after it now ends, and what it does to the studio's access. A studio in its grace period goes back to Trialing; for a past-due studio it says the new date changes nothing.",
+      "Click \"Extend trial\".",
+    ],
+    tips: [
+      "Days can't be taken back: there's no way to shorten a trial from here.",
+      "If extending fails, the review stays open with your number of days and says why.",
+    ],
+  },
+  {
+    id: "admin-cancel-subscription",
+    roles: [Admin],
+    title: "Cancel a studio's subscription",
+    keywords: ["cancel subscription", "refund", "yearly refund", "full refund", "no refund", "override", "end subscription"],
+    summary: "End a studio's subscription immediately, seeing exactly what it does, including any refund, before you confirm.",
+    steps: [
+      "Click \"Cancel Subscription\" on the studio (Studios list, Subscriptions list, or the studio's detail page). Each opens the same review.",
+      "Wait for \"What happens\" to be worked out. It says the subscription ends now (not at the end of the period), that the studio loses access straight away and keeps its data, whether its Stripe billing stops, and the refund.",
+      "For a yearly plan paid through Stripe, choose the refund: the formula (the amount is shown), a full refund, or no refund. A full refund or no refund needs a reason. Other plans have nothing to refund, so no choice is offered.",
+      "Click \"Cancel subscription\".",
+    ],
+    tips: [
+      "What you confirm is what happens. If anything changed while the review was open (for example a new month of a yearly plan started, or the studio's status moved), nothing is cancelled: the review shows the new consequence, keeps your choices, and you confirm again.",
+      "The cancellation can't be reversed, and a refund can't be recalled once it's sent to Stripe. To come back, the studio subscribes again.",
+      "If a refund then fails, it appears under \"Failed refunds\" on the dashboard and under \"Recent refunds\" on the studio's page.",
+    ],
+  },
+  {
+    id: "admin-failed-refunds",
+    roles: [Admin],
+    title: "Follow up a failed refund",
+    route: "/platform",
+    keywords: ["failed refund", "refund failed", "stripe refund", "refund not received"],
+    summary: "Find every yearly-cancellation refund that didn't go through, and know what to do about each one.",
+    steps: [
+      "Open the platform dashboard and scroll to \"Failed refunds\". The newest are first; if there are more than 50, it says how many in all.",
+      "For each one, read the studio, amount, when it failed, the reason, and the Stripe invoice.",
+      "Follow the next action it gives. If the refund request itself didn't go through, check that invoice in Stripe first: a refund may have been made anyway, and then nothing more is needed. If Stripe reported the refund failed, the money went back to the platform's Stripe balance and the studio hasn't got it: refund it again from that invoice in Stripe, or pay the studio back another way.",
+    ],
+    tips: [
+      "An entry stays in the list afterwards: there's no retry or \"resolved\" button yet, so refunding in Stripe doesn't change it.",
+      "If the list can't be loaded, it says so with \"Try again\" rather than showing \"No failed refunds\".",
     ],
   },
   {
@@ -2125,6 +2171,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Activate\" on the studio (Studios list, Subscriptions list, or the studio's detail page).",
       "Select the plan they paid for.",
       "Optionally add a note (e.g. the date cash was received).",
+      "Read \"What happens\": the plan, its monthly price in cash, the date it's paid through (one month from now), and that the studio gets full access straight away. Nothing is charged; it records cash already taken.",
       "Click \"Activate subscription\". A green receipt then stays on the page until you dismiss it: which studio, its new status and plan, the time (UTC), and a link to the audit log entry.",
     ],
     tips: [
