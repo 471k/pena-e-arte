@@ -266,6 +266,33 @@ describe("AuditLogPage", () => {
     expect(screen.getByText(/showing one actor's actions/i)).toBeInTheDocument();
   });
 
+  it("names staff actors by their current account name, never a client, and says when an account is gone", async () => {
+    const base = PAGE.items[0];
+    server.use(
+      http.get("http://localhost/api/v1/platform/audit-log", () => HttpResponse.json({
+        ...PAGE,
+        items: [
+          { ...base, id: "a1", action: "A.Named", actorRole: "owner", actorName: "Maria" },
+          { ...base, id: "a2", action: "A.Deleted", actorRole: "artist", actorAccountDeleted: true },
+          { ...base, id: "a3", action: "A.Client", actorRole: "client", actorName: "Should not show" },
+          { ...base, id: "a4", action: "A.NoName", actorRole: "admin", actorName: null },
+          { ...base, id: "a5", action: "A.Impersonating", actorRole: "admin-impersonating", actorName: "Sam" },
+        ],
+      })),
+    );
+    renderPage();
+    await screen.findByRole("cell", { name: "A.Named" });
+
+    const actorCell = (action: string) => within(screen.getByRole("cell", { name: action }).closest("tr")!).getAllByRole("cell").at(-1)!;
+    expect(screen.getByRole("columnheader", { name: "Actor" })).toBeInTheDocument();
+    expect(actorCell("A.Named")).toHaveTextContent(/^Maria · owner$/i);
+    expect(actorCell("A.Deleted")).toHaveTextContent(/^Deleted user · artist$/i);
+    expect(actorCell("A.Client")).toHaveTextContent(/^Client · client$/i);
+    expect(screen.queryByText(/should not show/i)).not.toBeInTheDocument();
+    expect(actorCell("A.NoName")).toHaveTextContent(/^No name on file · admin$/i);
+    expect(actorCell("A.Impersonating")).toHaveTextContent(/^Sam · admin \(impersonating\)$/i);
+  });
+
   it("says when an action recorded no details", async () => {
     const user = userEvent.setup();
     renderPage();

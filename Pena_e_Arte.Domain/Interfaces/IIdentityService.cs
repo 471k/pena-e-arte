@@ -58,6 +58,13 @@ public interface IIdentityService
     Task<string?> GetUserDisplayNameAsync(string email, CancellationToken ct);
 
     /// <summary>
+    /// The given-name claim of each account that still exists, keyed by user id. An id with no account
+    /// (deleted) has no key; an account with no given name maps to null. One read for the accounts, then
+    /// one claims read per account found, so callers pass a page's distinct ids, not a table.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string?>> GetAccountGivenNamesAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct);
+
+    /// <summary>
     /// Replaces (or adds) the user's given-name Identity claim — the name the header shows,
     /// baked into the JWT at login/refresh. No-op if the account does not exist. Callers decide
     /// WHEN it is appropriate: it renames the login identity shared by every role the person holds.

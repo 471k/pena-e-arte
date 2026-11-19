@@ -4328,7 +4328,7 @@ ol.steps li { margin: 6px 0; }
 <rect x="20" y="56" width="720" height="46" rx="6" fill="currentColor" fill-opacity="0.03"/>
 <text x="32" y="76" font-size="8" fill-opacity="0.6">Action</text><text x="180" y="76" font-size="8" fill-opacity="0.6">Target type</text><text x="330" y="76" font-size="8" fill-opacity="0.6">Studio</text><text x="460" y="76" font-size="8" fill-opacity="0.6">From (UTC day)</text><text x="600" y="76" font-size="8" fill-opacity="0.6">To (UTC day, included)</text>
 <rect x="20" y="112" width="720" height="24" fill="currentColor" fill-opacity="0.06"/>
-<text x="32" y="128" font-size="8" font-weight="700">When (UTC)</text><text x="160" y="128" font-size="8" font-weight="700">Action</text><text x="360" y="128" font-size="8" font-weight="700">Target</text><text x="520" y="128" font-size="8" font-weight="700">Studio</text><text x="640" y="128" font-size="8" font-weight="700">Actor role</text>
+<text x="32" y="128" font-size="8" font-weight="700">When (UTC)</text><text x="160" y="128" font-size="8" font-weight="700">Action</text><text x="360" y="128" font-size="8" font-weight="700">Target</text><text x="520" y="128" font-size="8" font-weight="700">Studio</text><text x="640" y="128" font-size="8" font-weight="700">Actor</text>
 <text x="32" y="152" font-size="8">20 Jul 2026, 10:00 UTC</text><text x="160" y="152" font-size="8">Studio.Suspended</text><text x="360" y="152" font-size="8">Studio · a1b2c3d4</text><text x="520" y="152" font-size="8">Ink &amp; Iron</text><text x="640" y="152" font-size="8">admin</text>
 <text x="32" y="172" font-size="8">19 Jul 2026, 09:30 UTC</text><text x="160" y="172" font-size="8">Plan.Updated</text><text x="360" y="172" font-size="8">Plan · p9z8y7x6</text><text x="520" y="172" font-size="8" fill-opacity="0.6">Platform-wide</text><text x="640" y="172" font-size="8">admin</text>
 </svg>
@@ -4337,13 +4337,13 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Filter by <span class="step-title">Action</span>, <span class="step-title">Target type</span>, <span class="step-title">Studio</span>, or a date range. Action and target type are lists of every action the platform records. <span class="step-title">Clear filters</span> resets them all.</li>
-<li>Each row shows when it happened (in UTC), what happened, its target, which studio by name ("Platform-wide" for actions with no single studio target, e.g. a plan edit), and the actor's role.</li>
+<li>Each row shows when it happened (in UTC), what happened, its target, which studio by name ("Platform-wide" for actions with no single studio target, e.g. a plan edit), and who did it: a staff member's name and role, "Client" for a client, or "Deleted user" when the account no longer exists.</li>
 <li>Click the arrow at the start of a row for its details: the full target, studio and actor ids, and the details recorded with the action. From there, <span class="step-title">Only this actor's actions</span> or <span class="step-title">Only this studio</span> narrows the log to them.</li>
 <li>With more than 50 entries, use <span class="step-title">Older</span> and <span class="step-title">Newer</span> below the table. Your filters stay as they are.</li>
 </ol>
 <div class="callout callout-tip"><strong>Dates and times:</strong> times are in UTC. The From and To dates are whole UTC days, both included, so To = 14 Nov covers all of 14 Nov.</div>
 <div class="callout callout-tip"><strong>Shareable:</strong> the filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. Only ids, dates and the named choices go in the address, never a name.</div>
-<div class="callout callout-tip"><strong>Tip:</strong> entries never store names, emails, or free text — only IDs, roles, and structural values. The studio's name is looked up when you view the log; the actor is shown by role and id.</div>
+<div class="callout callout-tip"><strong>Tip:</strong> entries never store names, emails, or free text — only IDs, roles, and structural values. The studio's name and a staff actor's name are looked up when you view the log, so they show the current name: someone renamed since appears under their new name. A client is never named here, only "Client" and an id. The name is the first name on the person's account, so "No name on file" means the account has none.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> running a <span class="step-title">Data maintenance</span> backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target "Platform") named <code>Platform.BilledAmountsBackfilled</code> or <code>Platform.RevenueLedgerBackfilled</code>.</div>
 <div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile (Recent studio activity)</a>, <a href="#admin-impersonation">Impersonate a studio</a></div>
 </section>
