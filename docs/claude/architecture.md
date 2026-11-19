@@ -7381,3 +7381,35 @@ and **every** referral code to show one studio's.
   and Cloudflare access logs may keep them. The alternatives are a POST search body, or keeping search in
   the browser over a status-and-plan-filtered server page. Today's scale (a handful of studios) doesn't
   need it yet. D08 itself says server paging comes "as scale demands".
+
+## Admin: an unknown is not a fact; failed activations keep their input (slice 8 phase 2, D02 + D04) — 2026-11-19
+
+The studio list and detail derived the subscription as `sub?.status ?? "NoSubscription"`, so a read still
+loading, or one that had failed, was shown as "No Subscription" and enabled cash activation from it. The
+detail page called every studio-read failure "Studio not found." Manual activation, in all three places it
+lived, cleared the plan and note on failure and reported only by toast.
+
+- **Three states, one helper.** `knowSubscriptionStatus` (in `subscriptionKnowledge.ts`) returns
+  `known(status)`, `loading` or `failed`. Only `known` is a status. Unknown shows as "Subscription unknown";
+  extend, activate and cancel wait for `known`. Suspend and impersonate don't depend on the subscription,
+  so they stay available. The list shows a failure banner with Retry, and its sort and group headings no
+  longer fold failed rows into "No Subscription".
+- **Why a read failed** (`describeLoadError`): 404 "not found" and 401/403 "no access", neither offering
+  Try again; a connection loss or 5xx gets Try again.
+- **One activation form** (`CashActivationForm`) replaces three copies. It keeps the plan and note on
+  failure, shows the server's reason in an alert, and moves focus there (keyed per attempt, so each failure
+  takes focus again).
+- **Recheck before retry.** A failure re-reads the subscription, and the form uses the query's `isFetching`
+  so stale data can't decide a retry while it reloads. If the studio is no longer activatable (the first
+  attempt went through but the response was lost), Try again is disabled with that explanation, so an
+  uncertain operation is never silently repeated.
+- **A durable receipt.** It names the studio, the resulting status and plan, the time (UTC), and links to
+  the audit log filtered to that studio and `Subscription.ActivatedManually`. It stays until dismissed.
+  **Known gap:** the audit entry's own id is not returned (`AuditLogBehavior` writes it after the handler
+  and doesn't surface it), so the link is a filtered view rather than the exact entry. Returning it is an
+  API change across every audited command, not done here.
+- **Scope:** D04's form-keeping and receipt are done for cash activation, the form the acceptance names.
+  Extend trial and cancel already kept their forms open on failure. Suspend, unsuspend and the other
+  outcomes still report by toast. Bringing every admin mutation onto receipts can follow the same component.
+- **Help correction found on the way:** the cash-activation article and its FAQ said the Dashboard row has
+  an Activate button. It never did; both now name the three real places.

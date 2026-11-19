@@ -822,4 +822,29 @@ describe("AdminStudioListPage", () => {
       expect(within(views).getByRole("link", { name: "Suspended" })).toHaveAttribute("href", "/platform/studios?status=Suspended");
     });
   });
+
+  describe("subscriptions known or failed (D02)", () => {
+    it("failed subscriptions never read as 'No subscription', and hide the subscription actions", async () => {
+      let calls = 0;
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", () => {
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json({ message: "boom" }, { status: 500 })
+          : HttpResponse.json([SUB_ACTIVE, SUB_TRIALING]);
+      }));
+      const user = userEvent.setup();
+      renderPage();
+
+      const banner = await screen.findByRole("alert");
+      expect(banner).toHaveTextContent(/subscription statuses couldn't be loaded/i);
+      const row = (await screen.findByText("Ink Soul")).closest("[data-studio-id]") as HTMLElement;
+      expect(within(row).getByText("Subscription unknown")).toBeInTheDocument();
+      expect(screen.queryAllByText(/^no subscription$/i).filter((el) => el.tagName !== "OPTION")).toHaveLength(0);
+      expect(within(row).queryByRole("button", { name: /^activate$/i })).not.toBeInTheDocument();
+      expect(within(row).queryByRole("button", { name: /cancel subscription/i })).not.toBeInTheDocument();
+
+      await user.click(within(banner).getByRole("button", { name: /retry/i }));
+      await waitFor(() => expect(screen.queryByText("Subscription unknown")).not.toBeInTheDocument());
+    });
+  });
 });

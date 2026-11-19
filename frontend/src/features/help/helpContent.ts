@@ -2121,12 +2121,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["cash payment", "manual activation"],
     summary: "Mark a studio's subscription as paid when they paid you outside the app, in cash, instead of by card.",
     steps: [
-      "Click \"Activate\" on the studio (Dashboard row, Studios list, Subscriptions list, or detail page).",
+      "Click \"Activate\" on the studio (Studios list, Subscriptions list, or the studio's detail page).",
       "Select the plan they paid for.",
       "Optionally add a note (e.g. the date cash was received).",
-      "Click \"Activate subscription\".",
+      "Click \"Activate subscription\". A green receipt then stays on the page until you dismiss it: which studio, its new status and plan, the time (UTC), and a link to the audit log entry.",
     ],
-    tips: ["Only use this for cash payments collected in person — card payments go through the studio's own checkout automatically."],
+    tips: [
+      "Only use this for cash payments collected in person — card payments go through the studio's own checkout automatically.",
+      "If activation fails, the form stays open with your plan and note, and says why. TattooOS then re-checks the studio: if it's still not active, \"Try again\" is offered; if it's now active (the first attempt went through after all), retrying is switched off so the studio isn't activated twice.",
+      "\"Activate\" only appears once the studio's subscription status has loaded. If it couldn't be loaded, the studio shows \"Subscription unknown\" rather than \"No subscription\", the subscription actions are hidden, and a Retry button reloads it.",
+    ],
   },
   {
     id: "admin-referrals",
@@ -2460,7 +2464,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-admin-cash-subscription",
     roles: [Admin],
     question: "How do I activate a studio's subscription if they paid by cash?",
-    answer: "Open the studio (from the Dashboard, Studios list, Subscriptions list, or its detail page), click \"Activate\", pick the plan they paid for, and confirm. This is only for cash collected outside the app — card payments activate automatically.",
+    answer: "Open the studio (from the Studios list, Subscriptions list, or its detail page), click \"Activate\", pick the plan they paid for, and confirm. This is only for cash collected outside the app — card payments activate automatically.",
     relatedArticleIds: ["admin-activate-cash-sub"],
   },
   {
