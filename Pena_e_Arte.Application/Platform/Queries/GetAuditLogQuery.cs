@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Application.Platform.Queries;
 
@@ -46,9 +47,14 @@ public class GetAuditLogValidator : AbstractValidator<GetAuditLogQuery>
     }
 }
 
-public class GetAuditLogHandler(IAppDbContext db)
+public class GetAuditLogHandler(IAppDbContext db, IIdentityService identity)
     : IRequestHandler<GetAuditLogQuery, AuditLogPageResponse>
 {
+    /// <summary>Roles whose actor is named. Clients stay "Client" + id: an admin reads this log across every
+    /// tenant, and a client's name is the most sensitive identity that could appear in it (Desktop, 19 Nov).</summary>
+    internal static readonly IReadOnlySet<string> NamedRoles =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "owner", "artist", "admin", "admin-impersonating" };
+
     public async Task<AuditLogPageResponse> Handle(GetAuditLogQuery query, CancellationToken ct)
     {
         IQueryable<AuditLogEntry> q = db.AuditLogEntries.AsNoTracking();
@@ -79,8 +85,7 @@ public class GetAuditLogHandler(IAppDbContext db)
         int pageSize = Math.Clamp(query.PageSize, 1, 100);
 
         // The studio's name is resolved here so a record reads without inside knowledge (D01). Studio has no
-        // query filter, so this is an ordinary read. The actor stays an id + role: resolving a person's name
-        // or email is a change to what this read exposes, and that is Phi's decision (slice 8 spec §8).
+        // query filter, so this is an ordinary read. Staff actors are named below from Identity (never an email).
         List<AuditLogEntryResponse> items = await q
             .OrderByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
@@ -91,6 +96,19 @@ public class GetAuditLogHandler(IAppDbContext db)
                 db.Studios.Where(s => s.Id == a.StudioId).Select(s => s.Name).FirstOrDefault()))
             .ToListAsync(ct);
 
-        return new AuditLogPageResponse(items, totalCount, page, pageSize);
+        // Phi's decision (19 Nov): the actor's CURRENT name, looked up now, not a copy stored with the entry. The id stays
+        // the record; the name is a label on it. Only the page's distinct staff ids are looked up.
+        List<Guid> staffIds = items.Where(i => NamedRoles.Contains(i.ActorRole)).Select(i => i.ActorUserId).Distinct().ToList();
+        IReadOnlyDictionary<Guid, string?> names = await identity.GetAccountGivenNamesAsync(staffIds, ct);
+
+        List<AuditLogEntryResponse> named = items
+            .Select(i => !NamedRoles.Contains(i.ActorRole)
+                ? i
+                : names.TryGetValue(i.ActorUserId, out string? name)
+                    ? i with { ActorName = string.IsNullOrWhiteSpace(name) ? null : name }
+                    : i with { ActorAccountDeleted = true })
+            .ToList();
+
+        return new AuditLogPageResponse(named, totalCount, page, pageSize);
     }
 }

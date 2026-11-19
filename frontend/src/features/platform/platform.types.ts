@@ -225,6 +225,10 @@ export interface AuditLogEntryResponse {
   createdAt:   string;
   /** Resolved by the admin read; null for a platform-wide entry. */
   studioName?: string | null;
+  /** The actor's account name now (never a stored copy), for staff roles only; null when there's none on file. */
+  actorName?: string | null;
+  /** True when the actor's account no longer exists. */
+  actorAccountDeleted?: boolean;
 }
 
 export interface AuditLogVocabularyResponse {

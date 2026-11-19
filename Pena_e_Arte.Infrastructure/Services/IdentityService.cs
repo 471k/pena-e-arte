@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Pena_e_Arte.Domain.Interfaces;
@@ -239,6 +240,22 @@ public class IdentityService(
 
         IList<Claim> claims = await userManager.GetClaimsAsync(user);
         return claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName)?.Value;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string?>> GetAccountGivenNamesAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct)
+    {
+        Dictionary<Guid, string?> names = [];
+        if (userIds.Count == 0) return names;
+
+        List<string> ids = userIds.Select(id => id.ToString()).Distinct().ToList();
+        List<IdentityUser> users = await userManager.Users.Where(u => ids.Contains(u.Id)).ToListAsync(ct);
+        foreach (IdentityUser user in users)
+        {
+            IList<Claim> claims = await userManager.GetClaimsAsync(user);
+            names[Guid.Parse(user.Id)] = claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.GivenName)?.Value;
+        }
+        return names;
     }
 
     public async Task SetUserGivenNameAsync(Guid userId, string givenName, CancellationToken ct)

@@ -119,8 +119,8 @@ describe("PaymentResultPage (C08)", () => {
     { row: 5, fields: { status: "Captured" },                            heading: /^payment authorised$/i,        money: /authorised €50 and it's being held — not charged yet/i,     tryAgain: false },
     { row: 6, fields: { status: "Refunded", refundedAmount: 50 },        heading: /^payment refunded$/i,          money: /refunded — €50 went back to your card\. refunds usually/i,  tryAgain: false },
     { row: 6, fields: { status: "Refunded", refundedAmount: null },      heading: /^payment refunded$/i,          money: /has since been refunded\. refunds usually/i,                tryAgain: false },
-    { row: 7, fields: { status: "Failed" },                              heading: /^payment not completed$/i,     money: /bank reported that this payment didn't go through/i,        tryAgain: true },
-    { row: 8, fields: { status: "Pending" },                             heading: /^payment not confirmed yet$/i, money: /haven't had confirmation from your bank yet/i,              tryAgain: true },
+    { row: 7, fields: { status: "Failed" },                              heading: /^payment not completed$/i,     money: /bank reported that this payment didn't go through/i,        tryAgain: "/book" },
+    { row: 8, fields: { status: "Pending" },                             heading: /^payment not confirmed yet$/i, money: /haven't had confirmation from your bank yet/i,              tryAgain: `/pay/${PAYMENT}` },
     { row: 9, fields: { status: "CashPending" },                         heading: /^cash payment$/i,              money: /recorded as cash/i,                                         tryAgain: false },
     { row: 3, fields: { status: "Pending", appointmentCancelled: true }, heading: /^appointment cancelled$/i,     money: /being returned to your card automatically/i,                tryAgain: false },
     { row: 3, fields: { status: "Failed", appointmentCancelled: true },  heading: /^appointment cancelled$/i,     money: /being returned to your card automatically/i,                tryAgain: false },
@@ -132,10 +132,32 @@ describe("PaymentResultPage (C08)", () => {
       expect(await heading(name)).toBeInTheDocument();
       expect(pageText()).toMatch(money);
       const retry = screen.queryByRole("link", { name: /try again/i });
-      if (tryAgain) expect(retry).toHaveAttribute("href", `/pay/${PAYMENT}`);
+      if (tryAgain) expect(retry).toHaveAttribute("href", tryAgain);
       else expect(retry).not.toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /go to my bookings/i })).toHaveAttribute("href", "/book");
+      // Exactly one way to My bookings: the retry when it goes there, "Go to My bookings" otherwise.
+      const toBookings = screen.getAllByRole("link").filter((a) => a.getAttribute("href") === "/book");
+      expect(toBookings).toHaveLength(1);
+      if (tryAgain !== "/book") expect(toBookings[0]).toHaveAccessibleName(/go to my bookings/i);
     });
+  });
+
+  it("Failed never sends anyone back to /pay/{id}, which refuses a Failed payment (Finding A)", async () => {
+    next = answer({ status: "Failed" });
+    renderAt(`?payment=${PAYMENT}`);
+
+    await heading(/payment not completed/i);
+    expect(screen.getByRole("link", { name: /try again in my bookings/i })).toHaveAttribute("href", "/book");
+    expect(pageText()).toMatch(/"Pay deposit" on the booking in My bookings/);
+    expect(screen.getAllByRole("link").map((a) => a.getAttribute("href"))).not.toContain(`/pay/${PAYMENT}`);
+  });
+
+  it("Failed seen by someone who isn't the client: no retry, because My bookings is the client's page", async () => {
+    next = answer({ status: "Failed" });
+    renderAt(`?payment=${PAYMENT}`, Role.Owner);
+
+    await heading(/payment not completed/i);
+    expect(screen.queryByRole("link", { name: /try again/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /back to tattooos/i })).toHaveAttribute("href", "/");
   });
 
   it("Failed reports what the bank said, not a flat 'nothing was charged'", async () => {
