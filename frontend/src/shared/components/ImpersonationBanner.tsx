@@ -5,19 +5,14 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { endImpersonation } from "@/features/auth/authSlice";
 import { clearImpersonationScopeError } from "@/features/ui/uiSlice";
 import { useEndImpersonationSessionMutation } from "@/features/platform/platformApi";
-
-function formatRemaining(expiresAt: string): string {
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return "expiring now";
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.floor((ms % 60000) / 1000);
-  return `${minutes}:${seconds.toString().padStart(2, "0")} left`;
-}
+import { expiryAnnouncement, formatRemaining, msUntil } from "@/shared/utils/supportSessionTime";
 
 /// Persistent, unmissable "Viewing as {studio}" banner for an active Support Impersonation
 /// session — deliberately NOT dismissible (no close button), present at the layout root
 /// (mounted in AppRoot) so it survives across every page while the session is active. See
 /// docs/claude/architecture.md Decisions Log — "Support Impersonation with Audit Trail".
+/// D05 (slice 8 phase 4): says it is read-only, shows the reason given for the session, and keeps the
+/// countdown out of the accessibility tree's live announcements except at thresholds.
 export function ImpersonationBanner() {
   const dispatch = useAppDispatch();
   const impersonation = useAppSelector((s) => s.auth.impersonation);
@@ -35,7 +30,7 @@ export function ImpersonationBanner() {
   }, [impersonation]);
 
   if (!impersonation) return null;
-  const remaining = formatRemaining(impersonation.expiresAt);
+  const msLeft = msUntil(impersonation.expiresAt);
 
   async function handleEndSession() {
     try {
@@ -50,11 +45,17 @@ export function ImpersonationBanner() {
   }
 
   return (
-    <div role="banner" aria-live="polite">
+    <div role="region" aria-label="Support session">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 bg-indigo-600 text-white text-sm">
         <Eye className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="font-medium">Viewing as {impersonation.studioName}</span>
-        <span className="text-white/80 text-xs tabular-nums">{remaining}</span>
+        <span className="rounded bg-white/15 px-1.5 py-0.5 text-xs font-medium">Read-only</span>
+        <span className="text-white/90 text-xs">
+          Reason: {impersonation.reason ?? "not available in this tab"}
+        </span>
+        {/* Visible countdown, deliberately NOT live: it changes every second. */}
+        <span className="text-white/80 text-xs tabular-nums" aria-hidden="true">{formatRemaining(msLeft)}</span>
+        <span className="sr-only" aria-live="polite" aria-atomic="true">{expiryAnnouncement(msLeft)}</span>
         <span className="flex-1" />
         <button
           type="button"
@@ -68,7 +69,7 @@ export function ImpersonationBanner() {
       </div>
 
       {scopeError && (
-        <div className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-warning-text dark:text-amber-400 text-sm">
+        <div role="status" className="flex items-center gap-3 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-warning-text dark:text-amber-400 text-sm">
           <span className="flex-1">{scopeError}</span>
           <button
             type="button"

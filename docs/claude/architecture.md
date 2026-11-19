@@ -2333,18 +2333,27 @@ integration tests green. Frontend: 1260/1260 green (tsc clean, `pnpm build` clea
 ## Feedback / Bug Report Feature — 2026-07-02
 
 ### What was built
-- `FeedbackReport` domain entity (non-tenant, issuer reads cross-studio)
+- `FeedbackReport` domain entity (non-tenant, the admin reads it cross-studio)
 - `FeedbackType` and `FeedbackStatus` domain constants
 - MediatR: `SubmitFeedbackCommand`, `UpdateFeedbackStatusCommand`, `GetFeedbackReportsQuery`
 - FluentValidation: `SubmitFeedbackValidator`, `UpdateFeedbackStatusValidator`
 - Migration: `AddFeedbackReports`
 - Endpoints:
   - `POST /api/v1/feedback` (ArtistAndAbove)
-  - `GET /api/v1/platform/feedback?type=&status=` (IssuerOnly)
-  - `PATCH /api/v1/platform/feedback/{id}/status` (IssuerOnly)
+  - `GET /api/v1/platform/feedback?type=&status=` (`AdminOnly`)
+  - `PATCH /api/v1/platform/feedback/{id}/status` (`AdminOnly`)
 - `FeedbackDialog` component in `ArtistLayout` + `OwnerLayout` header
-- `FeedbackInboxPage` at `/platform/feedback` (IssuerOnly)
-- IssuerLayout: "Feedback" nav item with Open-count badge
+- `FeedbackInboxPage` at `/platform/feedback` (admin role only). Since slice 8 phase 4 (D06, 2026-11-20) it has two
+  views: **Support triage** (support requests and bug reports, "Needs action" = Open or Reviewing by default,
+  oldest first) and **Product feedback** (feature requests and general feedback, newest first), kept in the URL
+  as `?view=&type=&status=` enum values only.
+- `AdminLayout`: "Feedback" nav item, in the "Support" group, with Open-count badge
+
+> **Naming (corrected 2026-11-20, slice 8 phase 4).** This section, and some older Decisions Log rows above and
+> below it, were written when the platform role was called "issuer". It is now **admin**: the policy is
+> `AdminOnly`, the layout `AdminLayout`, the pages `Admin*Page` (`AdminStudioDetailPage`, `AdminStudioListPage`,
+> `AdminDashboardPage`). `grep -r "IssuerOnly\|IssuerLayout"` over the API and `frontend/src` returns 0.
+> Dated Decisions Log rows keep the names they were written with, as a record; read "Issuer" there as "Admin".
 - `feedbackApi` RTK Query slice registered in store
 
 ### Architecture decisions
@@ -7518,3 +7527,35 @@ name, looked up when the page is read, and **never stores a copy** with the entr
   of a filtered table, which means a new `IgnoreQueryFilters` registry row, and that is not taken here.
 - The owner's own-studio audit read (`GetMyStudioAuditLogQuery`) is unchanged; it leaves the new fields at their
   defaults.
+
+## Support view says it is read-only; feedback triage is separate from browsing (slice 8 phase 4a, D05 + D06) — 2026-11-20
+
+**D05.** The server already allowed GET only in a support session (`ImpersonationAllowList`, unchanged). The shell
+did not say so, the banner had no reason, and its countdown sat inside `aria-live="polite"`, so a screen reader was
+told the time every second.
+
+- **Banner:** "Viewing as {studio}", a **Read-only** label, the reason the admin gave (now carried in the session's
+  client meta; "not available in this tab" where a tab lacks it), the visible countdown marked `aria-hidden`, and a
+  separate polite region whose text changes only at 10, 5 and 1 minutes and at expiry (`expiryAnnouncement`).
+  The blocked-write notice is `role="status"`.
+- **`useSupportView()`** is the one switch; **`SupportViewWriteGuard`** replaces the eight create/edit pages (book,
+  new artist, client, design, design revision, service, deposit rule, intake form builder) with the read-only
+  reason and a way back.
+- **A session lands on `/schedule`, not `/dashboard`.** None of the dashboard's reads is on the allow-list, so it
+  could only show errors; the schedule's appointment read is.
+- **Phase 4b (next PR): write controls on the pages that do load** (appointment, artist and client detail, deposit
+  rules, settings). Each holds 2–6 mutations, many inside dialogs; hiding only some would make the shell look
+  read-only while it isn't, so they go in one pass with the same hook. Split per the sequential-PR rule.
+
+**D06.** The inbox has two views. **Support triage** (support requests, bug reports) opens on "Needs action" (Open
+or Reviewing), oldest first. **Product feedback** (feature requests, general) shows newest first, every status.
+The server filters by a single type, so the page reads by status and partitions by view on the client; the view
+and filters are enum values in the URL, never text. No assignee or priority was added: that is a product decision.
+
+**Naming:** the feedback section's "IssuerOnly"/"IssuerLayout" were corrected to `AdminOnly`/`AdminLayout`, with a
+note that dated Decisions Log rows keep the names they were written with.
+
+**Benchmark:** read-only enforced in the backend, a persistent banner that states read-only (Okta's auditor mode,
+Files.com), actions attributed to the real admin, and a time limit are the common standard; we now meet all four.
+Not taken: masking more fields (the allow-list already denies client medical data and every financial read) and
+customer consent before a session (a product decision).

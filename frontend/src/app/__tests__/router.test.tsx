@@ -65,8 +65,8 @@ describe("getRoleRedirectPath", () => {
     expect(getRoleRedirectPath(Role.Admin)).toBe("/platform");
   });
 
-  it("returns /dashboard for an impersonating admin, not /platform", () => {
-    expect(getRoleRedirectPath(Role.Admin, true)).toBe("/dashboard");
+  it("returns the schedule for an impersonating admin: not /platform, and not the dashboard, whose reads a support session can't make (D05)", () => {
+    expect(getRoleRedirectPath(Role.Admin, true)).toBe("/schedule");
   });
 
   it("returns /platform for a non-impersonating admin (explicit false)", () => {

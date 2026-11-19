@@ -11,12 +11,14 @@ import authReducer from "@/features/auth/authSlice";
 import uiReducer from "@/features/ui/uiSlice";
 import { platformApi } from "@/features/platform/platformApi";
 import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner";
+import { expiryAnnouncement } from "@/shared/utils/supportSessionTime";
 
 const IMPERSONATION = {
   sessionId:  "sess-1",
   studioId:   "studio-1",
   studioName: "Ink & Iron",
   expiresAt:  new Date(Date.now() + 45 * 60_000).toISOString(),
+  reason:     "Owner reports deposits not showing" as string | null,
 };
 
 const server = setupServer(
@@ -101,5 +103,42 @@ describe("ImpersonationBanner", () => {
     expect(screen.getByText(/not available while impersonating/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /dismiss/i }));
     expect(screen.queryByText(/not available while impersonating/i)).not.toBeInTheDocument();
+  });
+
+  // ── D05: read-only, the reason, and a quiet countdown ──────────────────────────────────────
+
+  it("says the session is read-only and shows the reason given for it", () => {
+    renderBanner();
+    expect(screen.getByText("Read-only")).toBeInTheDocument();
+    expect(screen.getByText("Reason: Owner reports deposits not showing")).toBeInTheDocument();
+  });
+
+  it("says when this tab doesn't have the reason, rather than showing nothing", () => {
+    renderBanner({ ...IMPERSONATION, reason: null });
+    expect(screen.getByText("Reason: not available in this tab")).toBeInTheDocument();
+  });
+
+  it("keeps the per-second countdown out of live announcements; only thresholds are announced", () => {
+    renderBanner();
+    const countdown = screen.getByText(/\d+:\d{2} left/);
+    expect(countdown).toHaveAttribute("aria-hidden", "true");
+    expect(countdown.closest("[aria-live]")).toBeNull();
+    // 45 minutes left: below no threshold, so the live region is empty.
+    const live = document.querySelector("[aria-live='polite']");
+    expect(live).not.toBeNull();
+    expect(live).toHaveTextContent("");
+  });
+
+  it("announces only at 10, 5 and 1 minutes and at expiry", () => {
+    expect(expiryAnnouncement(11 * 60_000)).toBe("");
+    expect(expiryAnnouncement(10 * 60_000)).toMatch(/10 minutes left/);
+    expect(expiryAnnouncement(6 * 60_000)).toMatch(/10 minutes left/);
+    expect(expiryAnnouncement(5 * 60_000)).toMatch(/5 minutes left/);
+    expect(expiryAnnouncement(30_000)).toMatch(/1 minute left/);
+    expect(expiryAnnouncement(0)).toMatch(/expiring now/);
+    // The text only changes at a threshold, so a polite region re-announces it only then.
+    const seconds = Array.from({ length: 12 * 60 }, (_, i) => expiryAnnouncement((12 * 60 - i) * 1000));
+    const changes = seconds.filter((t, i) => i > 0 && t !== seconds[i - 1]).length;
+    expect(changes).toBe(3);
   });
 });

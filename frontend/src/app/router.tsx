@@ -50,6 +50,8 @@ import { GiftCardListPage, PurchaseGiftCardPage } from "@/features/gift-cards";
 import { PackageListPage, PurchasePackagePage } from "@/features/session-packages";
 import { CampaignsPage } from "@/features/campaigns";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
+import { SupportViewWriteGuard } from "@/shared/components/SupportViewWriteGuard";
+import { SUPPORT_VIEW_HOME } from "@/shared/hooks/useSupportView";
 import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner";
 import { ClientLayout } from "@/layouts/ClientLayout";
 import { ArtistLayout } from "@/layouts/ArtistLayout";
@@ -89,7 +91,8 @@ export function RoleGuard({ allowedRoles }: { allowedRoles: Role[] }) {
 // never changes (see AuthorizationExtensions.cs), so this is the one place that distinction
 // has to be threaded through explicitly.
 export function getRoleRedirectPath(role: Role, impersonating = false): string {
-  if (role === Role.Admin && impersonating) return "/dashboard";
+  // The schedule, not the dashboard: no dashboard read is on the server's support allow-list (D05).
+  if (role === Role.Admin && impersonating) return SUPPORT_VIEW_HOME;
   switch (role) {
     case Role.Client: return "/book";
     // Today is the artist's daily entry point (E04a); the week view stays at /schedule.
@@ -212,7 +215,7 @@ export const routes = [
       {
         element: <AppLayout />,
         children: [
-          { path: "book", element: <ErrorBoundary><BookPage /></ErrorBoundary> },
+          { path: "book", element: <ErrorBoundary><SupportViewWriteGuard><BookPage /></SupportViewWriteGuard></ErrorBoundary> },
           // C09: the waitlist email's link. Public like /book (a guest has no account); the claim token
           // is in the URL fragment, never the path, so no server ever logs it.
           { path: "waitlist/claim", element: <ErrorBoundary><WaitlistClaimPage /></ErrorBoundary> },
@@ -310,7 +313,7 @@ export const routes = [
                   {
                     path: "new",
                     element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
-                    children: [{ index: true, element: <ErrorBoundary><CreateArtistPage /></ErrorBoundary> }],
+                    children: [{ index: true, element: <ErrorBoundary><SupportViewWriteGuard><CreateArtistPage /></SupportViewWriteGuard></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><ArtistDetailPage /></ErrorBoundary> },
                 ],
@@ -336,7 +339,7 @@ export const routes = [
                 element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                 children: [
                   { index: true,                   element: <ErrorBoundary><ClientListPage /></ErrorBoundary> },
-                  { path: "new",                   element: <ErrorBoundary><CreateClientPage /></ErrorBoundary> },
+                  { path: "new",                   element: <ErrorBoundary><SupportViewWriteGuard><CreateClientPage /></SupportViewWriteGuard></ErrorBoundary> },
                   { path: ":id",                   element: <ErrorBoundary><ClientDetailPage /></ErrorBoundary> },
                   { path: ":id/tattoos/:tattooId", element: <ErrorBoundary><TattooRecordDetailPage /></ErrorBoundary> },
                 ],
@@ -351,8 +354,8 @@ export const routes = [
                   {
                     element: <RoleGuard allowedRoles={[Role.Artist, Role.Owner, Role.Admin]} />,
                     children: [
-                      { path: "new",        element: <ErrorBoundary><CreateDesignPage /></ErrorBoundary> },
-                      { path: ":id/upload", element: <ErrorBoundary><UploadRevisionPage /></ErrorBoundary> },
+                      { path: "new",        element: <ErrorBoundary><SupportViewWriteGuard><CreateDesignPage /></SupportViewWriteGuard></ErrorBoundary> },
+                      { path: ":id/upload", element: <ErrorBoundary><SupportViewWriteGuard><UploadRevisionPage /></SupportViewWriteGuard></ErrorBoundary> },
                     ],
                   },
                   { path: ":id", element: <ErrorBoundary><DesignDetailPage /></ErrorBoundary> },
@@ -368,7 +371,7 @@ export const routes = [
                   {
                     path: "new",
                     element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
-                    children: [{ index: true, element: <ErrorBoundary><CreateServicePage /></ErrorBoundary> }],
+                    children: [{ index: true, element: <ErrorBoundary><SupportViewWriteGuard><CreateServicePage /></SupportViewWriteGuard></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><ServiceDetailPage /></ErrorBoundary> },
                 ],
@@ -383,7 +386,7 @@ export const routes = [
                   {
                     path: "new",
                     element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
-                    children: [{ index: true, element: <ErrorBoundary><CreateDepositRulePage /></ErrorBoundary> }],
+                    children: [{ index: true, element: <ErrorBoundary><SupportViewWriteGuard><CreateDepositRulePage /></SupportViewWriteGuard></ErrorBoundary> }],
                   },
                   { path: ":id", element: <ErrorBoundary><DepositRuleDetailPage /></ErrorBoundary> },
                 ],
@@ -444,7 +447,7 @@ export const routes = [
               {
                 path: "intake-form-builder",
                 element: <RoleGuard allowedRoles={[Role.Owner, Role.Admin]} />,
-                children: [{ index: true, element: <ErrorBoundary><IntakeFormBuilderPage /></ErrorBoundary> }],
+                children: [{ index: true, element: <ErrorBoundary><SupportViewWriteGuard><IntakeFormBuilderPage /></SupportViewWriteGuard></ErrorBoundary> }],
               },
 
               // ── Owner: promo codes ──────────────────────────────────────────
