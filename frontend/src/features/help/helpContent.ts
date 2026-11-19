@@ -1968,11 +1968,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["studio list", "manage studios"],
     summary: "The full list of every studio on the platform, where you can search, filter, and manage each one.",
     steps: [
-      "Search by studio name or slug, and filter by status or plan.",
+      "Search by studio name or slug, and filter by status or plan. The \"Quick views\" links open the Past due, Grace period and Suspended studios in one click.",
       "Browse studios, grouped by status.",
-      "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly.",
+      "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly. The detail page's \"Studios\" link brings you back to the same filters and page, with that studio highlighted.",
     ],
-    tips: ["Use the copy icon next to a studio's slug to quickly copy it."],
+    tips: [
+      "Use the copy icon next to a studio's slug to quickly copy it.",
+      "The status and plan filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. The search box isn't: what you type can be a person's name, so it never goes in an address and is cleared when you reload.",
+    ],
   },
   {
     id: "admin-studio-detail",
@@ -2088,7 +2091,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Filter by status using the chips at the top (Active, Trialing, Grace Period, Past Due, Cancelled, etc.).",
       "Search by studio name or slug.",
-      "Sort by trial end date, period end date, days overdue, or studio name.",
+      "Sort by trial end date, period end date, days overdue, or studio name. The status, the sort and the page are kept in the page's address, so a reload or a shared link opens the same view; the search box isn't, so what you type never goes in an address.",
       "Use each row's Extend Trial, Activate, or Cancel Subscription buttons as needed.",
       "For a Past Due studio, the row shows how many days overdue it is, and an \"Exclude From Dunning\" button — use it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you're handling their case manually). Click \"Re-enable Reminders\" to turn them back on.",
       "At the bottom of the page, the \"Data maintenance\" card runs two one-time backfills for subscriptions that existed before those features: Step 1 records what each subscription is actually billed, Step 2 seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Step 1 also lists every cash-billed studio it assumed a price for, by studio name and slug with the assumed monthly price, each linking to that studio's page so you can review it. Both are safe to run again — only data that's still missing is filled in.",

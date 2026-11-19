@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -168,11 +168,11 @@ function makeStore() {
   });
 }
 
-function renderPage(studioId = "s1") {
+function renderPage(studioId = "s1", listSearch?: string) {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={[`/platform/studios/${studioId}`]}>
+      <MemoryRouter initialEntries={[{ pathname: `/platform/studios/${studioId}`, state: listSearch ? { listSearch } : null }]}>
         <Routes>
           <Route path="/platform/studios/:studioId" element={<AdminStudioDetailPage />} />
           <Route path="/dashboard" element={<div data-testid="dashboard-landed" />} />
@@ -205,10 +205,35 @@ describe("AdminStudioDetailPage", () => {
     expect(await screen.findByText("Porto")).toBeInTheDocument();
   });
 
-  it("renders a back link to /platform/studios", async () => {
+  it("opened from a shared link, Back goes to the studio list focused on this studio", async () => {
     renderPage();
     await screen.findAllByText("Ink Soul");
-    expect(screen.getByRole("link", { name: /studios/i })).toHaveAttribute("href", "/platform/studios");
+    expect(screen.getByRole("link", { name: /studios/i })).toHaveAttribute("href", "/platform/studios?focus=s1");
+  });
+
+  it("opened from the list, Back returns to the same filters and page with this studio in focus (D08)", async () => {
+    renderPage("s1", "?status=PastDue&page=2&focus=s1");
+    await screen.findAllByText("Ink Soul");
+    expect(screen.getByRole("link", { name: /studios/i }))
+      .toHaveAttribute("href", "/platform/studios?status=PastDue&page=2&focus=s1");
+  });
+
+  it("reads only this studio's subscription and referral codes, not the whole platform's (D08)", async () => {
+    const requested: string[] = [];
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", ({ request }) => {
+        requested.push(request.url);
+        return HttpResponse.json([SUB]);
+      }),
+      http.get("http://localhost/api/v1/platform/referral-codes", ({ request }) => {
+        requested.push(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    await waitFor(() => expect(requested).toHaveLength(2));
+    expect(requested.every((u) => new URL(u).searchParams.get("studioId") === "s1")).toBe(true);
   });
 
   it("shows 404 message for unknown studio id", async () => {
@@ -405,12 +430,16 @@ describe("AdminStudioDetailPage", () => {
     });
 
     it("shows only this studio's codes, not other studios'", async () => {
+      // The server scopes the read (?studioId=); this mock honours it the way the handler does.
       server.use(
-        http.get("http://localhost/api/v1/platform/referral-codes", () =>
-          HttpResponse.json([
+        http.get("http://localhost/api/v1/platform/referral-codes", ({ request }) => {
+          const studioId = new URL(request.url).searchParams.get("studioId");
+          const all = [
             REFERRAL_CODE,
             { ...REFERRAL_CODE, id: "code-2", studioId: "s2", studioName: "Other Studio", code: "OTHER123" },
-          ])),
+          ];
+          return HttpResponse.json(studioId ? all.filter((c) => c.studioId === studioId) : all);
+        }),
       );
       renderPage();
       await screen.findAllByText("Ink Soul");

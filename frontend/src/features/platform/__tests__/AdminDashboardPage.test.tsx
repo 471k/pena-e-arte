@@ -452,10 +452,11 @@ describe("AdminDashboardPage", () => {
     expect(captured!.body).toEqual({ additionalDays: 14 });
   });
 
-  it("At-Risk row: the '→' link navigates to /platform/studios with the row highlighted", async () => {
+  it("At-Risk row: the '→' link opens the studio list focused on that studio, in the URL (D08)", async () => {
     renderPage();
     const row = (await screen.findByText("GracePeriod Studio")).closest(".border-b") as HTMLElement;
     const link = within(row).getByRole("link", { name: "→" });
-    expect(link).toHaveAttribute("href", "/platform/studios");
+    // A link, not router state, so it survives a reload and can be shared.
+    expect(link).toHaveAttribute("href", "/platform/studios?focus=s1");
   });
 });
