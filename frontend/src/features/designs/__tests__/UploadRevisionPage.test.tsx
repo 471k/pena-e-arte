@@ -157,6 +157,10 @@ describe("UploadRevisionPage", () => {
     resolvePresign(
       HttpResponse.json({ uploadUrl: PRESIGN_UPLOAD_URL, publicUrl: PRESIGN_PUBLIC_URL }) as unknown as Response,
     );
+    // Let the rest of the upload finish inside the test. Ending here left the PUT, save and
+    // navigate running after the test, which surfaced as "Unhandled Rejection: window is not
+    // defined" when it outlived the file's jsdom (seen twice in the clock sweep, 19 Nov).
+    expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
   });
 
   it("shows an error message when the presign step fails", async () => {
@@ -215,5 +219,8 @@ describe("UploadRevisionPage", () => {
     resolvePresign(
       HttpResponse.json({ uploadUrl: PRESIGN_UPLOAD_URL, publicUrl: PRESIGN_PUBLIC_URL }) as unknown as Response,
     );
+    // As above: finish the upload inside the test, so nothing runs after jsdom is torn down.
+    // This is the file's last test, which is where the leaked rejection surfaced.
+    expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
   });
 });

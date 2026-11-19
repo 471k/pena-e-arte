@@ -165,12 +165,14 @@ public class CancelMySubscriptionHandlerTests
             StripeInvoiceId = $"in_{stripeId}",
             AmountPaid = amountPaid,
             Currency = "eur",
-            // +5 minutes: guards against the exact-anniversary boundary — without this
-            // buffer, the few milliseconds of real time between seeding "now" and the
-            // handler's own DateTime.UtcNow.Now can tip MonthsUsed's monthly-anniversary
-            // loop into counting one extra started month than intended.
-            PaidAt = DateTime.UtcNow.AddMonths(-periodStartMonthsAgo).AddMinutes(5),
-            PeriodStart = DateTime.UtcNow.AddMonths(-periodStartMonthsAgo).AddMinutes(5),
+            // Halfway through month N (N = periodStartMonthsAgo, at least 1): N-1 monthly
+            // anniversaries have passed and the Nth is about two weeks away, so MonthsUsed is N
+            // whatever the date. The old "AddMonths(-N) plus 5 minutes" failed on the 29th-31st,
+            // because AddMonths clamps: 31 Dec minus 3 months is 30 Sep, and its 3rd anniversary
+            // (30 Dec) has already passed, so MonthsUsed was 4. The calculator was right; the
+            // seed was not. Found by the clock sweep's year-end leg (.github/workflows/clock-sweep.yml).
+            PaidAt = DateTime.UtcNow.AddMonths(-(periodStartMonthsAgo - 1)).AddDays(-15),
+            PeriodStart = DateTime.UtcNow.AddMonths(-(periodStartMonthsAgo - 1)).AddDays(-15),
             MonthlyReferencePrice = monthlyRef,
             StripePaymentIntentId = $"pi_{stripeId}",
         });

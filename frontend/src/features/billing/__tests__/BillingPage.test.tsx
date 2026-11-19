@@ -624,7 +624,9 @@ describe("BillingPage", () => {
   it("shows monthly price for Active subscription", async () => {
     renderPage();
     await screen.findByText("Active");
-    const priceEl = screen.getByText(/29/);
+    // The price itself, not any "29": currentPeriodEnd is now + 30 days, so the renewal date reads "29 ..."
+    // about one day a month (found by the clock sweep's leap-day leg).
+    const priceEl = screen.getByText(/€\s?29(?!\d)/);
     expect(priceEl).toBeInTheDocument();
   });
 

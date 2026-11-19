@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -139,6 +139,14 @@ describe("ConversationThread", () => {
 });
 
 describe("ConversationThread — which appointment a message is about", () => {
+  // A fixed clock (clock-flake class): the label adds the year when the appointment isn't in the current
+  // year, so with the real clock these 3 Dec 2026 fixtures would render "Thu 3 Dec 2026, 14:30" from
+  // 1 Jan 2027. Found by the clock sweep (.github/workflows/clock-sweep.yml).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  });
+  afterEach(() => { vi.useRealTimers(); });
   const ABOUT_A = { appointmentId: "appt-a", startsAt: "2026-12-03T13:30:00Z", serviceName: "Fine line" };
   const ABOUT_B = { appointmentId: "appt-b", startsAt: "2026-12-10T08:00:00Z", serviceName: null };
   const msg = (id: string, sender: "u1" | "u2", about: typeof ABOUT_A | typeof ABOUT_B | null): ChatMessageResponse => ({
