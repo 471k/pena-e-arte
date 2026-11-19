@@ -255,3 +255,21 @@ Log.Information("Appointment created {@AppointmentId} for tenant {@TenantId}",
 Always use structured properties with `@`. Never string interpolation in logs.
 The request middleware enriches every log with `tenant_id`, `user_id`,
 `request_id` automatically — do not add them manually per log line.
+
+## Clocks
+
+Two defect classes, each with its own fix. Name the class in the PR so the fix matches it.
+
+1. **Time of day read from the wall clock.** Code or a test reads `DateTime.UtcNow` and its answer
+   depends on *when* it runs: "now + 3 h" crosses the studio's midnight, a fixture date passes the
+   year end, `AddMonths` clamps on the 29th-31st. Fix: inject `TimeProvider` (registered as
+   `TimeProvider.System`) and read `GetUtcNow()`; tests use a fixed instant. The nightly
+   `Clock sweep` workflow (`.github/workflows/clock-sweep.yml`) finds this class by running the
+   suites with the clock faked to midnights, month/year end, DST changes and a leap day.
+2. **A duration timed with the wall clock.** Code measures "how long has passed" or "wait until
+   now + X" with `DateTime.UtcNow`. A wall-clock step (NTP, a VM resume) stretches or cuts the
+   wait. `TimeProvider.GetUtcNow()` does **not** fix this; it is the same wall clock behind an
+   abstraction. Fix: the monotonic clock, `TimeProvider.GetTimestamp()` + `GetElapsedTime()`
+   (or `Stopwatch`), and `Task.Delay(interval, timeProvider, ct)`. First member:
+   `RedisConnectionWait` (fixed 19 Nov 2026). The sweep does not find this class (it keeps the
+   monotonic clock real), so look for it in review.
