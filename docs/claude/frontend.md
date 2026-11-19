@@ -377,10 +377,13 @@ gone entirely.
   `font-src` exception.
 - `index.html` preloads only `dm-sans-400.woff2`.
 
-**Radius.** The baseline is **3px** (docs/03). In Tailwind v4, `--radius` only reaches the bare `rounded`
-utility and the toast variable. `rounded-sm/-md/-lg/-xl` read Tailwind's own `--radius-*` scale, so those
-are set to 3px as well. `rounded-xs` stays 2px, as the inner corner of a control nested in a 3px box.
-`rounded-full` is a shape (pills, avatars, dots) and is unchanged.
+**Radius.** Every corner is **3px**: this is **our mapping and a known divergence from the prototype**,
+not the package's rule as written. The four-role CSS gives 3px only to buttons and inputs, and leaves
+panels, badges, dialogs and notices square. See the slice 5 entry in `architecture.md` for why. In
+Tailwind v4, `--radius` only reaches the bare `rounded` utility and the toast variable.
+`rounded-sm/-md/-lg/-xl` read Tailwind's own `--radius-*` scale, so those are set to 3px as well.
+`rounded-xs` stays 2px, as the inner corner of a control nested in a 3px box. `rounded-full` is a shape
+(pills, avatars, dots) and is unchanged.
 
 **Breakpoints: two sets, each with its own job.**
 
@@ -391,6 +394,12 @@ are set to 3px as well. `rounded-xs` stays 2px, as the inner corner of a control
 
 docs/03 says to keep the existing shared shell and use the four-role values as content-driven page
 breakpoints, so `lg` still means 1024. **The token JSON's 720/1050 are legacy metadata: never use them.**
+
+**Which set new code uses:** `page-*` for any page-level layout band (when a page's columns stack, where a
+page's grid changes). `sm:` / `md:` / `lg:` only for the shell, or inside a component that has its own
+reason to differ from the page, and say that reason in a comment. Existing pages still use `sm/md/lg`
+for their layout. Moving them to `page-*` is a named slice 6 item, so until a page has moved, the
+package's values do not apply to it.
 
 **Target sizes: 44px and 46px are project targets, not WCAG.** docs/03 sets frequent controls at a
 46px minimum height, with 44px as a comfortable-target project goal. WCAG 2.2 AA (2.5.8) is **24x24 CSS px
