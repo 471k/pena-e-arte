@@ -273,3 +273,12 @@ Two defect classes, each with its own fix. Name the class in the PR so the fix m
    (or `Stopwatch`), and `Task.Delay(interval, timeProvider, ct)`. First member:
    `RedisConnectionWait` (fixed 19 Nov 2026). The sweep does not find this class (it keeps the
    monotonic clock real), so look for it in review.
+
+**The ratchet (production code only).** `ClockReadRatchetTests` counts direct wall-clock reads
+(`DateTime`/`DateTimeOffset` `.UtcNow`/`.Now`/`.Today`, and `TimeProvider.System.GetUtcNow()`) per
+production file, as syntax, so comments and strings never count. The counts are in
+`tests/Pena_e_Arte.UnitTests/Architecture/clock-reads-baseline.txt` (348 reads in 213 files on
+19 Nov 2026) and may only go down. New code injects `TimeProvider`. When you remove reads, lower the
+file's line; the test fails until you do, so the freed room can't be reused. Tests are deliberately
+outside it: their clock reads are mostly harmless fixture style, and the nightly sweep finds the
+harmful ones by behaviour.
