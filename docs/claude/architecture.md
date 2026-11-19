@@ -7313,3 +7313,22 @@ docs/03's rule that ornamental lettering is for the wordmark only. Spec:
   then measure, then fix it or show a spacing exception.** They are the six payment status chips (22px;
   if they are static text, 2.5.8 does not apply to them) and the "Show archived clients" switch (36x20;
   it is a control). Neither is recorded as a violation before the first step.
+
+## Finding A — a client token is refused for a cancelled or settled payment — 2026-11-19
+
+`GetPaymentClientTokenHandler` checked neither the payment's status nor the appointment's, so any
+`/pay/{id}` link for a cancelled booking served a working card form; the client was charged and refunded
+in full by the reconciliation job days later. It now refuses with 422, mirroring
+`CreateDepositPaymentCommand.cs:91-97` including its reconciliation trigger.
+
+- **Order:** not-found, then ownership, then the guard, so an unauthorised caller still gets 401 and learns
+  nothing about the payment's state. The checkout page shows the server's message for a 422 only; every
+  other error keeps the generic "not found or no access" line.
+- **Payable = `Pending` or `Captured`.** `Paid`/`Refunded` say "already been settled". `Failed` and
+  `CashPending` get their own messages, because "settled" is false for both: `Failed` is only set once the
+  POK order behind the token is dead, and My Bookings' "Pay deposit" mints a fresh hold on the same row;
+  `CashPending` points to "Pay by card instead".
+- **A soft-deleted appointment** (the only way `Payment.AppointmentId`, a required FK, finds nothing under
+  the filters) is a 404, not a refusal message.
+- **Earlier than most checkouts guard:** we refuse at the token read rather than at the charge, because the
+  token read is the first server call `/pay/{id}` makes.
