@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { MapPin, PenLine } from "lucide-react";
 import { useGetStudioMapQuery } from "@/features/studios";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const studioPin = divIcon({
   className: "",
@@ -28,7 +29,7 @@ export function StudioMapPage() {
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background shrink-0 z-[1000]">
         <div className="flex items-center gap-2">
           <PenLine className="h-5 w-5" />
-          <span className="font-semibold tracking-tight">TattooOS</span>
+          <Wordmark />
         </div>
         <nav className="flex items-center gap-3">
           <Link

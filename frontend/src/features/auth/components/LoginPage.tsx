@@ -18,6 +18,7 @@ import { decodeToken } from "@/shared/utils/jwt";
 import { useLoginMutation, useOauthLoginMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const loginSchema = z.object({
   email:    z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -125,7 +126,7 @@ export function LoginPage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center gap-2">
               <PenLine className="h-8 w-8" aria-hidden="true" />
-              <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
+              <Wordmark className="text-2xl" />
             </div>
             <p className="text-sm text-foreground/80">
               Run your studio. Book clients. Manage your team.

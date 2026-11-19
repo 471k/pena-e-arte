@@ -14,6 +14,7 @@ import { Label } from "@/shared/components/ui/label";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { PasswordMatchIndicator } from "@/shared/components/ui/password-match-indicator";
 import { useResetPasswordMutation } from "../authApi";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const schema = z.object({
   email:       z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -96,7 +97,7 @@ export function ResetPasswordPage() {
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex items-center gap-2">
             <PenLine className="h-8 w-8" />
-            <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
+            <Wordmark className="text-2xl" />
           </div>
         </div>
 

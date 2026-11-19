@@ -20,6 +20,7 @@ import { PasswordStrengthMeter } from "@/shared/components/ui/PasswordStrengthMe
 import { decodeToken } from "@/shared/utils/jwt";
 import { useLoginMutation, useRegisterUserMutation } from "../authApi";
 import { setCredentials } from "../authSlice";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const schema = z
   .object({
@@ -142,7 +143,7 @@ export function ClientRegisterPage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center gap-2">
               <PenLine className="h-8 w-8" aria-hidden="true" />
-              <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
+              <Wordmark className="text-2xl" />
             </div>
             <p className="text-sm text-foreground/65">
               Create a client account to book appointments.

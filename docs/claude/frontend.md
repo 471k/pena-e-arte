@@ -360,6 +360,54 @@ and on every money record's own response (`PaymentResponse`, `GiftCardResponse`,
 
 ---
 
+## Typography, radius and breakpoints (After Hours slice 5, 2026-11-18)
+
+**Fonts.** The body family is **DM Sans** (`--font-sans`, `font-sans`); the TattooOS wordmark is
+**Bodoni Moda 700** through its own token `--font-wordmark` (`font-wordmark`), whose one consumer is
+`shared/components/Wordmark.tsx`. Use `<Wordmark />` wherever the product name is a brand mark. Never put
+Bodoni in `--font-sans` and never use `font-wordmark` anywhere else: docs/03 says ornamental lettering is
+for the wordmark only, and `shared/__tests__/typography.test.tsx` fails on a second consumer. Fraunces is
+gone entirely.
+
+- **Only the faces the scale names load:** DM Sans 400/500/600 and Bodoni Moda 700, as self-hosted woff2
+  in `public/fonts/` with their OFL licence files beside them (docs/11; see `public/fonts/README.md`).
+  There is no 700 DM Sans face: `font-bold` resolves to the 600 face. If the scale ever names 700, add
+  the face deliberately. There are no italic faces, so `italic` renders a synthesised oblique.
+- **No third-party font origin** (Google Fonts was removed), so a future Content-Security-Policy needs no
+  `font-src` exception.
+- `index.html` preloads only `dm-sans-400.woff2`.
+
+**Radius.** Every corner is **3px**: this is **our mapping and a known divergence from the prototype**,
+not the package's rule as written. The four-role CSS gives 3px only to buttons and inputs, and leaves
+panels, badges, dialogs and notices square. See the slice 5 entry in `architecture.md` for why. In
+Tailwind v4, `--radius` only reaches the bare `rounded` utility and the toast variable.
+`rounded-sm/-md/-lg/-xl` read Tailwind's own `--radius-*` scale, so those are set to 3px as well.
+`rounded-xs` stays 2px, as the inner corner of a control nested in a 3px box. `rounded-full` is a shape
+(pills, avatars, dots) and is unchanged.
+
+**Breakpoints: two sets, each with its own job.**
+
+| Variant | Width | Job |
+|---|---|---|
+| `sm:` / `md:` / `lg:` | 640 / 768 / 1024 | **The shared shell** (sidebar, header, drawer), unchanged. The JS in `shouldOpenNavDrawerForTourStep.ts` and `OnboardingTour.tsx` hard-codes 640 and 1024 to match. |
+| `page-sm:` / `page-md:` / `page-lg:` | 420 / 800 / 1100 | **Page content** from the After Hours four-role CSS. The prototype writes them as max-width queries, so `max-page-md:` (below 800) is the direct translation of "below 800px it stacks". |
+
+docs/03 says to keep the existing shared shell and use the four-role values as content-driven page
+breakpoints, so `lg` still means 1024. **The token JSON's 720/1050 are legacy metadata: never use them.**
+
+**Which set new code uses:** `page-*` for any page-level layout band (when a page's columns stack, where a
+page's grid changes). `sm:` / `md:` / `lg:` only for the shell, or inside a component that has its own
+reason to differ from the page, and say that reason in a comment. Existing pages still use `sm/md/lg`
+for their layout. Moving them to `page-*` is a named slice 6 item, so until a page has moved, the
+package's values do not apply to it.
+
+**Target sizes: 44px and 46px are project targets, not WCAG.** docs/03 sets frequent controls at a
+46px minimum height, with 44px as a comfortable-target project goal. WCAG 2.2 AA (2.5.8) is **24x24 CSS px
+with spacing exceptions** (docs/08). Never describe 44 or 46 as a WCAG or AA requirement in a comment, PR
+or test name. Check width and spacing too, not height alone.
+
+---
+
 ## Component Rules
 
 - One component per file. File name matches component name.

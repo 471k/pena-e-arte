@@ -97,8 +97,9 @@ describe("After Hours theme layer (index.css)", () => {
       "--color-destructive": "hsl(0 84.2% 45%)", "--color-destructive-foreground": "hsl(0 0% 98%)",
       "--color-destructive-text": "hsl(0 74% 42%)", "--color-border": "hsl(240 5.9% 58%)",
       "--color-input": "hsl(240 5.9% 58%)", "--color-ring": "hsl(240 5.9% 10%)",
-      "--radius": "0.5rem", "--font-sans": '"Fraunces", sans-serif',
     };
+    // --radius and --font-sans left this list on purpose in slice 5 (2026-11-18): they now carry
+    // the 3px baseline and DM Sans, pinned in shared/__tests__/typography.test.tsx.
     for (const [token, value] of Object.entries(original)) expect(t.get(token), token).toBe(value);
   });
 
@@ -149,8 +150,9 @@ describe("After Hours theme layer (index.css)", () => {
     }
   });
 
-  it("does not touch fonts or the destructive fill pair", () => {
-    expect(norm(indexCss)).toContain('font-family: "Fraunces", sans-serif;');
+  it("does not set fonts or the destructive fill pair inside the scope", () => {
+    // The family is global (slice 5: DM Sans everywhere); the After Hours scope must not fork it.
+    expect(norm(indexCss)).toContain("font-family: var(--font-sans);");
     for (const b of [must(scopedLight, "light scope"), must(scopedDark, "dark scope")]) {
       for (const token of ["--font-sans", "--color-destructive", "--color-destructive-foreground"]) {
         expect(b.decls.has(token), token).toBe(false);

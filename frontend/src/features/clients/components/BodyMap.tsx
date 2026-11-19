@@ -193,7 +193,7 @@ export function BodyMap({
                   fontSize: "6.5px",
                   fill: on ? "var(--color-primary-foreground)" : "var(--color-muted-foreground)",
                   pointerEvents: "none",
-                  fontFamily: "Fraunces, sans-serif",
+                  fontFamily: "var(--font-sans)",
                 }}
               >
                 {zone.svgLabel}

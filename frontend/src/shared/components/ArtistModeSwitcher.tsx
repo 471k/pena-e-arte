@@ -50,7 +50,7 @@ export function ArtistModeSwitcher({ artistId, layout = "compact", onSwitch }: A
         aria-selected={!isArtistView}
         onClick={() => go("/dashboard")}
         className={cn(
-          "flex items-center gap-1.5 rounded-[5px] transition-colors",
+          "flex items-center gap-1.5 rounded-xs transition-colors",
           fill ? "flex-1 justify-center px-3 py-2" : "px-2.5 py-1",
           !isArtistView
             ? "bg-primary text-primary-foreground"
@@ -66,7 +66,7 @@ export function ArtistModeSwitcher({ artistId, layout = "compact", onSwitch }: A
         aria-selected={isArtistView}
         onClick={() => go(`/artists/${artistId}`)}
         className={cn(
-          "flex items-center gap-1.5 rounded-[5px] transition-colors",
+          "flex items-center gap-1.5 rounded-xs transition-colors",
           fill ? "flex-1 justify-center px-3 py-2" : "px-2.5 py-1",
           isArtistView
             ? "bg-primary text-primary-foreground"

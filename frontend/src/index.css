@@ -1,5 +1,46 @@
 @import "tailwindcss";
 
+/* ── Fonts (After Hours slice 5, 2026-11-18) ────────────────────────────────────────────
+   Self-hosted woff2 from the After Hours handoff package, served from public/fonts/ with
+   their SIL Open Font Licence files beside them: public/fonts/DM-Sans-OFL.txt and
+   public/fonts/Bodoni-Moda-OFL.txt (see public/fonts/README.md). docs/11 requires the
+   licence to travel with the font and only the needed faces to load, so this is exactly
+   the faces docs/03's type scale names, and no more:
+     - DM Sans 400 (body), 500 (medium labels), 600 (headings). No 700 face: a font-bold
+       request resolves to the 600 face; add 700 here deliberately if the scale ever names it.
+     - Bodoni Moda 700, for the TattooOS wordmark ONLY, through --font-wordmark below, whose
+       one consumer is shared/components/Wordmark.tsx. Never add it to --font-sans.
+   No italic faces ship; the few `italic` uses render as the browser's synthesised oblique.
+   No third-party font origin, so a future Content-Security-Policy needs no font-src entry. */
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/dm-sans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/dm-sans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/dm-sans-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Bodoni Moda";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/bodoni-moda-700.woff2") format("woff2");
+}
+
 @theme {
   --color-background: hsl(0 0% 100%);
   --color-foreground: hsl(240 10% 3.9%);
@@ -55,8 +96,29 @@
      hard-coded blue-500/600/700 status text colours, which measured 3.34:1 (blue-500 on white)
      and 2.42-3.16:1 in dark mode. 7.95:1 on white; 6.65:1 on the blue-500/15 badge tint. */
   --color-info-text: hsl(221 83% 40%);
-  --radius: 0.5rem;
-  --font-sans: "Fraunces", sans-serif;
+  /* Radius baseline 3px (docs/03). `--radius` alone only reaches the bare `rounded` utility
+     and the toast variable below; every rounded-sm/-md/-lg/-xl in the app reads Tailwind's
+     own scale, so the scale is set to the same baseline. --radius-xs stays Tailwind's 2px:
+     it is the inner corner for controls nested inside a 3px box (ArtistModeSwitcher).
+     rounded-full (pills, avatars, dots) is a shape, not a scale value, and is unchanged. */
+  --radius: 3px;
+  --radius-sm: 3px;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* The wordmark's own family. Exactly one consumer (shared/components/Wordmark.tsx), so
+     "Bodoni is for the wordmark only" (docs/03) holds by construction and is greppable. */
+  --font-wordmark: "Bodoni Moda", "Bodoni 72", Didot, Georgia, serif;
+  /* Page-level content breakpoints from the After Hours four-role CSS (420 / 800 / 1100).
+     Added BESIDE Tailwind's sm/md/lg, not instead of them: docs/03 says to keep the existing
+     shared shell and use these as content-driven page breakpoints, so sm (640), md (768) and
+     lg (1024) keep their meaning. Use `page-md:` (min-width 800) or `max-page-md:` (below
+     800, the prototype's max-width form). The token JSON's 720/1050 are legacy; never use
+     them. Mapping recorded in docs/claude/frontend.md. */
+  --breakpoint-page-sm: 26.25rem;
+  --breakpoint-page-md: 50rem;
+  --breakpoint-page-lg: 68.75rem;
 }
 
 /* `@theme` only registers the DEFAULT (light) token values above and generates the
@@ -296,7 +358,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   margin: 0;
-  font-family: "Fraunces", sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 

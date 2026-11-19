@@ -37,6 +37,7 @@ import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 import { useGetCountryDefaultCurrencyQuery, useGetVisitorGeoQuery } from "@/features/public/publicApi";
 import { registrationTimezoneId } from "@/shared/utils/timezones";
+import { Wordmark } from "@/shared/components/Wordmark";
 
 const schema = z
   .object({
@@ -433,7 +434,7 @@ export function RegisterStudioPage() {
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center gap-2">
               <PenLine className="h-8 w-8" />
-              <span className="text-2xl font-semibold tracking-tight">TattooOS</span>
+              <Wordmark className="text-2xl" />
             </div>
             <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
           </div>
