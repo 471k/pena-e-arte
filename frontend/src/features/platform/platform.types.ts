@@ -166,6 +166,13 @@ export interface AuditLogEntryResponse {
   studioId:    string | null;
   metadata:    string;
   createdAt:   string;
+  /** Resolved by the admin read; null for a platform-wide entry. */
+  studioName?: string | null;
+}
+
+export interface AuditLogVocabularyResponse {
+  actions:     string[];
+  targetTypes: string[];
 }
 
 export interface AuditLogPageResponse {
@@ -182,6 +189,8 @@ export interface AuditLogQueryParams {
   to?:         string;
   page?:       number;
   pageSize?:   number;
+  studioId?:    string;
+  actorUserId?: string;
 }
 
 export interface LiveVisitorResponse {

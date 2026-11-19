@@ -2210,10 +2210,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "A searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription changes, plan edits, referral code changes, and more.",
     steps: [
       "Open Audit Log from the platform nav.",
-      "Filter by action, target type, or a date range.",
-      "Each row shows when it happened, what happened, what it targeted, which studio (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
+      "Filter by action, target type, studio, or a date range. Action and target type are lists of every action the platform records. \"Clear filters\" resets them all.",
+      "Each row shows when it happened (in UTC), what happened, what it targeted, which studio by name (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
+      "Click the arrow at the start of a row for its details: the full target, studio and actor ids, and the details recorded with the action. From there, \"Only this actor's actions\" or \"Only this studio\" narrows the log to them.",
+      "With more than 50 entries, use \"Older\" and \"Newer\" below the table. Your filters stay as they are.",
     ],
-    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled."],
+    tips: ["Times are in UTC. The From and To dates are whole UTC days, both included, so To = 14 Nov covers all of 14 Nov.", "The filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. Only ids, dates and the named choices go in the address, never a name.", "Entries never store names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data. The studio's name is looked up when you view the log; the actor is shown by role and id.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled."],
     relatedArticleIds: ["admin-impersonation"],
   },
   {

@@ -7313,3 +7313,37 @@ docs/03's rule that ornamental lettering is for the wordmark only. Spec:
   then measure, then fix it or show a spacing exception.** They are the six payment status chips (22px;
   if they are static text, 2.5.8 does not apply to them) and the "Show archived clients" switch (36x20;
   it is a control). Neither is recorded as a violation before the first step.
+
+## Admin audit log: reachable and readable (slice 8 phase 1a, D01) — 2026-11-19
+
+The admin audit log asked for 50 rows and offered no way past them, matched free-text action and target
+strings exactly, ended a `To` date at 00:00 UTC (so the whole end day was excluded), showed studios as the
+first 8 characters of an id, and showed times in the viewer's browser zone without saying so.
+
+- **Day semantics:** `From` and `To` are whole UTC days, both included. The handler uses only the date part
+  of either value and bounds the end at the start of the next day (`CreatedAt < To.Date + 1 day`). The page
+  says "Times are in UTC" and renders every time with `timeZone: "UTC"`. **Why UTC:** the platform spans
+  studios in several zones, the stored value is UTC, and the vendor audit schemas we compared all stamp UTC
+  (WorkOS `occurred_at`, Twingate, Edlink `created_date`).
+- **Named choices:** `GET /platform/audit-log/vocabulary` returns every `AuditActions` and `AuditTargetTypes`
+  constant, read by reflection, so a new constant reaches the filter with no second list to update. The
+  validator rejects a value outside that vocabulary, and a `To` before `From`.
+- **Studio and actor filters:** `studioId` (a select of studios) and `actorUserId` (set from a record's
+  details, "Only this actor's actions"). Both are opaque ids.
+- **Interpretable records:** the studio's **name** is resolved at read time with a correlated lookup;
+  `Studio` has no query filter, so this is an ordinary read and `IgnoreQueryFilters` stays at 0. Each row
+  opens to its full ids and its recorded metadata (already allow-listed and PII-scrubbed by
+  `AuditMetadataBuilder`).
+- **The actor stays role + id. This is a decision for Phi, not an omission.** Users live in ASP.NET Identity,
+  outside `IAppDbContext`, and showing a person's name or email changes what this read exposes. GitHub's
+  audit search, for comparison, identifies actors by username, never by real name.
+- **Paging and URL state:** page size 50, "Older"/"Newer", and every filter plus the page held in the URL
+  through the router's `useSearchParams`, with no effect involved. A filter change returns to page 1 and
+  replaces the history entry; a page change pushes one, so Back steps through pages. **Only named choices,
+  ids, dates and the page reach the URL**, never a name or free text (the C08 CodeQL lesson; a test pins
+  that a studio's name is never written to it).
+- **Known divergence:** no outcome/status field. The audit pipeline records only commands that completed,
+  whereas Mattermost and others also record failures. Adding failures changes what is recorded, so it
+  belongs to the same decision as the actor's name.
+- **Latent twin, not fixed:** `GetMyStudioAuditLogQuery` has the same `<= to` bound, but the owner's card
+  never sends dates, so nothing reaches it today.
