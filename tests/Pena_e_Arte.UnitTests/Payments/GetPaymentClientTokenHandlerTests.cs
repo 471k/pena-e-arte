@@ -135,16 +135,22 @@ public class GetPaymentClientTokenHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ActiveAppointment_CapturedPayment_ReturnsToken()
+    public async Task Handle_ActiveAppointment_CapturedPayment_RefusesWithoutAToken()
     {
+        // An authorised hold: nothing resumes from it and capture is the studio's action. Serving the token
+        // would invite a second authorisation on the same booking (C08's rule; Desktop's #401 review).
         Guid paymentId = await SeedPayment("order_held", status: PaymentStatus.Captured,
-            appointmentStatus: AppointmentStatus.Confirmed);
+            appointmentStatus: AppointmentStatus.Confirmed, providerReferenceId: "order_held");
         _user.Role.Returns("owner");
 
-        PaymentClientTokenResponse result = await CreateSut()
+        PaymentClientTokenResponse? result = null;
+        Func<Task> act = async () => result = await CreateSut()
             .Handle(new GetPaymentClientTokenQuery(paymentId), default);
 
-        result.ClientToken.Should().Be("order_held");
+        (await act.Should().ThrowAsync<BusinessRuleViolationException>())
+            .WithMessage("This deposit is already authorised, and the studio will charge it. There is nothing more to pay.");
+        result.Should().BeNull();
+        _jobs.DidNotReceive().TriggerPaymentReconciliationNow();
     }
 
     [Fact]
@@ -235,7 +241,9 @@ public class GetPaymentClientTokenHandlerTests
     [Fact]
     public async Task Handle_AppointmentNotVisible_ThrowsNotFound()
     {
-        // Payment.AppointmentId is a required FK, so in production this is a soft-deleted appointment.
+        // Payment.AppointmentId is a required FK, so only the appointment's query filter can hide it. Nothing
+        // sets Appointment.DeletedAt today, so this is unreachable in production; the 404 keeps the handler
+        // consistent with its missing-payment case if that ever changes.
         Payment payment = new()
         {
             StudioId = _studioId,

@@ -52,12 +52,17 @@ public class GetPaymentClientTokenHandler(IAppDbContext db, ICurrentUser current
             throw new BusinessRuleViolationException("This appointment was cancelled, so there is nothing to pay.");
         }
 
-        // Paid and Refunded are settled. Failed is only ever set once the POK order behind this token is
+        // Only Pending is payable. Captured is an authorised hold (legacy, card deposits before 22 Oct 2026):
+        // nothing resumes from it (ResolveOrCreateHoldAsync resumes a stored Pending only) and capture is the
+        // studio's action, so a token would only invite a second authorisation on the same booking - the C08
+        // rule. Paid and Refunded are settled. Failed is only ever set once the POK order behind this token is
         // dead (PaymentReconciliationJob), so it needs a fresh hold, which My Bookings' "Pay deposit" mints
         // on the same row. CashPending is not a card payment. Each message says what is true and where to go.
         string? refusal = payment.Status switch
         {
-            PaymentStatus.Pending or PaymentStatus.Captured => null,
+            PaymentStatus.Pending => null,
+            PaymentStatus.Captured =>
+                "This deposit is already authorised, and the studio will charge it. There is nothing more to pay.",
             PaymentStatus.Failed =>
                 "This card payment can no longer be completed. To pay the deposit, use \"Pay deposit\" on the booking in My Bookings, or pay the studio in cash.",
             PaymentStatus.CashPending =>
