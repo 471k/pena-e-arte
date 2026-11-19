@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -66,6 +66,14 @@ describe("MessagesInboxPage", () => {
 });
 
 describe("MessagesInboxPage — which appointment the last message is about", () => {
+  // A fixed clock (clock-flake class): the label adds the year when the appointment isn't in the current
+  // year, so with the real clock these 3 Dec 2026 fixtures would render "Thu 3 Dec 2026, 14:30" from
+  // 1 Jan 2027. Found by the clock sweep (.github/workflows/clock-sweep.yml).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  });
+  afterEach(() => { vi.useRealTimers(); });
   const row = (id: string, name: string, extra: Partial<ConversationResponse> = {}): ConversationResponse => ({
     id, otherUserId: `u-${id}`, otherRole: "artist", otherDisplayName: name, otherAvatarUrl: null,
     lastMessageAt: "2026-11-01T10:00:00Z", lastMessagePreview: "About my booking", lastMessageFromMe: true,
