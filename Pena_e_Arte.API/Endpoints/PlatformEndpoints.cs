@@ -29,6 +29,8 @@ public static class PlatformEndpoints
         group.MapPost("studios/{studioId:guid}/subscription/activate", ActivateSubscriptionManually);
         group.MapPost("studios/{studioId:guid}/subscription/dunning-exclusion", SetDunningExclusion);
         group.MapPatch("subscriptions/{studioId:guid}/cancel", CancelSubscription);
+        group.MapGet("studios/{studioId:guid}/subscription/cancel-quote", GetCancellationQuote);
+        group.MapGet("refunds/failed", GetFailedRefunds);
         group.MapGet("referral-codes", GetReferralCodes);
         group.MapPatch("referral-codes/{id:guid}/deactivate", DeactivateReferralCode);
         group.MapPost("studios/{studioId:guid}/referral-codes", GenerateReferralCodeForStudio);
@@ -179,9 +181,29 @@ public static class PlatformEndpoints
         ISender mediator,
         CancellationToken ct)
     {
-        RefundRule? overrideRule = request?.Override is string o ? Enum.Parse<RefundRule>(o, ignoreCase: true) : null;
-        await mediator.Send(new CancelSubscriptionCommand(studioId, overrideRule, request?.Reason), ct);
+        // The override is validated by name in CancelSubscriptionValidator (422 for an unknown value), not parsed here.
+        AdminCancellationConfirmation? confirmed = request is null
+            ? null
+            : new AdminCancellationConfirmation(request.ConfirmedStatus, request.ConfirmedInvoiceId, request.ConfirmedRefundAmount);
+        await mediator.Send(new CancelSubscriptionCommand(studioId, request?.Override, request?.Reason, confirmed), ct);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> GetCancellationQuote(
+        Guid studioId,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AdminCancellationQuoteResponse result = await mediator.Send(new GetAdminCancellationQuoteQuery(studioId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetFailedRefunds(
+        ISender mediator,
+        CancellationToken ct)
+    {
+        FailedSubscriptionRefundsResponse result = await mediator.Send(new GetFailedSubscriptionRefundsQuery(), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GenerateReferralCodeForStudio(

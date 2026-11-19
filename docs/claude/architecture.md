@@ -7413,3 +7413,54 @@ lived, cleared the plan and note on failure and reported only by toast.
   outcomes still report by toast. Bringing every admin mutation onto receipts can follow the same component.
 - **Help correction found on the way:** the cash-activation article and its FAQ said the Dashboard row has
   an Activate button. It never did; both now name the three real places.
+
+## Admin subscription actions show their consequence; failed refunds are a work list (slice 8 phase 3, D03 + D07) — 2026-11-19
+
+**D03.** Extend trial, cash activation and cancel had four entry points (studio list row, studio detail, subscription
+oversight, and the dashboard's at-risk row for extend, which the evidence missed) and each had its own wording. The
+list and oversight cancels sent no refund rule and showed nothing about money; none re-read the subscription first.
+
+- **One component, `ConsequenceReview`:** title, "For {studio}", the inputs, "What happens", "Can't be undone",
+  an alert slot, confirm and Back. `ExtendTrialReview`, `CancelSubscriptionReview` and `CashActivationForm` all render
+  it, and every entry point renders those. The oversight page's "Record Cash Payment" title is gone, so the same action
+  has the same name everywhere.
+- **Cancel is bound to its quote**, the owner-side pattern from E05b-2: `GET /platform/studios/{id}/subscription/
+  cancel-quote` (AdminOnly) is built by `AdminCancellationQuotes`, which the command also uses, and the cancel request
+  carries `confirmedStatus`, `confirmedInvoiceId` and `confirmedRefundAmount` (the amount for the rule chosen). The
+  handler rebuilds the outcome before mutating anything and throws `CancellationQuoteChangedException` (409, its own
+  admin wording) on any difference. A refused cancel has cancelled nothing, refunded nothing and called no provider.
+  The confirmation is **required** (validator), not optional: optional would make the check bypassable by omission.
+- **Refund rule offered only where it can matter** (yearly, Stripe-billed, paid invoice). Elsewhere the server ignores
+  the override, so offering it was a control that did nothing. The amounts for each rule are shown on the radios.
+- **Evidence §0.2 fixed:** the endpoint no longer runs `Enum.Parse<RefundRule>`; the override stays a string to the
+  validator, which accepts only the names `AdminFull`/`AdminNone` (case-insensitive). By name, not `Enum.TryParse`:
+  that would accept "1" as AdminFull. An unknown value is now a 422.
+- **Extend trial says when a date changes nothing.** `ExtendTrialHandler` permits a past-due studio but leaves it
+  PastDue, and `TenantMiddleware` blocks PastDue regardless of the trial date. The review says so rather than letting
+  the admin believe access was restored. (The handler's own behaviour is unchanged: whether it should refuse is a
+  product question, listed in the PR.)
+- **Cancel's access consequence is the middleware's, not a guess:** Cancelled falls through to "Your studio
+  subscription has expired", so the studio loses access at once and its data is kept.
+
+**D07.** A failed refund was a log line plus a pill on one studio's page with its reason in a `title` tooltip, out of
+reach by keyboard or touch.
+
+- `GET /platform/refunds/failed` (AdminOnly): newest 50 failed `SubscriptionRefund` rows across studios with the
+  true total, joined to the studio name. Both tables carry no tenant filter, so **no `IgnoreQueryFilters`**.
+- The dashboard's **Failed refunds** card and the studio page's **Recent refunds** show the reason, when it failed,
+  the Stripe invoice and the next action as text. Loading, error (never "No failed refunds" on a failed read) and empty
+  are separate states.
+- **Two next actions, decided by `ReachedStripe` (`StripeRefundId != null`):** if Stripe accepted the refund and
+  later reported it failed, the money is back in the platform's Stripe balance (Stripe's refund docs) and the studio
+  has not been paid; if the request itself threw, Stripe may or may not have made the refund (a timeout can follow a
+  refund that went through), so the first step is to look at the invoice, not to refund again.
+- **Evidence §0.3 fixed:** `RecentRefundResponse` carries `Currency` and the page formats it; no hardcoded euro.
+
+**Not built, for Phi (spec §8, "do not build blind"):** a retry endpoint, automatic retry, and a "resolved" mark.
+Without one of them a failed row stays on the list after an admin fixes it in Stripe, which the Help says plainly.
+Admin cancel still reports success by toast; receipts for it would reuse D04's component.
+
+**Benchmark:** Stripe's own dashboard cancel offers the same three refund choices (prorated, last payment in full,
+none) from one dialog wherever a subscription is cancelled, and Stripe's refund docs say a failed refund returns the
+funds to the merchant balance and should alert staff (`refund.failed`). We match the first and now meet the second
+with a list rather than a log line.

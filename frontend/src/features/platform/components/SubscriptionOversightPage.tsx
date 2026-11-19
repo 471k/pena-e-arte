@@ -22,13 +22,13 @@ import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useGetPlatformSubscriptionsQuery,
-  useExtendTrialMutation,
-  useCancelSubscriptionMutation,
   useSetDunningExclusionMutation,
 } from "@/features/platform/platformApi";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import { DataMaintenanceCard } from "./DataMaintenanceCard";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
+import { ExtendTrialReview } from "./ExtendTrialReview";
 import { CASH_ACTIVATABLE } from "./subscriptionKnowledge";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
@@ -99,24 +99,9 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
   const [extending,   setExtending]   = useState(false);
   const [activating,  setActivating]  = useState(false);
   const [confirming,  setConfirming]  = useState(false);
-  const [days,        setDays]        = useState("7");
   const [receipt,     setReceipt]     = useState<ActivationReceipt | null>(null);
 
-  const [extendTrial,      { isLoading: extending_ }]  = useExtendTrialMutation();
-  const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
   const { data: plans = [] } = useGetAdminPlansQuery();
-
-  async function handleExtend() {
-    const additionalDays = parseInt(days, 10);
-    if (isNaN(additionalDays) || additionalDays < 1) return;
-    try {
-      await extendTrial({ studioId: sub.studioId, additionalDays }).unwrap();
-      toast.success(`Trial extended by ${additionalDays} day${additionalDays !== 1 ? "s" : ""}`);
-      setExtending(false);
-    } catch {
-      toast.error("Failed to extend trial");
-    }
-  }
 
   const effectiveStatus = sub.isSuspended ? "Suspended" : sub.status;
   const statusClass     = STATUS_CLASSES[effectiveStatus] ?? STATUS_CLASSES.NoSubscription;
@@ -159,16 +144,6 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
         : "Dunning reminders excluded for this studio");
     } catch {
       toast.error("Failed to update dunning exclusion");
-    }
-  }
-
-  async function handleCancel() {
-    try {
-      await cancelSub({ studioId: sub.studioId }).unwrap();
-      toast.success("Subscription cancelled");
-      setConfirming(false);
-    } catch {
-      toast.error("Failed to cancel subscription");
     }
   }
 
@@ -294,28 +269,17 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
           </div>
         </div>
 
+        {/* The shared consequence reviews (D03): the same shape here as on the studio list and detail pages. */}
         {extending && (
-          <div className="flex items-center gap-2 pt-2 border-t">
-            <span className="text-xs text-muted-foreground">
-              {trialExpired ? "Grant extension of" : "Extend trial by"}
-            </span>
-            <Input
-              type="number"
-              min="1"
-              max="90"
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-              className="h-7 w-20 text-xs"
-            />
-            <span className="text-xs text-muted-foreground">days</span>
-            <Button size="sm" className="h-7 px-2 text-xs" disabled={extending_} onClick={handleExtend}>
-              {extending_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirm"}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-              onClick={() => setExtending(false)}>
-              Cancel
-            </Button>
-          </div>
+          <ExtendTrialReview
+            studioId={sub.studioId}
+            studioName={sub.studioName}
+            idSuffix={sub.studioId}
+            status={sub.status}
+            currentTrialEnd={sub.trialExpiresAt ?? null}
+            onDone={() => setExtending(false)}
+            onBack={() => setExtending(false)}
+          />
         )}
 
         {activating && (
@@ -325,7 +289,7 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
             plans={plans}
             idSuffix={sub.studioId}
             notePlaceholder="e.g. Cash paid in person on 2026-06-11"
-            heading="Record Cash Payment"
+            status={sub.status}
             knowledge={{ kind: "known", status: sub.status }}
             checking={checking}
             onRecheck={onRecheck}
@@ -335,28 +299,13 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
         )}
         {receipt && <ActivationReceiptNotice receipt={receipt} onDismiss={() => setReceipt(null)} />}
         {confirming && (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-destructive-text font-medium">
-              Cancel subscription for <strong>{sub.studioName}</strong>?
-            </span>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="h-7 px-2 text-xs"
-              disabled={cancelling_}
-              onClick={handleCancel}
-            >
-              {cancelling_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, cancel"}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs"
-              onClick={() => setConfirming(false)}
-            >
-              Keep
-            </Button>
-          </div>
+          <CancelSubscriptionReview
+            studioId={sub.studioId}
+            studioName={sub.studioName}
+            idSuffix={sub.studioId}
+            onDone={() => setConfirming(false)}
+            onBack={() => setConfirming(false)}
+          />
         )}
       </CardContent>
     </Card>

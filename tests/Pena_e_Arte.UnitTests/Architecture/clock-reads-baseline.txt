@@ -102,7 +102,6 @@
 1	Pena_e_Arte.Application/PayModel/ArtistPayModel.cs
 1	Pena_e_Arte.Application/Platform/Commands/AdminGenerateReferralCodeCommand.cs
 1	Pena_e_Arte.Application/Platform/Commands/BackfillRevenueLedgerCommand.cs
-2	Pena_e_Arte.Application/Platform/Commands/CancelSubscriptionCommand.cs
 3	Pena_e_Arte.Application/Platform/Commands/ExtendTrialCommand.cs
 1	Pena_e_Arte.Application/Platform/Queries/GetHelpSearchInsightsQuery.cs
 1	Pena_e_Arte.Application/Platform/Queries/GetMrrHistoryQuery.cs

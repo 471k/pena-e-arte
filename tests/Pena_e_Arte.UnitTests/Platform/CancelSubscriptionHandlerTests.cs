@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Pena_e_Arte.Application.Platform.Commands;
+using Pena_e_Arte.Application.Platform.Queries;
+using Pena_e_Arte.Contracts.Responses;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
@@ -23,7 +25,7 @@ public class CancelSubscriptionHandlerTests
     }
 
     private CancelSubscriptionHandler CreateSut() =>
-        new(_db, _stripe, _currentUser, NullLogger<CancelSubscriptionHandler>.Instance);
+        new(_db, _stripe, _currentUser, TimeProvider.System, NullLogger<CancelSubscriptionHandler>.Instance);
 
     [Theory]
     [InlineData(SubscriptionStatus.Active)]
@@ -34,7 +36,7 @@ public class CancelSubscriptionHandlerTests
     {
         Guid studioId = await SeedStudio(status, stripeId: null);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         _db.Subscriptions.Single(s => s.StudioId == studioId)
             .Status.Should().Be(SubscriptionStatus.Cancelled);
@@ -48,7 +50,7 @@ public class CancelSubscriptionHandlerTests
         const string stripeId = "sub_test_123";
         Guid studioId = await SeedStudio(status, stripeId: stripeId);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         await _stripe.Received(1).CancelSubscriptionAsync(stripeId, Arg.Any<CancellationToken>());
     }
@@ -58,7 +60,7 @@ public class CancelSubscriptionHandlerTests
     {
         Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: null);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         await _stripe.DidNotReceive().CancelSubscriptionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
@@ -72,7 +74,8 @@ public class CancelSubscriptionHandlerTests
         _stripe.CancelSubscriptionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                .ThrowsAsync(new Exception("Stripe timeout"));
 
-        Func<Task> act = () => CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        CancelSubscriptionCommand command = await Confirmed(studioId);
+        Func<Task> act = () => CreateSut().Handle(command, default);
 
         await act.Should().NotThrowAsync();
         _db.Subscriptions.Single(s => s.StudioId == studioId)
@@ -85,7 +88,7 @@ public class CancelSubscriptionHandlerTests
         Guid planId = Guid.NewGuid();
         Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: null, pendingPlanId: planId);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         _db.Subscriptions.Single(s => s.StudioId == studioId)
             .PendingPlanId.Should().BeNull();
@@ -113,7 +116,8 @@ public class CancelSubscriptionHandlerTests
         Guid studioId = _db.Studios.First(s => s.Slug == "no-sub-cancel").Id;
         _db.ChangeTracker.Clear();
 
-        Func<Task> act = () => CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        CancelSubscriptionCommand command = await Confirmed(studioId);
+        Func<Task> act = () => CreateSut().Handle(command, default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
@@ -124,7 +128,8 @@ public class CancelSubscriptionHandlerTests
     {
         Guid studioId = await SeedStudio(status, stripeId: null);
 
-        Func<Task> act = () => CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        CancelSubscriptionCommand command = await Confirmed(studioId);
+        Func<Task> act = () => CreateSut().Handle(command, default);
 
         await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
@@ -137,7 +142,7 @@ public class CancelSubscriptionHandlerTests
         const string stripeId = "sub_yearly_formula";
         (Guid studioId, Guid subId) = await SeedYearlyStudioWithInvoice(stripeId, amountPaid: 790m, monthlyRef: 79m, monthsAgo: 3);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         SubscriptionRefund refund = _db.SubscriptionRefunds.Single(r => r.SubscriptionId == subId);
         refund.Rule.Should().Be(RefundRule.YearlyFormula);
@@ -151,7 +156,7 @@ public class CancelSubscriptionHandlerTests
         (Guid studioId, Guid subId) = await SeedYearlyStudioWithInvoice(stripeId, amountPaid: 790m, monthlyRef: 79m, monthsAgo: 11);
 
         await CreateSut().Handle(
-            new CancelSubscriptionCommand(studioId, RefundRule.AdminFull, "Goodwill"), default);
+            await Confirmed(studioId, "AdminFull", "Goodwill"), default);
 
         SubscriptionRefund refund = _db.SubscriptionRefunds.Single(r => r.SubscriptionId == subId);
         refund.Rule.Should().Be(RefundRule.AdminFull);
@@ -166,7 +171,7 @@ public class CancelSubscriptionHandlerTests
         (Guid studioId, Guid subId) = await SeedYearlyStudioWithInvoice(stripeId, amountPaid: 790m, monthlyRef: 79m, monthsAgo: 1);
 
         await CreateSut().Handle(
-            new CancelSubscriptionCommand(studioId, RefundRule.AdminNone, "Policy violation"), default);
+            await Confirmed(studioId, "AdminNone", "Policy violation"), default);
 
         SubscriptionRefund refund = _db.SubscriptionRefunds.Single(r => r.SubscriptionId == subId);
         refund.Rule.Should().Be(RefundRule.AdminNone);
@@ -203,9 +208,111 @@ public class CancelSubscriptionHandlerTests
         _db.ChangeTracker.Clear();
 
         await CreateSut().Handle(
-            new CancelSubscriptionCommand(studioId, RefundRule.AdminFull, "n/a"), default);
+            await Confirmed(studioId, "AdminFull", "n/a"), default);
 
         _db.SubscriptionRefunds.Any().Should().BeFalse();
+    }
+
+    // ── D03: the cancel carries the consequence the admin reviewed ─────────
+
+    /// <summary>The command as the page sends it: with the confirmation built from the quote the admin would see now.
+    /// Where the quote itself refuses (no subscription, not cancellable) the confirmation is a placeholder, because
+    /// the handler refuses those before it compares anything.</summary>
+    private async Task<CancelSubscriptionCommand> Confirmed(Guid studioId, string? overrideRule = null, string? reason = null)
+    {
+        AdminCancellationConfirmation confirmation;
+        try
+        {
+            AdminCancellationQuoteResponse quote = await new GetAdminCancellationQuoteHandler(_db, TimeProvider.System)
+                .Handle(new GetAdminCancellationQuoteQuery(studioId), default);
+            decimal amount = overrideRule switch
+            {
+                "AdminFull" => quote.RefundApplies ? quote.FullRefund : 0m,
+                "AdminNone" => 0m,
+                _ => quote.FormulaRefund,
+            };
+            confirmation = new AdminCancellationConfirmation(quote.Status, quote.InvoiceId, amount);
+        }
+        catch (BusinessRuleViolationException)
+        {
+            confirmation = new AdminCancellationConfirmation("Active", null, 0m);
+        }
+        _db.ChangeTracker.Clear();
+        return new CancelSubscriptionCommand(studioId, overrideRule, reason, confirmation);
+    }
+
+    [Fact]
+    public async Task Handle_RefundChangedSinceTheQuote_Refuses_AndChangesNothing()
+    {
+        (Guid studioId, Guid subId) = await SeedYearlyStudioWithInvoice("sub_stale", amountPaid: 790m, monthlyRef: 79m, monthsAgo: 3);
+        CancelSubscriptionCommand reviewed = await Confirmed(studioId);
+        // The admin saw 553 but a month boundary (say) has passed: the server now computes 474.
+        CancelSubscriptionCommand stale = reviewed with { Confirmed = reviewed.Confirmed! with { RefundAmount = 474m } };
+
+        Func<Task> act = () => CreateSut().Handle(stale, default);
+
+        (await act.Should().ThrowAsync<CancellationQuoteChangedException>())
+            .WithMessage(CancelSubscriptionHandler.QuoteChangedMessage);
+        _db.Subscriptions.Single(s => s.Id == subId).Status.Should().Be(SubscriptionStatus.Active);
+        _db.SubscriptionRefunds.Should().BeEmpty();
+        _db.SubscriptionRevenueEvents.Should().BeEmpty();
+        await _stripe.DidNotReceive().CancelSubscriptionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _stripe.DidNotReceive().RefundAsync(
+            Arg.Any<string>(), Arg.Any<long>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_StatusChangedSinceTheQuote_Refuses()
+    {
+        // Reviewed while Trialing (nothing to refund, nothing billed); the studio has since activated.
+        Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: "sub_status_moved");
+        CancelSubscriptionCommand reviewed = await Confirmed(studioId);
+        CancelSubscriptionCommand stale = reviewed with { Confirmed = reviewed.Confirmed! with { Status = "Trialing" } };
+
+        Func<Task> act = () => CreateSut().Handle(stale, default);
+
+        await act.Should().ThrowAsync<CancellationQuoteChangedException>();
+        _db.Subscriptions.Single(s => s.StudioId == studioId).Status.Should().Be(SubscriptionStatus.Active);
+        await _stripe.DidNotReceive().CancelSubscriptionAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RuleChangedWithoutAFreshReview_Refuses()
+    {
+        // Reviewed the formula (553), then sent "full" with the formula's figure: the amount for the rule sent is 790.
+        (Guid studioId, _) = await SeedYearlyStudioWithInvoice("sub_rule_swap", amountPaid: 790m, monthlyRef: 79m, monthsAgo: 3);
+        CancelSubscriptionCommand reviewed = await Confirmed(studioId);
+        CancelSubscriptionCommand swapped = reviewed with { Override = "AdminFull", OverrideReason = "Goodwill" };
+
+        Func<Task> act = () => CreateSut().Handle(swapped, default);
+
+        await act.Should().ThrowAsync<CancellationQuoteChangedException>();
+        _db.SubscriptionRefunds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_NoConfirmation_Refuses()
+    {
+        Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: null);
+
+        Func<Task> act = () => CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+
+        await act.Should().ThrowAsync<CancellationQuoteChangedException>();
+        _db.Subscriptions.Single(s => s.StudioId == studioId).Status.Should().Be(SubscriptionStatus.Active);
+    }
+
+    [Theory]
+    [InlineData("1")]       // Enum.Parse would have accepted this as AdminFull
+    [InlineData("Bogus")]
+    [InlineData("YearlyFormula")]
+    public async Task Handle_OverrideThatIsNotAnAdminRule_RefusesBeforeComparing(string overrideRule)
+    {
+        Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: null);
+        CancelSubscriptionCommand command = (await Confirmed(studioId)) with { Override = overrideRule, OverrideReason = "x" };
+
+        Func<Task> act = () => CreateSut().Handle(command, default);
+
+        await act.Should().ThrowAsync<BusinessRuleViolationException>();
     }
 
     private async Task<(Guid StudioId, Guid SubscriptionId)> SeedYearlyStudioWithInvoice(
@@ -301,7 +408,7 @@ public class CancelSubscriptionHandlerTests
         Guid studioId = await SeedStudio(status, stripeId: null);
         await SetBilled(studioId, 59m);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
         ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
@@ -318,7 +425,7 @@ public class CancelSubscriptionHandlerTests
         Guid studioId = await SeedStudio(status, stripeId: null);
         await SetBilled(studioId, 59m);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         _db.SubscriptionRevenueEvents.Should().BeEmpty();
     }
@@ -329,7 +436,7 @@ public class CancelSubscriptionHandlerTests
         (Guid studioId, _) = await SeedYearlyStudioWithInvoice("sub_yr_ledger", 590m, 59m, monthsAgo: 3);
         await SetBilled(studioId, 590m);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
 
         SubscriptionRevenueEvent ledgerEvent = _db.SubscriptionRevenueEvents.Single();
         ledgerEvent.Type.Should().Be(RevenueEventType.Churn);
@@ -343,7 +450,7 @@ public class CancelSubscriptionHandlerTests
         Guid studioId = await SeedStudio(SubscriptionStatus.Active, stripeId: "sub_echo");
         await SetBilled(studioId, 59m);
 
-        await CreateSut().Handle(new CancelSubscriptionCommand(studioId), default);
+        await CreateSut().Handle(await Confirmed(studioId), default);
         _db.ChangeTracker.Clear();
         await new Pena_e_Arte.Application.Billing.Commands.HandleSubscriptionDeletedHandler(_db).Handle(
             new Pena_e_Arte.Application.Billing.Commands.HandleSubscriptionDeletedCommand("sub_echo", "evt_echo"),

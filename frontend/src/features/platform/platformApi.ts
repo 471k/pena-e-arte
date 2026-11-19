@@ -21,13 +21,16 @@ import type {
   TrafficBreakdownResponse,
   ImpersonationTokenResponse,
   ImpersonationSessionPageResponse,
+  AdminCancellationQuoteResponse,
+  CancelSubscriptionArgs,
+  FailedSubscriptionRefundsResponse,
 } from "./platform.types";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 
 export const platformApi = createApi({
   reducerPath: "platformApi",
   baseQuery,
-  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "AdminStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown", "ImpersonationSession"],
+  tagTypes: ["PlatformStats", "PlatformSubscription", "PlatformReferral", "IndustryReport", "MrrHistory", "AdminStudioSummary", "PlanUsageReport", "AuditLog", "LiveTraffic", "TrafficHistory", "TrafficBreakdown", "ImpersonationSession", "CancellationQuote", "FailedRefunds"],
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStatsResponse, void>({
       query: () => "platform/stats",
@@ -132,17 +135,35 @@ export const platformApi = createApi({
       }),
       invalidatesTags: ["PlatformSubscription", "PlatformStats"],
     }),
-    cancelSubscription: builder.mutation<
-      void,
-      { studioId: string; override?: "AdminFull" | "AdminNone"; reason?: string }
-    >({
-      query: ({ studioId, override: overrideRule, reason }) => ({
+    // D03: what cancelling will do, read fresh every time the review opens (never from cache: it is the figure the
+    // admin confirms, and the server refuses a cancel whose figure has moved).
+    getCancellationQuote: builder.query<AdminCancellationQuoteResponse, string>({
+      query: (studioId) => `platform/studios/${studioId}/subscription/cancel-quote`,
+      providesTags: (_result, _err, studioId) => [{ type: "CancellationQuote", id: studioId }],
+      keepUnusedDataFor: 0,
+    }),
+    cancelSubscription: builder.mutation<void, CancelSubscriptionArgs>({
+      query: ({ studioId, override: overrideRule, reason, confirmed }) => ({
         url:    `platform/subscriptions/${studioId}/cancel`,
         method: "PATCH",
-        // Send neither field when not overriding — the default (formula) path.
-        body:   overrideRule ? { override: overrideRule, reason } : undefined,
+        // The override and reason only when overriding (the formula is the default); the reviewed consequence always.
+        body: {
+          override: overrideRule ?? null,
+          reason:   overrideRule ? reason : null,
+          confirmedStatus:       confirmed.status,
+          confirmedInvoiceId:    confirmed.invoiceId,
+          confirmedRefundAmount: confirmed.refundAmount,
+        },
       }),
-      invalidatesTags: ["PlatformSubscription", "PlatformStats"],
+      invalidatesTags: (_result, _err, { studioId }) => [
+        "PlatformSubscription", "PlatformStats", "FailedRefunds",
+        { type: "AdminStudioSummary", id: studioId }, { type: "CancellationQuote", id: studioId },
+      ],
+    }),
+    // D07: failed yearly-cancellation refunds across all studios, newest first.
+    getFailedRefunds: builder.query<FailedSubscriptionRefundsResponse, void>({
+      query: () => "platform/refunds/failed",
+      providesTags: ["FailedRefunds"],
     }),
     setDunningExclusion: builder.mutation<void, { studioId: string; excluded: boolean }>({
       query: ({ studioId, excluded }) => ({
@@ -222,6 +243,8 @@ export const {
   useDeleteReferralCodeMutation,
   useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
+  useGetCancellationQuoteQuery,
+  useGetFailedRefundsQuery,
   useSetDunningExclusionMutation,
   useGetPlanUsageReportQuery,
   useGetHelpSearchInsightsQuery,

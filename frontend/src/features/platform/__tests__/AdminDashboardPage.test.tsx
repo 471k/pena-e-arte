@@ -76,6 +76,9 @@ const SUBSCRIPTIONS: PlatformSubscriptionResponse[] = [
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  http.get("http://localhost/api/v1/platform/refunds/failed", () =>
+    HttpResponse.json({ items: [], totalCount: 0 }),
+  ),
   http.get("http://localhost/api/v1/platform/stats", () =>
     HttpResponse.json(STATS),
   ),
@@ -422,13 +425,29 @@ describe("AdminDashboardPage", () => {
     expect(screen.queryByText(/this month · (excludes|incl\.) expansion/)).not.toBeInTheDocument();
   });
 
-  it("At-Risk row: clicking 'Extend trial' reveals the days input and Confirm button", async () => {
+  it("At-Risk row: clicking 'Extend trial' opens the shared consequence review", async () => {
     const user = userEvent.setup();
     renderPage();
     const row = (await screen.findByText("GracePeriod Studio")).closest(".border-b") as HTMLElement;
     await user.click(within(row).getByRole("button", { name: /extend trial/i }));
-    expect(within(row).getByRole("spinbutton")).toBeInTheDocument();
-    expect(within(row).getByRole("button", { name: /confirm/i })).toBeInTheDocument();
+    const review = within(row).getByRole("region", { name: /extend trial|grant trial extension/i });
+    expect(within(review).getByRole("spinbutton")).toBeInTheDocument();
+    // A grace-period studio goes back to Trialing: the review says so before anyone confirms.
+    expect(within(review).getByText(/goes back to trialing/i)).toBeInTheDocument();
+    expect(within(review).getByRole("button", { name: /^extend trial$/i })).toBeInTheDocument();
+  });
+
+  it("At-Risk row: for a past-due studio the review says a trial date changes nothing", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const row = (await screen.findByText("PastDue Studio")).closest(".border-b") as HTMLElement;
+    await user.click(within(row).getByRole("button", { name: /extend trial/i }));
+    expect(within(row).getByText(/stays blocked until its payment is sorted out/i)).toBeInTheDocument();
+  });
+
+  it("shows the Failed refunds card, empty when there are none", async () => {
+    renderPage();
+    expect(await screen.findByText(/no failed refunds/i)).toBeInTheDocument();
   });
 
   it("At-Risk row: Confirm calls extendTrial with the row's studioId and entered days", async () => {
@@ -445,7 +464,7 @@ describe("AdminDashboardPage", () => {
     await user.click(within(row).getByRole("button", { name: /extend trial/i }));
     await user.clear(within(row).getByRole("spinbutton"));
     await user.type(within(row).getByRole("spinbutton"), "14");
-    await user.click(within(row).getByRole("button", { name: /confirm/i }));
+    await user.click(within(row).getByRole("button", { name: /^extend trial$/i }));
 
     await waitFor(() => expect(captured).not.toBeNull());
     expect(captured!.studioId).toBe("s1");
