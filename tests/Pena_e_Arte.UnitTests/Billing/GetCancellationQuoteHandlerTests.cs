@@ -64,10 +64,9 @@ public class GetCancellationQuoteHandlerTests
             StripeInvoiceId = "in_1",
             AmountPaid = 790m,
             Currency = "eur",
-            // +5 minutes — see CancelMySubscriptionHandlerTests.SeedYearly's comment: guards
-            // against the exact-anniversary boundary tipping MonthsUsed by one.
-            PaidAt = DateTime.UtcNow.AddMonths(-3).AddMinutes(5),
-            PeriodStart = DateTime.UtcNow.AddMonths(-3).AddMinutes(5),
+            // Halfway through the 3rd month: see CancelMySubscriptionHandlerTests.SeedYearly's comment.
+            PaidAt = DateTime.UtcNow.AddMonths(-2).AddDays(-15),
+            PeriodStart = DateTime.UtcNow.AddMonths(-2).AddDays(-15),
             MonthlyReferencePrice = 79m,
             StripePaymentIntentId = "pi_1",
         });
