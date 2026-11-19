@@ -274,11 +274,22 @@ Two defect classes, each with its own fix. Name the class in the PR so the fix m
    `RedisConnectionWait` (fixed 19 Nov 2026). The sweep does not find this class (it keeps the
    monotonic clock real), so look for it in review.
 
+   **What the sweep can and can't say about `RedisConnectionWait`.** Its test
+   (`GivesUpAfterTheMaximum`) failed once on 19 Nov under the faked clock, unexplained. libfaketime
+   sets a start point and the faked wall clock then runs at real speed, so under the sweep a
+   wall-clock deadline and a monotonic one behave the same. So if it **never recurs** after the fix,
+   that is evidence for the wall-clock cause, not proof. If it **recurs**, the wall-clock cause is
+   ruled out. The only conclusive test is to step the fake clock in the middle of the wait and check
+   that the wait still ends on time. That is new work for a single sample, so build it only if the
+   failure comes back.
+
 **The ratchet (production code only).** `ClockReadRatchetTests` counts direct wall-clock reads
 (`DateTime`/`DateTimeOffset` `.UtcNow`/`.Now`/`.Today`, and `TimeProvider.System.GetUtcNow()`) per
 production file, as syntax, so comments and strings never count. The counts are in
 `tests/Pena_e_Arte.UnitTests/Architecture/clock-reads-baseline.txt` (348 reads in 213 files on
 19 Nov 2026) and may only go down. New code injects `TimeProvider`. When you remove reads, lower the
-file's line; the test fails until you do, so the freed room can't be reused. Tests are deliberately
+file's line; the test fails until you do, so the freed room can't be reused. To lower it without
+hand-editing, run `UPDATE_CLOCK_BASELINE=1 dotnet test --filter ClockReadRatchetTests` once. It
+rewrites only lines that fell, never raises one, and does nothing when `CI` is set. Tests are deliberately
 outside it: their clock reads are mostly harmless fixture style, and the nightly sweep finds the
 harmful ones by behaviour.

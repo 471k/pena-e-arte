@@ -15,6 +15,7 @@ import type {
   HelpSearchInsightsResponse,
   AuditLogPageResponse,
   AuditLogQueryParams,
+  AuditLogVocabularyResponse,
   LiveTrafficSnapshotResponse,
   TrafficHistoryResponse,
   TrafficBreakdownResponse,
@@ -58,8 +59,9 @@ export const platformApi = createApi({
       query: () => ({ url: "platform/subscriptions/backfill-revenue-ledger", method: "POST" }),
       invalidatesTags: ["MrrHistory"],
     }),
-    getPlatformSubscriptions: builder.query<PlatformSubscriptionResponse[], void>({
-      query: () => "platform/subscriptions",
+    // Every studio's subscription, or one studio's with { studioId } (the detail page, D08).
+    getPlatformSubscriptions: builder.query<PlatformSubscriptionResponse[], { studioId?: string } | void>({
+      query: (arg) => ({ url: "platform/subscriptions", params: arg?.studioId ? { studioId: arg.studioId } : undefined }),
       providesTags: ["PlatformSubscription"],
     }),
     extendTrial: builder.mutation<void, { studioId: string; additionalDays: number }>({
@@ -82,8 +84,9 @@ export const platformApi = createApi({
       // No cache invalidation — the Hangfire job is async and takes minutes.
       // The page will show a "Queued" confirmation; the user refreshes manually.
     }),
-    getPlatformReferralCodes: builder.query<PlatformReferralCodeResponse[], void>({
-      query: () => "platform/referral-codes",
+    // Every referral code, or one studio's with { studioId } (the detail page, D08).
+    getPlatformReferralCodes: builder.query<PlatformReferralCodeResponse[], { studioId?: string } | void>({
+      query: (arg) => ({ url: "platform/referral-codes", params: arg?.studioId ? { studioId: arg.studioId } : undefined }),
       providesTags: ["PlatformReferral"],
     }),
     deactivateReferralCode: builder.mutation<void, string>({
@@ -161,6 +164,11 @@ export const platformApi = createApi({
       query: (params) => ({ url: "platform/audit-log", params: params ?? undefined }),
       providesTags: ["AuditLog"],
     }),
+    // The named action and target-type choices for the filters; fixed for a given deploy.
+    getAuditLogVocabulary: builder.query<AuditLogVocabularyResponse, void>({
+      query: () => "platform/audit-log/vocabulary",
+      keepUnusedDataFor: 3600,
+    }),
     getLiveTrafficSnapshot: builder.query<LiveTrafficSnapshotResponse, void>({
       query: () => "platform/traffic/live",
       providesTags: ["LiveTraffic"],
@@ -218,6 +226,7 @@ export const {
   useGetPlanUsageReportQuery,
   useGetHelpSearchInsightsQuery,
   useGetAuditLogQuery,
+  useGetAuditLogVocabularyQuery,
   useGetLiveTrafficSnapshotQuery,
   useGetTrafficHistoryQuery,
   useGetTrafficBreakdownQuery,

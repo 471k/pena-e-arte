@@ -39,6 +39,7 @@ public static class PlatformEndpoints
         group.MapGet("plan-usage-report", GetPlanUsageReport);
         group.MapGet("help-search-insights", GetHelpSearchInsights);
         group.MapGet("audit-log", GetAuditLog);
+        group.MapGet("audit-log/vocabulary", GetAuditLogVocabulary);
         group.MapGet("traffic/live", GetLiveTrafficSnapshot);
         group.MapGet("traffic/history", GetTrafficHistory);
         group.MapGet("traffic/breakdown", GetTrafficBreakdown);
@@ -97,10 +98,11 @@ public static class PlatformEndpoints
 
     private static async Task<IResult> GetSubscriptions(
         ISender mediator,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? studioId = null)
     {
         List<PlatformSubscriptionResponse> result =
-            await mediator.Send(new GetPlatformSubscriptionsQuery(), ct);
+            await mediator.Send(new GetPlatformSubscriptionsQuery(studioId), ct);
         return Results.Ok(result);
     }
 
@@ -133,10 +135,11 @@ public static class PlatformEndpoints
 
     private static async Task<IResult> GetReferralCodes(
         ISender mediator,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? studioId = null)
     {
         List<PlatformReferralCodeResponse> result =
-            await mediator.Send(new GetPlatformReferralCodesQuery(), ct);
+            await mediator.Send(new GetPlatformReferralCodesQuery(studioId), ct);
         return Results.Ok(result);
     }
 
@@ -253,10 +256,18 @@ public static class PlatformEndpoints
         DateTime? from = null,
         DateTime? to = null,
         int page = 1,
-        int pageSize = 20)
+        int pageSize = 20,
+        Guid? studioId = null,
+        Guid? actorUserId = null)
     {
         AuditLogPageResponse result = await mediator.Send(
-            new GetAuditLogQuery(action, targetType, from, to, page, pageSize), ct);
+            new GetAuditLogQuery(action, targetType, from, to, page, pageSize, studioId, actorUserId), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetAuditLogVocabulary(ISender mediator, CancellationToken ct)
+    {
+        AuditLogVocabularyResponse result = await mediator.Send(new GetAuditLogVocabularyQuery(), ct);
         return Results.Ok(result);
     }
 

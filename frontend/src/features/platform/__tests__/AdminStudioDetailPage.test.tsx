@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -168,11 +168,11 @@ function makeStore() {
   });
 }
 
-function renderPage(studioId = "s1") {
+function renderPage(studioId = "s1", listSearch?: string) {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={[`/platform/studios/${studioId}`]}>
+      <MemoryRouter initialEntries={[{ pathname: `/platform/studios/${studioId}`, state: listSearch ? { listSearch } : null }]}>
         <Routes>
           <Route path="/platform/studios/:studioId" element={<AdminStudioDetailPage />} />
           <Route path="/dashboard" element={<div data-testid="dashboard-landed" />} />
@@ -205,10 +205,35 @@ describe("AdminStudioDetailPage", () => {
     expect(await screen.findByText("Porto")).toBeInTheDocument();
   });
 
-  it("renders a back link to /platform/studios", async () => {
+  it("opened from a shared link, Back goes to the studio list focused on this studio", async () => {
     renderPage();
     await screen.findAllByText("Ink Soul");
-    expect(screen.getByRole("link", { name: /studios/i })).toHaveAttribute("href", "/platform/studios");
+    expect(screen.getByRole("link", { name: /studios/i })).toHaveAttribute("href", "/platform/studios?focus=s1");
+  });
+
+  it("opened from the list, Back returns to the same filters and page with this studio in focus (D08)", async () => {
+    renderPage("s1", "?status=PastDue&page=2&focus=s1");
+    await screen.findAllByText("Ink Soul");
+    expect(screen.getByRole("link", { name: /studios/i }))
+      .toHaveAttribute("href", "/platform/studios?status=PastDue&page=2&focus=s1");
+  });
+
+  it("reads only this studio's subscription and referral codes, not the whole platform's (D08)", async () => {
+    const requested: string[] = [];
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", ({ request }) => {
+        requested.push(request.url);
+        return HttpResponse.json([SUB]);
+      }),
+      http.get("http://localhost/api/v1/platform/referral-codes", ({ request }) => {
+        requested.push(request.url);
+        return HttpResponse.json([]);
+      }),
+    );
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    await waitFor(() => expect(requested).toHaveLength(2));
+    expect(requested.every((u) => new URL(u).searchParams.get("studioId") === "s1")).toBe(true);
   });
 
   it("shows 404 message for unknown studio id", async () => {
@@ -405,12 +430,16 @@ describe("AdminStudioDetailPage", () => {
     });
 
     it("shows only this studio's codes, not other studios'", async () => {
+      // The server scopes the read (?studioId=); this mock honours it the way the handler does.
       server.use(
-        http.get("http://localhost/api/v1/platform/referral-codes", () =>
-          HttpResponse.json([
+        http.get("http://localhost/api/v1/platform/referral-codes", ({ request }) => {
+          const studioId = new URL(request.url).searchParams.get("studioId");
+          const all = [
             REFERRAL_CODE,
             { ...REFERRAL_CODE, id: "code-2", studioId: "s2", studioName: "Other Studio", code: "OTHER123" },
-          ])),
+          ];
+          return HttpResponse.json(studioId ? all.filter((c) => c.studioId === studioId) : all);
+        }),
       );
       renderPage();
       await screen.findAllByText("Ink Soul");
@@ -518,6 +547,149 @@ describe("AdminStudioDetailPage", () => {
       expect(screen.queryByTestId("dashboard-landed")).not.toBeInTheDocument();
       // Still on the studio detail page, reason form remains
       expect(await screen.findByLabelText(/reason/i)).toBeInTheDocument();
+    });
+  });
+
+  // ── D02: an unknown subscription is not "No subscription" ─────────────────────
+
+  describe("subscription known, loading or failed (D02)", () => {
+    const SUB_NONE: PlatformSubscriptionResponse = { ...SUB, subscriptionId: null, status: "NoSubscription", planName: null };
+
+    it("a failed subscription read never claims 'No Subscription' and offers no subscription action", async () => {
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json({ message: "boom" }, { status: 500 })));
+      renderPage();
+      expect((await screen.findAllByText("Subscription unknown")).length).toBeGreaterThan(0);
+      expect(screen.queryByText("No Subscription")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^activate$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /cancel subscription/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+      // Unrelated safe actions stay available.
+      expect(screen.getByRole("button", { name: /suspend/i })).toBeInTheDocument();
+    });
+
+    it("retrying the failed read brings the actions back once the status is known", async () => {
+      let calls = 0;
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", () => {
+        calls += 1;
+        return calls === 1 ? HttpResponse.json({ message: "boom" }, { status: 500 }) : HttpResponse.json([SUB_NONE]);
+      }));
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("button", { name: /retry loading the subscription/i }));
+      expect(await screen.findByRole("button", { name: /^activate$/i })).toBeInTheDocument();
+    });
+
+    it("while the subscription is still loading, no subscription action is offered", async () => {
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", async () => {
+        await new Promise((r) => setTimeout(r, 60_000));
+        return HttpResponse.json([SUB_NONE]);
+      }));
+      renderPage();
+      await screen.findAllByText("Ink Soul");
+      expect(screen.getByText(/loading the subscription before offering its actions/i)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^activate$/i })).not.toBeInTheDocument();
+      expect(screen.queryByText("No Subscription")).not.toBeInTheDocument();
+    });
+
+    it("a server error on the studio itself is not 'not found', and offers Try again", async () => {
+      let calls = 0;
+      server.use(http.get("http://localhost/api/v1/studios/s1", () => {
+        calls += 1;
+        return calls === 1 ? HttpResponse.json({ message: "boom" }, { status: 500 }) : HttpResponse.json(STUDIO);
+      }));
+      const user = userEvent.setup();
+      renderPage();
+      expect(await screen.findByText(/couldn't load this studio/i)).toBeInTheDocument();
+      expect(screen.queryByText(/studio not found/i)).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /try again/i }));
+      expect((await screen.findAllByText("Ink Soul")).length).toBeGreaterThan(0);
+    });
+
+    it("no access is said as such, with no Try again", async () => {
+      server.use(http.get("http://localhost/api/v1/studios/s1", () =>
+        HttpResponse.json({ message: "nope" }, { status: 403 })));
+      renderPage();
+      expect(await screen.findByText(/you don't have access to this studio/i)).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+    });
+  });
+
+  // ── D04: failed edits are kept, successes leave a receipt ─────────────────────
+
+  describe("cash activation keeps failed input and leaves a receipt (D04)", () => {
+    const SUB_NONE: PlatformSubscriptionResponse = { ...SUB, subscriptionId: null, status: "NoSubscription", planName: null };
+
+    async function openAndFill(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: /^activate$/i }));
+      await user.selectOptions(screen.getByLabelText("Plan"), "plan-1");
+      await user.type(screen.getByLabelText(/note \(optional\)/i), "Paid in cash at the desk");
+      await user.click(screen.getByRole("button", { name: /activate subscription/i }));
+    }
+
+    it("a failure keeps the plan and note, says why, and moves focus to the error", async () => {
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([SUB_NONE])),
+        http.post("http://localhost/api/v1/platform/studios/s1/subscription/activate", () =>
+          HttpResponse.json({ message: "That plan is archived." }, { status: 422 })),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await openAndFill(user);
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Activation failed: That plan is archived.");
+      expect(alert).toHaveFocus();
+      expect(screen.getByLabelText("Plan")).toHaveValue("plan-1");
+      expect(screen.getByLabelText(/note \(optional\)/i)).toHaveValue("Paid in cash at the desk");
+      // The recheck found the studio still activatable, so a retry is offered.
+      expect(await screen.findByText(/your plan and note are kept/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /try again/i })).toBeEnabled();
+    });
+
+    it("if the recheck finds the studio already active, the retry is withheld, not sent twice", async () => {
+      let activated = false;
+      let posts = 0;
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () =>
+          HttpResponse.json([activated ? { ...SUB, status: "Active" } : SUB_NONE])),
+        http.post("http://localhost/api/v1/platform/studios/s1/subscription/activate", () => {
+          posts += 1;
+          activated = true; // it went through, but the response was lost
+          return HttpResponse.json({ message: "Gateway timeout" }, { status: 504 });
+        }),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await openAndFill(user);
+
+      expect(await screen.findByText(/the studio's subscription is now active, so there is nothing to activate/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /try again/i })).toBeDisabled();
+      expect(posts).toBe(1);
+    });
+
+    it("a success leaves a receipt with the studio, the new state, the time and an audit-log link", async () => {
+      server.use(
+        http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([SUB_NONE])),
+        http.post("http://localhost/api/v1/platform/studios/s1/subscription/activate", () =>
+          HttpResponse.json({
+            id: "sub-new", studioId: "s1", planId: "plan-1", billingInterval: "Monthly", pendingPlanId: null,
+            pendingBillingInterval: null, status: "Active", trialExpiresAt: null,
+            currentPeriodEnd: "2026-12-19T00:00:00Z", gracePeriodEnd: "2026-12-26T00:00:00Z",
+            stripeSubscriptionId: null, cancelAtPeriodEnd: false,
+          })),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await openAndFill(user);
+
+      const receipt = await screen.findByRole("status");
+      expect(receipt).toHaveTextContent("Subscription activated for Ink Soul: now Active on Starter.");
+      expect(receipt).toHaveTextContent(/UTC/);
+      expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+        .toHaveAttribute("href", "/platform/audit-log?studioId=s1&action=Subscription.ActivatedManually");
+      await user.click(within(receipt).getByRole("button", { name: /dismiss this receipt/i }));
+      expect(screen.queryByText(/subscription activated for ink soul/i)).not.toBeInTheDocument();
     });
   });
 });

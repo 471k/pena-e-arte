@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -19,17 +19,17 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
-  useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
   useSetDunningExclusionMutation,
 } from "@/features/platform/platformApi";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import { DataMaintenanceCard } from "./DataMaintenanceCard";
+import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { CASH_ACTIVATABLE } from "./subscriptionKnowledge";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -89,21 +89,20 @@ function SubscriptionRowSkeleton() {
 
 interface SubscriptionRowProps {
   sub: PlatformSubscriptionResponse;
+  /** The list is being re-read: a failed activation's retry waits for it (D04). */
+  checking: boolean;
+  onRecheck: () => void;
 }
-
-const CASH_ACTIVATABLE = new Set(["NoSubscription", "PastDue", "GracePeriod", "Cancelled"]);
 const CANCELLABLE      = new Set(["Active", "PastDue", "Trialing", "GracePeriod"]);
 
-function SubscriptionRow({ sub }: SubscriptionRowProps) {
+function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
   const [extending,   setExtending]   = useState(false);
   const [activating,  setActivating]  = useState(false);
   const [confirming,  setConfirming]  = useState(false);
   const [days,        setDays]        = useState("7");
-  const [cashPlanId,  setCashPlanId]  = useState("");
-  const [cashNote,    setCashNote]    = useState("");
+  const [receipt,     setReceipt]     = useState<ActivationReceipt | null>(null);
 
   const [extendTrial,      { isLoading: extending_ }]  = useExtendTrialMutation();
-  const [activateManually, { isLoading: activating_ }] = useActivateSubscriptionManuallyMutation();
   const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
   const { data: plans = [] } = useGetAdminPlansQuery();
 
@@ -117,23 +116,6 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
     } catch {
       toast.error("Failed to extend trial");
     }
-  }
-
-  async function handleActivate() {
-    if (!cashPlanId) return;
-    try {
-      await activateManually({
-        studioId: sub.studioId,
-        planId:   cashPlanId,
-        note:     cashNote || undefined,
-      }).unwrap();
-      toast.success("Subscription activated");
-    } catch {
-      toast.error("Failed to activate subscription");
-    }
-    setActivating(false);
-    setCashNote("");
-    setCashPlanId("");
   }
 
   const effectiveStatus = sub.isSuspended ? "Suspended" : sub.status;
@@ -337,55 +319,21 @@ function SubscriptionRow({ sub }: SubscriptionRowProps) {
         )}
 
         {activating && (
-          <div className="pt-2 space-y-2 border-t">
-            <div className="space-y-0.5">
-              <p className="text-xs font-medium">Record Cash Payment</p>
-              <p className="text-xs text-muted-foreground">
-                Manually activates the subscription — use when payment was collected offline.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`plan-${sub.studioId}`} className="text-xs">Plan</Label>
-              <select
-                id={`plan-${sub.studioId}`}
-                value={cashPlanId}
-                onChange={(e) => setCashPlanId(e.target.value)}
-                className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-              >
-                <option value="">Select a plan…</option>
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`note-${sub.studioId}`} className="text-xs">Note (optional)</Label>
-              <Input
-                id={`note-${sub.studioId}`}
-                value={cashNote}
-                onChange={(e) => setCashNote(e.target.value)}
-                placeholder="e.g. Cash paid in person on 2026-06-11"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                className="h-7 px-2 text-xs flex-1"
-                disabled={activating_ || !cashPlanId}
-                onClick={handleActivate}
-              >
-                {activating_
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : "Activate subscription"}
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                onClick={() => { setActivating(false); setCashNote(""); setCashPlanId(""); }}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <CashActivationForm
+            studioId={sub.studioId}
+            studioName={sub.studioName}
+            plans={plans}
+            idSuffix={sub.studioId}
+            notePlaceholder="e.g. Cash paid in person on 2026-06-11"
+            heading="Record Cash Payment"
+            knowledge={{ kind: "known", status: sub.status }}
+            checking={checking}
+            onRecheck={onRecheck}
+            onClose={() => setActivating(false)}
+            onActivated={setReceipt}
+          />
         )}
+        {receipt && <ActivationReceiptNotice receipt={receipt} onDismiss={() => setReceipt(null)} />}
         {confirming && (
           <div className="flex items-center gap-2 pt-1">
             <span className="text-xs text-destructive-text font-medium">
@@ -419,17 +367,46 @@ const ALL_STATUSES = ["Suspended", "Active", "Trialing", "GracePeriod", "PastDue
 
 const PAGE_SIZE = 10;
 
+const SORT_KEYS = ["trialEnd", "periodEnd", "daysOverdue", "name"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
 export function SubscriptionOversightPage() {
   useDocumentMeta({ title: "Subscriptions — Platform Admin", canonical: "/platform/subscriptions" });
 
+  // Status, sort and page live in the URL (D08), so Back, a reload or a shared link restores the view. The
+  // search box stays in memory: an admin's search text can be a person's name, and nothing private goes in
+  // a URL (the C08 rule).
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status") ?? "";
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd" | "daysOverdue">("trialEnd");
-  const [page, setPage] = useState(1);
+  const sortKey: SortKey = SORT_KEYS.find((k) => k === searchParams.get("sort")) ?? "trialEnd";
+  const [search, setSearchText] = useState("");
+
+  // A filter or sort change returns to page 1 and replaces the history entry; a page change pushes one.
+  function updateParams(change: (next: URLSearchParams) => void, replace: boolean) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      change(next);
+      return next;
+    }, { replace });
+  }
+  const setStatus = (status: string) => updateParams((n) => {
+    if (status) n.set("status", status); else n.delete("status");
+    n.delete("page");
+  }, true);
+  const setSortKey = (key: SortKey) => updateParams((n) => {
+    if (key === "trialEnd") n.delete("sort"); else n.set("sort", key);
+    n.delete("page");
+  }, true);
+  const setSearch = (value: string) => {
+    setSearchText(value);
+    updateParams((n) => n.delete("page"), true);
+  };
+  const setPage = (nextPage: number) => updateParams((n) => {
+    if (nextPage > 1) n.set("page", String(nextPage)); else n.delete("page");
+  }, false);
 
   // Refetch on mount so the admin always sees current subscription state.
-  const { data: subscriptions, isLoading, isError } =
+  const { data: subscriptions, isLoading, isError, isFetching, refetch } =
     useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const baseFiltered = subscriptions?.filter((s) => {
@@ -464,13 +441,9 @@ export function SubscriptionOversightPage() {
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Derived, not synced: the URL's page, clamped when the filters shrink the list below it.
+  const page       = Math.min(Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1), totalPages);
   const pageSubs   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // Clamp the current page if filtering shrinks the result set below it.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage((p) => Math.min(p, totalPages));
-  }, [totalPages]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -496,13 +469,13 @@ export function SubscriptionOversightPage() {
               aria-label="Search subscriptions by studio name or slug"
               placeholder="Search by studio name or slug…"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-8 text-sm"
             />
           </div>
           <select
             value={sortKey}
-            onChange={(e) => { setSortKey(e.target.value as typeof sortKey); setPage(1); }}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
             className="h-8 rounded-md border border-input bg-background px-2 text-xs"
             aria-label="Sort subscriptions"
           >
@@ -516,7 +489,7 @@ export function SubscriptionOversightPage() {
         {subscriptions && (
           <div className="flex flex-wrap gap-2 mb-4">
             <button
-              onClick={() => { setSearchParams({}); setPage(1); }}
+              onClick={() => setStatus("")}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 !statusFilter ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
               }`}
@@ -531,7 +504,7 @@ export function SubscriptionOversightPage() {
               return (
                 <button
                   key={s}
-                  onClick={() => { setSearchParams({ status: s }); setPage(1); }}
+                  onClick={() => setStatus(s)}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                     statusFilter === s
                       ? "bg-primary text-primary-foreground border-primary"
@@ -573,9 +546,8 @@ export function SubscriptionOversightPage() {
                 variant="outline"
                 className="text-xs"
                 onClick={() => {
-                  setSearch("");
-                  setSearchParams({});
-                  setPage(1);
+                  setSearchText("");
+                  setSearchParams({}, { replace: true });
                 }}
               >
                 Clear filters
@@ -585,7 +557,7 @@ export function SubscriptionOversightPage() {
         )}
 
         {!isLoading && !isError && pageSubs.map((sub) => (
-          <SubscriptionRow key={sub.studioId} sub={sub} />
+          <SubscriptionRow key={sub.studioId} sub={sub} checking={isFetching} onRecheck={() => void refetch()} />
         ))}
 
         {!isLoading && !isError && totalPages > 1 && (
@@ -593,7 +565,7 @@ export function SubscriptionOversightPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPage(page - 1)}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               Previous
@@ -604,7 +576,7 @@ export function SubscriptionOversightPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(page + 1)}
             >
               Next
               <ChevronRight className="h-3.5 w-3.5" />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
@@ -20,7 +20,6 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
-import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useGetStudiosQuery,
@@ -31,12 +30,13 @@ import type { StudioResponse } from "@/features/studios/studiosApi";
 import {
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
-  useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
 } from "@/features/platform/platformApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlanResponse } from "@/features/billing/billing.types";
+import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { CASH_ACTIVATABLE, knowSubscriptionStatus, type SubscriptionKnowledge } from "./subscriptionKnowledge";
 
 // ── Status display config ──────────────────────────────────────────────────────
 
@@ -48,6 +48,7 @@ const STATUS_CLASSES: Record<string, string> = {
   Cancelled:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   NoSubscription: "bg-muted text-muted-foreground",
   Suspended:      "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  Unknown:        "border border-dashed text-muted-foreground",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -58,9 +59,8 @@ const STATUS_LABELS: Record<string, string> = {
   Cancelled:      "Cancelled",
   NoSubscription: "No Subscription",
   Suspended:      "Suspended",
+  Unknown:        "Subscription unknown",
 };
-
-const CASH_ACTIVATABLE = new Set(["NoSubscription", "PastDue", "GracePeriod", "Cancelled"]);
 const CANCELLABLE      = new Set(["Active", "PastDue", "Trialing", "GracePeriod"]);
 
 const STATUS_SORT_ORDER: Record<string, number> = {
@@ -71,6 +71,7 @@ const STATUS_SORT_ORDER: Record<string, number> = {
   Active:         4,
   NoSubscription: 5,
   Cancelled:      6,
+  Unknown:        7,
 };
 
 const ALL_FILTER_STATUSES = [
@@ -79,6 +80,13 @@ const ALL_FILTER_STATUSES = [
 ] as const;
 
 const PAGE_SIZE = 10;
+
+// The at-risk and suspended views D08 asks to be reusable; each is just a status filter in the URL.
+const QUICK_VIEWS: ReadonlyArray<{ status: (typeof ALL_FILTER_STATUSES)[number]; label: string }> = [
+  { status: "PastDue",     label: "Past due" },
+  { status: "GracePeriod", label: "Grace period" },
+  { status: "Suspended",   label: "Suspended" },
+];
 
 function fmt(date: string) {
   return new Date(date).toLocaleDateString("en-GB", {
@@ -119,11 +127,19 @@ interface StudioRowProps {
   studio: StudioResponse;
   sub:    PlatformSubscriptionResponse | undefined;
   plans:  PlanResponse[];
+  /** The list's own query with this studio as focus, so the detail page's Back link returns here (D08). */
+  listSearch?: string;
+  onOpen?: () => void;
+  /** D02: whether the platform's subscriptions are known, loading or failed. Never "No subscription" when unknown. */
+  knowledge: SubscriptionKnowledge;
+  subsChecking: boolean;
+  onRecheckSubs: () => void;
 }
 
-function StudioRow({ studio, sub, plans }: StudioRowProps) {
+function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChecking, onRecheckSubs }: StudioRowProps) {
   const isSuspended = !studio.isActive;
-  const subStatus   = sub?.status ?? "NoSubscription";
+  const subKnown    = knowledge.kind === "known";
+  const subStatus   = knowledge.kind === "known" ? knowledge.status : "Unknown";
   const badgeStatus = isSuspended ? "Suspended" : subStatus;
 
   // Platform actions
@@ -136,16 +152,14 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
   const [activating, setActivating] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [days,       setDays]       = useState("7");
-  const [cashPlanId, setCashPlanId] = useState("");
-  const [cashNote,   setCashNote]   = useState("");
+  const [receipt,    setReceipt]    = useState<ActivationReceipt | null>(null);
 
   const [extendTrial,      { isLoading: extending_  }] = useExtendTrialMutation();
-  const [activateManually, { isLoading: activating_ }] = useActivateSubscriptionManuallyMutation();
   const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
 
-  const canExtendTrial = subStatus !== "Active";
-  const canActivate    = CASH_ACTIVATABLE.has(subStatus);
-  const canCancel      = CANCELLABLE.has(subStatus);
+  const canExtendTrial = subKnown && subStatus !== "Active";
+  const canActivate    = subKnown && CASH_ACTIVATABLE.has(subStatus);
+  const canCancel      = subKnown && CANCELLABLE.has(subStatus);
   const anyExpanded    = extending || activating || confirming || confirmPlatform !== null;
 
   const trialDate    = sub?.trialExpiresAt ?? studio.trialExpiresAt;
@@ -175,19 +189,6 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
     }
   }
 
-  async function handleActivate() {
-    if (!cashPlanId) return;
-    try {
-      await activateManually({ studioId: studio.id, planId: cashPlanId, note: cashNote || undefined }).unwrap();
-      toast.success("Subscription activated");
-    } catch {
-      toast.error("Failed to activate subscription");
-    }
-    setActivating(false);
-    setCashPlanId("");
-    setCashNote("");
-  }
-
   async function handleCancel() {
     try {
       await cancelSub({ studioId: studio.id }).unwrap();
@@ -199,6 +200,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
   }
 
   const planDisplay = (() => {
+    if (!subKnown) return "Plan unknown";
     if (subStatus === "Trialing") return "In Trial";
     if (subStatus === "NoSubscription") return "No subscription";
     return sub?.planName ?? "No plan assigned";
@@ -221,7 +223,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
       return `Cancelled — ended ${sub.currentPeriodEnd ? fmt(sub.currentPeriodEnd) : ""}`.trim();
     }
     // Trial dates only for trial-relevant states
-    const isTrialState = !sub || sub.status === "Trialing" || sub.status === "NoSubscription";
+    const isTrialState = subKnown && (!sub || sub.status === "Trialing" || sub.status === "NoSubscription");
     if (isTrialState && trialDate) {
       return trialExpired ? `Trial expired: ${fmt(trialDate)}` : `Trial ends: ${fmt(trialDate)}`;
     }
@@ -279,7 +281,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
           <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 sm:justify-end">
 
             {/* 0. View detail — always visible, never hidden by anyExpanded */}
-            <Link to={`/platform/studios/${studio.id}`}>
+            <Link to={`/platform/studios/${studio.id}`} state={{ listSearch }} onClick={onOpen}>
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1"
                 title="View studio details">
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -382,47 +384,20 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
 
         {/* ── Activate (cash) form ─────────────────────────────────────── */}
         {activating && (
-          <div className="pt-2 space-y-2 border-t">
-            <p className="text-xs font-medium text-muted-foreground">Activate — Cash Payment</p>
-            <div className="space-y-1">
-              <Label htmlFor={`plan-${studio.id}`} className="text-xs">Plan</Label>
-              <select
-                id={`plan-${studio.id}`}
-                value={cashPlanId}
-                onChange={(e) => setCashPlanId(e.target.value)}
-                className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-              >
-                <option value="">Select a plan…</option>
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`note-${studio.id}`} className="text-xs">Note (optional)</Label>
-              <Input
-                id={`note-${studio.id}`}
-                value={cashNote}
-                onChange={(e) => setCashNote(e.target.value)}
-                placeholder="e.g. Cash paid in person on 2026-06-13"
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm" className="h-7 px-2 text-xs flex-1"
-                disabled={activating_ || !cashPlanId}
-                onClick={handleActivate}
-              >
-                {activating_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Activate subscription"}
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                onClick={() => { setActivating(false); setCashPlanId(""); setCashNote(""); }}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <CashActivationForm
+            studioId={studio.id}
+            studioName={studio.name}
+            plans={plans}
+            idSuffix={studio.id}
+            notePlaceholder="e.g. Cash paid in person on 2026-06-13"
+            knowledge={knowledge}
+            checking={subsChecking}
+            onRecheck={onRecheckSubs}
+            onClose={() => setActivating(false)}
+            onActivated={setReceipt}
+          />
         )}
+        {receipt && <ActivationReceiptNotice receipt={receipt} onDismiss={() => setReceipt(null)} />}
 
         {/* ── Cancel subscription confirm ──────────────────────────────── */}
         {confirming && (
@@ -451,20 +426,64 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
 export function AdminStudioListPage() {
   useDocumentMeta({ title: "Studios — Platform Admin", canonical: "/platform/studios" });
 
-  const location      = useLocation();
-  const highlightId   = (location.state as { highlight?: string } | null)?.highlight ?? null;
+  // Status, plan, page and the focused studio live in the URL (D08), so Back, a reload or a shared link
+  // restores the view. The search box does NOT: an admin's search text can be a person's name, and nothing
+  // private goes in a URL (the C08 rule), so it stays in memory and is lost on reload by design.
+  const [params, setParams] = useSearchParams();
+  const statusFilter  = params.get("status") ?? "all";
+  const planFilter    = params.get("plan") ?? "all";
+  const highlightId   = params.get("focus");
   const [dimHighlight, setDimHighlight] = useState(false);
   const listRef       = useRef<HTMLDivElement>(null);
 
-  const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [planFilter,   setPlanFilter]   = useState("all");
-  const [page,         setPage]         = useState(1);
+  const [search, setSearchText] = useState("");
+
+  // A filter change returns to page 1 and replaces the history entry; a page change pushes one.
+  function setFilterParam(key: "status" | "plan", value: string) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === "all") next.delete(key); else next.set(key, value);
+      next.delete("page");
+      next.delete("focus");
+      return next;
+    }, { replace: true });
+  }
+
+  function setSearch(value: string) {
+    setSearchText(value);
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("page");
+      return next;
+    }, { replace: true });
+  }
+
+  function setPage(nextPage: number) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (nextPage > 1) next.set("page", String(nextPage)); else next.delete("page");
+      next.delete("focus");
+      return next;
+    });
+  }
+
+  // The list's query with a studio as focus: written onto this entry before opening the studio, so the
+  // browser's Back lands on the same filters and page with that studio highlighted.
+  function searchWithFocus(studioId: string): string {
+    const next = new URLSearchParams(params);
+    next.set("focus", studioId);
+    if (!next.has("page") && page > 1) next.set("page", String(page));
+    return `?${next.toString()}`;
+  }
+
+  function openStudio(studioId: string) {
+    setParams(new URLSearchParams(searchWithFocus(studioId)), { replace: true });
+  }
 
   const { data: studios,       isLoading: studiosLoading, isError: studiosError } =
     useGetStudiosQuery();
-  const { data: subscriptions, isLoading: subsLoading } =
-    useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const subsQuery = useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: subscriptions, isLoading: subsLoading } = subsQuery;
   const { data: plans = [] } = useGetAdminPlansQuery();
 
   const subMap = useMemo(() => {
@@ -479,7 +498,8 @@ export function AdminStudioListPage() {
     return studios
       .filter((s) => {
         const sub             = subMap.get(s.id);
-        const subStatus       = sub?.status ?? "NoSubscription";
+        // With subscriptions failed, every unsuspended studio is "Unknown", never "No subscription" (D02).
+        const subStatus       = subsQuery.isError ? "Unknown" : (sub?.status ?? "NoSubscription");
         const effectiveStatus = !s.isActive ? "Suspended" : subStatus;
 
         const matchesSearch = !q ||
@@ -498,14 +518,24 @@ export function AdminStudioListPage() {
       .sort((a, b) => {
         const subA     = subMap.get(a.id);
         const subB     = subMap.get(b.id);
-        const statusA  = !a.isActive ? "Suspended" : (subA?.status ?? "NoSubscription");
-        const statusB  = !b.isActive ? "Suspended" : (subB?.status ?? "NoSubscription");
+        const statusA  = !a.isActive ? "Suspended" : (subsQuery.isError ? "Unknown" : (subA?.status ?? "NoSubscription"));
+        const statusB  = !b.isActive ? "Suspended" : (subsQuery.isError ? "Unknown" : (subB?.status ?? "NoSubscription"));
         const orderDiff = (STATUS_SORT_ORDER[statusA] ?? 9) - (STATUS_SORT_ORDER[statusB] ?? 9);
         return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name);
       });
-  }, [studios, subMap, search, statusFilter, planFilter]);
+  }, [studios, subMap, search, statusFilter, planFilter, subsQuery.isError]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  // The page is derived, not synced: an explicit ?page= wins; otherwise the page holding the focused studio;
+  // and it is clamped when the filters shrink the list below it.
+  const requestedPage = (() => {
+    const fromUrl = Number.parseInt(params.get("page") ?? "", 10);
+    if (fromUrl >= 1) return fromUrl;
+    const focusIndex = highlightId ? filtered.findIndex((st) => st.id === highlightId) : -1;
+    return focusIndex >= 0 ? Math.floor(focusIndex / PAGE_SIZE) + 1 : 1;
+  })();
+  const page = Math.min(requestedPage, totalPages);
 
   const pageStudios = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -516,7 +546,7 @@ export function AdminStudioListPage() {
     const result: Array<{ status: string; items: StudioResponse[] }> = [];
     for (const s of pageStudios) {
       const sub  = subMap.get(s.id);
-      const eff  = !s.isActive ? "Suspended" : (sub?.status ?? "NoSubscription");
+      const eff  = !s.isActive ? "Suspended" : (subsQuery.isError ? "Unknown" : (sub?.status ?? "NoSubscription"));
       const last = result.at(-1);
       if (last?.status === eff) {
         last.items.push(s);
@@ -525,25 +555,9 @@ export function AdminStudioListPage() {
       }
     }
     return result;
-  }, [pageStudios, subMap]);
+  }, [pageStudios, subMap, subsQuery.isError]);
 
-  // Jump to whichever page contains the studio highlighted from the dashboard at-risk link.
-  useEffect(() => {
-    if (!highlightId) return;
-    const idx = filtered.findIndex((s) => s.id === highlightId);
-    if (idx === -1) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage(Math.floor(idx / PAGE_SIZE) + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlightId, filtered.length]);
-
-  // Clamp the current page if filtering shrinks the result set below it.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage((p) => Math.min(p, totalPages));
-  }, [totalPages]);
-
-  // Scroll to and highlight the studio arriving from the dashboard at-risk link.
+  // Scroll to and highlight the focused studio (the dashboard's at-risk link, or Back from its detail page).
   useEffect(() => {
     if (!highlightId || !listRef.current) return;
     const el = listRef.current.querySelector<HTMLElement>(`[data-studio-id="${highlightId}"]`);
@@ -578,13 +592,13 @@ export function AdminStudioListPage() {
             aria-label="Search studios by name or slug"
             placeholder="Search by name or slug…"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          onChange={(e) => setFilterParam("status", e.target.value)}
           aria-label="Filter by status"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
@@ -595,7 +609,7 @@ export function AdminStudioListPage() {
         </select>
         <select
           value={planFilter}
-          onChange={(e) => { setPlanFilter(e.target.value); setPage(1); }}
+          onChange={(e) => setFilterParam("plan", e.target.value)}
           aria-label="Filter by plan"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
@@ -606,6 +620,18 @@ export function AdminStudioListPage() {
           <option value="none">No plan</option>
         </select>
       </div>
+
+      {/* Saved views: plain links, so each is bookmarkable and shareable (D08). */}
+      <nav aria-label="Quick views" className="max-w-5xl mx-auto px-4 pt-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Quick views:</span>
+        {QUICK_VIEWS.map((v) => (
+          <Link key={v.status} to={`?status=${v.status}`}
+            aria-current={statusFilter === v.status ? "page" : undefined}
+            className={`rounded-full border px-2 py-0.5 hover:bg-muted ${statusFilter === v.status ? "bg-muted font-medium" : ""}`}>
+            {v.label}
+          </Link>
+        ))}
+      </nav>
 
       <main className="max-w-5xl mx-auto px-4 py-4">
         {isLoading && (
@@ -618,6 +644,15 @@ export function AdminStudioListPage() {
           <p className="text-center text-sm text-destructive-text py-16">
             Failed to load studios.
           </p>
+        )}
+
+        {!studiosError && subsQuery.isError && (
+          <div role="alert" className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed px-3 py-2 text-xs">
+            <span>Subscription statuses couldn't be loaded, so each studio shows "Subscription unknown" and its subscription actions are hidden.</span>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void subsQuery.refetch()}>
+              Retry
+            </Button>
+          </div>
         )}
 
         {!isLoading && !studiosError && studios?.length === 0 && (
@@ -662,7 +697,11 @@ export function AdminStudioListPage() {
                       : ""
                   }`}
                 >
-                  <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans} />
+                  <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans}
+                    listSearch={searchWithFocus(s.id)} onOpen={() => openStudio(s.id)}
+                    knowledge={knowSubscriptionStatus(subsQuery, subMap.get(s.id))}
+                    subsChecking={subsQuery.isFetching}
+                    onRecheckSubs={() => void subsQuery.refetch()} />
                 </div>
               ))}
             </div>
@@ -674,7 +713,7 @@ export function AdminStudioListPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPage(page - 1)}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               Previous
@@ -685,7 +724,7 @@ export function AdminStudioListPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(page + 1)}
             >
               Next
               <ChevronRight className="h-3.5 w-3.5" />

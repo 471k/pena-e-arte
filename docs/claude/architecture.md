@@ -7341,3 +7341,103 @@ in full by the reconciliation job days later. It now refuses with 422, mirroring
   unreachable in production; the test is named for the condition, not for soft-delete.
 - **Earlier than most checkouts guard:** we refuse at the token read rather than at the charge, because the
   token read is the first server call `/pay/{id}` makes.
+
+## Admin audit log: reachable and readable (slice 8 phase 1a, D01) — 2026-11-19
+
+The admin audit log asked for 50 rows and offered no way past them, matched free-text action and target
+strings exactly, ended a `To` date at 00:00 UTC (so the whole end day was excluded), showed studios as the
+first 8 characters of an id, and showed times in the viewer's browser zone without saying so.
+
+- **Day semantics:** `From` and `To` are whole UTC days, both included. The handler uses only the date part
+  of either value and bounds the end at the start of the next day (`CreatedAt < To.Date + 1 day`). The page
+  says "Times are in UTC" and renders every time with `timeZone: "UTC"`. **Why UTC:** the platform spans
+  studios in several zones, the stored value is UTC, and the vendor audit schemas we compared all stamp UTC
+  (WorkOS `occurred_at`, Twingate, Edlink `created_date`).
+- **Named choices:** `GET /platform/audit-log/vocabulary` returns every `AuditActions` and `AuditTargetTypes`
+  constant, read by reflection, so a new constant reaches the filter with no second list to update. The
+  validator rejects a value outside that vocabulary, and a `To` before `From`.
+- **Studio and actor filters:** `studioId` (a select of studios) and `actorUserId` (set from a record's
+  details, "Only this actor's actions"). Both are opaque ids.
+- **Interpretable records:** the studio's **name** is resolved at read time with a correlated lookup;
+  `Studio` has no query filter, so this is an ordinary read and `IgnoreQueryFilters` stays at 0. Each row
+  opens to its full ids and its recorded metadata (already allow-listed and PII-scrubbed by
+  `AuditMetadataBuilder`).
+- **The actor stays role + id. This is a decision for Phi, not an omission.** Users live in ASP.NET Identity,
+  outside `IAppDbContext`, and showing a person's name or email changes what this read exposes. GitHub's
+  audit search, for comparison, identifies actors by username, never by real name.
+- **Paging and URL state:** page size 50, "Older"/"Newer", and every filter plus the page held in the URL
+  through the router's `useSearchParams`, with no effect involved. A filter change returns to page 1 and
+  replaces the history entry; a page change pushes one, so Back steps through pages. **Only named choices,
+  ids, dates and the page reach the URL**, never a name or free text (the C08 CodeQL lesson; a test pins
+  that a studio's name is never written to it).
+- **Known divergence:** no outcome/status field. The audit pipeline records only commands that completed,
+  whereas Mattermost and others also record failures. Adding failures changes what is recorded, so it
+  belongs to the same decision as the actor's name.
+- **Latent twin, not fixed:** `GetMyStudioAuditLogQuery` has the same `<= to` bound, but the owner's card
+  never sends dates, so nothing reaches it today.
+
+## Admin studio list and detail: shareable views, scoped detail reads (slice 8 phase 1b, D08) — 2026-11-19
+
+Studio list filters lived in component state, so a reload, Back or a shared link lost them. The
+dashboard's at-risk link passed its studio in router state, which a reload drops. The detail page's Back
+link always went to the unfiltered list. And the detail page downloaded **every** studio's subscription
+and **every** referral code to show one studio's.
+
+- **URL-held state.** The studio list keeps `status`, `plan`, `page` and `focus` in the URL. Subscription
+  oversight keeps `status`, `sort` and `page`. Both use the router's `useSearchParams`. The page is derived
+  rather than synced: an explicit `page` wins, otherwise the page holding `focus`, clamped to the last page.
+  This removed three set-state-in-effect hooks.
+- **Return focus.** Opening a studio first rewrites the list's own history entry to include `focus=<id>`
+  (replace), so the browser's Back lands on the same filters and page with that studio highlighted. The
+  list's query also travels in router state, so the detail page's own "Studios" link does the same. A
+  detail page opened from a shared link falls back to `?focus=<id>`. The dashboard's at-risk link is now
+  `/platform/studios?focus=<id>`.
+- **Reusable views:** "Past due", "Grace period" and "Suspended" are plain links (`?status=…`), so they can
+  be bookmarked.
+- **The search box stays in memory, by design.** An admin's search text can be a person's name, and nothing
+  private goes in a URL (the C08 rule). It is lost on reload; tests pin that it never reaches the URL.
+- **Scoped detail reads, with no new cross-tenant call.** `GetPlatformSubscriptionsQuery` and
+  `GetPlatformReferralCodesQuery` take an optional `StudioId`, added as a `.Where(...)` after their existing
+  `IgnoreQueryFilters()` (approved usages #5 and #6). That narrows the same AdminOnly read and leaves the
+  registered call byte-identical. `IgnoreQueryFilters` lines added or removed: 0.
+- **Not built: server paging of the studio list. It needs a decision.** The list joins studios to
+  subscriptions and filters by status, plan and search, so paging the studios on the server while
+  filtering in the browser would give wrong pages. `GetPlatformSubscriptionsQuery` already reads every
+  studio with its subscription under usage #5, so the join needs no new `IgnoreQueryFilters`. **The open
+  question is the search text:** server-side search puts it in the API request's query string. The app's
+  own request log omits query strings (Serilog `RequestPath`; the enrichment adds only ids), but ingress
+  and Cloudflare access logs may keep them. The alternatives are a POST search body, or keeping search in
+  the browser over a status-and-plan-filtered server page. Today's scale (a handful of studios) doesn't
+  need it yet. D08 itself says server paging comes "as scale demands".
+
+## Admin: an unknown is not a fact; failed activations keep their input (slice 8 phase 2, D02 + D04) — 2026-11-19
+
+The studio list and detail derived the subscription as `sub?.status ?? "NoSubscription"`, so a read still
+loading, or one that had failed, was shown as "No Subscription" and enabled cash activation from it. The
+detail page called every studio-read failure "Studio not found." Manual activation, in all three places it
+lived, cleared the plan and note on failure and reported only by toast.
+
+- **Three states, one helper.** `knowSubscriptionStatus` (in `subscriptionKnowledge.ts`) returns
+  `known(status)`, `loading` or `failed`. Only `known` is a status. Unknown shows as "Subscription unknown";
+  extend, activate and cancel wait for `known`. Suspend and impersonate don't depend on the subscription,
+  so they stay available. The list shows a failure banner with Retry, and its sort and group headings no
+  longer fold failed rows into "No Subscription".
+- **Why a read failed** (`describeLoadError`): 404 "not found" and 401/403 "no access", neither offering
+  Try again; a connection loss or 5xx gets Try again.
+- **One activation form** (`CashActivationForm`) replaces three copies. It keeps the plan and note on
+  failure, shows the server's reason in an alert, and moves focus there (keyed per attempt, so each failure
+  takes focus again).
+- **Recheck before retry.** A failure re-reads the subscription, and the form uses the query's `isFetching`
+  so stale data can't decide a retry while it reloads. If the studio is no longer activatable (the first
+  attempt went through but the response was lost), Try again is disabled with that explanation, so an
+  uncertain operation is never silently repeated.
+- **A durable receipt.** It names the studio, the resulting status and plan, the time (UTC), and links to
+  the audit log filtered to that studio and `Subscription.ActivatedManually`. It stays until dismissed.
+  **Known gap:** the audit entry's own id is not returned (`AuditLogBehavior` writes it after the handler
+  and doesn't surface it), so the link is a filtered view rather than the exact entry. Returning it is an
+  API change across every audited command, not done here.
+- **Scope:** D04's form-keeping and receipt are done for cash activation, the form the acceptance names.
+  Extend trial and cancel already kept their forms open on failure. Suspend, unsuspend and the other
+  outcomes still report by toast. Bringing every admin mutation onto receipts can follow the same component.
+- **Help correction found on the way:** the cash-activation article and its FAQ said the Dashboard row has
+  an Activate button. It never did; both now name the three real places.

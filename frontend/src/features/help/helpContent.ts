@@ -1969,11 +1969,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["studio list", "manage studios"],
     summary: "The full list of every studio on the platform, where you can search, filter, and manage each one.",
     steps: [
-      "Search by studio name or slug, and filter by status or plan.",
+      "Search by studio name or slug, and filter by status or plan. The \"Quick views\" links open the Past due, Grace period and Suspended studios in one click.",
       "Browse studios, grouped by status.",
-      "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly.",
+      "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly. The detail page's \"Studios\" link brings you back to the same filters and page, with that studio highlighted.",
     ],
-    tips: ["Use the copy icon next to a studio's slug to quickly copy it."],
+    tips: [
+      "Use the copy icon next to a studio's slug to quickly copy it.",
+      "The status and plan filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. The search box isn't: what you type can be a person's name, so it never goes in an address and is cleared when you reload.",
+    ],
   },
   {
     id: "admin-studio-detail",
@@ -2089,7 +2092,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Filter by status using the chips at the top (Active, Trialing, Grace Period, Past Due, Cancelled, etc.).",
       "Search by studio name or slug.",
-      "Sort by trial end date, period end date, days overdue, or studio name.",
+      "Sort by trial end date, period end date, days overdue, or studio name. The status, the sort and the page are kept in the page's address, so a reload or a shared link opens the same view; the search box isn't, so what you type never goes in an address.",
       "Use each row's Extend Trial, Activate, or Cancel Subscription buttons as needed.",
       "For a Past Due studio, the row shows how many days overdue it is, and an \"Exclude From Dunning\" button — use it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you're handling their case manually). Click \"Re-enable Reminders\" to turn them back on.",
       "At the bottom of the page, the \"Data maintenance\" card runs two one-time backfills for subscriptions that existed before those features: Step 1 records what each subscription is actually billed, Step 2 seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Step 1 also lists every cash-billed studio it assumed a price for, by studio name and slug with the assumed monthly price, each linking to that studio's page so you can review it. Both are safe to run again — only data that's still missing is filled in.",
@@ -2119,12 +2122,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["cash payment", "manual activation"],
     summary: "Mark a studio's subscription as paid when they paid you outside the app, in cash, instead of by card.",
     steps: [
-      "Click \"Activate\" on the studio (Dashboard row, Studios list, Subscriptions list, or detail page).",
+      "Click \"Activate\" on the studio (Studios list, Subscriptions list, or the studio's detail page).",
       "Select the plan they paid for.",
       "Optionally add a note (e.g. the date cash was received).",
-      "Click \"Activate subscription\".",
+      "Click \"Activate subscription\". A green receipt then stays on the page until you dismiss it: which studio, its new status and plan, the time (UTC), and a link to the audit log entry.",
     ],
-    tips: ["Only use this for cash payments collected in person — card payments go through the studio's own checkout automatically."],
+    tips: [
+      "Only use this for cash payments collected in person — card payments go through the studio's own checkout automatically.",
+      "If activation fails, the form stays open with your plan and note, and says why. TattooOS then re-checks the studio: if it's still not active, \"Try again\" is offered; if it's now active (the first attempt went through after all), retrying is switched off so the studio isn't activated twice.",
+      "\"Activate\" only appears once the studio's subscription status has loaded. If it couldn't be loaded, the studio shows \"Subscription unknown\" rather than \"No subscription\", the subscription actions are hidden, and a Retry button reloads it.",
+    ],
   },
   {
     id: "admin-referrals",
@@ -2211,10 +2218,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "A searchable, cross-tenant log of every trust-sensitive action taken on the platform — studio suspensions, subscription changes, plan edits, referral code changes, and more.",
     steps: [
       "Open Audit Log from the platform nav.",
-      "Filter by action, target type, or a date range.",
-      "Each row shows when it happened, what happened, what it targeted, which studio (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
+      "Filter by action, target type, studio, or a date range. Action and target type are lists of every action the platform records. \"Clear filters\" resets them all.",
+      "Each row shows when it happened (in UTC), what happened, what it targeted, which studio by name (or \"Platform-wide\" for actions with no single studio target), and the actor's role.",
+      "Click the arrow at the start of a row for its details: the full target, studio and actor ids, and the details recorded with the action. From there, \"Only this actor's actions\" or \"Only this studio\" narrows the log to them.",
+      "With more than 50 entries, use \"Older\" and \"Newer\" below the table. Your filters stay as they are.",
     ],
-    tips: ["Entries never contain names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled."],
+    tips: ["Times are in UTC. The From and To dates are whole UTC days, both included, so To = 14 Nov covers all of 14 Nov.", "The filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. Only ids, dates and the named choices go in the address, never a name.", "Entries never store names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data. The studio's name is looked up when you view the log; the actor is shown by role and id.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled."],
     relatedArticleIds: ["admin-impersonation"],
   },
   {
@@ -2456,7 +2465,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-admin-cash-subscription",
     roles: [Admin],
     question: "How do I activate a studio's subscription if they paid by cash?",
-    answer: "Open the studio (from the Dashboard, Studios list, Subscriptions list, or its detail page), click \"Activate\", pick the plan they paid for, and confirm. This is only for cash collected outside the app — card payments activate automatically.",
+    answer: "Open the studio (from the Studios list, Subscriptions list, or its detail page), click \"Activate\", pick the plan they paid for, and confirm. This is only for cash collected outside the app — card payments activate automatically.",
     relatedArticleIds: ["admin-activate-cash-sub"],
   },
   {

@@ -12,7 +12,9 @@ namespace Pena_e_Arte.UnitTests.Architecture;
 /// clock-reads-baseline.txt and may only go DOWN:
 ///  - a file whose count rises, or a new file with any direct read, fails: inject TimeProvider instead;
 ///  - a file whose count falls fails too, asking for the baseline to be lowered, so the room freed by a
-///    migration can't be silently reused later.
+///    migration can't be silently reused later. To lower it without hand-editing, run the test once with
+///    UPDATE_CLOCK_BASELINE=1: it rewrites only the lines that FELL. It never raises a line, so a rise still
+///    fails, and it is ignored when CI is set, so CI can never rewrite the file.
 ///
 /// Production code only, by decision (Desktop, 19 Nov): most clock reads in tests are harmless fixture
 /// style, so a test ratchet would mostly measure noise and fire on good new tests. The nightly Clock
@@ -26,6 +28,7 @@ namespace Pena_e_Arte.UnitTests.Architecture;
 public class ClockReadRatchetTests
 {
     private const string BaselineFile = "tests/Pena_e_Arte.UnitTests/Architecture/clock-reads-baseline.txt";
+    private const string UpdateSwitch = "UPDATE_CLOCK_BASELINE";
 
     private static readonly string[] ProductionProjects =
     [
@@ -37,8 +40,9 @@ public class ClockReadRatchetTests
     public void DirectClockReadsInProductionCode_OnlyGoDown()
     {
         string repoRoot = FindRepoRoot();
+        string baselinePath = Path.Combine(repoRoot, BaselineFile);
         SortedDictionary<string, int> actual = CountProductionClockReads(repoRoot);
-        Dictionary<string, int> baseline = ReadBaseline(Path.Combine(repoRoot, BaselineFile));
+        Dictionary<string, int> baseline = ReadBaseline(baselinePath);
 
         List<string> rose = [];
         List<string> fell = [];
@@ -53,13 +57,54 @@ public class ClockReadRatchetTests
             if (!actual.ContainsKey(file)) fell.Add($"(remove the line)\t{file} (was {allowed}; file gone or now 0)");
         }
 
+        bool update = Environment.GetEnvironmentVariable(UpdateSwitch) == "1"
+                      && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI"));
+        if (update && fell.Count > 0)
+        {
+            File.WriteAllLines(baselinePath, LoweredBaseline(File.ReadAllLines(baselinePath), baseline, actual));
+            fell.Clear();
+        }
+
         rose.Should().BeEmpty(
             "production code must not add direct wall-clock reads. Inject TimeProvider and read GetUtcNow() for "
             + "time of day, or GetTimestamp()/GetElapsedTime() for a duration (backend.md, \"Clocks\"). Files over "
             + "their baseline:\n  " + string.Join("\n  ", rose));
         fell.Should().BeEmpty(
             "these files now read the clock directly fewer times than recorded. Good. Lock it in by setting their "
-            + $"lines in {BaselineFile} to:\n  " + string.Join("\n  ", fell));
+            + $"lines in {BaselineFile} to the values below, or run this test once with {UpdateSwitch}=1 to "
+            + "rewrite them:\n  " + string.Join("\n  ", fell));
+    }
+
+    [Fact]
+    public void TheUpdateSwitch_OnlyEverLowers()
+    {
+        string[] lines = ["# header kept", "3\tA.cs", "2\tB.cs", "1\tGone.cs"];
+        Dictionary<string, int> baseline = new() { ["A.cs"] = 3, ["B.cs"] = 2, ["Gone.cs"] = 1 };
+        // A fell to 1, B rose to 5, Gone is gone, New appeared: only A and Gone may change.
+        SortedDictionary<string, int> actual = new(StringComparer.Ordinal) { ["A.cs"] = 1, ["B.cs"] = 5, ["New.cs"] = 2 };
+
+        LoweredBaseline(lines, baseline, actual).Should().Equal("# header kept", "1\tA.cs", "2\tB.cs");
+    }
+
+    // Line by line, in the file's own order so the diff shows only what changed: comments are kept, each
+    // entry becomes min(baseline, actual) and is dropped at 0. A rise or a new file is never written, so the
+    // test still fails on it after an update run.
+    internal static List<string> LoweredBaseline(
+        IEnumerable<string> lines, Dictionary<string, int> baseline, SortedDictionary<string, int> actual)
+    {
+        List<string> result = [];
+        foreach (string line in lines)
+        {
+            if (line.Length == 0 || line.StartsWith('#'))
+            {
+                result.Add(line);
+                continue;
+            }
+            string file = line.Split('\t')[1];
+            int lowered = Math.Min(baseline[file], actual.GetValueOrDefault(file));
+            if (lowered > 0) result.Add($"{lowered}\t{file}");
+        }
+        return result;
     }
 
     [Fact]

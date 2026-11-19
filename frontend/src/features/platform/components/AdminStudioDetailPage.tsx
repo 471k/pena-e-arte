@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
@@ -28,7 +28,6 @@ import {
 import {
   useGetPlatformSubscriptionsQuery,
   useExtendTrialMutation,
-  useActivateSubscriptionManuallyMutation,
   useCancelSubscriptionMutation,
   useGetAdminStudioSummaryQuery,
   useGetPlatformReferralCodesQuery,
@@ -40,6 +39,9 @@ import type { PlatformSubscriptionResponse } from "@/features/platform/platform.
 import { useAppDispatch } from "@/app/hooks";
 import { startImpersonation as beginImpersonationSession } from "@/features/auth/authSlice";
 import { ReferralCodeRow } from "./PlatformReferralPage";
+import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { CASH_ACTIVATABLE, knowSubscriptionStatus } from "./subscriptionKnowledge";
+import { describeLoadError } from "./describeLoadError";
 
 const STATUS_CLASSES: Record<string, string> = {
   Active:         "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
@@ -49,6 +51,7 @@ const STATUS_CLASSES: Record<string, string> = {
   Cancelled:      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   NoSubscription: "bg-muted text-muted-foreground",
   Suspended:      "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  Unknown:        "border border-dashed text-muted-foreground",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -59,9 +62,8 @@ const STATUS_LABELS: Record<string, string> = {
   Cancelled:      "Cancelled",
   NoSubscription: "No Subscription",
   Suspended:      "Suspended",
+  Unknown:        "Subscription unknown",
 };
-
-const CASH_ACTIVATABLE = new Set(["NoSubscription", "PastDue", "GracePeriod", "Cancelled"]);
 const CANCELLABLE      = new Set(["Active", "PastDue", "Trialing", "GracePeriod"]);
 
 function fmt(date: string | Date) {
@@ -77,27 +79,33 @@ export function AdminStudioDetailPage() {
 
   useDocumentMeta({ title: "Studio Details — Platform Admin", canonical: `/platform/studios/${studioId ?? ""}` });
 
-  const { data: studio, isLoading: studioLoading, isError } =
+  const { data: studio, isLoading: studioLoading, isError, error: studioError, refetch: refetchStudio } =
     useGetStudioByIdQuery(studioId!, { skip: !studioId });
-  const { data: subscriptions } =
-    useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+  // One studio's subscription and referral codes, not the whole platform's (D08). The list's own query
+  // arrives in router state, so Back returns to the same filters and page with this studio in focus.
+  const location   = useLocation();
+  const listSearch = (location.state as { listSearch?: string } | null)?.listSearch;
+  const backTo     = `/platform/studios${listSearch ?? `?focus=${studioId ?? ""}`}`;
+  const subsQuery = useGetPlatformSubscriptionsQuery(
+    { studioId: studioId! }, { skip: !studioId, refetchOnMountOrArgChange: true });
+  const subscriptions = subsQuery.data;
   const { data: plans = [] } = useGetAdminPlansQuery();
   const { data: summary, isLoading: summaryLoading } =
     useGetAdminStudioSummaryQuery(studioId!, { skip: !studioId });
-  const { data: allReferralCodes, isLoading: codesLoading } = useGetPlatformReferralCodesQuery();
-
-  const studioReferralCodes = useMemo(
-    () => allReferralCodes?.filter((c) => c.studioId === studioId) ?? [],
-    [allReferralCodes, studioId],
-  );
+  const { data: scopedReferralCodes, isLoading: codesLoading } =
+    useGetPlatformReferralCodesQuery({ studioId: studioId! }, { skip: !studioId });
+  const studioReferralCodes = scopedReferralCodes ?? [];
 
   const sub: PlatformSubscriptionResponse | undefined = useMemo(
     () => subscriptions?.find((s) => s.studioId === studioId),
     [subscriptions, studioId],
   );
 
+  // D02: the subscription is known, still loading, or failed. Only "known" is a status; the other two are
+  // never "No subscription", and every action that depends on the status waits for it.
+  const subKnowledge = knowSubscriptionStatus(subsQuery, sub);
   const isSuspended = studio ? !studio.isActive : false;
-  const subStatus   = sub?.status ?? "NoSubscription";
+  const subStatus   = subKnowledge.kind === "known" ? subKnowledge.status : "Unknown";
   const badgeStatus = isSuspended ? "Suspended" : subStatus;
 
   // Platform actions
@@ -117,11 +125,9 @@ export function AdminStudioDetailPage() {
   const [cancelOverride, setCancelOverride] = useState<"formula" | "AdminFull" | "AdminNone">("formula");
   const [cancelReason,   setCancelReason]   = useState("");
   const [days,       setDays]       = useState("7");
-  const [cashPlanId, setCashPlanId] = useState("");
-  const [cashNote,   setCashNote]   = useState("");
+  const [receipt,    setReceipt]    = useState<ActivationReceipt | null>(null);
 
   const [extendTrial,      { isLoading: extending_  }] = useExtendTrialMutation();
-  const [activateManually, { isLoading: activating_ }] = useActivateSubscriptionManuallyMutation();
   const [cancelSub,        { isLoading: cancelling_ }] = useCancelSubscriptionMutation();
 
   // Referral code generation
@@ -133,9 +139,10 @@ export function AdminStudioDetailPage() {
   codeMinDate.setDate(codeMinDate.getDate() + 1);
   const codeMinDateStr = codeMinDate.toISOString().split("T")[0];
 
-  const canExtendTrial = subStatus !== "Active";
-  const canActivate    = CASH_ACTIVATABLE.has(subStatus);
-  const canCancel      = CANCELLABLE.has(subStatus);
+  const subKnown       = subKnowledge.kind === "known";
+  const canExtendTrial = subKnown && subStatus !== "Active";
+  const canActivate    = subKnown && CASH_ACTIVATABLE.has(subStatus);
+  const canCancel      = subKnown && CANCELLABLE.has(subStatus);
   const anyExpanded    = extending || activating || confirming || confirmPlatform !== null || impersonating;
 
   const trialDate    = sub?.trialExpiresAt ?? studio?.trialExpiresAt ?? "";
@@ -168,19 +175,6 @@ export function AdminStudioDetailPage() {
     } catch {
       toast.error("Failed to extend trial");
     }
-  }
-
-  async function handleActivate() {
-    if (!studioId || !cashPlanId) return;
-    try {
-      await activateManually({ studioId, planId: cashPlanId, note: cashNote || undefined }).unwrap();
-      toast.success("Subscription activated");
-    } catch {
-      toast.error("Failed to activate subscription");
-    }
-    setActivating(false);
-    setCashPlanId("");
-    setCashNote("");
   }
 
   async function handleCancel() {
@@ -241,11 +235,18 @@ export function AdminStudioDetailPage() {
   }
 
   if (isError || !studio) {
+    // D02: a missing studio and a failed request are different things with different ways forward.
+    const failure = describeLoadError(isError ? studioError : { status: 404, data: null }, "studio");
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-          <p className="text-sm text-destructive-text">Studio not found.</p>
-          <Link to="/platform/studios" className="text-sm text-link hover:underline mt-2 inline-block">
+        <div className="max-w-3xl mx-auto px-4 py-16 text-center space-y-2">
+          <p className="text-sm text-destructive-text" role="alert">{failure.message}</p>
+          {failure.retryable && (
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => void refetchStudio()}>
+              Try again
+            </Button>
+          )}
+          <Link to={backTo} className="text-sm text-link hover:underline mt-2 inline-block">
             ← Back to Studios
           </Link>
         </div>
@@ -257,7 +258,7 @@ export function AdminStudioDetailPage() {
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Link
-          to="/platform/studios"
+          to={backTo}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -555,6 +556,18 @@ export function AdminStudioDetailPage() {
                 <CardTitle className="text-sm">Actions</CardTitle>
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
+                {receipt && <ActivationReceiptNotice receipt={receipt} onDismiss={() => setReceipt(null)} />}
+                {subKnowledge.kind === "failed" && (
+                  <div role="alert" className="rounded-md border border-dashed px-3 py-2 text-xs space-y-1">
+                    <p>This studio's subscription couldn't be loaded, so the subscription actions are hidden until it is.</p>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void subsQuery.refetch()}>
+                      Retry loading the subscription
+                    </Button>
+                  </div>
+                )}
+                {subKnowledge.kind === "loading" && (
+                  <p className="text-xs text-muted-foreground">Loading the subscription before offering its actions…</p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {/* 1. Extend trial */}
                   {!anyExpanded && canExtendTrial && (
@@ -660,47 +673,18 @@ export function AdminStudioDetailPage() {
                 )}
 
                 {/* Activate (cash) form */}
-                {activating && (
-                  <div className="pt-2 space-y-2 border-t">
-                    <p className="text-xs font-medium text-muted-foreground">Activate — Cash Payment</p>
-                    <div className="space-y-1">
-                      <Label htmlFor="detail-plan" className="text-xs">Plan</Label>
-                      <select
-                        id="detail-plan"
-                        value={cashPlanId}
-                        onChange={(e) => setCashPlanId(e.target.value)}
-                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-                      >
-                        <option value="">Select a plan…</option>
-                        {plans.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="detail-note" className="text-xs">Note (optional)</Label>
-                      <Input
-                        id="detail-note"
-                        value={cashNote}
-                        onChange={(e) => setCashNote(e.target.value)}
-                        placeholder="e.g. Cash paid in person"
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm" className="h-7 px-2 text-xs flex-1"
-                        disabled={activating_ || !cashPlanId}
-                        onClick={handleActivate}
-                      >
-                        {activating_ ? <Loader2 className="h-3 w-3 animate-spin" /> : "Activate subscription"}
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"
-                        onClick={() => { setActivating(false); setCashPlanId(""); setCashNote(""); }}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
+                {activating && studioId && (
+                  <CashActivationForm
+                    studioId={studioId}
+                    studioName={studio.name}
+                    plans={plans}
+                    idSuffix="detail"
+                    knowledge={subKnowledge}
+                    checking={subsQuery.isFetching}
+                    onRecheck={() => void subsQuery.refetch()}
+                    onClose={() => setActivating(false)}
+                    onActivated={setReceipt}
+                  />
                 )}
 
                 {/* Impersonate form */}
