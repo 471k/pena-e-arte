@@ -150,8 +150,7 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
             </button>
           )}
           <Link
-            to="/platform/studios"
-            state={{ highlight: sub.studioId }}
+            to={`/platform/studios?focus=${sub.studioId}`}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors px-1"
             title="Open studio"
           >

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -419,14 +419,43 @@ const ALL_STATUSES = ["Suspended", "Active", "Trialing", "GracePeriod", "PastDue
 
 const PAGE_SIZE = 10;
 
+const SORT_KEYS = ["trialEnd", "periodEnd", "daysOverdue", "name"] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
 export function SubscriptionOversightPage() {
   useDocumentMeta({ title: "Subscriptions — Platform Admin", canonical: "/platform/subscriptions" });
 
+  // Status, sort and page live in the URL (D08), so Back, a reload or a shared link restores the view. The
+  // search box stays in memory: an admin's search text can be a person's name, and nothing private goes in
+  // a URL (the C08 rule).
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status") ?? "";
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<"name" | "trialEnd" | "periodEnd" | "daysOverdue">("trialEnd");
-  const [page, setPage] = useState(1);
+  const sortKey: SortKey = SORT_KEYS.find((k) => k === searchParams.get("sort")) ?? "trialEnd";
+  const [search, setSearchText] = useState("");
+
+  // A filter or sort change returns to page 1 and replaces the history entry; a page change pushes one.
+  function updateParams(change: (next: URLSearchParams) => void, replace: boolean) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      change(next);
+      return next;
+    }, { replace });
+  }
+  const setStatus = (status: string) => updateParams((n) => {
+    if (status) n.set("status", status); else n.delete("status");
+    n.delete("page");
+  }, true);
+  const setSortKey = (key: SortKey) => updateParams((n) => {
+    if (key === "trialEnd") n.delete("sort"); else n.set("sort", key);
+    n.delete("page");
+  }, true);
+  const setSearch = (value: string) => {
+    setSearchText(value);
+    updateParams((n) => n.delete("page"), true);
+  };
+  const setPage = (nextPage: number) => updateParams((n) => {
+    if (nextPage > 1) n.set("page", String(nextPage)); else n.delete("page");
+  }, false);
 
   // Refetch on mount so the admin always sees current subscription state.
   const { data: subscriptions, isLoading, isError } =
@@ -464,13 +493,9 @@ export function SubscriptionOversightPage() {
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Derived, not synced: the URL's page, clamped when the filters shrink the list below it.
+  const page       = Math.min(Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1), totalPages);
   const pageSubs   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // Clamp the current page if filtering shrinks the result set below it.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage((p) => Math.min(p, totalPages));
-  }, [totalPages]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -496,13 +521,13 @@ export function SubscriptionOversightPage() {
               aria-label="Search subscriptions by studio name or slug"
               placeholder="Search by studio name or slug…"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-8 text-sm"
             />
           </div>
           <select
             value={sortKey}
-            onChange={(e) => { setSortKey(e.target.value as typeof sortKey); setPage(1); }}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
             className="h-8 rounded-md border border-input bg-background px-2 text-xs"
             aria-label="Sort subscriptions"
           >
@@ -516,7 +541,7 @@ export function SubscriptionOversightPage() {
         {subscriptions && (
           <div className="flex flex-wrap gap-2 mb-4">
             <button
-              onClick={() => { setSearchParams({}); setPage(1); }}
+              onClick={() => setStatus("")}
               className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                 !statusFilter ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
               }`}
@@ -531,7 +556,7 @@ export function SubscriptionOversightPage() {
               return (
                 <button
                   key={s}
-                  onClick={() => { setSearchParams({ status: s }); setPage(1); }}
+                  onClick={() => setStatus(s)}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                     statusFilter === s
                       ? "bg-primary text-primary-foreground border-primary"
@@ -573,9 +598,8 @@ export function SubscriptionOversightPage() {
                 variant="outline"
                 className="text-xs"
                 onClick={() => {
-                  setSearch("");
-                  setSearchParams({});
-                  setPage(1);
+                  setSearchText("");
+                  setSearchParams({}, { replace: true });
                 }}
               >
                 Clear filters
@@ -593,7 +617,7 @@ export function SubscriptionOversightPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPage(page - 1)}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               Previous
@@ -604,7 +628,7 @@ export function SubscriptionOversightPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(page + 1)}
             >
               Next
               <ChevronRight className="h-3.5 w-3.5" />

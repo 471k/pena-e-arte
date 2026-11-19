@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
@@ -80,6 +80,13 @@ const ALL_FILTER_STATUSES = [
 
 const PAGE_SIZE = 10;
 
+// The at-risk and suspended views D08 asks to be reusable; each is just a status filter in the URL.
+const QUICK_VIEWS: ReadonlyArray<{ status: (typeof ALL_FILTER_STATUSES)[number]; label: string }> = [
+  { status: "PastDue",     label: "Past due" },
+  { status: "GracePeriod", label: "Grace period" },
+  { status: "Suspended",   label: "Suspended" },
+];
+
 function fmt(date: string) {
   return new Date(date).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
@@ -119,9 +126,12 @@ interface StudioRowProps {
   studio: StudioResponse;
   sub:    PlatformSubscriptionResponse | undefined;
   plans:  PlanResponse[];
+  /** The list's own query with this studio as focus, so the detail page's Back link returns here (D08). */
+  listSearch?: string;
+  onOpen?: () => void;
 }
 
-function StudioRow({ studio, sub, plans }: StudioRowProps) {
+function StudioRow({ studio, sub, plans, listSearch, onOpen }: StudioRowProps) {
   const isSuspended = !studio.isActive;
   const subStatus   = sub?.status ?? "NoSubscription";
   const badgeStatus = isSuspended ? "Suspended" : subStatus;
@@ -279,7 +289,7 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
           <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 sm:justify-end">
 
             {/* 0. View detail — always visible, never hidden by anyExpanded */}
-            <Link to={`/platform/studios/${studio.id}`}>
+            <Link to={`/platform/studios/${studio.id}`} state={{ listSearch }} onClick={onOpen}>
               <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1"
                 title="View studio details">
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -451,15 +461,59 @@ function StudioRow({ studio, sub, plans }: StudioRowProps) {
 export function AdminStudioListPage() {
   useDocumentMeta({ title: "Studios — Platform Admin", canonical: "/platform/studios" });
 
-  const location      = useLocation();
-  const highlightId   = (location.state as { highlight?: string } | null)?.highlight ?? null;
+  // Status, plan, page and the focused studio live in the URL (D08), so Back, a reload or a shared link
+  // restores the view. The search box does NOT: an admin's search text can be a person's name, and nothing
+  // private goes in a URL (the C08 rule), so it stays in memory and is lost on reload by design.
+  const [params, setParams] = useSearchParams();
+  const statusFilter  = params.get("status") ?? "all";
+  const planFilter    = params.get("plan") ?? "all";
+  const highlightId   = params.get("focus");
   const [dimHighlight, setDimHighlight] = useState(false);
   const listRef       = useRef<HTMLDivElement>(null);
 
-  const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [planFilter,   setPlanFilter]   = useState("all");
-  const [page,         setPage]         = useState(1);
+  const [search, setSearchText] = useState("");
+
+  // A filter change returns to page 1 and replaces the history entry; a page change pushes one.
+  function setFilterParam(key: "status" | "plan", value: string) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value === "all") next.delete(key); else next.set(key, value);
+      next.delete("page");
+      next.delete("focus");
+      return next;
+    }, { replace: true });
+  }
+
+  function setSearch(value: string) {
+    setSearchText(value);
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("page");
+      return next;
+    }, { replace: true });
+  }
+
+  function setPage(nextPage: number) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (nextPage > 1) next.set("page", String(nextPage)); else next.delete("page");
+      next.delete("focus");
+      return next;
+    });
+  }
+
+  // The list's query with a studio as focus: written onto this entry before opening the studio, so the
+  // browser's Back lands on the same filters and page with that studio highlighted.
+  function searchWithFocus(studioId: string): string {
+    const next = new URLSearchParams(params);
+    next.set("focus", studioId);
+    if (!next.has("page") && page > 1) next.set("page", String(page));
+    return `?${next.toString()}`;
+  }
+
+  function openStudio(studioId: string) {
+    setParams(new URLSearchParams(searchWithFocus(studioId)), { replace: true });
+  }
 
   const { data: studios,       isLoading: studiosLoading, isError: studiosError } =
     useGetStudiosQuery();
@@ -507,6 +561,16 @@ export function AdminStudioListPage() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
+  // The page is derived, not synced: an explicit ?page= wins; otherwise the page holding the focused studio;
+  // and it is clamped when the filters shrink the list below it.
+  const requestedPage = (() => {
+    const fromUrl = Number.parseInt(params.get("page") ?? "", 10);
+    if (fromUrl >= 1) return fromUrl;
+    const focusIndex = highlightId ? filtered.findIndex((st) => st.id === highlightId) : -1;
+    return focusIndex >= 0 ? Math.floor(focusIndex / PAGE_SIZE) + 1 : 1;
+  })();
+  const page = Math.min(requestedPage, totalPages);
+
   const pageStudios = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filtered, page],
@@ -527,23 +591,7 @@ export function AdminStudioListPage() {
     return result;
   }, [pageStudios, subMap]);
 
-  // Jump to whichever page contains the studio highlighted from the dashboard at-risk link.
-  useEffect(() => {
-    if (!highlightId) return;
-    const idx = filtered.findIndex((s) => s.id === highlightId);
-    if (idx === -1) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage(Math.floor(idx / PAGE_SIZE) + 1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [highlightId, filtered.length]);
-
-  // Clamp the current page if filtering shrinks the result set below it.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPage((p) => Math.min(p, totalPages));
-  }, [totalPages]);
-
-  // Scroll to and highlight the studio arriving from the dashboard at-risk link.
+  // Scroll to and highlight the focused studio (the dashboard's at-risk link, or Back from its detail page).
   useEffect(() => {
     if (!highlightId || !listRef.current) return;
     const el = listRef.current.querySelector<HTMLElement>(`[data-studio-id="${highlightId}"]`);
@@ -578,13 +626,13 @@ export function AdminStudioListPage() {
             aria-label="Search studios by name or slug"
             placeholder="Search by name or slug…"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          onChange={(e) => setFilterParam("status", e.target.value)}
           aria-label="Filter by status"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
@@ -595,7 +643,7 @@ export function AdminStudioListPage() {
         </select>
         <select
           value={planFilter}
-          onChange={(e) => { setPlanFilter(e.target.value); setPage(1); }}
+          onChange={(e) => setFilterParam("plan", e.target.value)}
           aria-label="Filter by plan"
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
         >
@@ -606,6 +654,18 @@ export function AdminStudioListPage() {
           <option value="none">No plan</option>
         </select>
       </div>
+
+      {/* Saved views: plain links, so each is bookmarkable and shareable (D08). */}
+      <nav aria-label="Quick views" className="max-w-5xl mx-auto px-4 pt-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Quick views:</span>
+        {QUICK_VIEWS.map((v) => (
+          <Link key={v.status} to={`?status=${v.status}`}
+            aria-current={statusFilter === v.status ? "page" : undefined}
+            className={`rounded-full border px-2 py-0.5 hover:bg-muted ${statusFilter === v.status ? "bg-muted font-medium" : ""}`}>
+            {v.label}
+          </Link>
+        ))}
+      </nav>
 
       <main className="max-w-5xl mx-auto px-4 py-4">
         {isLoading && (
@@ -662,7 +722,8 @@ export function AdminStudioListPage() {
                       : ""
                   }`}
                 >
-                  <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans} />
+                  <StudioRow studio={s} sub={subMap.get(s.id)} plans={plans}
+                    listSearch={searchWithFocus(s.id)} onOpen={() => openStudio(s.id)} />
                 </div>
               ))}
             </div>
@@ -674,7 +735,7 @@ export function AdminStudioListPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => setPage(page - 1)}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               Previous
@@ -685,7 +746,7 @@ export function AdminStudioListPage() {
             <Button
               size="sm" variant="outline" className="h-7 text-xs gap-1"
               disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => setPage(page + 1)}
             >
               Next
               <ChevronRight className="h-3.5 w-3.5" />

@@ -98,10 +98,11 @@ public static class PlatformEndpoints
 
     private static async Task<IResult> GetSubscriptions(
         ISender mediator,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? studioId = null)
     {
         List<PlatformSubscriptionResponse> result =
-            await mediator.Send(new GetPlatformSubscriptionsQuery(), ct);
+            await mediator.Send(new GetPlatformSubscriptionsQuery(studioId), ct);
         return Results.Ok(result);
     }
 
@@ -134,10 +135,11 @@ public static class PlatformEndpoints
 
     private static async Task<IResult> GetReferralCodes(
         ISender mediator,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? studioId = null)
     {
         List<PlatformReferralCodeResponse> result =
-            await mediator.Send(new GetPlatformReferralCodesQuery(), ct);
+            await mediator.Send(new GetPlatformReferralCodesQuery(studioId), ct);
         return Results.Ok(result);
     }
 

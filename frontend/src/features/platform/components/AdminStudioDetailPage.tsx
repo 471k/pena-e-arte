@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import {
@@ -79,17 +79,19 @@ export function AdminStudioDetailPage() {
 
   const { data: studio, isLoading: studioLoading, isError } =
     useGetStudioByIdQuery(studioId!, { skip: !studioId });
-  const { data: subscriptions } =
-    useGetPlatformSubscriptionsQuery(undefined, { refetchOnMountOrArgChange: true });
+  // One studio's subscription and referral codes, not the whole platform's (D08). The list's own query
+  // arrives in router state, so Back returns to the same filters and page with this studio in focus.
+  const location   = useLocation();
+  const listSearch = (location.state as { listSearch?: string } | null)?.listSearch;
+  const backTo     = `/platform/studios${listSearch ?? `?focus=${studioId ?? ""}`}`;
+  const { data: subscriptions } = useGetPlatformSubscriptionsQuery(
+    { studioId: studioId! }, { skip: !studioId, refetchOnMountOrArgChange: true });
   const { data: plans = [] } = useGetAdminPlansQuery();
   const { data: summary, isLoading: summaryLoading } =
     useGetAdminStudioSummaryQuery(studioId!, { skip: !studioId });
-  const { data: allReferralCodes, isLoading: codesLoading } = useGetPlatformReferralCodesQuery();
-
-  const studioReferralCodes = useMemo(
-    () => allReferralCodes?.filter((c) => c.studioId === studioId) ?? [],
-    [allReferralCodes, studioId],
-  );
+  const { data: scopedReferralCodes, isLoading: codesLoading } =
+    useGetPlatformReferralCodesQuery({ studioId: studioId! }, { skip: !studioId });
+  const studioReferralCodes = scopedReferralCodes ?? [];
 
   const sub: PlatformSubscriptionResponse | undefined = useMemo(
     () => subscriptions?.find((s) => s.studioId === studioId),
@@ -245,7 +247,7 @@ export function AdminStudioDetailPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-3xl mx-auto px-4 py-16 text-center">
           <p className="text-sm text-destructive-text">Studio not found.</p>
-          <Link to="/platform/studios" className="text-sm text-link hover:underline mt-2 inline-block">
+          <Link to={backTo} className="text-sm text-link hover:underline mt-2 inline-block">
             ← Back to Studios
           </Link>
         </div>
@@ -257,7 +259,7 @@ export function AdminStudioDetailPage() {
     <div className="min-h-screen bg-background">
       <header className="flex items-center gap-2 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <Link
-          to="/platform/studios"
+          to={backTo}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />

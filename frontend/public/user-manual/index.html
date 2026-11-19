@@ -3999,14 +3999,15 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Studio list — actions expand inline below the row instead of opening a dialog</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Search by name/slug, and/or filter by status or plan.</li>
-<li>Click <span class="step-title">View</span> to open the full studio detail.</li>
+<li>Search by name/slug, and/or filter by status or plan. The <span class="step-title">Quick views</span> links open the Past due, Grace period and Suspended studios in one click.</li>
+<li>Click <span class="step-title">View</span> to open the full studio detail. Its <span class="step-title">Studios</span> link brings you back to the same filters and page, with that studio highlighted.</li>
 <li>Click <span class="step-title">Extend Trial</span>, enter a day count, and confirm.</li>
 <li>Click <span class="step-title">Activate</span> to manually record a cash subscription — pick a plan and optional note.</li>
 <li>Click <span class="step-title">Suspend</span> / <span class="step-title">Reactivate</span> to lock a studio out (or restore it). Suspending also pauses its card billing; reactivating resumes it at the next renewal.</li>
 <li>Click <span class="step-title">Cancel Subscription</span> to end it permanently (with confirmation).</li>
 </ol>
 <div class="callout callout-warn"><strong>Warning:</strong> suspending a studio makes it inaccessible to its own clients and staff immediately — use only for policy violations or non-payment beyond the grace period. It also pauses the studio's card billing; the period already paid isn't refunded, and reactivating resumes billing at the next renewal date rather than crediting the suspended time back.</div>
+<div class="callout callout-tip"><strong>Shareable:</strong> the status and plan filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. The search box isn't: what you type can be a person's name, so it never goes in an address and is cleared when you reload.</div>
 <div class="crosslinks">See also: <a href="#admin-studio-detail">Studio detail</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
 </section>
 
@@ -4151,7 +4152,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Subscription oversight — status filter pills, search, and sort dropdown</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Filter by status pill (All / Active / Trialing / Grace Period / Past Due / Cancelled), search by studio name/slug, and sort by trial end, period end, days overdue, or name.</li>
+<li>Filter by status pill (All / Active / Trialing / Grace Period / Past Due / Cancelled), search by studio name/slug, and sort by trial end, period end, days overdue, or name. The status, the sort and the page are kept in the page's address, so a reload or a shared link opens the same view; the search box isn't, so what you type never goes in an address.</li>
 <li>Per row: <span class="step-title">Extend Trial</span>, <span class="step-title">Activate</span> (cash), or <span class="step-title">Cancel Subscription</span>, matching the studio list's inline pattern.</li>
 <li>A <span class="step-title">Past Due</span> row also shows its days-overdue count and an <span class="step-title">Exclude From Dunning</span> button — click it to stop that studio's automated day-1/3/7 reminder emails (e.g. while you handle their case manually by hand). Click <span class="step-title">Re-enable Reminders</span> to turn them back on.</li>
 <li>At the bottom of the page, the <span class="step-title">Data maintenance</span> card runs two one-time backfills for subscriptions that existed before those features: <span class="step-title">Step 1 — Billed-amount snapshot</span> records what each subscription is actually billed, and <span class="step-title">Step 2 — Revenue ledger</span> seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Step 1 also lists every cash-billed studio it assumed a price for, by studio name and slug with the assumed monthly price, each linking to that studio's page so you can review it. Both are safe to run again — only data that is still missing is filled in.</li>

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest
 import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -167,12 +167,26 @@ function makeStore() {
   });
 }
 
-function renderPage() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.search}</output>;
+}
+
+function DetailProbe() {
+  const location = useLocation();
+  const listSearch = (location.state as { listSearch?: string } | null)?.listSearch ?? "";
+  return <output data-testid="detail">{`${location.pathname}|${listSearch}`}</output>;
+}
+
+function renderPage(search = "") {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <MemoryRouter>
-        <AdminStudioListPage />
+      <MemoryRouter initialEntries={[`/platform/studios${search}`]}>
+        <Routes>
+          <Route path="/platform/studios" element={<><AdminStudioListPage /><LocationProbe /></>} />
+          <Route path="/platform/studios/:studioId" element={<DetailProbe />} />
+        </Routes>
       </MemoryRouter>
     </Provider>,
   );
@@ -737,5 +751,75 @@ describe("AdminStudioListPage", () => {
 
     expect(await screen.findByText("Studio 01")).toBeInTheDocument();
     expect(screen.queryByText(/page \d+ of \d+/i)).not.toBeInTheDocument();
+  });
+
+  // ── D08: shareable list state ──────────────────────────────────────────────
+
+  describe("URL-held state (D08)", () => {
+    function useManyStudios(count: number) {
+      const { studios, subs } = makeManyStudios(count);
+      server.use(
+        http.get("http://localhost/api/v1/studios", () => HttpResponse.json(studios)),
+        http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(subs)),
+      );
+    }
+
+    it("restores the status filter from a shared URL", async () => {
+      renderPage("?status=Suspended");
+      expect(await screen.findByText("Suspended Studio")).toBeInTheDocument();
+      expect(screen.queryByText("Ink Soul")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Filter by status")).toHaveValue("Suspended");
+    });
+
+    it("restores the page from a shared URL", async () => {
+      useManyStudios(15);
+      renderPage("?page=2");
+      expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument();
+      expect(screen.getByText("Studio 11")).toBeInTheDocument();
+    });
+
+    it("a focused studio opens on its page, highlighted", async () => {
+      useManyStudios(15);
+      renderPage("?focus=m12");
+      expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument();
+      const row = document.querySelector<HTMLElement>('[data-studio-id="m12"]');
+      expect(row).not.toBeNull();
+      expect(row!.className).toContain("ring-2");
+    });
+
+    it("changing the status writes it to the URL and returns to page 1", async () => {
+      useManyStudios(15);
+      const user = userEvent.setup();
+      renderPage("?page=2");
+      await screen.findByText("Page 2 of 2");
+      await user.selectOptions(screen.getByLabelText("Filter by status"), "Active");
+      await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("status=Active"));
+      expect(screen.getByTestId("location")).not.toHaveTextContent("page=");
+    });
+
+    it("never writes the search text to the URL", async () => {
+      const user = userEvent.setup();
+      renderPage("?status=Active");
+      await screen.findByText("Ink Soul");
+      await user.type(screen.getByLabelText("Search studios by name or slug"), "Jane Doe");
+      expect(screen.getByTestId("location")).toHaveTextContent("status=Active");
+      expect(screen.getByTestId("location")).not.toHaveTextContent(/Jane|Doe/);
+    });
+
+    it("opening a studio keeps the list query, so its Back link returns to the same view", async () => {
+      const user = userEvent.setup();
+      renderPage("?status=Active");
+      const row = (await screen.findByText("Ink Soul")).closest("[data-studio-id]") as HTMLElement;
+      await user.click(within(row).getByRole("link", { name: /view/i }));
+      expect(await screen.findByTestId("detail")).toHaveTextContent("/platform/studios/s1|?status=Active&focus=s1");
+    });
+
+    it("offers the at-risk and suspended views as shareable links", async () => {
+      renderPage();
+      await screen.findByText("Ink Soul");
+      const views = screen.getByRole("navigation", { name: "Quick views" });
+      expect(within(views).getByRole("link", { name: "Past due" })).toHaveAttribute("href", "/platform/studios?status=PastDue");
+      expect(within(views).getByRole("link", { name: "Suspended" })).toHaveAttribute("href", "/platform/studios?status=Suspended");
+    });
   });
 });

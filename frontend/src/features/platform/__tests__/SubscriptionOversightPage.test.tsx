@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -112,12 +112,18 @@ function makeStore() {
   });
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.search}</output>;
+}
+
 function renderPage(initialEntries: string[] = ["/platform/subscriptions"]) {
   const store = makeStore();
   render(
     <Provider store={store}>
       <MemoryRouter initialEntries={initialEntries}>
         <SubscriptionOversightPage />
+        <LocationProbe />
       </MemoryRouter>
     </Provider>,
   );
@@ -581,5 +587,37 @@ describe("SubscriptionOversightPage", () => {
     await screen.findByText("Active Studio");
     const viewButton = screen.getByRole("button", { name: /view active studio studio details/i });
     expect(viewButton.closest("a")).toHaveAttribute("href", "/platform/studios/s1");
+  });
+
+  describe("URL-held state (D08)", () => {
+    const many: PlatformSubscriptionResponse[] = Array.from({ length: 15 }, (_, i) => ({
+      ...SUBS[0],
+      studioId:   `m${i + 1}`,
+      studioName: `Sub Studio ${String(i + 1).padStart(2, "0")}`,
+      studioSlug: `sub-studio-${String(i + 1).padStart(2, "0")}`,
+      subscriptionId: `sub-m${i + 1}`,
+    }));
+
+    it("restores sort and page from a shared URL", async () => {
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(many)));
+      renderPage(["/platform/subscriptions?sort=name&page=2"]);
+      expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument();
+      expect(screen.getByText("Sub Studio 11")).toBeInTheDocument();
+      expect(screen.getByLabelText("Sort subscriptions")).toHaveValue("name");
+    });
+
+    it("writes sort to the URL and returns to page 1, but never the search text", async () => {
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json(many)));
+      const user = userEvent.setup();
+      renderPage(["/platform/subscriptions?page=2"]);
+      await screen.findByText("Page 2 of 2");
+
+      await user.selectOptions(screen.getByLabelText("Sort subscriptions"), "name");
+      await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("sort=name"));
+      expect(screen.getByTestId("location")).not.toHaveTextContent("page=");
+
+      await user.type(screen.getByPlaceholderText(/search by studio name or slug/i), "Jane Doe");
+      expect(screen.getByTestId("location")).not.toHaveTextContent(/Jane|Doe/);
+    });
   });
 });

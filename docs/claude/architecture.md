@@ -7347,3 +7347,37 @@ first 8 characters of an id, and showed times in the viewer's browser zone witho
   belongs to the same decision as the actor's name.
 - **Latent twin, not fixed:** `GetMyStudioAuditLogQuery` has the same `<= to` bound, but the owner's card
   never sends dates, so nothing reaches it today.
+
+## Admin studio list and detail: shareable views, scoped detail reads (slice 8 phase 1b, D08) — 2026-11-19
+
+Studio list filters lived in component state, so a reload, Back or a shared link lost them. The
+dashboard's at-risk link passed its studio in router state, which a reload drops. The detail page's Back
+link always went to the unfiltered list. And the detail page downloaded **every** studio's subscription
+and **every** referral code to show one studio's.
+
+- **URL-held state.** The studio list keeps `status`, `plan`, `page` and `focus` in the URL. Subscription
+  oversight keeps `status`, `sort` and `page`. Both use the router's `useSearchParams`. The page is derived
+  rather than synced: an explicit `page` wins, otherwise the page holding `focus`, clamped to the last page.
+  This removed three set-state-in-effect hooks.
+- **Return focus.** Opening a studio first rewrites the list's own history entry to include `focus=<id>`
+  (replace), so the browser's Back lands on the same filters and page with that studio highlighted. The
+  list's query also travels in router state, so the detail page's own "Studios" link does the same. A
+  detail page opened from a shared link falls back to `?focus=<id>`. The dashboard's at-risk link is now
+  `/platform/studios?focus=<id>`.
+- **Reusable views:** "Past due", "Grace period" and "Suspended" are plain links (`?status=…`), so they can
+  be bookmarked.
+- **The search box stays in memory, by design.** An admin's search text can be a person's name, and nothing
+  private goes in a URL (the C08 rule). It is lost on reload; tests pin that it never reaches the URL.
+- **Scoped detail reads, with no new cross-tenant call.** `GetPlatformSubscriptionsQuery` and
+  `GetPlatformReferralCodesQuery` take an optional `StudioId`, added as a `.Where(...)` after their existing
+  `IgnoreQueryFilters()` (approved usages #5 and #6). That narrows the same AdminOnly read and leaves the
+  registered call byte-identical. `IgnoreQueryFilters` lines added or removed: 0.
+- **Not built: server paging of the studio list. It needs a decision.** The list joins studios to
+  subscriptions and filters by status, plan and search, so paging the studios on the server while
+  filtering in the browser would give wrong pages. `GetPlatformSubscriptionsQuery` already reads every
+  studio with its subscription under usage #5, so the join needs no new `IgnoreQueryFilters`. **The open
+  question is the search text:** server-side search puts it in the API request's query string. The app's
+  own request log omits query strings (Serilog `RequestPath`; the enrichment adds only ids), but ingress
+  and Cloudflare access logs may keep them. The alternatives are a POST search body, or keeping search in
+  the browser over a status-and-plan-filtered server page. Today's scale (a handful of studios) doesn't
+  need it yet. D08 itself says server paging comes "as scale demands".
