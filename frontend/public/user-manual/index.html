@@ -4067,7 +4067,8 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>On the studio's detail page, click <span class="step-title">Impersonate</span>.</li>
 <li>Enter a short reason for the session (required) and click <span class="step-title">Start impersonating</span>.</li>
-<li>Browse the studio's own dashboard, appointments, artists, clients, and settings exactly as its owner would see them.</li>
+<li>You start on the studio's schedule and can look at its appointments, artists, clients and settings. The banner shows <span class="step-title">Viewing as {studio}</span>, a <span class="step-title">Read-only</span> label, the reason you gave, and the time left. Screen readers hear the time left only at 10, 5 and 1 minutes and at expiry. A second tab shows "Reason: not available in this tab"; the reason is still on the session.</li>
+<li>Pages whose only job is to change something (new artist, client, design, service or deposit rule, booking, the intake form builder) show a short read-only note instead of the form.</li>
 <li>Click <span class="step-title">End session</span> in the banner when finished, or let it run out — either way you're returned to your own admin session.</li>
 </ol>
 <div class="callout callout-warn"><strong>Read-only:</strong> every write action is blocked during a session — no appointment, client, artist, or settings change can be made while impersonating, full stop.</div>
@@ -4220,7 +4221,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-admin">Admin</span> Feedback inbox</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗ (can submit feedback via the feedback icon)</td></tr><tr><td>Owner</td><td>✗ (can submit feedback)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/platform/feedback</code>: bug reports, feature requests, and general feedback submitted by artists and owners across every studio, filterable by type and status, with an unread-count badge in the admin navigation. Reports may include up to 3 attached screenshots or short video clips the submitter added when reporting the issue.</p>
+<p>At <code>/platform/feedback</code>: support requests, bug reports, feature requests, and general feedback submitted by artists and owners across every studio, in two views (support work and product feedback), with an unread-count badge in the admin navigation. Reports may include up to 3 attached screenshots or short video clips the submitter added when reporting the issue.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Feedback inbox wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -4238,7 +4239,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Feedback inbox — click a card to expand full body, note field, and status buttons</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Filter by type (<span class="step-title">Bug Report</span> / <span class="step-title">Feature Request</span> / <span class="step-title">General</span>) and status.</li>
+<li>Choose a view. <span class="step-title">Support triage</span> (the default) holds support requests and bug reports and opens on <span class="step-title">Needs action</span> (Open or Reviewing), oldest first. <span class="step-title">Product feedback</span> holds feature requests and general feedback, newest first, every status. Within a view, narrow by type and status; the view and filters are in the page address, so a reload or a shared link opens the same list.</li>
 <li>Click a card to expand it and read the full report — any attached screenshots or video clips appear as thumbnails below the description; click one to open it full-size in a new tab.</li>
 <li>Write an optional internal <span class="step-title">Admin note</span>.</li>
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>

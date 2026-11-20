@@ -36,6 +36,7 @@ import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import { useAppDispatch } from "@/app/hooks";
 import { startImpersonation as beginImpersonationSession } from "@/features/auth/authSlice";
+import { SUPPORT_VIEW_HOME } from "@/shared/hooks/useSupportView";
 import { ReferralCodeRow } from "./PlatformReferralPage";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
@@ -170,10 +171,11 @@ export function AdminStudioDetailPage() {
         studioId: result.studioId,
         studioName: result.studioName,
         expiresAt: result.expiresAt,
+        reason: impersonateReason.trim(),
       }));
       setImpersonating(false);
       setImpersonateReason("");
-      navigate("/dashboard");
+      navigate(SUPPORT_VIEW_HOME);
     } catch {
       toast.error("Failed to start impersonation session");
     }

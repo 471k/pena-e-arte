@@ -6,6 +6,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { toast } from "sonner";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 import authReducer from "@/features/auth/authSlice";
 import { feedbackApi } from "@/features/feedback/feedbackApi";
@@ -19,6 +20,16 @@ const REPORTS: FeedbackReportResponse[] = [
     id: "fb-1", type: "BugReport", title: "Broken button", body: "The submit button does nothing on Safari.",
     status: "Open", studioName: "Studio A", submitterRole: "artist",
     adminNote: null, createdAt: "2026-07-01T00:00:00.000Z", resolvedAt: null,
+  },
+  {
+    id: "fb-3", type: "SupportRequest", title: "Cannot export clients", body: "Export gives an empty file.",
+    status: "Reviewing", studioName: "Studio C", submitterRole: "owner",
+    adminNote: null, createdAt: "2026-06-20T00:00:00.000Z", resolvedAt: null,
+  },
+  {
+    id: "fb-4", type: "SupportRequest", title: "Login loop fixed", body: "Was looping, now fine.",
+    status: "Resolved", studioName: "Studio D", submitterRole: "artist",
+    adminNote: null, createdAt: "2026-06-25T00:00:00.000Z", resolvedAt: "2026-06-26T00:00:00.000Z",
   },
   {
     id: "fb-2", type: "FeatureRequest", title: "Add dark mode", body: "It would be great to have a dark theme.",
@@ -58,11 +69,18 @@ function makeStore() {
   });
 }
 
-function renderPage() {
+function SearchProbe() {
+  return <output data-testid="location-search">{useLocation().search}</output>;
+}
+
+function renderPage(path = "/platform/feedback") {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <FeedbackInboxPage />
+      <MemoryRouter initialEntries={[path]}>
+        <FeedbackInboxPage />
+        <SearchProbe />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -80,11 +98,42 @@ describe("FeedbackInboxPage", () => {
     expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
   });
 
-  it("renders the feedback card list on success", async () => {
+  it("opens on support triage: support requests and bug reports that need action, oldest first", async () => {
     renderPage();
 
     expect(await screen.findByText("Broken button")).toBeInTheDocument();
-    expect(screen.getByText("Add dark mode")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Support triage" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: "Needs action" })).toHaveAttribute("aria-pressed", "true");
+    // Product feedback isn't mixed in, and a resolved support request doesn't need action.
+    expect(screen.queryByText("Add dark mode")).not.toBeInTheDocument();
+    expect(screen.queryByText("Login loop fixed")).not.toBeInTheDocument();
+    // The Reviewing request from 20 June comes before the Open bug from 1 July.
+    const titles = screen.getAllByRole("button", { expanded: false }).map((b) => b.textContent ?? "");
+    expect(titles.findIndex((t) => t.includes("Cannot export clients")))
+      .toBeLessThan(titles.findIndex((t) => t.includes("Broken button")));
+  });
+
+  it("product feedback is its own view, newest first, with every status, and the view is in the URL", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Broken button");
+
+    await user.click(screen.getByRole("tab", { name: "Product feedback" }));
+
+    expect(await screen.findByText("Add dark mode")).toBeInTheDocument();
+    expect(screen.queryByText("Broken button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Needs action" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("location-search")).toHaveTextContent("?view=feedback");
+  });
+
+  it("a resolved support request is one click away in triage, under its status", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Broken button");
+
+    await user.click(screen.getByRole("button", { name: /^resolved$/i }));
+
+    expect(await screen.findByText("Login loop fixed")).toBeInTheDocument();
   });
 
   it("shows the Bug Report badge for a BugReport entry", async () => {
@@ -94,12 +143,11 @@ describe("FeedbackInboxPage", () => {
   });
 
   it("shows the correct status badge per entry", async () => {
-    renderPage();
+    renderPage("/platform/feedback?view=feedback&status=all");
 
     // Scoped to <span> — the status *filter chip* bar also renders a "Resolved"
     // button, so an unscoped query is ambiguous once both are on screen.
-    expect(await screen.findByText("Open", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText("Resolved", { selector: "span" })).toBeInTheDocument();
+    expect(await screen.findByText("Resolved", { selector: "span" })).toBeInTheDocument();
   });
 
   it("filtering by type chip updates the RTK Query params", async () => {
@@ -175,7 +223,7 @@ describe("FeedbackInboxPage", () => {
     );
     renderPage();
 
-    expect(await screen.findByText(/no feedback yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/nothing needs action/i)).toBeInTheDocument();
   });
 
   it("shows an error state with a retry button", async () => {

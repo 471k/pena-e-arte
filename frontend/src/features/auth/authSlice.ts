@@ -19,6 +19,9 @@ interface ImpersonationMeta {
   studioId:   string;
   studioName: string;
   expiresAt:  string;
+  /** The reason the admin gave when starting the session (D05: the banner shows it). Null when this tab
+   *  doesn't have the session's meta, e.g. a second tab: the server still has it on the session. */
+  reason:     string | null;
 }
 
 interface ImpersonationStash {
@@ -47,7 +50,8 @@ function readImpersonationMeta(sessionId: string, tenantId: string | null, exp: 
     const raw = sessionStorage.getItem(IMPERSONATION_META_KEY);
     if (raw) {
       const meta = JSON.parse(raw) as ImpersonationMeta;
-      if (meta.sessionId === sessionId) return meta;
+      // A meta saved before the reason was kept has none: show that it's unknown rather than nothing.
+      if (meta.sessionId === sessionId) return { ...meta, reason: meta.reason ?? null };
     }
   } catch {
     // fall through to the defensive fallback below
@@ -60,6 +64,7 @@ function readImpersonationMeta(sessionId: string, tenantId: string | null, exp: 
     studioId: tenantId ?? "",
     studioName: "this studio",
     expiresAt: exp ? new Date(exp * 1000).toISOString() : new Date().toISOString(),
+    reason: null,
   };
 }
 
@@ -145,7 +150,7 @@ const authSlice = createSlice({
     // the real token aside (sessionStorage only) so endImpersonation can restore it.
     startImpersonation: (
       state,
-      { payload }: PayloadAction<{ accessToken: string; sessionId: string; studioId: string; studioName: string; expiresAt: string }>,
+      { payload }: PayloadAction<{ accessToken: string; sessionId: string; studioId: string; studioName: string; expiresAt: string; reason: string }>,
     ) => {
       const remember = localStorage.getItem(TOKEN_KEY) !== null;
       try {
@@ -157,7 +162,7 @@ const authSlice = createSlice({
         sessionStorage.setItem(IMPERSONATION_STASH_KEY, JSON.stringify(stash));
         const meta: ImpersonationMeta = {
           sessionId: payload.sessionId, studioId: payload.studioId,
-          studioName: payload.studioName, expiresAt: payload.expiresAt,
+          studioName: payload.studioName, expiresAt: payload.expiresAt, reason: payload.reason,
         };
         sessionStorage.setItem(IMPERSONATION_META_KEY, JSON.stringify(meta));
       } catch {
@@ -173,7 +178,7 @@ const authSlice = createSlice({
       state.role          = decoded.role;
       state.impersonation = {
         sessionId: payload.sessionId, studioId: payload.studioId,
-        studioName: payload.studioName, expiresAt: payload.expiresAt,
+        studioName: payload.studioName, expiresAt: payload.expiresAt, reason: payload.reason,
       };
 
       localStorage.removeItem(TOKEN_KEY);
