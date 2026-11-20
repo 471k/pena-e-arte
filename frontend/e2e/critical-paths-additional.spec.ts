@@ -165,7 +165,11 @@ test.describe("Intake form — consent flow", () => {
     // Submitting without consent must block — the client-side zod refine on consentAccepted.
     await page.getByLabel("Medical history & notes").fill("No known allergies. Healthy skin, no keloids.");
     await page.getByRole("button", { name: "Submit Intake Form" }).click();
-    await expect(page.getByText("You must consent before submitting")).toBeVisible();
+    // The message shows beside the checkbox and, since S04, in the error summary at the top, which takes focus.
+    await expect(page.getByText("You must consent before submitting")).toHaveCount(2);
+    const summary = page.getByRole("alert").filter({ hasText: "thing to fix" });
+    await expect(summary).toBeFocused();
+    await expect(summary.getByRole("link", { name: "Consent: You must consent before submitting" })).toBeVisible();
     expect(submittedBody).toBeNull();
 
     // Accepting consent and resubmitting must succeed.
