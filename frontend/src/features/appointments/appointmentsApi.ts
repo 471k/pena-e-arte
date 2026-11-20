@@ -18,6 +18,8 @@ import type {
   RescheduleAppointmentRequest,
   ReschedulePreviewResponse,
   SlotAvailabilityResponse,
+  AvailableSlotsResponse,
+  AvailableSlotsParams,
 } from "./appointment.types";
 import type { OwnerExceptionsResponse } from "@/features/dashboard/dashboard.types";
 
@@ -164,6 +166,21 @@ export const appointmentsApi = createApi({
       }),
       keepUnusedDataFor: 0,
     }),
+    // The slot list (C03). Never cached between uses: it's a snapshot of a moving calendar, and the
+    // taken-slot path refetches it explicitly.
+    getAvailableSlots: builder.query<AvailableSlotsResponse, AvailableSlotsParams>({
+      query: ({ artistId, from, to, durationMinutes, excludeAppointmentId }) => ({
+        url:    "appointments/available-slots",
+        params: {
+          ...(artistId ? { artistId } : {}),
+          from,
+          to,
+          durationMinutes,
+          ...(excludeAppointmentId ? { excludeAppointmentId } : {}),
+        },
+      }),
+      keepUnusedDataFor: 0,
+    }),
     // Whether the appointment can be moved at all (E04b, A02), by the save's own rule. Never cached
     // between dialog openings: the notice window moves with the clock.
     getReschedulePreview: builder.query<ReschedulePreviewResponse, string>({
@@ -202,6 +219,7 @@ export const {
   useGetAppointmentCommunicationQuery,
   useRescheduleAppointmentMutation,
   useCheckSlotAvailabilityQuery,
+  useGetAvailableSlotsQuery,
   useGetReschedulePreviewQuery,
   useAssignAppointmentArtistMutation,
 } = appointmentsApi;

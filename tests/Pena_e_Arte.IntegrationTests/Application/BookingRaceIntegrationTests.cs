@@ -7,7 +7,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Application.Appointments.Queries;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Public.Commands;
+using Pena_e_Arte.Application.Public.Queries;
 using Pena_e_Arte.Contracts.Requests;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
@@ -91,6 +94,51 @@ public class BookingRaceIntegrationTests(DatabaseFixture fixture)
 
         outcomes.Should().AllSatisfy(e => e.Should().BeNull());
         (await LiveAppointmentCount(studioId, artistId)).Should().Be(2);
+    }
+
+    // ── The slot list (C03, slice 7): a preview, not a reservation ───────────
+
+    [Fact]
+    public async Task OfferedStart_BookedTwiceAtOnce_ExactlyOneWins_AndTheListStopsOfferingIt()
+    {
+        // Real MySQL: the list's range reads must translate here (the unit tests run on the in-memory provider), on
+        // both the signed-in path and the anonymous one (ambient tenant Guid.Empty). Then the same offered start is
+        // submitted twice at once: the claim-then-check in CreateAppointmentCoreAsync is still the only authority.
+        (Guid studioId, Guid artistId, Guid clientA, Guid clientB) = await SeedStudio();
+        DateOnly monday = DateOnly.FromDateTime(NextMondayAt(0));
+
+        AvailableSlotsResult before = await ListSignedIn(studioId, artistId, monday);
+        DateTime offered = before.Days.Single().Starts.First(s => s.Hour == 10);
+        (await ListPublic(await SlugOf(studioId), artistId, monday)).Days.Single().Starts
+            .Should().Equal(before.Days.Single().Starts, "the guest page and the signed-in form read the same rule");
+
+        WriteRendezvous gate = new("INSERT INTO `appointments`", RendezvousTimeout);
+        ISlotLocker locker = AlwaysGrantingLocker();
+        Exception?[] outcomes = await Task.WhenAll(
+            Capture(() => RunCreate(studioId, gate, locker, new CreateAppointmentRequest(artistId, clientA, offered, 60, null))),
+            Capture(() => RunCreate(studioId, gate, locker, new CreateAppointmentRequest(artistId, clientB, offered, 60, null))));
+
+        AssertOneWonOneLost(outcomes);
+        (await LiveAppointmentCount(studioId, artistId)).Should().Be(1);
+        (await ListSignedIn(studioId, artistId, monday)).Days.Single().Starts.Should().NotContain(offered);
+    }
+
+    private async Task<AvailableSlotsResult> ListSignedIn(Guid studioId, Guid artistId, DateOnly day)
+    {
+        CurrentTenantService tenant = new();
+        tenant.SetTenant(studioId);
+        ICurrentUser staff = Substitute.For<ICurrentUser>();
+        staff.Role.Returns("owner");
+        await using AppDbContext db = fixture.CreateDbContext(studioId);
+        return await new GetAvailableSlotsHandler(db, tenant, staff, TimeProvider.System)
+            .Handle(new GetAvailableSlotsQuery(artistId, day, day, 60), default);
+    }
+
+    private async Task<AvailableSlotsResult> ListPublic(string slug, Guid artistId, DateOnly day)
+    {
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        return await new GetPublicAvailableSlotsHandler(db, TimeProvider.System)
+            .Handle(new GetPublicAvailableSlotsQuery(slug, artistId, day, day, 60), default);
     }
 
     // ── CreateGuestAppointmentCommand (anonymous, no tenant) ─────────────────

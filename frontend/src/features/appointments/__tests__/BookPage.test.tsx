@@ -178,6 +178,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/services",                () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/saved-payment-methods",   () => HttpResponse.json([])),
   http.get("http://localhost/api/v1/appointments/mine",       () => HttpResponse.json([])),
+  // The slot list (C03): none by default, so the picker shows its empty state and the typed field is used.
+  http.get("http://localhost/api/v1/appointments/available-slots", () => HttpResponse.json({ from: "2026-01-01", to: "2026-01-07", durationMinutes: 60, stepMinutes: 60, days: [], nextAvailable: null })),
   http.get("http://localhost/api/v1/appointments/check-slot", () => HttpResponse.json({ available: true, reason: null })),
   // BookAppointmentForm's package toggle — empty means the toggle simply doesn't render,
   // matching a client with no purchased packages (the common case these existing tests exercise).
