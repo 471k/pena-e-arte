@@ -7610,3 +7610,12 @@ customer consent before a session (a product decision).
   messages, never values (tested). Durable drafts are phase D, specified and not built: they would hold health
   answers and photographs, the subject of the open retention and erasure questions.
 - `noValidate` on the three forms, so the browser's own bubbles don't pre-empt the summary.
+
+## Extend trial refused for Cancelled too — 2026-11-20
+
+Phi's decision (20 Nov), on Desktop's recommendation: decision 3's treatment for PastDue now covers **Cancelled**. The
+handler would have moved the date while the status stayed Cancelled, and `TenantMiddleware` blocks Cancelled whatever
+the trial date. `ExtendTrialHandler` refuses with a 422 (`CancelledMessage`) naming the one verified way back (an
+active subscription, e.g. a cash payment recorded with Activate), and `TRIAL_EXTENDABLE` drops Cancelled at all four
+entry points. Not named in the message: the owner's Billing page says "Reactivate", but a Cancelled studio's own API
+calls are blocked by the middleware, so that path couldn't be confirmed and isn't offered as one.

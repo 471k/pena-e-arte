@@ -321,6 +321,18 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.getByRole("button", { name: /exclude overdue studio from dunning/i })).toBeInTheDocument();
   });
 
+  it("a cancelled studio is not offered Extend trial either, and keeps Activate (Phi, 20 Nov)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[1], studioId: "c1", studioName: "Closed Studio", status: "Cancelled" }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Closed Studio");
+    expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /activate subscription for closed studio/i })).toBeInTheDocument();
+  });
+
   it("shows aria-label with studio name on Extend Trial button", async () => {
     renderPage();
     await screen.findByText("Trialing Studio");

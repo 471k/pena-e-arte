@@ -116,6 +116,26 @@ public class ExtendTrialHandlerTests
     }
 
     [Fact]
+    public async Task Handle_CancelledSubscription_RefusesAndChangesNothing()
+    {
+        Guid studioId = Guid.NewGuid();
+        DateTime originalTrial = DateTime.UtcNow.AddDays(-40);
+        await SeedStudio(studioId, SubscriptionStatus.Cancelled, originalTrial);
+
+        Func<Task> act = () => CreateSut().Handle(
+            new ExtendTrialCommand(studioId, new ExtendTrialRequest(7)), default);
+
+        (await act.Should().ThrowAsync<BusinessRuleViolationException>())
+            .Which.Message.Should().Be(ExtendTrialHandler.CancelledMessage)
+            .And.Contain("Activate");
+
+        Studio studio = await _db.Studios.Include(s => s.Subscription).SingleAsync(s => s.Id == studioId);
+        studio.TrialExpiresAt.Should().BeCloseTo(originalTrial, TimeSpan.FromSeconds(1));
+        studio.Subscription!.Status.Should().Be(SubscriptionStatus.Cancelled);
+        studio.Subscription.TrialExpiresAt.Should().BeCloseTo(originalTrial, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
     public async Task Handle_StudioNotFound_ThrowsNotFoundException()
     {
         Func<Task> act = () => CreateSut().Handle(
