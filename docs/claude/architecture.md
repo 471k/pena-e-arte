@@ -7593,3 +7593,20 @@ note that dated Decisions Log rows keep the names they were written with.
 Files.com), actions attributed to the real admin, and a time limit are the common standard; we now meet all four.
 Not taken: masking more fields (the allow-list already denies client medical data and every financial read) and
 customer consent before a session (a product decision).
+
+## Long forms: one error summary, kept values, a deliberate exit (slice 7 phase B, S04 frontend half) — 2026-11-20
+
+- **`FormErrorSummary`** at the top of the signed-in booking form, the guest booking form and the intake form: every
+  error at once, each a link that focuses its field, and the summary takes focus once per failed submit. It
+  covers the errors outside react-hook-form (description, referral "other", both images, the studio's own intake
+  fields), because those checks now run on **every** submit attempt (`handleSubmit(onSubmit, onInvalid)`). Before,
+  they ran only after the library's own checks passed, so a person fixed the form in two rounds.
+- **Kept values:** a refused submit never resets anything. This was already true; it's now asserted by a test that
+  checks identity fields, description and uploaded images after a server error.
+- **`UnsavedChangesGuard`:** with details entered, an in-app route change asks "Stay on this page" / "Leave and lose
+  it" (`useBlocker`, only under a data router), and closing or reloading the tab gets the browser's prompt. "Entered"
+  is the form library's `isDirty` plus the state kept outside it (intake answers, placement, images, codes).
+- **Nothing is stored and nothing is sent:** no draft, no log line, and no telemetry. The summary shows field names and
+  messages, never values (tested). Durable drafts are phase D, specified and not built: they would hold health
+  answers and photographs, the subject of the open retention and erasure questions.
+- `noValidate` on the three forms, so the browser's own bubbles don't pre-empt the summary.

@@ -86,6 +86,7 @@ export function TattooIntakeFields({
         {value.referralSource === ReferralSource.Other && (
           <div className="pt-1.5">
             <Input
+              id="referralSourceOther"
               aria-label="Tell us where you heard about us"
               placeholder="Tell us where…"
               value={value.referralSourceOther}

@@ -160,7 +160,8 @@ describe("SubmitIntakeFormPage", () => {
     await user.type(screen.getByLabelText(/medical history/i), "short");
     await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
-    expect(await screen.findByText(/at least 10 characters/i)).toBeInTheDocument();
+    // Once beside the field and once in the error summary at the top (S04).
+    expect(await screen.findAllByText(/at least 10 characters/i)).toHaveLength(2);
   });
 
   it("shows a validation error for an invalid attachment URL", async () => {
@@ -170,7 +171,7 @@ describe("SubmitIntakeFormPage", () => {
     await user.type(screen.getByLabelText(/attachment url/i), "not-a-url");
     await user.click(screen.getByLabelText(/consent to sharing/i));
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
-    expect(await screen.findByText(/must be a valid url/i)).toBeInTheDocument();
+    expect(await screen.findAllByText(/must be a valid url/i)).toHaveLength(2);
   });
 
   it("lists appointments in the appointment selector", async () => {
@@ -213,7 +214,7 @@ describe("SubmitIntakeFormPage", () => {
     renderWithRoute(<SubmitIntakeFormPage />);
     await user.type(screen.getByLabelText(/medical history/i), "No allergies of any kind.");
     await user.click(screen.getByRole("button", { name: /submit intake form/i }));
-    expect(await screen.findByText(/must consent before submitting/i)).toBeInTheDocument();
+    expect(await screen.findAllByText(/must consent before submitting/i)).toHaveLength(2);
     expect(submitted).toBe(false);
   });
 

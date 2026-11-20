@@ -22,6 +22,9 @@ import {
 import { skipToken } from "@reduxjs/toolkit/query";
 import { SlotPicker } from "@/features/appointments/components/SlotPicker";
 import { isSlotTaken, slotRange } from "@/features/appointments/slotList";
+import { FormErrorSummary, type FormErrorItem } from "@/shared/components/FormErrorSummary";
+import { UnsavedChangesGuard } from "@/shared/components/UnsavedChangesGuard";
+import { extraErrorItem, rhfErrorItems } from "@/shared/utils/formErrorItems";
 import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { useCategorizedImageUpload } from "@/shared/hooks/useCategorizedImageUpload";
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
@@ -216,9 +219,11 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
 
   const {
     register, control, handleSubmit, setValue, getValues, setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    // S04: the error summary takes focus after a failed submit; the form library must not move it to a field after.
+    shouldFocusError: false,
     defaultValues: {
       firstName: "", lastName: "", email: "", phone: "", marketingOptIn: false,
       artistId: "", bookAnyArtist: false, durationMinutes: 60, serviceId: null,
@@ -288,27 +293,54 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
     setValue("scheduledAt", toStudioInputValue(new Date(iso), studioTz), { shouldValidate: true, shouldDirty: true });
   }
 
-  async function onSubmit(values: FormValues) {
-    setSubmitError(null);
+  // S04: one list of everything to fix, and a deliberate choice before leaving with entered details.
+  const [attempt, setAttempt] = useState(0);
+  const errorItems: FormErrorItem[] = [
+    ...rhfErrorItems(errors, [
+      { name: "firstName", label: "First name" },
+      { name: "lastName", label: "Last name" },
+      { name: "email", label: "Email" },
+      { name: "phone", label: "Phone" },
+      { name: "artistId", label: "Artist" },
+      { name: "scheduledAt", label: "Date & time" },
+      { name: "durationMinutes", label: "Duration" },
+    ]),
+    ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
+    ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
+    ...extraErrorItem(`images-${AppointmentAttachmentCategory.AreaPhoto}`, "Area photo", areaPhotoError),
+    ...extraErrorItem(`images-${AppointmentAttachmentCategory.Reference}`, "Reference images", referenceImageError),
+  ];
+  const hasEntered = isDirty || intake.tattooDescription !== "" || intake.style !== "" || intake.referralSource !== ""
+    || intake.safetyNotes !== "" || desiredPlacement.length > 0 || referralCode !== ""
+    || areaPhotos.images.length > 0 || referenceImages.images.length > 0;
+
+  // The checks kept outside the form library (description, referral "other", both images). Run on every submit
+  // attempt, including one the form library already refused, so the error summary lists everything at once (S04).
+  function validateExtras(): boolean {
     setAreaPhotoError(null);
     setReferenceImageError(null);
-
     const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
     setTattooDescriptionError(tattooDescriptionError);
     setReferralSourceOtherError(referralSourceOtherError);
-
     let valid = !tattooDescriptionError && !referralSourceOtherError;
-    const at = checkStudioTime(values.scheduledAt, zone);
-    if (!at.ok) {
-      setError("scheduledAt", { message: studioTimeProblem(at.reason, "Appointment must be in the future") });
-      valid = false;
-    }
     if (areaPhotos.doneUrls().length === 0) {
       setAreaPhotoError("A photo of the area is required.");
       valid = false;
     }
     if (referenceImages.doneUrls().length === 0) {
       setReferenceImageError("At least one reference image is required.");
+      valid = false;
+    }
+    return valid;
+  }
+
+  async function onSubmit(values: FormValues) {
+    setSubmitError(null);
+
+    let valid = validateExtras();
+    const at = checkStudioTime(values.scheduledAt, zone);
+    if (!at.ok) {
+      setError("scheduledAt", { message: studioTimeProblem(at.reason, "Appointment must be in the future") });
       valid = false;
     }
     if (!valid || !at.ok) return;
@@ -390,7 +422,13 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form
+      onSubmit={(e) => { setAttempt((n) => n + 1); void handleSubmit(onSubmit, () => { validateExtras(); })(e); }}
+      className="space-y-5"
+      noValidate
+    >
+      <UnsavedChangesGuard when={hasEntered && !submitting} />
+      <FormErrorSummary items={errorItems} attempt={attempt} />
       {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
           AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
       <p className="text-xs text-muted-foreground">* Required</p>

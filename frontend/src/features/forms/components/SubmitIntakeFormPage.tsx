@@ -26,6 +26,9 @@ import { AppointmentPickerProblem } from "./AppointmentPickerProblem";
 import { useGetActiveConsentTemplateQuery } from "@/features/forms/consentFormsApi";
 import { useSubmitIntakeFormMutation, useGetActiveIntakeFormTemplateQuery } from "../intakeFormsApi";
 import type { IntakeFormFieldDefinition } from "../form.types";
+import { FormErrorSummary, type FormErrorItem } from "@/shared/components/FormErrorSummary";
+import { UnsavedChangesGuard } from "@/shared/components/UnsavedChangesGuard";
+import { extraErrorItem, rhfErrorItems } from "@/shared/utils/formErrorItems";
 
 const DEFAULT_CONSENT_TEXT =
   "By submitting this form, you consent to sharing your medical history and " +
@@ -186,19 +189,20 @@ export function SubmitIntakeFormPage() {
     register,
     control,
     handleSubmit,
+    getValues,
     reset: resetForm,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver:      zodResolver(schema),
+    // S04: the error summary takes focus after a failed submit; the form library must not move it to a field after.
+    shouldFocusError: false,
     // ?appointmentId= pre-selects the appointment (the client appointment page's readiness links here).
     defaultValues: { consentAccepted: false, appointmentId: preselectedAppointmentId },
   });
 
-  async function onSubmit(values: FormValues) {
-    if (!user) return;
-
-    let formData: string;
-
+  // The answers kept outside the form library (the studio's own fields, or the fallback text). Checked on every
+  // submit attempt, including one the form library already refused, so the error summary lists everything (S04).
+  function validateExtras(): boolean {
     if (hasTemplate) {
       const nextErrors: Record<string, string> = {};
       for (const field of fields) {
@@ -207,20 +211,38 @@ export function SubmitIntakeFormPage() {
         if (field.required && empty) nextErrors[field.label] = "This field is required.";
       }
       setDynamicErrors(nextErrors);
-      if (Object.keys(nextErrors).length > 0) return;
-
-      formData = JSON.stringify(
-        Object.fromEntries(fields.map((f) => [f.label, dynamicValueFor(f)])),
-      );
-    } else {
-      const trimmed = (values.formData ?? "").trim();
-      if (trimmed.length < MIN_FORM_DATA_LENGTH) {
-        setFormDataError(`Please provide at least ${MIN_FORM_DATA_LENGTH} characters`);
-        return;
-      }
-      setFormDataError(null);
-      formData = values.formData ?? "";
+      return Object.keys(nextErrors).length === 0;
     }
+    const trimmed = (getValues("formData") ?? "").trim();
+    if (trimmed.length < MIN_FORM_DATA_LENGTH) {
+      setFormDataError(`Please provide at least ${MIN_FORM_DATA_LENGTH} characters`);
+      return false;
+    }
+    setFormDataError(null);
+    return true;
+  }
+
+  // S04: one list of everything to fix (field names and messages only — never an answer), and a deliberate choice
+  // before leaving with answers entered. Nothing is stored: drafts of health answers are phase D, not built.
+  const [attempt, setAttempt] = useState(0);
+  const errorItems: FormErrorItem[] = [
+    ...(hasTemplate
+      ? fields.flatMap((field, index) => extraErrorItem(`dynamic-field-${index}`, field.label, dynamicErrors[field.label]))
+      : extraErrorItem("formData", "Medical history & notes", formDataError)),
+    ...rhfErrorItems(errors, [
+      { name: "fileUrl", label: "Attachment URL" },
+      { name: "consentAccepted", label: "Consent" },
+    ]),
+  ];
+  const hasEntered = isDirty || Object.keys(dynamicValues).length > 0;
+
+  async function onSubmit(values: FormValues) {
+    if (!user) return;
+    if (!validateExtras()) return;
+
+    const formData = hasTemplate
+      ? JSON.stringify(Object.fromEntries(fields.map((f) => [f.label, dynamicValueFor(f)])))
+      : values.formData ?? "";
 
     const result = await submitIntakeForm({
       clientId:        user.id,
@@ -278,7 +300,13 @@ export function SubmitIntakeFormPage() {
             : "Please share your medical history and any details your artist should know before your session."}
         </p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form
+          onSubmit={(e) => { setAttempt((n) => n + 1); void handleSubmit(onSubmit, () => { validateExtras(); })(e); }}
+          className="space-y-5"
+          noValidate
+        >
+          <UnsavedChangesGuard when={hasEntered && !isLoading} />
+          <FormErrorSummary items={errorItems} attempt={attempt} />
           {hasTemplate ? (
             fields.map((field, index) => (
               <DynamicIntakeField

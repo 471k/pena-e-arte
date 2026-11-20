@@ -42,6 +42,9 @@ import {
 } from "../appointmentsApi";
 import { SlotPicker } from "./SlotPicker";
 import { isSlotTaken, slotRange } from "../slotList";
+import { FormErrorSummary, type FormErrorItem } from "@/shared/components/FormErrorSummary";
+import { UnsavedChangesGuard } from "@/shared/components/UnsavedChangesGuard";
+import { extraErrorItem, rhfErrorItems } from "@/shared/utils/formErrorItems";
 import { useRequestCatalogDesignMutation } from "@/features/designs/designsApi";
 import { useGetArtistsQuery }                     from "@/features/artists/artistsApi";
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
@@ -375,10 +378,12 @@ export function BookAppointmentForm() {
     setValue,
     getValues,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
     reset: resetForm,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    // S04: the error summary takes focus after a failed submit; the form library must not move it to a field after.
+    shouldFocusError: false,
     defaultValues: {
       artistId:        "",
       bookAnyArtist:   false,
@@ -489,11 +494,34 @@ export function BookAppointmentForm() {
     }
   }, [selectedService, setValue]);
 
-  async function onSubmit(values: FormValues) {
+  // S04: one list of everything to fix, and a deliberate choice before leaving with entered details.
+  const [attempt, setAttempt] = useState(0);
+  const errorItems: FormErrorItem[] = [
+    ...rhfErrorItems(errors, [
+      { name: "artistId", label: "Artist" },
+      { name: "clientId", label: "Client" },
+      { name: "scheduledAt", label: "Date & time" },
+      { name: "durationMinutes", label: "Appointment duration" },
+      { name: "promoCode", label: "Promo code" },
+    ]),
+    ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
+    ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
+  ];
+  const hasEntered = isDirty || intake.tattooDescription !== "" || intake.style !== "" || intake.referralSource !== ""
+    || intake.safetyNotes !== "" || desiredPlacement.length > 0 || referralCode !== ""
+    || areaPhotos.images.length > 0 || referenceImages.images.length > 0;
+
+  // The checks kept outside the form library; run on every submit attempt, including one the form library already
+  // refused, so the error summary lists everything at once (S04).
+  function validateExtras(): boolean {
     const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
     setTattooDescriptionError(tattooDescriptionError);
     setReferralSourceOtherError(referralSourceOtherError);
-    if (tattooDescriptionError || referralSourceOtherError) return;
+    return !tattooDescriptionError && !referralSourceOtherError;
+  }
+
+  async function onSubmit(values: FormValues) {
+    if (!validateExtras()) return;
 
     const at = checkStudioTime(values.scheduledAt, zone);
     if (!at.ok) {
@@ -711,7 +739,13 @@ export function BookAppointmentForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form
+      onSubmit={(e) => { setAttempt((n) => n + 1); void handleSubmit(onSubmit, () => { validateExtras(); })(e); }}
+      className="space-y-5"
+      noValidate
+    >
+      <UnsavedChangesGuard when={hasEntered && !isLoading} />
+      <FormErrorSummary items={errorItems} attempt={attempt} />
       {/* text-muted-foreground/75 ≈ 4.7:1 on the dark theme's #09090b background — passes WCAG
           AA (measured 2026-09-05 while adding axe-core e2e coverage; /60 measured 3.38:1). */}
       <p className="text-xs text-muted-foreground">* Required</p>
