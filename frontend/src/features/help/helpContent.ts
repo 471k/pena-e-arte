@@ -2133,7 +2133,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Days can't be taken back: there's no way to shorten a trial from here.",
       "If extending fails, the review stays open with your number of days and says why.",
-      "Extend trial isn't offered for an active or a past-due studio. A past-due studio gets access back when its overdue payment is paid, or when you record a cash payment with Activate. If a studio became past due after you opened the page, TattooOS refuses the extension and says so.",
+      "Extend trial isn't offered for an active, past-due or cancelled studio, because a new trial date wouldn't give a past-due or cancelled studio access back. A past-due studio gets access back when its overdue payment is paid; either one when you record a cash payment with Activate. If a studio's status changed after you opened the page, TattooOS refuses the extension and says so.",
     ],
   },
   {

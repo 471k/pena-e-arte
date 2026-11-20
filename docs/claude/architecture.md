@@ -7626,3 +7626,12 @@ both let a business choose the interval.
   every start is still judged by the rule**, and the property test now runs with a random step per studio.
   The step is read from `Studios` without `IgnoreQueryFilters()`: `Studio` has no tenant filter.
 - Owner UI: "Booking start times" card under Settings → Hours and closures.
+
+## Extend trial refused for Cancelled too — 2026-11-20
+
+Phi's decision (20 Nov), on Desktop's recommendation: decision 3's treatment for PastDue now covers **Cancelled**. The
+handler would have moved the date while the status stayed Cancelled, and `TenantMiddleware` blocks Cancelled whatever
+the trial date. `ExtendTrialHandler` refuses with a 422 (`CancelledMessage`) naming the one verified way back (an
+active subscription, e.g. a cash payment recorded with Activate), and `TRIAL_EXTENDABLE` drops Cancelled at all four
+entry points. Not named in the message: the owner's Billing page says "Reactivate", but a Cancelled studio's own API
+calls are blocked by the middleware, so that path couldn't be confirmed and isn't offered as one.
