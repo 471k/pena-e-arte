@@ -206,7 +206,7 @@ export const studiosApi = createApi({
   baseQuery,
   tagTypes: [
     "Studio", "Referral", "StudioClosure", "StudioAuditLog", "StudioHours", "StudioApiKey",
-    "WebhookEndpoint", "WebhookDeliveries", "StudioPayModel",
+    "WebhookEndpoint", "WebhookDeliveries", "StudioPayModel", "BookingSettings",
   ],
   endpoints: (builder) => ({
     registerStudio: builder.mutation<StudioResponse, RegisterStudioRequest>({
@@ -214,6 +214,15 @@ export const studiosApi = createApi({
     }),
     getStudioMap: builder.query<StudioMapItem[], void>({
       query: () => "studios/map",
+    }),
+    // How far apart the slot list's start times are (C03 follow-up). null = every session length.
+    getMyBookingSettings: builder.query<BookingSettingsResponse, void>({
+      query: () => "studios/me/booking-settings",
+      providesTags: ["BookingSettings"],
+    }),
+    updateMyBookingSettings: builder.mutation<BookingSettingsResponse, { slotStepMinutes: number | null }>({
+      query: (body) => ({ url: "studios/me/booking-settings", method: "PUT", body }),
+      invalidatesTags: ["BookingSettings"],
     }),
     getMyStudio: builder.query<StudioResponse, void>({
       query: () => "studios/me",
@@ -391,7 +400,14 @@ export const studiosApi = createApi({
   }),
 });
 
+export interface BookingSettingsResponse {
+  slotStepMinutes:    number | null;
+  allowedStepMinutes: number[];
+}
+
 export const {
+  useGetMyBookingSettingsQuery,
+  useUpdateMyBookingSettingsMutation,
   useGetSetupReadinessQuery,
   useConfirmStudioHoursMutation,
   useGetStudioPayModelQuery,

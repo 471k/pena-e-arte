@@ -7610,3 +7610,19 @@ customer consent before a session (a product decision).
   messages, never values (tested). Durable drafts are phase D, specified and not built: they would hold health
   answers and photographs, the subject of the open retention and erasure questions.
 - `noValidate` on the three forms, so the browser's own bubbles don't pre-empt the summary.
+
+## Booking start times: the slot list's step is a studio setting — 2026-11-20
+
+Phi's decision (20 Nov), on Desktop's framing: a step equal to the session length made the list correct but
+sparse (a 3-hour session after a 10:00 booking offered 12:00 and 15:00, never 11:00), and Fresha and Mangomint
+both let a business choose the interval.
+
+- `Studio.BookingSlotStepMinutes` (`int?`, migration `AddStudioBookingSlotStep`). Null = every session length, the
+  existing behaviour, so no studio's list changes until its owner chooses. Choices: 15, 30, 60
+  (`BookingSlotStep.AllowedMinutes`, validated on save).
+- `GET/PUT /api/v1/studios/me/booking-settings` (`OwnerOnly`), its own small contract rather than a new field on
+  `StudioResponse`, which seven handlers build: adding it there would have left five of them returning null.
+- `AvailableSlots` spaces candidates by the studio's step, else the duration. **The step only spaces candidates;
+  every start is still judged by the rule**, and the property test now runs with a random step per studio.
+  The step is read from `Studios` without `IgnoreQueryFilters()`: `Studio` has no tenant filter.
+- Owner UI: "Booking start times" card under Settings → Hours and closures.
