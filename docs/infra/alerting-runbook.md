@@ -116,6 +116,33 @@ uses the success line yet. A "no success in 26 h" rule is a later, one-line addi
    Don't count on that, because it changes if retention starts being enforced. Treat Loki as the
    fallback and the live pod log as the primary source.
 
+## Querying Loki: `| json` silently matches nothing
+
+**Rule: a Loki "we found nothing" is only evidence if the query used a raw line filter (`|=`, `|~`).**
+
+Every line from the API and job containers is stored with the container runtime's CRI prefix in front of the JSON:
+
+```
+2026-11-19T23:26:48.99223891Z stdout F {"@t":"2026-11-19T23:26:48.9916993Z","@mt":"HTTP {RequestMethod} ...","StatusCode":200,...}
+```
+
+LogQL's `| json` parser can't parse a line that starts with `… stdout F`, so a filter such as
+`| json | StatusCode >= 400` **drops every line and returns zero results, with no error**. A query that fails this
+way gives a confident wrong answer, which is worse than one that errors. On 2026-11-20 three such queries
+"showed" no 4xx responses at all in 30 days; the raw filter below found them at once.
+
+- **Use raw filters on the stored text**, e.g. 4xx request lines:
+  `{namespace="tattooos", container="api"} |= "RequestLoggingMiddleware" |~ "\"StatusCode\":4[0-9][0-9]"`.
+  To read fields, export the lines and parse the JSON after the `stdout F ` prefix.
+- **Before trusting zero results, prove the query can match**: run it with the filter loosened to a line you
+  know exists (for example `"RequestPath":"/health/live"`).
+- **Every alert above uses raw filters**, so none of them is affected. Keep it that way: never build an alert or
+  dashboard panel on `| json` against these streams until the fix below is in.
+- **Earlier Loki evidence in this project found lines** (the guest-pending runs, the jobs audit), so it stands.
+  The trap only invalidates negative results.
+- **The fix is hosting, not repo:** a `stage.cri` step in the Alloy log pipeline would strip the prefix. That
+  config isn't in this repository.
+
 ## Manual verification
 
 **Verified end-to-end live on 2026-09-05, with Phi's explicit go-ahead for real downtime.**
