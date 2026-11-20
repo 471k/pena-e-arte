@@ -284,7 +284,7 @@ describe("GuestBookAppointmentForm", () => {
     await uploadImages(user);
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
 
-    expect(await screen.findByText(/Still loading the studio.s time zone/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Still loading the studio.s time zone/)).length).toBeGreaterThan(0);
     expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
   }, FULL_FORM_TIMEOUT);
 
@@ -498,4 +498,60 @@ describe("GuestBookAppointmentForm — open times (C03)", () => {
     await user.type(screen.getByLabelText(/date.*time/i), "2030-03-05T22:00");
     expect(screen.getByLabelText(/date.*time/i)).toHaveValue("2030-03-05T22:00");
   });
+});
+
+// ── S04 (slice 7 phase B): the error summary and keeping what was entered ─────────────────────
+
+describe("GuestBookAppointmentForm — error summary (S04)", () => {
+  it("one submit lists every problem at the top, including the description and both images, and takes focus", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    const summary = await screen.findByRole("alert", { name: /things to fix/i });
+    expect(summary).toHaveFocus();
+    for (const name of [/first name/i, /email/i, /^artist/i, /date & time/i, /what you're looking to get done/i, /area photo/i, /reference images/i]) {
+      expect(within(summary).getByRole("link", { name })).toBeInTheDocument();
+    }
+    expect(mockCreateGuestAppointment).not.toHaveBeenCalled();
+  });
+
+  it("a summary link focuses its field, even one outside the form library", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+    const summary = await screen.findByRole("alert", { name: /things to fix/i });
+
+    await user.click(within(summary).getByRole("link", { name: /what you're looking to get done/i }));
+    expect(screen.getByLabelText(/what are you looking to get done/i)).toHaveFocus();
+  });
+
+  it("never shows what was typed: field names and messages only", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await enter(user, screen.getByLabelText(/^email/i), "not-an-email-secret");
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    const summary = await screen.findByRole("alert", { name: /things to fix/i });
+    expect(summary).not.toHaveTextContent("not-an-email-secret");
+  });
+
+  it("a submit the server refuses keeps every entered value", async () => {
+    mockCreateGuestAppointment.mockReturnValueOnce(Promise.resolve({
+      error: { status: 500, data: { message: "Something went wrong." } },
+    }));
+    const user = userEvent.setup();
+    renderForm();
+    await fillIdentityFields(user);
+    await fillBookingFields(user);
+    await uploadImages(user);
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+
+    expect(await screen.findByText("Something went wrong.")).toBeInTheDocument();
+    expect(screen.getByLabelText(/first name/i)).toHaveValue("Jamie");
+    expect(screen.getByLabelText(/^email/i)).toHaveValue("jamie@example.com");
+    expect(screen.getByLabelText(/what are you looking to get done/i)).toHaveValue("A small rose");
+    expect(screen.getAllByRole("img")).toHaveLength(2);
+  }, FULL_FORM_TIMEOUT);
 });
