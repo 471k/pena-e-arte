@@ -15,6 +15,10 @@ public static class BookingContentValidationRules
     // offered in the booking form.
     public static readonly int[] ValidDurations = [30, 45, 60, 90, 120, 180, 240, 300, 360, 480];
 
+    // How far ahead a booking must start. Read by both create validators and by the slot list
+    // (AvailableSlots, C03), so the list never offers a start the booking would refuse.
+    public const int MinimumLeadMinutes = 30;
+
     // Mirrors CategorizedImagesField's per-category cap.
     public const int MaxImagesPerCategory = 6;
 

@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "@/app/store";
 import type { FileConductReportArgs, ReportableAppointment } from "@/features/conduct-reports/conductReports.types";
 import type { PresignUploadResponse } from "@/shared/api/filesApi";
-import type { SlotAvailabilityResponse } from "@/features/appointments/appointment.types";
+import type { AvailableSlotsResponse, SlotAvailabilityResponse } from "@/features/appointments/appointment.types";
 
 export interface PublicArtistSummary {
   artistId:        string;
@@ -239,6 +239,15 @@ export interface PublicDepositRuleResponse {
   name:          string;
   amountFixed:   number | null;
   amountPercent: number | null;
+}
+
+export interface PublicAvailableSlotsArgs {
+  slug:            string;
+  artistId?:       string;
+  /** Studio-local dates, "YYYY-MM-DD", at most 14 days apart. */
+  from:            string;
+  to:              string;
+  durationMinutes: number;
 }
 
 export interface PublicCheckSlotAvailabilityArgs {
@@ -482,6 +491,14 @@ export const publicApi = createApi({
       }),
       keepUnusedDataFor: 0,
     }),
+    // The guest page's slot list (C03), the public sibling of appointments/available-slots. A preview, never cached.
+    getPublicAvailableSlots: builder.query<AvailableSlotsResponse, PublicAvailableSlotsArgs>({
+      query: ({ slug, artistId, from, to, durationMinutes }) => ({
+        url:    `studios/${slug}/booking/available-slots`,
+        params: { ...(artistId ? { artistId } : {}), from, to, durationMinutes },
+      }),
+      keepUnusedDataFor: 0,
+    }),
     getPublicDepositRule: builder.query<PublicDepositRuleResponse | null, string>({
       query: (slug) => `studios/${slug}/booking/deposit-rule`,
     }),
@@ -531,6 +548,7 @@ export const {
   useFileArtistConductReportMutation,
   useGetPublicBookingArtistsQuery,
   useCheckPublicSlotAvailabilityQuery,
+  useGetPublicAvailableSlotsQuery,
   useGetPublicDepositRuleQuery,
   useGetPublicServicesQuery,
   useCreateGuestAppointmentMutation,

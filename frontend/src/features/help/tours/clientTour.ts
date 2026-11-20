@@ -7,7 +7,7 @@ export function getClientTourSteps(hasMultipleStudios: boolean, showPaymentMetho
     {
       targetSelector: '[data-tour="client-book-nav"]',
       title: "Book an appointment",
-      body: "Request a tattoo appointment here — pick an artist, a date, and how long the session should be, or let the studio choose your artist for you.",
+      body: "Request a tattoo appointment here — pick an artist (or let the studio choose) and how long the session should be, then choose one of the open times.",
     },
     {
       // On My bookings (where the tour runs), so it resolves whenever the client has a booking and is

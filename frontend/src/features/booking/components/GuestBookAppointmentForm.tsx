@@ -15,13 +15,20 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { Money } from "@/shared/components/Money";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
-import { checkStudioTime, studioTimeProblem, studioZoneFrom, toStudioInputValue } from "@/shared/utils/studioDay";
+import {
+  checkStudioTime, studioTimeProblem, studioWallDate, studioWallInstant, studioZoneFrom, toStudioInputValue,
+  type WallDate,
+} from "@/shared/utils/studioDay";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { SlotPicker } from "@/features/appointments/components/SlotPicker";
+import { isSlotTaken, slotRange } from "@/features/appointments/slotList";
 import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { useCategorizedImageUpload } from "@/shared/hooks/useCategorizedImageUpload";
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import {
   useGetPublicBookingArtistsQuery,
   useCheckPublicSlotAvailabilityQuery,
+  useGetPublicAvailableSlotsQuery,
   useGetPublicDepositRuleQuery,
   useGetPublicServicesQuery,
   useGetPublicStudioQuery,
@@ -257,6 +264,30 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
     { skip: debouncedCheck === null },
   );
 
+  // The slot list (C03), read from the public sibling endpoint. A preview, not a reservation: picking a time only
+  // fills the field below, which stays for typing one by hand.
+  const [rangeStartState, setRangeStart] = useState<WallDate | null>(null);
+  const [takenIso, setTakenIso] = useState<string | null>(null);
+  const slotToday = studioTz ? studioWallDate(new Date(), studioTz) : null;
+  const rangeStart = rangeStartState ?? slotToday;
+  const canListSlots = rangeStart !== null && watchedDuration > 0 && (watchedBookAnyArtist || !!watchedArtistId);
+  const slotsQuery = useGetPublicAvailableSlotsQuery(
+    canListSlots && rangeStart
+      ? {
+          slug,
+          artistId: watchedBookAnyArtist ? undefined : (watchedArtistId ?? undefined),
+          ...slotRange(rangeStart),
+          durationMinutes: watchedDuration,
+        }
+      : skipToken,
+  );
+  const pickedIso = watchedDate ? studioWallInstant(watchedDate, studioTz)?.toISOString() ?? null : null;
+
+  function pickSlot(iso: string) {
+    if (!studioTz) return;
+    setValue("scheduledAt", toStudioInputValue(new Date(iso), studioTz), { shouldValidate: true, shouldDirty: true });
+  }
+
   async function onSubmit(values: FormValues) {
     setSubmitError(null);
     setAreaPhotoError(null);
@@ -326,6 +357,12 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       // success screen's copy already covers both ("check your email"; an existing-account
       // guest gets a different email telling them to log in instead).
       setBooked(true);
+    } else if (isSlotTaken(result.error)) {
+      // Someone else booked this time first. Keep everything entered and never move the appointment: say so and
+      // offer the nearest open times from a fresh list.
+      setTakenIso(at.instant.toISOString());
+      setError("scheduledAt", { message: "That time was just booked. Choose another time." });
+      if (canListSlots) void slotsQuery.refetch();
     } else {
       const errMsg = (result.error as { data?: { message?: string } } | undefined)?.data?.message;
       setSubmitError(errMsg ?? "Failed to book appointment. Please try again.");
@@ -502,6 +539,22 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
           )}
         </div>
       )}
+
+      {/* Open times (C03) — fills Date & Time below, which stays for typing a time by hand */}
+      <SlotPicker
+        id="guest-slots"
+        zone={zone}
+        today={slotToday}
+        rangeStart={rangeStart}
+        onRangeStart={setRangeStart}
+        query={canListSlots ? slotsQuery : null}
+        waitingFor={zone.status === "error"
+          ? "Open times need the studio's time zone, which couldn't be loaded."
+          : "Choose an artist, or let the studio choose, to see open times."}
+        selectedIso={pickedIso}
+        onPick={pickSlot}
+        takenIso={takenIso !== null && takenIso === pickedIso ? takenIso : null}
+      />
 
       {/* Date & duration */}
       <div className="grid grid-cols-2 gap-3">

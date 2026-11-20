@@ -31,7 +31,7 @@ public class CreateGuestAppointmentValidator : AbstractValidator<CreateGuestAppo
             .WithMessage(PhoneValidationRules.E164ErrorMessage);
 
         RuleFor(x => x.Request.Booking.Date)
-            .GreaterThan(DateTime.UtcNow.AddMinutes(30))
+            .GreaterThan(DateTime.UtcNow.AddMinutes(BookingContentValidationRules.MinimumLeadMinutes))
             .WithMessage("Appointment must be at least 30 minutes in the future.");
         RuleFor(x => x.Request.Booking.DurationMinutes)
             .Must(d => BookingContentValidationRules.ValidDurations.Contains(d))

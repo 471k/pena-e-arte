@@ -293,6 +293,31 @@ export interface SlotAvailabilityResponse {
   reason:    string | null;
 }
 
+/**
+ * GET /appointments/available-slots and its public sibling (C03). A preview, not a reservation: a start offered here
+ * can be booked by someone else before it's submitted. `days[].date` is a studio-local date ("YYYY-MM-DD");
+ * `starts` are UTC instants to show on the studio's clock. `nextAvailable` is the first start on or after `from`
+ * within 60 days, or null.
+ */
+export interface AvailableSlotsResponse {
+  from:            string;
+  to:              string;
+  durationMinutes: number;
+  stepMinutes:     number;
+  days:            { date: string; starts: string[] }[];
+  nextAvailable:   string | null;
+}
+
+export interface AvailableSlotsParams {
+  artistId?:       string;
+  /** Studio-local dates, "YYYY-MM-DD", at most 14 days apart. */
+  from:            string;
+  to:              string;
+  durationMinutes: number;
+  /** The appointment being rescheduled: its own slot doesn't block it, and starts may be any future time. */
+  excludeAppointmentId?: string;
+}
+
 export interface CheckSlotAvailabilityParams {
   artistId?:       string;
   date:            string;

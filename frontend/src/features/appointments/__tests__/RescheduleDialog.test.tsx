@@ -36,6 +36,8 @@ let slotRequests: URL[] = [];
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/appointments/:id/reschedule-preview", () => HttpResponse.json(preview())),
+  // The slot list (C03): none by default, so the picker shows its empty state and the typed field is used.
+  http.get("http://localhost/api/v1/appointments/available-slots", () => HttpResponse.json({ from: "2026-01-01", to: "2026-01-07", durationMinutes: 60, stepMinutes: 60, days: [], nextAvailable: null })),
   http.get("http://localhost/api/v1/appointments/check-slot", ({ request }) => {
     slotRequests.push(new URL(request.url));
     return HttpResponse.json({ available: true, reason: null });

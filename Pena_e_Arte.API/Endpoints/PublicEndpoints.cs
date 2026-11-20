@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Appointments.Queries;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.ConductReports.Commands;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Public;
@@ -77,6 +78,9 @@ public static class PublicEndpoints
         group.MapGet("/studios/{slug}/booking/artists", GetPublicBookingArtists)
              .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}/booking/availability", CheckPublicSlotAvailability)
+             .AllowAnonymous().RequireRateLimiting("public-read");
+        // C03 (slice 7): the slot list, same policy and rate limit as its yes/no sibling above.
+        group.MapGet("/studios/{slug}/booking/available-slots", GetPublicAvailableSlots)
              .AllowAnonymous().RequireRateLimiting("public-read");
         group.MapGet("/studios/{slug}/booking/deposit-rule", GetPublicDepositRule)
              .AllowAnonymous().RequireRateLimiting("public-read");
@@ -604,6 +608,20 @@ public static class PublicEndpoints
         SlotAvailabilityResult result = await mediator.Send(
             new CheckPublicSlotAvailabilityQuery(slug, artistId, date, durationMinutes), ct);
         return Results.Ok(new SlotAvailabilityResponse(result.Available, result.Reason));
+    }
+
+    private static async Task<IResult> GetPublicAvailableSlots(
+        string slug,
+        Guid? artistId,
+        DateOnly from,
+        DateOnly to,
+        int durationMinutes,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        AvailableSlotsResult result = await mediator.Send(
+            new GetPublicAvailableSlotsQuery(slug, artistId, from, to, durationMinutes), ct);
+        return Results.Ok(result.ToResponse());
     }
 
     private static async Task<IResult> GetPublicDepositRule(

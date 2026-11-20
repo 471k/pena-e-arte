@@ -11,14 +11,20 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { SlotAvailabilityIndicator } from "./SlotAvailabilityIndicator";
+import { SlotPicker } from "./SlotPicker";
 import {
   useRescheduleAppointmentMutation, useCheckSlotAvailabilityQuery, useGetReschedulePreviewQuery,
+  useGetAvailableSlotsQuery,
 } from "../appointmentsApi";
 import type { AppointmentResponse } from "../appointment.types";
+import { isSlotTaken, slotRange } from "../slotList";
 import { useStudioZone } from "@/features/studios/useStudioZone";
 import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
-import { resolveStudioWallTime, toStudioInputValue, type StudioWallTime } from "@/shared/utils/studioDay";
+import {
+  resolveStudioWallTime, studioWallDate, toStudioInputValue, type StudioWallTime, type WallDate,
+} from "@/shared/utils/studioDay";
 
 // Same bounds as RescheduleAppointmentValidator (30–480) and BookAppointmentForm's DURATION_OPTIONS.
 const DURATION_OPTIONS: { value: number; label: string }[] = [
@@ -75,13 +81,34 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
   // otherwise a cancelled edit followed by reopening shows stale draft values. Adjusted during
   // render (not in an effect) per https://react.dev/learn/you-might-not-need-an-effect.
   const [prevOpen, setPrevOpen] = useState(open);
+  const [rangeStartState, setRangeStart] = useState<WallDate | null>(null);
+  const [takenIso, setTakenIso] = useState<string | null>(null);
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
       setEditedDate(null);
       setNewDuration(appointment.durationMinutes);
+      setRangeStart(null);
+      setTakenIso(null);
     }
   }
+
+  // The slot list (C03) with the same choices booking has: open times for this appointment's artist (any artist
+  // when it has none yet) and the chosen duration, its own slot not counting as booked. A preview, not a
+  // reservation: picking a time fills the field below, and the save decides.
+  const slotToday = studioTz ? studioWallDate(new Date(), studioTz) : null;
+  const rangeStart = rangeStartState ?? slotToday;
+  const canListSlots = open && eligible && rangeStart !== null && newDuration > 0;
+  const slotsQuery = useGetAvailableSlotsQuery(
+    canListSlots && rangeStart
+      ? {
+          artistId: appointment.artistId ?? undefined,
+          ...slotRange(rangeStart),
+          durationMinutes: newDuration,
+          excludeAppointmentId: appointment.id,
+        }
+      : skipToken,
+  );
 
   // Debounced slot-availability check for the *new* slot — same 600ms pattern as BookAppointmentForm.
   // excludeAppointmentId keeps the appointment from conflicting with its own current slot, exactly as
@@ -118,6 +145,10 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
     if ("data" in result) {
       toast.success("Appointment rescheduled.");
       onOpenChange(false);
+    } else if (isSlotTaken(result.error)) {
+      // Taken between the list and the save: keep the dialog and its choices, offer the nearest open times.
+      setTakenIso(pickedIso);
+      if (canListSlots) void slotsQuery.refetch();
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -170,6 +201,19 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
 
         {eligible && (
           <div className="space-y-3 py-2">
+            <SlotPicker
+              id="reschedule-slots"
+              zone={zone}
+              today={slotToday}
+              rangeStart={rangeStart}
+              onRangeStart={setRangeStart}
+              query={canListSlots ? slotsQuery : null}
+              waitingFor="Open times need the studio's time zone, which couldn't be loaded."
+              selectedIso={pickedIso}
+              onPick={(iso) => { if (studioTz) setEditedDate(toStudioInputValue(new Date(iso), studioTz)); }}
+              takenIso={takenIso !== null && takenIso === pickedIso ? takenIso : null}
+            />
+
             <div className="space-y-1.5">
               <Label htmlFor="reschedule-date">
                 New date &amp; time {studioTz && <span className="font-normal text-muted-foreground">(studio time, {studioTz})</span>}

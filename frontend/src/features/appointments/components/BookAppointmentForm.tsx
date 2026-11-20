@@ -26,15 +26,22 @@ import { Money }           from "@/shared/components/Money";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { generateUuid }    from "@/shared/utils/uuid";
-import { checkStudioTime, studioTimeProblem, studioWallInstant, studioZoneFrom, toStudioInputValue } from "@/shared/utils/studioDay";
+import {
+  checkStudioTime, studioTimeProblem, studioWallDate, studioWallInstant, studioZoneFrom, toStudioInputValue,
+  type WallDate,
+} from "@/shared/utils/studioDay";
 import type { StudioZone } from "@/shared/utils/formatInStudioTimezone";
 import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { useStudioZone } from "@/features/studios/useStudioZone";
 import { Role }            from "@/shared/types/roles";
+import { skipToken } from "@reduxjs/toolkit/query";
 import {
   useCreateAppointmentMutation,
   useCheckSlotAvailabilityQuery,
+  useGetAvailableSlotsQuery,
 } from "../appointmentsApi";
+import { SlotPicker } from "./SlotPicker";
+import { isSlotTaken, slotRange } from "../slotList";
 import { useRequestCatalogDesignMutation } from "@/features/designs/designsApi";
 import { useGetArtistsQuery }                     from "@/features/artists/artistsApi";
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
@@ -437,6 +444,31 @@ export function BookAppointmentForm() {
     skip: debouncedCheck === null,
   });
 
+  // The slot list (C03): open times for the chosen artist (or any artist) and duration, a week at a time on the
+  // studio's calendar. A preview, not a reservation: picking one only fills the time field below, which stays as
+  // the manual alternative, and the booking itself decides.
+  const [rangeStartState, setRangeStart] = useState<WallDate | null>(null);
+  const [takenIso, setTakenIso] = useState<string | null>(null);
+  const slotToday = studioTz ? studioWallDate(new Date(), studioTz) : null;
+  const rangeStart = rangeStartState ?? slotToday;
+  const canListSlots = studioReady && rangeStart !== null && watchedDuration > 0
+    && (watchedBookAnyArtist || !!watchedArtistId);
+  const slotsQuery = useGetAvailableSlotsQuery(
+    canListSlots && rangeStart
+      ? {
+          artistId: watchedBookAnyArtist ? undefined : (watchedArtistId ?? undefined),
+          ...slotRange(rangeStart),
+          durationMinutes: watchedDuration,
+        }
+      : skipToken,
+  );
+  const pickedIso = watchedDate ? studioWallInstant(watchedDate, studioTz)?.toISOString() ?? null : null;
+
+  function pickSlot(iso: string) {
+    if (!studioTz) return;
+    setValue("scheduledAt", toStudioInputValue(new Date(iso), studioTz), { shouldValidate: true, shouldDirty: true });
+  }
+
   const activeRules = depositRules?.filter((r) => r.isActive) ?? [];
   // The rule the server will apply: CreateAppointmentCommand takes the most recently updated
   // active rule (single-active is enforced; the ordering only matters for legacy data).
@@ -522,6 +554,12 @@ export function BookAppointmentForm() {
       setDesiredPlacement([]);
       setReferralCode("");
       setApplyOwnReward(true);
+    } else if (isSlotTaken(result.error)) {
+      // Someone else booked this time first (the server's post-lock check). Keep everything entered, never move
+      // the appointment: say so, and offer the nearest open times from a fresh list for the person to choose.
+      setTakenIso(at.instant.toISOString());
+      setError("scheduledAt", { message: "That time was just booked. Choose another time." });
+      if (canListSlots) void slotsQuery.refetch();
     } else {
       const errMsg =
         (result.error as { data?: { message?: string } } | undefined)?.data?.message
@@ -849,6 +887,22 @@ export function BookAppointmentForm() {
           )}
         </div>
       )}
+
+      {/* Open times (C03) — fills Date & Time below, which stays for typing a time by hand */}
+      <SlotPicker
+        id="book-slots"
+        zone={zone}
+        today={slotToday}
+        rangeStart={rangeStart}
+        onRangeStart={setRangeStart}
+        query={canListSlots ? slotsQuery : null}
+        waitingFor={zone.status === "error"
+          ? "Open times need the studio's time zone, which couldn't be loaded."
+          : "Choose an artist, or let the studio choose, to see open times."}
+        selectedIso={pickedIso}
+        onPick={pickSlot}
+        takenIso={takenIso !== null && takenIso === pickedIso ? takenIso : null}
+      />
 
       {/* Date & Time + Appointment Duration */}
       <div className="grid grid-cols-2 gap-3">
