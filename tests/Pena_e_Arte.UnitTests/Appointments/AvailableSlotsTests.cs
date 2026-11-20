@@ -180,6 +180,30 @@ public class AvailableSlotsTests
     }
 
     [Fact]
+    public async Task A_studio_step_lets_a_long_session_start_on_the_half_hour_instead_of_only_session_lengths_apart()
+    {
+        // Desktop's example (20 Nov): step = duration means a 3-hour session after a 10:00 booking offers only
+        // 12:00 and 15:00, never 11:00, with the artist free from 11:00.
+        Fixture f = Fixture.Create("UTC");
+        f.Open(Monday.DayOfWeek, 9, 18);
+        Guid artist = f.Artist(Monday.DayOfWeek, 9, 18);
+        f.Booking(artist, At(Monday, 10, "UTC"), 60);
+
+        AvailableSlotsResult everyLength = await f.Find(artist, Monday, Monday, 180);
+        everyLength.StepMinutes.Should().Be(180);
+        everyLength.Days.Single().Starts.Should().Equal(At(Monday, 12, "UTC"), At(Monday, 15, "UTC"));
+
+        (await f.Db.Studios.FindAsync(f.StudioId))!.BookingSlotStepMinutes = 30;
+        await f.Db.SaveChangesAsync();
+
+        AvailableSlotsResult halfHourly = await f.Find(artist, Monday, Monday, 180);
+        halfHourly.StepMinutes.Should().Be(30);
+        // 09:00 and 09:30 would overlap the 10:00 booking; 11:00 to 15:00 every half hour fit before 18:00.
+        halfHourly.Days.Single().Starts.Should().Equal(
+            Enumerable.Range(0, 9).Select(i => At(Monday, 11, "UTC").AddMinutes(30 * i)));
+    }
+
+    [Fact]
     public async Task No_availability_at_all_is_a_usable_empty_answer()
     {
         Fixture f = Fixture.Create("UTC");
@@ -323,6 +347,7 @@ public class AvailableSlotsTests
     {
         public Guid StudioId { get; } = Guid.NewGuid();
         public string Zone { get; private init; } = "UTC";
+        public int? Step { get; private init; }
         public List<Guid> ArtistIds { get; } = [];
         public Dictionary<Guid, List<Guid>> AppointmentIdsByArtist { get; } = [];
         private readonly Dictionary<DayOfWeek, StudioHours> _hours = [];
@@ -331,8 +356,16 @@ public class AvailableSlotsTests
 
         public static RandomStudio Seed(FakeDbContext db, Random rng, string zone, DateOnly from)
         {
-            RandomStudio s = new() { Zone = zone };
-            db.Studios.Add(new Studio { Id = s.StudioId, Name = "R", Slug = $"r-{s.StudioId:N}", OwnerEmail = "o@x.test", Timezone = zone });
+            RandomStudio s = new() { Zone = zone, Step = new int?[] { null, 15, 30, 60 }[rng.Next(4)] };
+            db.Studios.Add(new Studio
+            {
+                Id = s.StudioId,
+                Name = "R",
+                Slug = $"r-{s.StudioId:N}",
+                OwnerEmail = "o@x.test",
+                Timezone = zone,
+                BookingSlotStepMinutes = s.Step,
+            });
 
             TimeSpan HalfHour(int min, int max) => TimeSpan.FromMinutes(30 * rng.Next(min * 2, max * 2 + 1));
 
@@ -444,7 +477,7 @@ public class AvailableSlotsTests
             {
                 if (!_schedules.TryGetValue((artist, day.DayOfWeek), out ArtistSchedule? sched)) continue;
                 TimeSpan anchor = h.StartTime > sched.StartTime ? h.StartTime : sched.StartTime;
-                for (TimeSpan t = anchor; t < TimeSpan.FromDays(1); t += TimeSpan.FromMinutes(duration))
+                for (TimeSpan t = anchor; t < TimeSpan.FromDays(1); t += TimeSpan.FromMinutes(Step ?? duration))
                     yield return TimezoneUtils.StudioLocalToUtcForRules(day.ToDateTime(TimeOnly.MinValue) + t, Zone);
             }
         }

@@ -33,8 +33,9 @@ public sealed record AvailableSlotsResult(
 /// mirrors IsAnyArtistAvailableAsync (active, not deleted artists; nothing excluded). The property tests compare
 /// every start on the grid with those two functions.
 ///
-/// Starts are on a step equal to the duration, from the later of the studio's and the artist's opening time:
-/// there is no studio step setting, and inventing one is a product decision (spec §3.2).
+/// Starts are on the studio's step (Studio.BookingSlotStepMinutes: 15, 30 or 60, Phi 20 Nov), or every session
+/// length when it has none, from the later of the studio's and the artist's opening time. The step only spaces the
+/// candidates; each one is still judged by the rule.
 ///
 /// IgnoreQueryFilters() + explicit studioId on every read: the same approved usage and reason as
 /// ArtistAvailabilityExtensions (registry row for ArtistAvailabilityExtensions in architecture.md) — called from the
@@ -63,6 +64,12 @@ public static class AvailableSlots
         if (horizonEnd < to) horizonEnd = to;
 
         string? timezone = await db.StudioTimezoneAsync(studioId, ct);
+        // Studio has no tenant query filter (as CreateAppointmentCoreAsync relies on), so no bypass is needed here.
+        int? configuredStep = await db.Studios
+            .Where(s => s.Id == studioId)
+            .Select(s => s.BookingSlotStepMinutes)
+            .FirstOrDefaultAsync(ct);
+        int stepMinutes = configuredStep ?? durationMinutes;
         DateTime localFrom = from.ToDateTime(TimeOnly.MinValue);
         DateTime localHorizonEnd = horizonEnd.ToDateTime(TimeOnly.MinValue);
 
@@ -87,7 +94,7 @@ public static class AvailableSlots
                 .ToListAsync(ct);
 
         if (artistIds.Count == 0)
-            return Empty(from, to, durationMinutes);
+            return Empty(from, to, durationMinutes, stepMinutes);
 
         Dictionary<(Guid ArtistId, DayOfWeek Day), ArtistSchedule> scheduleByArtistDay =
             (await db.ArtistSchedules.IgnoreQueryFilters()
@@ -127,23 +134,24 @@ public static class AvailableSlots
             bool inRange = day <= to;
             if (!inRange && next is not null) break;
 
-            List<DateTime> starts = StartsOn(snapshot, day, durationMinutes, earliestStartUtc);
+            List<DateTime> starts = StartsOn(snapshot, day, durationMinutes, stepMinutes, earliestStartUtc);
             if (inRange) days.Add(new AvailableSlotsDay(day, starts));
             if (next is null && starts.Count > 0) next = starts[0];
         }
 
-        return new AvailableSlotsResult(from, to, durationMinutes, durationMinutes, days, next);
+        return new AvailableSlotsResult(from, to, durationMinutes, stepMinutes, days, next);
     }
 
-    private static AvailableSlotsResult Empty(DateOnly from, DateOnly to, int durationMinutes)
+    private static AvailableSlotsResult Empty(DateOnly from, DateOnly to, int durationMinutes, int stepMinutes)
     {
         List<AvailableSlotsDay> days = [];
         for (DateOnly day = from; day <= to; day = day.AddDays(1))
             days.Add(new AvailableSlotsDay(day, []));
-        return new AvailableSlotsResult(from, to, durationMinutes, durationMinutes, days, null);
+        return new AvailableSlotsResult(from, to, durationMinutes, stepMinutes, days, null);
     }
 
-    private static List<DateTime> StartsOn(Snapshot s, DateOnly day, int durationMinutes, DateTime earliestStartUtc)
+    private static List<DateTime> StartsOn(
+        Snapshot s, DateOnly day, int durationMinutes, int stepMinutes, DateTime earliestStartUtc)
     {
         if (!s.HoursByDay.TryGetValue(day.DayOfWeek, out StudioHours? hours) || !hours.IsOpen)
             return [];
@@ -152,7 +160,7 @@ public static class AvailableSlots
         // bookable that the rule refuses.
         SortedSet<DateTime> candidates = [];
         DateTime localMidnight = day.ToDateTime(TimeOnly.MinValue);
-        TimeSpan step = TimeSpan.FromMinutes(durationMinutes);
+        TimeSpan step = TimeSpan.FromMinutes(stepMinutes);
         foreach (Guid artist in s.ArtistIds)
         {
             if (!s.ScheduleByArtistDay.TryGetValue((artist, day.DayOfWeek), out ArtistSchedule? schedule))

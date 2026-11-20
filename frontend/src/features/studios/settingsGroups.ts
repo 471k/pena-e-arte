@@ -11,7 +11,7 @@
 
 export const SETTINGS_GROUPS = [
   { id: "profile",       title: "Business details",        summary: "Studio URL, name, address, map location, timezone and social accounts" },
-  { id: "hours",         title: "Hours and closures",      summary: "When clients can book, and dates the whole studio is closed" },
+  { id: "hours",         title: "Hours and closures",      summary: "When clients can book, how far apart start times are, and dates the whole studio is closed" },
   { id: "money",         title: "Payments and artist pay", summary: "Currency, card deposits with POK, and how artists get paid" },
   { id: "booking",       title: "Online booking",          summary: "The booking widget for your website, its “Powered by TattooOS” line, and your QR code" },
   { id: "notifications", title: "Notifications",           summary: "Which emails and texts go out when something happens in your studio" },
