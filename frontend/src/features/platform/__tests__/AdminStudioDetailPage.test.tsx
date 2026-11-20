@@ -175,7 +175,7 @@ function renderPage(studioId = "s1", listSearch?: string) {
       <MemoryRouter initialEntries={[{ pathname: `/platform/studios/${studioId}`, state: listSearch ? { listSearch } : null }]}>
         <Routes>
           <Route path="/platform/studios/:studioId" element={<AdminStudioDetailPage />} />
-          <Route path="/dashboard" element={<div data-testid="dashboard-landed" />} />
+          <Route path="/schedule" element={<div data-testid="support-landed" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -503,7 +503,7 @@ describe("AdminStudioDetailPage", () => {
       expect(screen.getByRole("button", { name: /start impersonating/i })).toBeDisabled();
     });
 
-    it("submitting a valid reason starts the session and navigates to /dashboard", async () => {
+    it("submitting a valid reason starts the session and lands on the schedule (D05: the dashboard's reads aren't allowed in a support session)", async () => {
       let capturedBody: { reasonCode?: string } | null = null;
       const accessToken = fakeImpersonationJwt();
       server.use(
@@ -523,11 +523,12 @@ describe("AdminStudioDetailPage", () => {
       await user.type(screen.getByLabelText(/reason/i), "Investigating ticket #42");
       await user.click(screen.getByRole("button", { name: /start impersonating/i }));
 
-      expect(await screen.findByTestId("dashboard-landed")).toBeInTheDocument();
+      expect(await screen.findByTestId("support-landed")).toBeInTheDocument();
       expect(capturedBody).toEqual({ reasonCode: "Investigating ticket #42" });
       expect(store.getState().auth.impersonation).toEqual({
         sessionId: "sess-1", studioId: "s1", studioName: "Ink Soul",
         expiresAt: expect.any(String),
+        reason: "Investigating ticket #42",
       });
       expect(store.getState().auth.token).toBe(accessToken);
     });
@@ -544,7 +545,7 @@ describe("AdminStudioDetailPage", () => {
       await user.type(screen.getByLabelText(/reason/i), "Investigating ticket #42");
       await user.click(screen.getByRole("button", { name: /start impersonating/i }));
 
-      expect(screen.queryByTestId("dashboard-landed")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("support-landed")).not.toBeInTheDocument();
       // Still on the studio detail page, reason form remains
       expect(await screen.findByLabelText(/reason/i)).toBeInTheDocument();
     });

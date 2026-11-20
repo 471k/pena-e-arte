@@ -239,6 +239,7 @@ describe("authSlice — startImpersonation / endImpersonation", () => {
       studioId: "studio-target",
       studioName: "Ink & Iron",
       expiresAt: new Date(EXP_FUTURE * 1000).toISOString(),
+      reason: "Checking a support ticket",
     }));
 
     const s = store.getState().auth;
@@ -247,7 +248,7 @@ describe("authSlice — startImpersonation / endImpersonation", () => {
     expect(s.role).toBe("admin");
     expect(s.impersonation).toEqual({
       sessionId: "session-123", studioId: "studio-target",
-      studioName: "Ink & Iron", expiresAt: new Date(EXP_FUTURE * 1000).toISOString(),
+      studioName: "Ink & Iron", expiresAt: new Date(EXP_FUTURE * 1000).toISOString(), reason: "Checking a support ticket",
     });
     expect(sessionStorage.getItem("auth_token")).toBe(impToken);
   });
@@ -268,7 +269,7 @@ describe("authSlice — startImpersonation / endImpersonation", () => {
     });
     store.dispatch(startImpersonation({
       accessToken: impToken, sessionId: "session-123", studioId: "studio-target",
-      studioName: "Ink & Iron", expiresAt: new Date(EXP_FUTURE * 1000).toISOString(),
+      studioName: "Ink & Iron", expiresAt: new Date(EXP_FUTURE * 1000).toISOString(), reason: "Checking a support ticket",
     }));
 
     const stash = JSON.parse(sessionStorage.getItem("auth_impersonation_stash")!);
@@ -291,7 +292,7 @@ describe("authSlice — startImpersonation / endImpersonation", () => {
     });
     store.dispatch(startImpersonation({
       accessToken: impToken, sessionId: "session-123", studioId: "studio-target",
-      studioName: "Ink & Iron", expiresAt: new Date(EXP_FUTURE * 1000).toISOString(),
+      studioName: "Ink & Iron", expiresAt: new Date(EXP_FUTURE * 1000).toISOString(), reason: "Checking a support ticket",
     }));
 
     store.dispatch(endImpersonation());
@@ -331,7 +332,8 @@ describe("authSlice — startImpersonation / endImpersonation", () => {
     const { configureStore } = await import("@reduxjs/toolkit");
     const store = configureStore({ reducer: { auth: authReducer } });
 
-    expect(store.getState().auth.impersonation).toEqual(meta);
+    // A meta saved before the reason was kept restores with the reason unknown, not missing.
+    expect(store.getState().auth.impersonation).toEqual({ ...meta, reason: null });
   });
 
   it("loadInitialState without impersonation meta still shows the banner defensively", async () => {

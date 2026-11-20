@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Loader2, MessageSquareMore } from "lucide-react";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -15,7 +16,6 @@ import { FEEDBACK_TYPE, FEEDBACK_STATUS } from "../feedback.types";
 import type { FeedbackReportResponse, FeedbackType, FeedbackStatus } from "../feedback.types";
 import { SupportTicketThread } from "./SupportTicketThread";
 
-const TYPE_FILTERS = ["all", ...Object.values(FEEDBACK_TYPE)] as const;
 const STATUS_FILTERS = ["all", ...Object.values(FEEDBACK_STATUS)] as const;
 
 const TYPE_LABEL: Record<FeedbackType, string> = {
@@ -147,16 +147,69 @@ function FeedbackCard({ report }: FeedbackCardProps) {
   );
 }
 
+// D06: support work and product-feedback reading are two jobs, so they are two views. Support triage holds what
+// needs an answer (support requests and bug reports), defaulting to what still needs action, oldest first like any
+// support queue. Product feedback holds feature requests and general notes, newest first, to read rather than work.
+// Only enum values go in the URL (?view, ?type, ?status) — never a name, note or search term.
+type InboxView = "support" | "feedback";
+const VIEW_TYPES: Record<InboxView, FeedbackType[]> = {
+  support:  [FEEDBACK_TYPE.SupportRequest, FEEDBACK_TYPE.BugReport],
+  feedback: [FEEDBACK_TYPE.FeatureRequest, FEEDBACK_TYPE.General],
+};
+const VIEW_LABEL: Record<InboxView, string> = { support: "Support triage", feedback: "Product feedback" };
+/** Not a server status: Open or Reviewing, the triage default. */
+const NEEDS_ACTION = "needs-action";
+type StatusChoice = (typeof STATUS_FILTERS)[number] | typeof NEEDS_ACTION;
+
+function parseView(value: string | null): InboxView {
+  return value === "feedback" ? "feedback" : "support";
+}
+
 export function FeedbackInboxPage() {
   useDocumentMeta({ title: "Feedback Inbox — TattooOS", canonical: "/platform/feedback" });
 
-  const [typeFilter, setTypeFilter]     = useState<(typeof TYPE_FILTERS)[number]>("all");
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");
+  const [params, setParams] = useSearchParams();
+  const view = parseView(params.get("view"));
+  const viewTypes = VIEW_TYPES[view];
+  const rawType = params.get("type");
+  const typeFilter: FeedbackType | "all" =
+    rawType && (viewTypes as string[]).includes(rawType) ? (rawType as FeedbackType) : "all";
+  const rawStatus = params.get("status");
+  const statusChoices: StatusChoice[] = view === "support" ? [NEEDS_ACTION, ...STATUS_FILTERS] : [...STATUS_FILTERS];
+  const statusFilter: StatusChoice = rawStatus && (statusChoices as string[]).includes(rawStatus)
+    ? (rawStatus as StatusChoice)
+    : view === "support" ? NEEDS_ACTION : "all";
 
-  const { data: reports, isLoading, isError, refetch } = useGetFeedbackReportsQuery({
+  function update(next: Partial<Record<"view" | "type" | "status", string | null>>) {
+    setParams((current) => {
+      const merged = new URLSearchParams(current);
+      for (const [key, value] of Object.entries(next)) {
+        if (value === null) merged.delete(key);
+        else merged.set(key, value);
+      }
+      return merged;
+    }, { replace: true });
+  }
+
+  const serverStatus = statusFilter === "all" || statusFilter === NEEDS_ACTION ? undefined : statusFilter;
+  const { data, isLoading, isError, refetch } = useGetFeedbackReportsQuery({
     type:   typeFilter === "all" ? undefined : typeFilter,
-    status: statusFilter === "all" ? undefined : statusFilter,
+    status: serverStatus,
   });
+
+  const reports = useMemo(() => {
+    if (!data) return undefined;
+    const inView = data.filter((r) =>
+      viewTypes.includes(r.type)
+      && (statusFilter !== NEEDS_ACTION || r.status === FEEDBACK_STATUS.Open || r.status === FEEDBACK_STATUS.Reviewing));
+    const byCreated = (a: FeedbackReportResponse, b: FeedbackReportResponse) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return [...inView].sort(view === "support" ? byCreated : (a, b) => byCreated(b, a));
+  }, [data, viewTypes, statusFilter, view]);
+
+  const emptyText = view === "support"
+    ? statusFilter === NEEDS_ACTION ? "Nothing needs action: no open support requests or bug reports." : "No support requests or bug reports here."
+    : "No product feedback here.";
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,12 +225,32 @@ export function FeedbackInboxPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
 
+        <div role="tablist" aria-label="Inbox view" className="flex gap-1 border-b">
+          {(["support", "feedback"] as const).map((v) => (
+            <button
+              key={v}
+              role="tab"
+              type="button"
+              aria-selected={view === v}
+              onClick={() => update({ view: v, type: null, status: null })}
+              className={cn(
+                "px-3 py-2 text-sm -mb-px border-b-2 transition-colors",
+                view === v ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {VIEW_LABEL[v]}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-col gap-2">
           <div className="flex gap-1 flex-wrap">
-            {TYPE_FILTERS.map((t) => (
+            {(["all", ...viewTypes] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setTypeFilter(t)}
+                type="button"
+                aria-pressed={typeFilter === t}
+                onClick={() => update({ type: t === "all" ? null : t })}
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full border transition-colors",
                   typeFilter === t
@@ -190,10 +263,12 @@ export function FeedbackInboxPage() {
             ))}
           </div>
           <div className="flex gap-1 flex-wrap">
-            {STATUS_FILTERS.map((s) => (
+            {statusChoices.map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                type="button"
+                aria-pressed={statusFilter === s}
+                onClick={() => update({ status: s })}
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full border transition-colors",
                   statusFilter === s
@@ -201,7 +276,7 @@ export function FeedbackInboxPage() {
                     : "hover:bg-muted border-border"
                 )}
               >
-                {s === "all" ? "All Statuses" : s}
+                {s === "all" ? "All Statuses" : s === NEEDS_ACTION ? "Needs action" : s}
               </button>
             ))}
           </div>
@@ -223,7 +298,7 @@ export function FeedbackInboxPage() {
         {!isLoading && !isError && reports && reports.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <MessageSquareMore className="h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">No feedback yet.</p>
+            <p className="text-sm text-muted-foreground">{emptyText}</p>
           </div>
         )}
 
