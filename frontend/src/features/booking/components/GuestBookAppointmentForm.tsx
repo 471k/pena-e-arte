@@ -222,6 +222,8 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
     formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    // S04: the error summary takes focus after a failed submit; the form library must not move it to a field after.
+    shouldFocusError: false,
     defaultValues: {
       firstName: "", lastName: "", email: "", phone: "", marketingOptIn: false,
       artistId: "", bookAnyArtist: false, durationMinutes: 60, serviceId: null,

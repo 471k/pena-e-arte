@@ -194,6 +194,8 @@ export function SubmitIntakeFormPage() {
     formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver:      zodResolver(schema),
+    // S04: the error summary takes focus after a failed submit; the form library must not move it to a field after.
+    shouldFocusError: false,
     // ?appointmentId= pre-selects the appointment (the client appointment page's readiness links here).
     defaultValues: { consentAccepted: false, appointmentId: preselectedAppointmentId },
   });

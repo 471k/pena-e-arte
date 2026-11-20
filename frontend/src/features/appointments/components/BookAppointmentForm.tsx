@@ -382,6 +382,8 @@ export function BookAppointmentForm() {
     reset: resetForm,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
+    // S04: the error summary takes focus after a failed submit; the form library must not move it to a field after.
+    shouldFocusError: false,
     defaultValues: {
       artistId:        "",
       bookAnyArtist:   false,
