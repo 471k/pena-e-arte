@@ -7,6 +7,8 @@ import { Archive, ArchiveRestore, ChevronRight, Download, MoreVertical, Plus, Se
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { LiveAnnouncement } from "@/shared/components/LiveAnnouncement";
+import { useResultCountAnnouncement } from "@/shared/hooks/useResultCountAnnouncement";
 import { RecordLink } from "@/shared/components/RecordLink";
 import { DataTable } from "@/shared/components/DataTable";
 import {
@@ -105,7 +107,7 @@ export function ClientListPage() {
     return () => clearTimeout(id);
   }, [inputValue]);
 
-  const { data: clients, isLoading, isError } = useGetClientsQuery({ search, includeArchived: showArchived });
+  const { data: clients, isLoading, isFetching, isError } = useGetClientsQuery({ search, includeArchived: showArchived });
   const { data: artists } = useGetArtistsQuery(undefined);
   const errorMessage = useSuspensionAwareError(isError, "Failed to load clients. Please try again.");
 
@@ -116,6 +118,12 @@ export function ClientListPage() {
   });
 
   const isFiltered = !!search || artistFilter !== "all";
+  const resultAnnouncement = useResultCountAnnouncement({
+    queryKey: `${search ?? ""}|${showArchived}|${artistFilter}`,
+    count:    filteredClients.length,
+    settled:  !isFetching && !isError,
+    noun:     { one: "client", many: "clients" },
+  });
   const hasAnyClients = (clients?.length ?? 0) > 0;
 
   const selectedArtistName = artists?.find((a) => a.id === artistFilter);
@@ -196,6 +204,8 @@ export function ClientListPage() {
             Show archived
           </label>
         </div>
+
+        <LiveAnnouncement message={resultAnnouncement} />
 
         {isLoading && (
           <div className="space-y-0">

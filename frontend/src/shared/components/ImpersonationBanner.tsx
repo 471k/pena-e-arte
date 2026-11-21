@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { endImpersonation } from "@/features/auth/authSlice";
 import { clearImpersonationScopeError } from "@/features/ui/uiSlice";
 import { useEndImpersonationSessionMutation } from "@/features/platform/platformApi";
+import { LiveAnnouncement } from "@/shared/components/LiveAnnouncement";
 import { expiryAnnouncement, formatRemaining, msUntil } from "@/shared/utils/supportSessionTime";
 
 /// Persistent, unmissable "Viewing as {studio}" banner for an active Support Impersonation
@@ -55,7 +56,7 @@ export function ImpersonationBanner() {
         </span>
         {/* Visible countdown, deliberately NOT live: it changes every second. */}
         <span className="text-white/80 text-xs tabular-nums" aria-hidden="true">{formatRemaining(msLeft)}</span>
-        <span className="sr-only" aria-live="polite" aria-atomic="true">{expiryAnnouncement(msLeft)}</span>
+        <LiveAnnouncement message={expiryAnnouncement(msLeft)} />
         <span className="flex-1" />
         <button
           type="button"

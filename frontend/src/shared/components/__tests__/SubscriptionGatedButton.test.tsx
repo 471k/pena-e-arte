@@ -41,10 +41,13 @@ describe("SubscriptionGatedButton", () => {
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
   });
 
-  it("button is disabled when gated", () => {
+  it("button refuses when gated, but stays focusable so it can explain itself (slice 6a)", () => {
     mockGuard.mockReturnValue({ isReadOnly: true, cause: "subscription" });
     renderButton();
-    expect(screen.getByRole("button", { name: "Click me" })).toBeDisabled();
+    const button = screen.getByRole("button", { name: "Click me" });
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAccessibleDescription(/subscription is inactive/i);
   });
 
   it("button is not disabled when not gated and no disabled prop", () => {
@@ -56,7 +59,7 @@ describe("SubscriptionGatedButton", () => {
     mockGuard.mockReturnValue({ isReadOnly: true, cause: "subscription" });
     renderButton();
     const tooltip = screen.getByRole("tooltip");
-    expect(tooltip.textContent).toMatch(/subscription inactive/i);
+    expect(tooltip.textContent).toMatch(/subscription is inactive/i);
   });
 
   it("tooltip shows suspended message when cause is suspended", () => {

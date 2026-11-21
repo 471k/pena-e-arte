@@ -15,11 +15,14 @@ import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "@/features/help/onboardingApi";
 import { messagingApi } from "@/features/messaging/messagingApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 import { ClientLayout } from "@/layouts/ClientLayout";
 
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // S08: the header names the client's active studio.
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s1", name: "Tinta & Alma", timezone: "Europe/Tirane" })),
   http.get("http://localhost/api/v1/notifications", () =>
     HttpResponse.json([]),
   ),
@@ -74,10 +77,11 @@ function makeStore(overrides: StoreOverrides = {}) {
       [onboardingApi.reducerPath]:     onboardingApi.reducer,
       [messagingApi.reducerPath]:      messagingApi.reducer,
       [paymentsApi.reducerPath]:       paymentsApi.reducer,
+      [studiosApi.reducerPath]:        studiosApi.reducer,
     },
     middleware: (gd) => gd().concat(
       notificationsApi.middleware, authApi.middleware, onboardingApi.middleware, messagingApi.middleware,
-      paymentsApi.middleware,
+      paymentsApi.middleware, studiosApi.middleware,
     ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,6 +139,11 @@ describe("ClientLayout", () => {
   it("renders the brand name", () => {
     renderLayout();
     expect(screen.getByText("TattooOS")).toBeInTheDocument();
+  });
+
+  it("names the client's active studio in the header (S08)", async () => {
+    renderLayout();
+    expect(await within(screen.getByRole("banner")).findByText("Tinta & Alma")).toBeInTheDocument();
   });
 
   it("renders the client nav links, categorised", async () => {

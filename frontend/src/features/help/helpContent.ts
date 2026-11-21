@@ -8,7 +8,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "navigation-sidebar",
     roles: [Client, Artist, Owner, Admin],
     title: "Find your way around: the sidebar",
-    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find"],
+    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find", "which studio", "studio name", "current studio", "greyed out", "disabled button", "why can't i click"],
     summary: "Every screen is reached from the vertical menu on the left. Related pages are grouped into categories that expand and collapse, and the whole menu scrolls if it's long.",
     steps: [
       "On a computer, the menu sits on the left side of every page. On a phone or small tablet, tap the menu button (three lines) at the top left to slide it open.",
@@ -23,6 +23,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Ctrl+B does nothing while you're typing in a text box, so it never gets in the way of writing.",
       "Owners who also have their own artist profile see a separate artist menu when they switch to \"Artist\" at the top of the page.",
       "On a phone the top bar shows just your initial next to the account menu (tap it for change password, change email and log out) and, on very narrow screens, hides the TattooOS name — so everything fits without the page scrolling sideways.",
+      "The top bar names the studio you're working in, next to the TattooOS name. On a phone or small tablet there's no room for it there, so open the menu (three lines): its top line names the studio and your role. If you belong to more than one studio, that's how to check which one you're in before you change anything.",
+      "A button you can't use right now says why. Hover over it, or move to it with the Tab key, and the reason appears just under it (a screen reader reads it too). For example, while a studio's subscription is inactive, Save on some pages explains that changes can't be saved instead of just looking faded.",
     ],
   },
   // ── Client ──────────────────────────────────────────────────────────────
@@ -36,7 +38,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "You don't need an account first — open a studio's page and click \"Book\", or go straight to a booking link. If you're not signed in, fill in your name, email, and phone (the country code next to the phone field starts on the studio's own country — change it if your number is from elsewhere; with the list focused, typing a country's first letters jumps to it); an account is created for you automatically and you'll get an email to set a password afterward.",
       "If a banner asks you to verify your email, click \"Resend verification email\" (you must verify before your booking is finalized).",
-      "In the \"Book an appointment\" card, choose an artist (or let the studio choose) and a duration, then choose a time under \"Open times\": it lists the times free for that artist and duration, spaced as the studio chooses (every session length, or every 15 or 30 minutes or hour), a week at a time, with arrows for earlier and later dates and a \"Next open time\" button when a week has none. Choosing one fills \"Date & Time\"; you can also type a time there yourself, which is what to do if the list can't load. An open time is a preview, not a hold: it's only yours once you submit.",
+      "In the \"Book an appointment\" card, choose an artist (or let the studio choose) and a duration, then choose a time under \"Open times\": it lists the times free for that artist and duration, spaced as the studio chooses (every session length, or every 15 or 30 minutes or hour), a week at a time, with arrows for earlier and later dates and a \"Next open time\" button when a week has none. Choosing one fills \"Date & Time\"; you can also type a time there yourself, which is what to do if the list can't load, and a live check under it then says whether that time is free. An open time is a preview, not a hold: it's only yours once you submit.",
       "If someone else books your time before you submit, the form says so, keeps everything you entered, and shows the nearest open times for you to choose from. It never moves your booking to another time on its own.",
       "The time is the studio's local time: the field's label names the studio's time zone, and if you're somewhere else a line underneath says what that is in your own time. A time the clocks skip that night (when they go forward) can't be booked; a time that happens twice (when they go back) uses the first of the two, and the form says so.",
       "If the studio offers a Service (e.g. \"New Tattoo Session\", \"Touch-Up\"), pick one — its duration is set automatically and can't be changed, and if it has its own deposit, that replaces the studio's regular deposit. Pick \"Custom\" instead to choose your own duration, same as before.",
@@ -1759,6 +1761,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tips: [
       "Unlike a full suspension, a past-due account can usually still be used while you sort out billing — check the banner for specifics.",
+      "Where a page can't save while the subscription needs attention (for example Studio Settings or adding an artist), its Save button stays on screen and says why when you hover over it or move to it with the Tab key.",
       "If reminder emails keep arriving after you've already fixed billing, contact support — there may be a delay in the payment reflecting on our side.",
     ],
     relatedArticleIds: ["owner-billing"],

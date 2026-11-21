@@ -35,6 +35,7 @@ import { HelpMenu } from "@/features/help";
 import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
+import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
 
@@ -243,6 +244,7 @@ export function OwnerLayout() {
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
         <Wordmark className="max-[359px]:hidden" />
+        <StudioContextLabel variant="header" />
 
         {hasArtistProfile && myArtist && (
           <div className="hidden sm:flex ml-2 shrink-0">
@@ -255,6 +257,7 @@ export function OwnerLayout() {
         <NavDrawer
           sections={navSections}
           title="TattooOS"
+          context={<StudioContextLabel variant="drawer" />}
           open={navOpen}
           onOpenChange={setNavOpen}
           revealTourId={revealTourId}

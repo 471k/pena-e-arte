@@ -647,9 +647,11 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
         </div>
       </div>
 
-      {debouncedCheck !== null && (
-        <SlotAvailabilityIndicator checking={checkingSlot} status={slotStatus} />
-      )}
+      {/* Always mounted: it holds the live region that announces the result (S06). */}
+      <SlotAvailabilityIndicator
+        checking={debouncedCheck !== null && checkingSlot}
+        status={debouncedCheck !== null ? slotStatus : undefined}
+      />
 
       {selectedService && selectedService.depositAmount !== null ? (
         <ServiceDepositPreview service={selectedService} currency={publicStudio?.currency} studio={moneyStudio} />
