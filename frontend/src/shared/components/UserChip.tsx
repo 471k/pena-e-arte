@@ -1,12 +1,5 @@
 import { useAppSelector } from "@/app/hooks";
-import type { Role } from "@/shared/types/roles";
-
-const ROLE_LABELS: Record<Role, string> = {
-  client:  "Client",
-  artist:  "Artist",
-  owner:   "Owner",
-  admin:   "Admin",
-};
+import { ROLE_LABELS } from "@/shared/constants/roleLabels";
 
 export function UserChip() {
   const user = useAppSelector((s) => s.auth.user);

@@ -417,6 +417,22 @@ or test name. Check width and spacing too, not height alone.
 - Never access Redux state outside of components/hooks — no store imports in utilities.
 - Export components as named exports, not default (easier refactoring).
 
+### Component states (slice 6a)
+
+The 8 states (default, hover, focus-visible, pressed/selected, disabled-with-explanation, loading, error, settled
+success) live in the shared primitives, so use them rather than re-creating them:
+
+- **A control that can't be used right now says why:** `<Button disabledReason="...">`. It stays focusable and the
+  reason shows on hover and keyboard focus and is read as its description. A `title` is not a reason (no keyboard,
+  no touch). If you can't give a reason, don't disable the control: leave it out, or let it refuse with a message.
+- **A running action:** `<Button loading>`, not `disabled={isLoading}`. Disabling a focused button drops keyboard
+  focus to the page; `loading` keeps it and refuses repeat clicks.
+- **A field in error:** set `aria-invalid` on `Input`/`Textarea`/`SelectTrigger` and it looks invalid by itself.
+- **Announcing a status:** `LiveAnnouncement` only, mounted before its text changes. Announce what the person caused,
+  once, politely; never announce a ticking value on every tick (pass a message that changes only at thresholds).
+  For a list's result count after a search or filter, use `useResultCountAnnouncement`.
+- Selected state (`aria-pressed`/`aria-selected`) stays the caller's styling: several toggles switch variant on it.
+
 ---
 
 ## Testing "X never appears before Y"

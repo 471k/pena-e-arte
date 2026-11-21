@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from "@/shared/components/ui/sheet";
 import { SidebarNav } from "@/shared/components/SidebarNav";
 import { isOnboardingTourEvent } from "@/shared/utils/onboardingTourDom";
@@ -18,10 +18,12 @@ interface NavDrawerProps {
   modal?: boolean;
   /** Rendered above the nav sections, e.g. the owner's Owner/Artist switch, which a phone has nowhere else. */
   top?: ReactNode;
+  /** Which studio and role this is (S08): below `sm` the header has no room for it, so the drawer says it. */
+  context?: ReactNode;
 }
 
 /** Below `lg` the sidebar is replaced by this slide-in drawer, rendering the same sections and groups. */
-export function NavDrawer({ sections, title, open, onOpenChange, revealTourId, modal = true, top }: NavDrawerProps) {
+export function NavDrawer({ sections, title, open, onOpenChange, revealTourId, modal = true, top, context }: NavDrawerProps) {
   return (
     <>
       <Button
@@ -44,6 +46,7 @@ export function NavDrawer({ sections, title, open, onOpenChange, revealTourId, m
         >
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
+            {context && <SheetDescription asChild><div>{context}</div></SheetDescription>}
           </SheetHeader>
           {top && <div className="mt-2 px-1">{top}</div>}
           <div className="mt-2">

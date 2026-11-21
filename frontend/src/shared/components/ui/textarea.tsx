@@ -12,6 +12,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           "ring-offset-background placeholder:text-muted-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:cursor-not-allowed disabled:opacity-50",
+          // Error state by construction: a field marked aria-invalid looks invalid (slice 6a).
+          "aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive",
           className
         )}
         ref={ref}

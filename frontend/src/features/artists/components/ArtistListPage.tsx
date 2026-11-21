@@ -8,6 +8,8 @@ import { Input } from "@/shared/components/ui/input";
 import { MoneyInput } from "@/shared/components/ui/money-input";
 import { Label } from "@/shared/components/ui/label";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { LiveAnnouncement } from "@/shared/components/LiveAnnouncement";
+import { useResultCountAnnouncement } from "@/shared/hooks/useResultCountAnnouncement";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
@@ -66,7 +68,7 @@ export function ArtistListPage() {
     return () => clearTimeout(id);
   }, [inputValue]);
 
-  const { data: artists, isLoading, isError } = useGetArtistsQuery(search);
+  const { data: artists, isLoading, isFetching, isError } = useGetArtistsQuery(search);
   const { currency: studioCurrency } = useStudioCurrency();
   const errorMessage = useSuspensionAwareError(isError, "Failed to load artists. Please try again.");
   // Plan usage endpoint is OwnerOnly — skip for artist role to avoid a guaranteed 403.
@@ -137,6 +139,12 @@ export function ArtistListPage() {
     if (!selectedSpec) return artists;
     return artists.filter((a) => a.specializations.includes(selectedSpec));
   }, [artists, selectedSpec]);
+  const resultAnnouncement = useResultCountAnnouncement({
+    queryKey: `${search ?? ""}|${selectedSpec ?? ""}`,
+    count:    filteredArtists.length,
+    settled:  !isFetching && !isError,
+    noun:     { one: "artist", many: "artists" },
+  });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -316,6 +324,8 @@ export function ArtistListPage() {
             </Button>
           </div>
         )}
+
+        <LiveAnnouncement message={resultAnnouncement} />
 
         {isLoading && (
           <div className="space-y-0">

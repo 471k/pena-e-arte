@@ -20,6 +20,7 @@ import { HelpMenu } from "@/features/help";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
 import { Wordmark } from "@/shared/components/Wordmark";
+import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
 
 const ICON = "h-4 w-4";
 
@@ -109,8 +110,9 @@ export function ClientLayout() {
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
         <Wordmark className="max-[359px]:hidden" />
+        <StudioContextLabel variant="header" />
 
-        <NavDrawer sections={sections} title="TattooOS" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
+        <NavDrawer sections={sections} title="TattooOS" context={<StudioContextLabel variant="drawer" />} open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-3">
           <HelpMenu

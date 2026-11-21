@@ -7635,3 +7635,39 @@ the trial date. `ExtendTrialHandler` refuses with a 422 (`CancelledMessage`) nam
 active subscription, e.g. a cash payment recorded with Activate), and `TRIAL_EXTENDABLE` drops Cancelled at all four
 entry points. Not named in the message: the owner's Billing page says "Reactivate", but a Cancelled studio's own API
 calls are blocked by the middleware, so that path couldn't be confirmed and isn't offered as one.
+
+## Shared chrome and shared state: the studio's name, one announcement rule, states in the primitives (slice 6a, S08 + S06 + the 8-state contract) — 2026-11-21
+
+Spec: `docs/claude/spec-slice6-remaining-partials-2026-11-21.md` §3.
+
+- **S08, the studio's name.** `StudioContextLabel` sits after the wordmark in the client, artist and owner headers from
+  `md` up, and as the navigation drawer's description below that ("{studio} · {role}"), where the header has no room.
+  `md`, not `sm`, because at 640px a dual-role owner's header (with the Owner/Artist switch) squeezed the name to
+  zero width, which the real-browser test caught; the name also never shrinks below 6rem.
+  It reads `studios/me`, which the owner and artist layouts already read for money formatting and client pages
+  already read for the studio's clock, so it adds no request there (a client on a page that doesn't show times makes
+  that one cached read). In a support session it falls back to the banner's own `studioName` until the read lands,
+  and it never repeats the mode: "Viewing as" and "Read-only" stay the banner's words. The admin layout has no
+  studio to name (it says "Platform Admin"); `PublicContentLayout` is signed-out. Loading shows a placeholder bar;
+  a failed read shows nothing rather than a guess.
+- **S06, one rule, one primitive.** `LiveAnnouncement` is the only way the app speaks to a screen reader: always
+  mounted, with the caller deciding when its text changes. A change the person caused is announced once,
+  politely (a failed action they caused: assertive). A change they didn't cause, or anything that ticks, is not
+  announced on every change. The support banner's threshold-only countdown (D05) now uses it rather than its own
+  span. The slot check announces its RESULT politely, available or not ("not available" was `role="alert"`, and
+  neither "checking" nor "available" was announced); its three parents now mount it unconditionally so the region
+  exists before the text. `useResultCountAnnouncement` gives Clients, Artists and Payments a count after the person
+  changes a search or filter, and says nothing on first load or on a refresh under the same query.
+- **The 8-state contract, bounded.** Built into the primitives, not audited component by component. `Button` has
+  pressed (`active:`), `loading` (busy, spinner, keeps focus, ignores clicks) and `disabledReason`; `Input`,
+  `Textarea` and `SelectTrigger` style `aria-invalid`. **A reason or a running action replaces native `disabled`
+  with `aria-disabled`**, because with both the native one wins and the button can't be focused, so it can't
+  explain itself (a gated Save on a clean form did exactly that). The click is refused in the handler, which also
+  stops a form's implicit submit. The reason is the button's description and shows on hover AND keyboard focus.
+  Applied explicitly to the audited surfaces only: `SubscriptionGatedButton` (whose hover-only tooltip on a disabled
+  button was the defect, and whose in-tooltip "Subscribe" link went with it, since a link in a tooltip can't be
+  reached either) and the Payments "Load more", which dropped keyboard focus mid-click by disabling itself.
+- **Not done, on purpose:** the other ~340 `disabled=` sites. A plain `disabled` is still allowed; a site that can
+  give a reason should use `disabledReason`, and one that can't should not disable the control at all (leave it
+  out, or let it refuse with a message). `frontend.md` says so. Squaring the ~320 corners, C05's resumable half and
+  phase 4b's guard are out of slice 6 (spec §6).

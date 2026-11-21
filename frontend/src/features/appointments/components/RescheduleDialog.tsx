@@ -256,9 +256,11 @@ export function RescheduleDialog({ appointment, open, onOpenChange, description 
               </Select>
             </div>
 
-            {debouncedCheck !== null && (
-              <SlotAvailabilityIndicator checking={checkingSlot} status={slotStatus} />
-            )}
+            {/* Always mounted: it holds the live region that announces the result (S06). */}
+            <SlotAvailabilityIndicator
+              checking={debouncedCheck !== null && checkingSlot}
+              status={debouncedCheck !== null ? slotStatus : undefined}
+            />
           </div>
         )}
 

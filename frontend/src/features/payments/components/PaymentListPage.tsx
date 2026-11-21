@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, Download, Loader2, Plus, Search } from "lucide-react";
+import { CreditCard, Download, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { LiveAnnouncement } from "@/shared/components/LiveAnnouncement";
+import { useResultCountAnnouncement } from "@/shared/hooks/useResultCountAnnouncement";
 import { Input } from "@/shared/components/ui/input";
 import { RecordLink } from "@/shared/components/RecordLink";
 import { DataTable } from "@/shared/components/DataTable";
@@ -140,6 +142,14 @@ export function PaymentListPage() {
   const firstPageLoading = page.cursor === undefined && currentData === undefined && !isError;
   const hasMore = (currentData?.length ?? 0) === PAGE_SIZE;
   const settled = !firstPageLoading && !isError;
+  // A filter change and a "Load more" are both the owner's doing, so both say how many rows are now shown.
+  const resultAnnouncement = useResultCountAnnouncement({
+    queryKey: `${filterKey}|${page.cursor ?? ""}`,
+    count:    allPayments.length,
+    settled:  !isFetching && !isError,
+    noun:     { one: "payment", many: "payments" },
+    hasMore,
+  });
 
   function handleLoadMore() {
     const last = allPayments[allPayments.length - 1];
@@ -259,6 +269,8 @@ export function PaymentListPage() {
           </p>
         </div>
 
+        <LiveAnnouncement message={resultAnnouncement} />
+
         {firstPageLoading && (
           <div className="space-y-0" aria-label="Loading payments">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -375,21 +387,15 @@ export function PaymentListPage() {
 
         {settled && hasMore && (
           <div className="flex justify-center pt-2">
+            {/* `loading`, not `disabled`: a disabled button drops keyboard focus to the page mid-click. */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleLoadMore}
-              disabled={isFetching}
+              loading={isFetching}
               className="gap-1.5"
             >
-              {isFetching ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Loading…
-                </>
-              ) : (
-                "Load more"
-              )}
+              {isFetching ? "Loading…" : "Load more"}
             </Button>
           </div>
         )}
