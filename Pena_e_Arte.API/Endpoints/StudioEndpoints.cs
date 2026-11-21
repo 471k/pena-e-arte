@@ -29,6 +29,9 @@ public static class StudioEndpoints
         group.MapPut("/me", UpdateMyStudio).RequireAuthorization("OwnerOnly");
         group.MapPut("/me/currency", UpdateMyStudioCurrency).RequireAuthorization("OwnerOnly").RequireRateLimiting("billing");
         group.MapGet("/me/audit-log", GetMyStudioAuditLog).RequireAuthorization("OwnerOnly");
+        // Owner: booking settings — how far apart the slot list's start times are (C03 follow-up)
+        group.MapGet("/me/booking-settings", GetMyBookingSettings).RequireAuthorization("OwnerOnly");
+        group.MapPut("/me/booking-settings", UpdateMyBookingSettings).RequireAuthorization("OwnerOnly");
 
         // Owner: invite an independent solo artist to dissolve their solo studio and join here
         group.MapPost("/me/join-invites", InviteSoloArtistToJoin).RequireAuthorization("OwnerOnly");
@@ -270,6 +273,21 @@ public static class StudioEndpoints
     {
         StudioJoinInviteResponse result = await mediator.Send(new InviteSoloArtistToJoinCommand(request), ct);
         return Results.Created($"/api/v1/studios/me/join-invites/{result.Id}", result);
+    }
+
+    private static async Task<IResult> GetMyBookingSettings(ISender mediator, CancellationToken ct)
+    {
+        BookingSettingsResponse result = await mediator.Send(new GetMyBookingSettingsQuery(), ct);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> UpdateMyBookingSettings(
+        UpdateBookingSettingsRequest request,
+        ISender mediator,
+        CancellationToken ct)
+    {
+        BookingSettingsResponse result = await mediator.Send(new UpdateMyBookingSettingsCommand(request), ct);
+        return Results.Ok(result);
     }
 
     private static async Task<IResult> GetMyStudioAuditLog(

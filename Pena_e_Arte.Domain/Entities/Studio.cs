@@ -82,6 +82,12 @@ public class Studio
     /// DateTime.UtcNow reads, so a never-touched row can already have UpdatedAt &gt; CreatedAt.</summary>
     public DateTime? HoursReviewedAt { get; set; }
 
+    /// <summary>How far apart the slot list's start times are, in minutes (C03 follow-up, Phi 20 Nov). Null = every
+    /// session length, the original behaviour: a 3-hour session offers starts 3 hours apart. 15, 30 or 60 lets a
+    /// long session start at any quarter, half or full hour the rule allows. Only the list's candidate spacing:
+    /// whether a start is bookable is still decided by the availability rule and the booking's own checks.</summary>
+    public int? BookingSlotStepMinutes { get; set; }
+
     /// <summary>How the studio's artists are paid unless an artist has their own arrangement
     /// (DEC10, A07a). Commission by default, as the most common structure, but with no rate: see
     /// <see cref="DefaultCommissionRate"/>.</summary>

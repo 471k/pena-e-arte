@@ -12,6 +12,7 @@ import { QrCodeSection } from "./QrCodeSection";
 import { ReferralCodeCard } from "./ReferralCodeCard";
 import { StudioClosuresCard } from "./StudioClosuresCard";
 import { StudioHoursCard } from "./StudioHoursCard";
+import { BookingStartTimesCard } from "./BookingStartTimesCard";
 import { StudioPayModelCard } from "./StudioPayModelCard";
 import { StudioAuditLogCard } from "./StudioAuditLogCard";
 import { StudioSocialLinksCard } from "./StudioSocialLinksCard";
@@ -47,6 +48,7 @@ export function StudioSettingsSections({ profile, groups }: StudioSettingsSectio
     hours: (
       <>
         <StudioHoursCard />
+        <BookingStartTimesCard />
         <StudioClosuresCard />
       </>
     ),
