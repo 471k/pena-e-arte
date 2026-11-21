@@ -77,6 +77,16 @@ export async function mockApiFallback(page: Page) {
       body: JSON.stringify({ hasCompletedTour: true }),
     });
   });
+  // Studio Settings' "Booking start times" card reads an object; `[]` has none of its fields.
+  await page.route("**/api/v1/studios/me/booking-settings", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(route.request().method() === "GET"
+        ? { slotStepMinutes: null, allowedStepMinutes: [15, 30, 60] }
+        : {}),
+    });
+  });
 }
 
 export async function loginAs(page: Page, token: string, email: string, landingUrlPattern: RegExp) {

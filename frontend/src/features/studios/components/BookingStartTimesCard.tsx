@@ -53,7 +53,7 @@ export function BookingStartTimesCard() {
       <CardContent className="space-y-3">
         {isLoading ? (
           <Skeleton className="h-9 w-56" />
-        ) : isError || !currentData || form === null ? (
+        ) : isError || !currentData || !Array.isArray(currentData.allowedStepMinutes) || form === null ? (
           <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">
             <p className="text-destructive-text">Couldn&apos;t load this setting.</p>
             <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void refetch()}>
