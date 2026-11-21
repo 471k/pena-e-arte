@@ -36,6 +36,19 @@ function renderMenu(onLogout = vi.fn()) {
 afterEach(cleanup);
 
 describe("UserMenu", () => {
+  it("shows the studio-and-role line it is given at the top, and nothing extra without it (S08)", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <Provider store={makeStore()}><MemoryRouter><UserMenu onLogout={vi.fn()} context={<span>Tinta &amp; Alma · Owner</span>} /></MemoryRouter></Provider>,
+    );
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+    expect(screen.getByText("Tinta & Alma · Owner")).toBeInTheDocument();
+    unmount();
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+    expect(screen.queryByText(/·/)).toBeNull();
+  });
+
   it("renders the user display name", () => {
     renderMenu();
     expect(screen.getByText("Gabriel")).toBeInTheDocument();

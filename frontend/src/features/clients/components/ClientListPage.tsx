@@ -137,12 +137,13 @@ export function ClientListPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-10">
+      {/* S05: wraps instead of overflowing. At 390 the actions ran 30px past the screen (100px at 320). */}
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6 py-3 border-b bg-background sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Clients</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {clients && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Users className="h-3.5 w-3.5" />
@@ -154,10 +155,10 @@ export function ClientListPage() {
               variant="outline"
               size="sm"
               onClick={handleExportCsv}
-              disabled={exporting}
+              loading={exporting}
               className="gap-1.5"
             >
-              <Download className="h-3.5 w-3.5" />
+              {!exporting && <Download className="h-3.5 w-3.5" />}
               Export CSV
             </Button>
           )}
@@ -171,18 +172,20 @@ export function ClientListPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+        {/* Below sm the search takes its own full-width line: at 320 it had shrunk to an icon-sized box. */}
+        <div className="flex flex-wrap gap-2">
+          <div className="relative w-full sm:w-auto sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search by name or email…"
+              aria-label="Search clients by name or email"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               className="pl-9"
             />
           </div>
           <Select value={artistFilter} onValueChange={setArtistFilter}>
-            <SelectTrigger className="w-[180px]" aria-label="Filter by artist">
+            <SelectTrigger className="flex-1 min-w-0 sm:flex-none sm:w-[180px]" aria-label="Filter by artist">
               <SelectValue placeholder="All artists" />
             </SelectTrigger>
             <SelectContent>

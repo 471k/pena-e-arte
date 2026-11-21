@@ -1,11 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import { ChevronDown, Lock, LogOut, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import { UserChip } from "./UserChip";
 import { useClickOutside } from "@/shared/hooks/useClickOutside";
 import { useEscapeKey }    from "@/shared/hooks/useEscapeKey";
 
-export function UserMenu({ onLogout }: { onLogout: () => void }) {
+/** `context`: which studio and role (S08), passed by the studio layouts. The menu exists at every width and text
+ *  size, so it is where that line is always reachable; the header's copy only shows when there's room. */
+export function UserMenu({ onLogout, context }: { onLogout: () => void; context?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -27,7 +30,8 @@ export function UserMenu({ onLogout }: { onLogout: () => void }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-48 rounded-md border bg-background shadow-md z-50 py-1">
+        <div className="absolute right-0 top-full mt-1 w-56 rounded-md border bg-background shadow-md z-50 py-1">
+          {context && <div className="px-3 py-2 border-b mb-1 empty:hidden">{context}</div>}
           <Link
             to="/account/change-password"
             onClick={close}
