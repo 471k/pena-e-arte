@@ -237,7 +237,7 @@ export function PaymentListPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:items-end">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
             <div className="space-y-1">
               <Label htmlFor="payments-from" className="text-xs">Paid from</Label>
               <Input id="payments-from" type="date" value={fromDate} max={toDate || undefined}

@@ -106,7 +106,7 @@ export function ClientLayout() {
       <SuspensionBanner role="client" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
-      <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
         <Wordmark className="max-[359px]:hidden" />
@@ -122,7 +122,7 @@ export function ClientLayout() {
           />
           <MessagesNavBadge />
           <NotificationBell />
-          <UserMenu onLogout={handleLogout} />
+          <UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />
         </div>
       </header>
 

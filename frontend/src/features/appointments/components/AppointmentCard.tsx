@@ -117,14 +117,18 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
         STATUS_BORDER[appointment.status],
       )}
     >
-      <CardContent className="p-4 flex items-start justify-between gap-4">
+      {/* S05: below sm the actions get their own row under the details, at 44px (the project's comfortable-target
+          goal; WCAG 2.2 AA's minimum is 24x24, which the 28px desktop size already meets). Side by side, they
+          squeezed the time range until its "PM" wrapped onto the client's name. */}
+      <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <RecordLink to={`/appointments/${appointment.id}`} stretched className="text-sm min-w-0">
-              <span className="font-medium">
+            <RecordLink to={`/appointments/${appointment.id}`} stretched className="text-sm min-w-0 max-w-full">
+              <span className="font-medium whitespace-nowrap">
                 {formatTime(appointment.date, studio?.timezone)} – {formatTime(appointment.endDate, studio?.timezone)}
               </span>
-              {appointment.clientName && <span className="truncate"> {appointment.clientName}</span>}
+              {/* Its own line, truncated: beside a time that no longer breaks, a long name ran off a 390px card. */}
+              {appointment.clientName && <span className="block truncate"> {appointment.clientName}</span>}
             </RecordLink>
             <span className="text-xs text-muted-foreground">{appointment.durationMinutes} min</span>
             <AppointmentStatusBadge status={appointment.status} />
@@ -168,14 +172,14 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
         </div>
 
         {isArtistPlus && !isTerminal && (
-          <div className={cn("flex items-center gap-1.5 shrink-0", RECORD_ACTIONS)} data-record-actions>
+          <div className={cn("flex flex-wrap items-center gap-1.5 shrink-0", RECORD_ACTIONS)} data-record-actions>
             {isPending && appointment.artistId !== null && (
               <Button
                 variant="outline"
                 size="sm"
                 disabled={anyLoading}
                 onClick={handleConfirm}
-                className="h-7 px-2 text-xs gap-1"
+                className="h-11 px-3 sm:h-7 sm:px-2 text-xs gap-1"
               >
                 {confirming ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                 Confirm
@@ -188,7 +192,7 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
                 size="sm"
                 disabled={anyLoading}
                 onClick={handleComplete}
-                className="h-7 px-2 text-xs gap-1"
+                className="h-11 px-3 sm:h-7 sm:px-2 text-xs gap-1"
               >
                 {completing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                 Complete
@@ -200,7 +204,7 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
               size="sm"
               disabled={anyLoading}
               onClick={() => setRescheduleDialogOpen(true)}
-              className="h-7 w-7 p-0 text-muted-foreground"
+              className="h-11 w-11 sm:h-7 sm:w-7 p-0 text-muted-foreground"
               title="Reschedule"
               aria-label="Reschedule appointment"
             >
@@ -213,7 +217,7 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
                 size="sm"
                 disabled={anyLoading}
                 onClick={() => setNoShowOpen(true)}
-                className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+                className="h-11 px-3 sm:h-7 sm:px-2 text-xs gap-1 text-muted-foreground"
                 title="Mark no-show"
                 aria-label="Mark no-show"
               >
@@ -222,7 +226,7 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
             )}
 
             {showChargeButton && (
-              <Button variant="outline" size="sm" asChild className="h-7 px-2 text-xs gap-1.5">
+              <Button variant="outline" size="sm" asChild className="h-11 px-3 sm:h-7 sm:px-2 text-xs gap-1.5">
                 {/* Opens a page, so it's a link (docs/03: "links navigate") — styled as the button beside it. */}
                 <Link
                   to={`/payments/new?appointmentId=${appointment.id}&clientId=${appointment.clientId}&amount=${appointment.depositAmount}`}
@@ -241,14 +245,14 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
                   size="sm"
                   disabled={anyLoading}
                   onClick={handleCancel}
-                  className="h-7 px-2 text-xs"
+                  className="h-11 px-3 sm:h-7 sm:px-2 text-xs"
                 >
                   {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Yes"}
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-xs"
+                  className="h-11 px-3 sm:h-7 sm:px-2 text-xs"
                   onClick={() => setConfirmCancel(false)}
                 >
                   No
@@ -260,7 +264,7 @@ export function AppointmentCard({ appointment, showArtist = false }: Appointment
                 size="sm"
                 disabled={anyLoading}
                 onClick={handleCancel}
-                className="h-7 w-7 p-0 text-muted-foreground"
+                className="h-11 w-11 sm:h-7 sm:w-7 p-0 text-muted-foreground"
                 aria-label={isPending ? "Decline request" : "Cancel appointment"}
               >
                 {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}

@@ -7671,3 +7671,31 @@ Spec: `docs/claude/spec-slice6-remaining-partials-2026-11-21.md` §3.
   give a reason should use `disabledReason`, and one that can't should not disable the control at all (leave it
   out, or let it refuse with a message). `frontend.md` says so. Squaring the ~320 corners, C05's resumable half and
   phase 4b's guard are out of slice 6 (spec §6).
+
+## Narrow screens measured once (slice 6b, S05 + AP12 + the target question + text resize) — 2026-11-22
+
+Spec: `docs/claude/spec-slice6-remaining-partials-2026-11-21.md` §4. One rendered pass in real Chromium, both themes,
+at 320/390/420/768/800/1024/1100/1440, over Clients, Schedule, Payments and the client's `/my-appointments/:id`, plus
+200% text (root font-size doubled; Tailwind sizes are rem) at 390 and 1280. 400% zoom of a 1280 window is 320 CSS px,
+which the 320 pass is. `e2e/narrow-screens.spec.ts` keeps what it found fixed.
+
+- **Found and fixed:** the clients header ran 30px off a 390 screen and 100px off 320 (it now wraps; at 320 the search
+  had also shrunk to an icon-sized box and had no label, so it takes its own line and is labelled). The schedule's
+  appointment card squeezed its time range until "PM" wrapped onto the client's name: below `sm` the actions now get
+  their own row at 44px (the project's comfortable-target goal, NOT a WCAG figure) and the time never breaks, with the
+  name on its own truncating line. At 200% text the Payments filter row pushed Export CSV off a 1280 window (it wraps).
+- **A 6a defect the pass caught:** at 200% text the studio name was squeezed under the Owner/Artist switch, because
+  `md` is a px media query and text-only enlargement doesn't move it. The header is now a container and the label
+  shows at `@min-[42rem]` (rem, so it follows text size; measured on the content box, inside the header's padding). The
+  same "{studio} · {role}" line was added to the user menu, which exists at every width and text size, so the name
+  is never unreachable. `UserMenu` takes it as a prop: the admin layout has no studio and passes nothing.
+- **Clean at every width and both themes:** Schedule, Payments and `/my-appointments/:id` (AP12; with real content:
+  the first pass measured an error screen from a wrongly shaped mock and was discarded).
+- **The target question, in order.** Payment status chips (22px): static `Badge` text, not a target, so 2.5.8 does not
+  reach them; their `title` repeats what the payment's detail page shows in full, so nothing is hover-only. The "Show
+  archived" switch (36x20 track) IS a control: `ToggleSwitch` now carries an invisible `::before` that makes the
+  pointer target 40x28 for all 10 switches. The insets are measured from the padding box, inside the 2px border, which
+  the first attempt got wrong (it delivered exactly 36x24, not the 40x28 its comment claimed).
+- **Measured and NOT fixed:** at 200% text on a 390 phone the global header overflows by 280px (208px for a client).
+  That is a ~195px effective layout, past both 1.4.10's 320px reflow test and 1.4.4's usual desktop test condition;
+  fixing it means collapsing the header's icon cluster into a menu, which is a design change for its own decision.
