@@ -72,8 +72,8 @@ export function MessagesInboxPage() {
 
       <main className="flex-1 flex min-h-0">
         <aside className={cn(
-          "w-full sm:w-80 border-r overflow-y-auto shrink-0",
-          selected ? "hidden sm:block" : "block",
+          "w-full page-md:w-80 border-r overflow-y-auto shrink-0",
+          selected ? "hidden page-md:block" : "block",
         )}>
           {isLoading && (
             <div className="p-3 space-y-3">
@@ -160,13 +160,13 @@ export function MessagesInboxPage() {
           })}
         </aside>
 
-        <section className={cn("flex-1 min-h-0", selected ? "flex flex-col" : "hidden sm:flex sm:flex-col")}>
+        <section className={cn("flex-1 min-h-0", selected ? "flex flex-col" : "hidden page-md:flex page-md:flex-col")}>
           {selected ? (
             <>
               <Button
                 variant="ghost"
                 size="sm"
-                className="sm:hidden gap-1.5 justify-start m-2 w-fit"
+                className="page-md:hidden gap-1.5 justify-start m-2 w-fit"
                 onClick={() => setSelectedId(null)}
               >
                 <ArrowLeft className="h-3.5 w-3.5" />

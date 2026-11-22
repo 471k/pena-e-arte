@@ -115,7 +115,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
         {/* ── Main row ─────────────────────────────────────────────── */}
         {/* Stacked on phones, side by side from sm up; the badge line wraps. Otherwise the unshrinkable
             action group overlaps the badges at phone width (seen at 390px on the studio detail page). */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 page-md:flex-row page-md:items-start page-md:justify-between page-md:gap-4">
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
               <span className="font-mono font-medium text-sm">{code.code}</span>
@@ -141,7 +141,7 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
 
           {/* ── Action zone ──────────────────────────────────────── */}
           {!anyExpanded && (
-            <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0">
+            <div className="flex items-center gap-1.5 flex-wrap page-md:shrink-0">
 
               <Button
                 size="sm"

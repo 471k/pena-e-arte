@@ -155,7 +155,7 @@ function ConsentFormDetail({ form }: { form: ConsentFormDetailResponse }) {
 
         <CardContent className="p-5 pt-4 space-y-5">
           {/* ── Identity fields ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 page-md:grid-cols-2 gap-4">
             <DetailRow label="Client">
               <Link
                 to={`/clients/${form.clientId}`}

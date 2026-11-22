@@ -143,7 +143,7 @@ export function ClientListPage() {
           <Users className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Clients</span>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 page-md:gap-3">
           {clients && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Users className="h-3.5 w-3.5" />
@@ -174,7 +174,7 @@ export function ClientListPage() {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {/* Below sm the search takes its own full-width line: at 320 it had shrunk to an icon-sized box. */}
         <div className="flex flex-wrap gap-2">
-          <div className="relative w-full sm:w-auto sm:flex-1">
+          <div className="relative w-full page-md:w-auto page-md:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search by name or email…"
@@ -185,7 +185,7 @@ export function ClientListPage() {
             />
           </div>
           <Select value={artistFilter} onValueChange={setArtistFilter}>
-            <SelectTrigger className="flex-1 min-w-0 sm:flex-none sm:w-[180px]" aria-label="Filter by artist">
+            <SelectTrigger className="flex-1 min-w-0 page-md:flex-none page-md:w-[180px]" aria-label="Filter by artist">
               <SelectValue placeholder="All artists" />
             </SelectTrigger>
             <SelectContent>

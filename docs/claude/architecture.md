@@ -7750,3 +7750,37 @@ Spec: `docs/claude/spec-slice6-remaining-partials-2026-11-21.md` §7. No backend
 
 Still Partial and why: C05's resumable half (needs phase D's storage answers, with Phi). The breakpoint migration
 (6c) is the slice's last phase and is held for Desktop's review.
+
+## Page layout on the package's breakpoints (slice 6c) — 2026-11-22
+
+Spec: `docs/claude/spec-slice6-remaining-partials-2026-11-21.md` §5. Gated: Desktop reviews this before it merges.
+Slice 5 shipped `page-sm/md/lg` (420/800/1100) beside the shell's `sm/md/lg` (640/768/1024); until pages moved, the
+package's values applied nowhere. 6c moves the authenticated pages: 45 replacements in 17 files. No `*.cs`.
+
+**The mapping is judged per use, not 1:1** (640/768/1024 do not equal 420/800/1100):
+
+| Kind | Rule | Where |
+|---|---|---|
+| Columns that stack | `page-md` ("below 800 it stacks") | admin KPI tiles (8), plan form grids (4), plan cards (`page-md:2` / `page-lg:3`), live-traffic tiles and panels, audit-log filters, consent detail, earnings summary, artist portfolio masonry |
+| Title/actions rows | `page-md` | admin studio list (3), referrals (2), subscriptions (2), Today header (2), clients header/search/filter (3), payment filters (2) |
+| A desktop/mobile set | `page-md`, as one set | PlanEdit's header actions vs fixed bottom bar, and the padding that clears the bar |
+| Master/detail | `page-md` | Messages: list and thread side by side from 800 (at 640 a 320px list left 320-479px for the thread) |
+| A side column | `page-lg` | AdminStudioDetail's 288px Actions column and its sticky offset |
+| A small control pair | `page-sm` | the payment result page's two buttons |
+
+**Deliberately left on the shell scale, each for a reason:** page header and scope-bar gutters (`px-4 sm:px-6`, which
+must line up with the shell header's own gutter); the booking form's date/length split (inside a fixed `max-w-md`
+card, so the viewport is the wrong measure); the artist profile's six-tab strip (needs about 600px); the schedule
+toolbar's label width; sheet widths (the sheet primitive's own); component-internal layout (`AppointmentCard`,
+`DataTable`, `ConnectionRow`); the shell itself. **The public pages were not moved** (portfolio, discover, pricing,
+features): they keep their old look (handoff pack `docs/01`).
+
+**The 1024-1099 band** now gets AdminStudioDetail's stacked layout (Actions after the details) where it used to get a
+side column beside a roughly 450px main column. Measured and judged correct rather than moved back; pinned by
+`e2e/page-breakpoints.spec.ts` with a mutation check (`lg:` back fails it at 1099).
+
+**Rendered pass:** 14 migrated routes, 10 widths (320, 390, 420, 768, 799, 800, 1024, 1099, 1100, 1440), both themes,
+real content: zero sideways scroll everywhere. (The first run measured error screens on four pages from mock gaps;
+those results were discarded and re-measured.) **The tour JS is unchanged:** its 640/1024 decide drawer versus
+sidebar, which is the shell, and no tour step targets a migrated element. **Help:** no change; nothing in Help or the
+manual describes width-dependent behaviour on these pages.

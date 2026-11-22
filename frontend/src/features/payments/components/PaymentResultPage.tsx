@@ -241,7 +241,7 @@ export function PaymentResultPage() {
         )}
 
         {!view.checking && (
-          <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+          <div className="flex flex-col page-sm:flex-row gap-2 justify-center pt-2">
             {view.signIn && (
               <Button asChild className="bg-violet-600 hover:bg-violet-700 text-white">
                 <Link to={loginPathFor(location)}>Sign in</Link>

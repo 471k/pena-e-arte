@@ -237,7 +237,7 @@ export function PaymentListPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+          <div className="grid grid-cols-2 gap-3 page-md:flex page-md:flex-wrap page-md:items-end">
             <div className="space-y-1">
               <Label htmlFor="payments-from" className="text-xs">Paid from</Label>
               <Input id="payments-from" type="date" value={fromDate} max={toDate || undefined}
@@ -248,7 +248,7 @@ export function PaymentListPage() {
               <Input id="payments-to" type="date" value={toDate} min={fromDate || undefined}
                      onChange={(e) => setToDate(e.target.value)} className="h-9" />
             </div>
-            <div className="col-span-2 flex flex-wrap items-center gap-2 sm:ml-auto">
+            <div className="col-span-2 flex flex-wrap items-center gap-2 page-md:ml-auto">
               {filtersActive && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
               )}
