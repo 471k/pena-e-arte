@@ -223,12 +223,13 @@ describe("ClientRegisterPage", () => {
         <MemoryRouter initialEntries={["/client-register?studioId=studio-1"]}>
           <Routes>
             <Route path="/client-register" element={<ClientRegisterPage />} />
-            <Route path="/book" element={<div data-testid="book-page" />} />
+            <Route path="/my-appointments" element={<div data-testid="client-home" />} />
           </Routes>
         </MemoryRouter>
       </Provider>,
     );
-    expect(screen.getByTestId("book-page")).toBeInTheDocument();
+    // C01: an already-signed-in client goes to their home, their bookings.
+    expect(screen.getByTestId("client-home")).toBeInTheDocument();
   });
 
   it("'Already have an account' link points to /login", () => {

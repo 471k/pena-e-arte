@@ -7699,3 +7699,54 @@ which the 320 pass is. `e2e/narrow-screens.spec.ts` keeps what it found fixed.
 - **Measured and NOT fixed:** at 200% text on a 390 phone the global header overflows by 280px (208px for a client).
   That is a ~195px effective layout, past both 1.4.10's 320px reflow test and 1.4.4's usual desktop test condition;
   fixing it means collapsing the header's icon cluster into a menu, which is a design change for its own decision.
+
+## The client's own surfaces: home, services, uploads, the calendar file (slice 6d, C01 + C04 + C06 + AP10) — 2026-11-22
+
+Spec: `docs/claude/spec-slice6-remaining-partials-2026-11-21.md` §7. No backend change.
+
+- **C01, the client's home.** `getRoleRedirectPath` returned `/book` for a client, `/today` for an artist and
+  `/dashboard` for an owner: the client was the only role whose home was a task form rather than a view of their own
+  things. It now returns `/my-appointments`, a new index page (`MyBookingsPage`) holding the bookings card, which
+  used to sit under the booking form. Booking stays one action away (a button on the page, "Book Appointment" in the
+  menu). A first-time client gets an empty state whose primary action is booking; a client with no studio is sent to
+  Discover; a failed read says so and never claims "no bookings". The card's own title is the page's one `h1`. Every
+  link that meant "my bookings" but pointed at `/book` (payment result, appointment page, waitlist claim, the form
+  pages' "back" buttons, deposit checkout, the studio switch) now points home. The client tour starts there.
+- **C04, a service, not a duration.** The picker started on "Custom (choose your own duration)", so unless a client
+  went looking, the form asked them how long a tattoo takes. For a client it now starts unchosen ("Choose a service");
+  "Something else (choose a session length)" is the last option; the length is shown as a consequence ("2 hours, set
+  by “Large colour session”") from one helper, `describeSessionLength`, which slice 7 phase C's review block must
+  reuse; open times wait for the choice, and submitting without one joins the error summary. Staff booking for a
+  client keep the old default (they know the length of unlisted work). A waitlist claim or flash design starts on
+  "Something else" as before, since it carries its own length. With no active services the client must still pick a
+  length, which is the studio's gap: the owner's Dashboard says so (`ServicesGapNotice`) and links to Services. A
+  server-side setup-checklist area would be the stronger home for that, but it is a backend change, so it is not here.
+- **C06, an upload that can fail recoverably.** The drop zone is a real `<button>` (Space works; it was a `div` with
+  `role="button"` handling Enter only), carries the field's id and label so the error summary's jump lands on it, and
+  the hidden file input is `aria-hidden` (Chrome exposes a file input as a button even when hidden, which gave the
+  field two "Area photo" buttons). A failed upload says "Upload failed" in text and offers Retry beside Remove
+  (`useCategorizedImageUpload.retry` re-sends the same `File`, kept in a ref); the failure is announced through
+  `LiveAnnouncement`, assertive, as an action the person started that failed. Each field says why the photo is wanted.
+- **AP10, the calendar file where the client is.** The client's appointment page offers "Add to calendar" through the
+  same export the staff page uses (`useAppointmentCalendarDownload`, one helper for both). The file's time is UTC (so
+  the device shows it on its own clock) and carries the artist and deposit, nothing about the client. **It has no
+  STATUS line**, so the client's page offers it for a Confirmed appointment only: a request or a cancelled booking
+  would otherwise land in a calendar looking confirmed. Adding `STATUS:TENTATIVE|CONFIRMED|CANCELLED` to
+  `GetAppointmentIcsQuery` is a small backend follow-up, flagged, not built; the staff page still offers the file
+  for any status.
+
+### Slice 6 verdicts (spec §11), after 6a, 6b and 6d
+
+| Item | Verdict | Note |
+|---|---|---|
+| S05 | Present | Both operational surfaces have 320/390 e2e in both themes; the 34px clients overflow fixed. Measured, not fixed: 200% text on a 390 phone overflows the global header (flagged as a design decision) |
+| S06 | Present | One rule, one primitive; the slot check fixed in both directions; list counts on Clients, Artists, Payments |
+| S08 | Present | Studio name in the header (rem container query), the drawer and the user menu; support sessions reuse the banner's name |
+| C01 | Present | The client's home is their bookings |
+| C04 | Present | For clients; staff default deliberately unchanged; the no-services case surfaced to the owner |
+| C06 | Present | Retry, purpose, Space. Storage limits stay with the private-storage phases, as the audit scoped them |
+| AP10 | Present, with a follow-up | Offered on the client's page for Confirmed; the missing STATUS line is a flagged backend change |
+| AP12 | Present | `/my-appointments/:id` e2e at 320/390 in both themes |
+
+Still Partial and why: C05's resumable half (needs phase D's storage answers, with Phi). The breakpoint migration
+(6c) is the slice's last phase and is held for Desktop's review.

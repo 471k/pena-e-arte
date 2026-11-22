@@ -11,10 +11,12 @@ const BASE_PROPS = {
   category:   AppointmentAttachmentCategory.AreaPhoto,
   label:      "Area photo",
   helperText: "Click to add a photo of the area",
+  purpose:    "So your artist can see the skin.",
   max:        6,
   images:     [] as CategorizedImage[],
   error:      null,
   onPick:     vi.fn(),
+  onRetry:    vi.fn(),
   onRemove:   vi.fn(),
   disabled:   false,
 };
@@ -92,7 +94,52 @@ describe("CategorizedImagesField", () => {
         images={[{ id: "1", previewUrl: "blob:1", status: "error", publicUrl: null }]}
       />,
     );
-    expect(screen.getByTitle("Upload failed")).toBeInTheDocument();
+    // C06: said in text, not a hover-only title, and announced as a failure the person can act on.
+    expect(screen.getByText("Upload failed")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/1 photo in Area photo didn't upload/);
+  });
+
+  it("C06: Retry sends the failed image's id back, and a field with no failures announces nothing", async () => {
+    const onRetry = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CategorizedImagesField
+        {...BASE_PROPS}
+        required={false}
+        onRetry={onRetry}
+        images={[{ id: "img-9", previewUrl: "blob:9", status: "error", publicUrl: null }]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /retry/i }));
+    expect(onRetry).toHaveBeenCalledWith("img-9");
+
+    rerender(
+      <CategorizedImagesField
+        {...BASE_PROPS}
+        required={false}
+        images={[{ id: "img-9", previewUrl: "blob:9", status: "done", publicUrl: "https://cdn.example.com/9.png" }]}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+    expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+  });
+
+  it("C06: the picker is a real button named by the field's label, described by why the photo is wanted, and Space opens it", async () => {
+    const user = userEvent.setup();
+    render(<CategorizedImagesField {...BASE_PROPS} required={false} />);
+    const picker = screen.getByRole("button", { name: "Area photo" });
+    expect(picker).toHaveAccessibleDescription(/So your artist can see the skin\. Click to add a photo of the area/);
+
+    const input = document.querySelector<HTMLInputElement>("input[type=file]")!;
+    const opened = vi.fn();
+    input.addEventListener("click", opened);
+    picker.focus();
+    await user.keyboard(" ");
+    expect(opened).toHaveBeenCalledTimes(1);
+    await user.keyboard("{Enter}");
+    expect(opened).toHaveBeenCalledTimes(2);
+    // The hidden input is out of the tab order: one stop per field, the visible button.
+    expect(input).toHaveAttribute("tabindex", "-1");
   });
 
   it("calls onRemove with the image id when its remove button is clicked", async () => {

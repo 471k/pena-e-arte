@@ -115,7 +115,7 @@ function renderPageWithRoutes() {
       <MemoryRouter initialEntries={["/my-studios"]}>
         <Routes>
           <Route path="/my-studios" element={<MyStudiosPage />} />
-          <Route path="/book" element={<div>Book Page</div>} />
+          <Route path="/my-appointments" element={<div>My bookings page</div>} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -204,13 +204,13 @@ describe("MyStudiosPage", () => {
     expect(capturedBody).toEqual({ studioId: "studio-bbb" });
   });
 
-  it("navigates to /book after a successful switch", async () => {
+  it("navigates to the client's home, their bookings, after a successful switch (C01)", async () => {
     const user = userEvent.setup();
     renderPageWithRoutes();
     const switchButton = await screen.findByRole("button", { name: /switch to beta art/i });
     await user.click(switchButton);
 
-    expect(await screen.findByText("Book Page")).toBeInTheDocument();
+    expect(await screen.findByText("My bookings page")).toBeInTheDocument();
   });
 
   it("shows a toast error on switch failure (500 response)", async () => {

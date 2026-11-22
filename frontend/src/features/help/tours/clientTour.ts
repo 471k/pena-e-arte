@@ -5,6 +5,12 @@ import type { TourStep } from "@/shared/components/OnboardingTour";
 export function getClientTourSteps(hasMultipleStudios: boolean, showPaymentMethods: boolean): TourStep[] {
   const steps: TourStep[] = [
     {
+      // C01: the client's home is their bookings now, so the tour starts there.
+      targetSelector: '[data-tour="client-bookings-nav"]',
+      title: "Your bookings",
+      body: "This is your home: every booking you've made, what to do before each one, and any deposit to pay.",
+    },
+    {
       targetSelector: '[data-tour="client-book-nav"]',
       title: "Book an appointment",
       body: "Request a tattoo appointment here — pick an artist (or let the studio choose) and how long the session should be, then choose one of the open times.",
@@ -14,7 +20,7 @@ export function getClientTourSteps(hasMultipleStudios: boolean, showPaymentMetho
       // skipped when they have none yet. The page's own next-step button carries
       // data-tour="client-appointment-next-action" for a page-level tour later.
       targetSelector: '[data-tour="client-appointment-details-link"]',
-      route: "/book",
+      route: "/my-appointments",
       title: "Everything about one appointment",
       body: "Open a booking's own page to see what to do before it, the studio's address once it's confirmed, and to message the studio about it.",
     },

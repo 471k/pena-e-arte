@@ -148,7 +148,7 @@ function Offer({ claim, token, signedIn }: { claim: WaitlistClaimResponse; token
           <p className="text-sm text-muted-foreground">
             {signedIn ? "You'll find it with your bookings." : "The booking details are in your email."}
           </p>
-          {signedIn && <Button asChild variant="outline" className="w-full"><Link to="/book">See your bookings</Link></Button>}
+          {signedIn && <Button asChild variant="outline" className="w-full"><Link to="/my-appointments">See your bookings</Link></Button>}
         </div>
       );
     case WaitlistClaimState.WindowEnded:

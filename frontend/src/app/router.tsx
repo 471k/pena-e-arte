@@ -6,7 +6,7 @@ import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
-import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage } from "@/features/appointments";
+import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage, MyBookingsPage } from "@/features/appointments";
 import { TodayPage } from "@/features/today";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage, AvailabilityPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, MyProfilePage, TattooRecordDetailPage } from "@/features/clients";
@@ -94,7 +94,9 @@ export function getRoleRedirectPath(role: Role, impersonating = false): string {
   // The schedule, not the dashboard: no dashboard read is on the server's support allow-list (D05).
   if (role === Role.Admin && impersonating) return SUPPORT_VIEW_HOME;
   switch (role) {
-    case Role.Client: return "/book";
+    // C01: a client's home is their bookings, like every other role's is a view of their own things.
+    // It used to be /book, the booking form.
+    case Role.Client: return "/my-appointments";
     // Today is the artist's daily entry point (E04a); the week view stays at /schedule.
     case Role.Artist: return "/today";
     case Role.Owner: return "/dashboard";
@@ -239,6 +241,8 @@ export const routes = [
                 path: "my-appointments",
                 element: <RoleGuard allowedRoles={[Role.Client]} />,
                 children: [
+                  // The client's home (C01): their bookings, with booking one action away.
+                  { index: true, element: <ErrorBoundary><MyBookingsPage /></ErrorBoundary> },
                   { path: ":id", element: <ErrorBoundary><ClientAppointmentDetailPage /></ErrorBoundary> },
                 ],
               },

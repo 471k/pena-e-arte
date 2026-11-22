@@ -11,10 +11,8 @@ import { useAppSelector } from "@/app/hooks";
 import { useResendVerificationEmailMutation } from "@/features/auth/authApi";
 import { Role } from "@/shared/types/roles";
 import { getRoleRedirectPath } from "@/app/router";
-import { ReferAFriendCard } from "@/features/client-referrals/components/ReferAFriendCard";
 import { readWaitlistClaimHandoff } from "@/features/waitlist/waitlistClaim";
 import { BookAppointmentForm } from "./BookAppointmentForm";
-import { MyBookingsSection } from "./MyBookingsSection";
 
 // Unauthenticated visitor with a target studio (?studio=<slug>) — true guest checkout
 // (Decision #1). No verification banner (nothing to verify yet), no MyBookingsSection
@@ -178,9 +176,10 @@ function AuthenticatedBookPage() {
             </CardContent>
           </Card>
 
-          <MyBookingsSection />
-
-          <ReferAFriendCard />
+          {/* C01: the bookings list moved to the client's home, /my-appointments. */}
+          <p className="text-center text-xs text-muted-foreground">
+            <Link to="/my-appointments" className="underline hover:text-foreground">See my bookings</Link>
+          </p>
         </div>
       </div>
     </BookingWidget>

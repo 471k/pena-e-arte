@@ -15,6 +15,7 @@ import { artistsApi } from "@/features/artists/artistsApi";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { depositRulesApi } from "@/features/deposit-rules/depositRulesApi";
 import { studiosApi } from "@/features/studios/studiosApi";
+import { servicesApi } from "@/features/services/servicesApi";
 import { DashboardPage } from "@/features/dashboard/components/DashboardPage";
 import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
@@ -136,6 +137,8 @@ const CASH_GROUP: OwnerExceptionGroup = {
 // ── MSW server ────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // A studio with one active service by default; the C04 notice tests override this.
+  http.get("http://localhost/api/v1/services", () => HttpResponse.json([{ id: "svc-1", isActive: true }])),
   http.get("http://localhost/api/v1/billing/subscription", () =>
     HttpResponse.json(SUB_ACTIVE),
   ),
@@ -189,6 +192,7 @@ function makeStore() {
       [paymentsApi.reducerPath]:         paymentsApi.reducer,
       [depositRulesApi.reducerPath]:     depositRulesApi.reducer,
       [studiosApi.reducerPath]:          studiosApi.reducer,
+      [servicesApi.reducerPath]:         servicesApi.reducer,
     },
     middleware: (gd) =>
       gd().concat(
@@ -198,6 +202,7 @@ function makeStore() {
         paymentsApi.middleware,
         depositRulesApi.middleware,
         studiosApi.middleware,
+        servicesApi.middleware,
       ),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -733,5 +738,28 @@ describe("DashboardPage — the studio's today (S01)", () => {
     const stat = await screen.findByTestId("stat-today");
     expect(await within(stat).findByLabelText("Unavailable")).toBeInTheDocument();
     expect(stat).not.toHaveTextContent(/\b0\b/);
+  });
+});
+
+describe("DashboardPage — C04: no active services is the studio's gap, not the client's question", () => {
+  it("tells the owner when clients are asked for a session length, and links to Services", async () => {
+    server.use(http.get("http://localhost/api/v1/services", () => HttpResponse.json([{ id: "svc-1", isActive: false }])));
+    renderPage();
+    const notice = await screen.findByTestId("services-gap-notice");
+    expect(notice).toHaveTextContent(/choose a session length themselves/i);
+    expect(within(notice).getByRole("link", { name: "Add services" })).toHaveAttribute("href", "/services");
+  });
+
+  it("says nothing when the studio has an active service", async () => {
+    renderPage();
+    expect(await screen.findByText("No appointments today.")).toBeInTheDocument();
+    expect(screen.queryByTestId("services-gap-notice")).toBeNull();
+  });
+
+  it("says nothing when the read fails (advice, not a status: it doesn't guess)", async () => {
+    server.use(http.get("http://localhost/api/v1/services", () => new HttpResponse(null, { status: 500 })));
+    renderPage();
+    expect(await screen.findByText("No appointments today.")).toBeInTheDocument();
+    expect(screen.queryByTestId("services-gap-notice")).toBeNull();
   });
 });

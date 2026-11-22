@@ -150,7 +150,7 @@ describe("WaitlistClaimPage", () => {
     respondWith({ ...OFFER, state: WaitlistClaimState.Booked });
     renderAt("/waitlist/claim#t=tok-123", Role.Client);
 
-    expect(await screen.findByRole("link", { name: "See your bookings" })).toHaveAttribute("href", "/book");
+    expect(await screen.findByRole("link", { name: "See your bookings" })).toHaveAttribute("href", "/my-appointments");
   });
 
   it("cancelled: says they left the waitlist", async () => {

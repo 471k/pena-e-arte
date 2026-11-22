@@ -205,7 +205,7 @@ export function PaymentResultPage() {
     : viewFor(data) ?? COULD_NOT_CHECK;
 
   const home = role === Role.Client
-    ? { to: "/book", label: "Go to My bookings" }
+    ? { to: "/my-appointments", label: "Go to My bookings" }
     : { to: "/", label: "Back to TattooOS" };
 
   const title = view.neutralTitle ? NEUTRAL_TITLE : view.heading;
@@ -218,7 +218,7 @@ export function PaymentResultPage() {
   const retry = view.tryAgain === "pay" && paymentId
     ? { to: `/pay/${paymentId}`, label: "Try again" }
     : view.tryAgain === "bookings" && role === Role.Client
-      ? { to: "/book", label: "Try again in My bookings" }
+      ? { to: "/my-appointments", label: "Try again in My bookings" }
       : null;
   // The bookings retry already goes where "Go to My bookings" would: one link, not two.
   const showHome = view.signIn || retry?.to !== home.to;

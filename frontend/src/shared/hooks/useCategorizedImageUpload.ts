@@ -37,6 +37,9 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
   // value at unmount time. The sync itself must happen in an effect (no deps array, so it runs
   // after every render) rather than during render — mutating a ref while rendering breaks React
   // Compiler's memoization assumptions (react-hooks/refs lint rule).
+  // C06: the picked File behind each image, so a failed upload can be retried instead of only removed. A ref, not
+  // state: nothing renders from it.
+  const filesRef = useRef(new Map<string, File>());
   const imagesRef = useRef(images);
   useEffect(() => {
     imagesRef.current = images;
@@ -65,6 +68,7 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
     const entries = accepted.map((file) => ({
       file, id: generateUuid(), previewUrl: URL.createObjectURL(file),
     }));
+    entries.forEach(({ file, id }) => filesRef.current.set(id, file));
 
     setImages((prev) => [
       ...prev,
@@ -82,7 +86,20 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
     }));
   }
 
+  /** C06: try a failed upload again with the same file. */
+  async function retry(id: string) {
+    const file = filesRef.current.get(id);
+    if (!file) return;
+    setImages((prev) => prev.map((img) => (img.id === id ? { ...img, status: "uploading" } : img)));
+    const publicUrl = await upload(file);
+    setImages((prev) => prev.map((img) => {
+      if (img.id !== id) return img;
+      return publicUrl ? { ...img, status: "done", publicUrl } : { ...img, status: "error" };
+    }));
+  }
+
   function remove(id: string) {
+    filesRef.current.delete(id);
     setImages((prev) => {
       const target = prev.find((img) => img.id === id);
       if (target) URL.revokeObjectURL(target.previewUrl);
@@ -91,6 +108,7 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
   }
 
   function clear() {
+    filesRef.current.clear();
     images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
     setImages([]);
     setError(null);
@@ -100,5 +118,5 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
   const doneUrls = () => images.filter((img) => img.status === "done" && img.publicUrl)
     .map((img) => img.publicUrl as string);
 
-  return { images, error, pick, remove, clear, uploading, doneUrls };
+  return { images, error, pick, retry, remove, clear, uploading, doneUrls };
 }

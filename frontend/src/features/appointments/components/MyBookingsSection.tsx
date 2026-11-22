@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Banknote, CalendarDays, CheckCircle2, ChevronRight, ChevronUp, CreditCard, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { Separator } from "@/shared/components/ui/separator";
 import {
   useGetMyAppointmentsQuery,
@@ -466,15 +466,16 @@ export function MyBookingsSection() {
   return (
     <Card>
       <CardHeader className="pb-1">
-        <CardTitle className="text-base flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" />
+        {/* The client's home page's one heading (C01: this card IS the page now, so the page adds no second one). */}
+        <h1 className="text-base font-semibold leading-none tracking-tight flex items-center gap-2">
+          <CalendarDays className="h-4 w-4" aria-hidden="true" />
           My bookings
           {upcoming.length > 0 && (
             <span className="ml-auto text-xs font-normal text-muted-foreground">
               {upcoming.length} upcoming
             </span>
           )}
-        </CardTitle>
+        </h1>
       </CardHeader>
       <CardContent>
         {isLoading && (

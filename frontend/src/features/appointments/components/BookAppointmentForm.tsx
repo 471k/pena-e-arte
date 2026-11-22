@@ -61,6 +61,8 @@ import { useGetMyPackagePurchasesQuery }          from "@/features/session-packa
 import { useGetMyReferralRewardsQuery }           from "@/features/client-referrals/clientReferralsApi";
 import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndicator";
 import { FieldLabel }                             from "./FieldLabel";
+import { ServiceChoiceSelect }                    from "./ServiceChoiceSelect";
+import { describeSessionLength }                  from "../sessionLength";
 import { TattooIntakeFields } from "./TattooIntakeFields";
 import { validateTattooIntake, type TattooIntakeValues } from "./tattooIntakeValidation";
 import { CategorizedImagesField } from "./CategorizedImagesField";
@@ -360,6 +362,10 @@ export function BookAppointmentForm() {
     tattooDescription: "", style: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
   });
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
+  // C04: "Something else (choose a session length)" picked on purpose. A waitlist claim or a flash design
+  // already carries its own length, so those start there, as before.
+  const [customLength, setCustomLength] = useState<boolean>(!!waitlistClaim || !!flashDesign?.flashDesignId);
+  const [serviceChoiceError, setServiceChoiceError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
   const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
 
@@ -456,7 +462,11 @@ export function BookAppointmentForm() {
   const [takenIso, setTakenIso] = useState<string | null>(null);
   const slotToday = studioTz ? studioWallDate(new Date(), studioTz) : null;
   const rangeStart = rangeStartState ?? slotToday;
-  const canListSlots = studioReady && rangeStart !== null && watchedDuration > 0
+  // C04: a client with services to choose from picks one (or "something else") before any length is assumed, so
+  // no open times are listed for a length nobody chose.
+  const serviceUnchosen = isClientRole && !watchedServiceId && !customLength
+    && (services ?? []).some((svc) => svc.isActive);
+  const canListSlots = studioReady && rangeStart !== null && watchedDuration > 0 && !serviceUnchosen
     && (watchedBookAnyArtist || !!watchedArtistId);
   const slotsQuery = useGetAvailableSlotsQuery(
     canListSlots && rangeStart
@@ -501,9 +511,10 @@ export function BookAppointmentForm() {
       { name: "artistId", label: "Artist" },
       { name: "clientId", label: "Client" },
       { name: "scheduledAt", label: "Date & time" },
-      { name: "durationMinutes", label: "Appointment duration" },
+      { name: "durationMinutes", label: "Session length" },
       { name: "promoCode", label: "Promo code" },
     ]),
+    ...extraErrorItem("serviceId", "Service", serviceChoiceError),
     ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
     ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
   ];
@@ -517,7 +528,9 @@ export function BookAppointmentForm() {
     const { tattooDescriptionError, referralSourceOtherError } = validateTattooIntake(intake);
     setTattooDescriptionError(tattooDescriptionError);
     setReferralSourceOtherError(referralSourceOtherError);
-    return !tattooDescriptionError && !referralSourceOtherError;
+    const serviceError = serviceUnchosen ? "Choose a service, or \"Something else\" to choose a session length yourself." : null;
+    setServiceChoiceError(serviceError);
+    return !tattooDescriptionError && !referralSourceOtherError && !serviceError;
   }
 
   async function onSubmit(values: FormValues) {
@@ -888,38 +901,21 @@ export function BookAppointmentForm() {
         </div>
       )}
 
-      {/* Service — picking one locks Duration (and, when the service has its own
-          DepositAmount, replaces the Deposit rule step below) to what the studio configured
-          for it; matches CreateAppointmentCommand's server-side override. */}
+      {/* Service — picking one locks the session length (and, when the service has its own DepositAmount,
+          replaces the Deposit rule step below) to what the studio configured for it; matches
+          CreateAppointmentCommand's server-side override. C04: for a client it starts unchosen. */}
       {activeServices.length > 0 && (
-        <div className="space-y-1.5">
-          <FieldLabel htmlFor="serviceId">Service</FieldLabel>
-          <Controller
-            control={control}
-            name="serviceId"
-            render={({ field }) => (
-              <Select
-                value={field.value ?? "custom"}
-                onValueChange={(v) => field.onChange(v === "custom" ? null : v)}
-              >
-                <SelectTrigger id="serviceId">
-                  <SelectValue placeholder="Custom (choose your own duration)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="custom">Custom (choose your own duration)</SelectItem>
-                  {activeServices.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {s.durationMinutes} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {selectedService?.description && (
-            <p className="text-xs text-muted-foreground">{selectedService.description}</p>
-          )}
-        </div>
+        <ServiceChoiceSelect
+          services={activeServices}
+          choice={{ serviceId: watchedServiceId ?? null, custom: customLength }}
+          requireChoice={isClientRole}
+          error={serviceChoiceError}
+          onChange={(choice) => {
+            setValue("serviceId", choice.serviceId, { shouldDirty: true });
+            setCustomLength(choice.custom);
+            setServiceChoiceError(null);
+          }}
+        />
       )}
 
       {/* Open times (C03) — fills Date & Time below, which stays for typing a time by hand */}
@@ -932,7 +928,9 @@ export function BookAppointmentForm() {
         query={canListSlots ? slotsQuery : null}
         waitingFor={zone.status === "error"
           ? "Open times need the studio's time zone, which couldn't be loaded."
-          : "Choose an artist, or let the studio choose, to see open times."}
+          : serviceUnchosen
+            ? "Choose a service to see open times."
+            : "Choose an artist, or let the studio choose, to see open times."}
         selectedIso={pickedIso}
         onPick={pickSlot}
         takenIso={takenIso !== null && takenIso === pickedIso ? takenIso : null}
@@ -966,15 +964,20 @@ export function BookAppointmentForm() {
         </div>
 
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
-          <FieldLabel htmlFor="durationMinutes" required>Appointment Duration</FieldLabel>
+          <FieldLabel htmlFor="durationMinutes" required={!selectedService && !serviceUnchosen}>Session length</FieldLabel>
+          {/* C04: a consequence of the service, not a question; asked only for "something else". */}
           {selectedService ? (
             <div
               id="durationMinutes"
-              className="flex h-9 items-center rounded-md border border-input bg-muted/40
-                         px-3 text-sm text-muted-foreground"
+              className="flex min-h-9 items-center rounded-md border border-input bg-muted/40
+                         px-3 py-1.5 text-sm text-muted-foreground"
             >
-              {selectedService.durationMinutes} min — set by "{selectedService.name}"
+              {describeSessionLength(selectedService.durationMinutes, selectedService.name)}
             </div>
+          ) : serviceUnchosen ? (
+            <p id="durationMinutes" className="flex min-h-9 items-center text-sm text-muted-foreground">
+              Set by the service you choose.
+            </p>
           ) : (
             <Controller
               control={control}
@@ -1156,24 +1159,28 @@ export function BookAppointmentForm() {
       <CategorizedImagesField
         category={AppointmentAttachmentCategory.AreaPhoto}
         label="Area photo"
+        purpose="So your artist can see the skin, the size and the placement before your session."
         helperText={`Click to add a photo of the area — JPEG, PNG, or WebP (up to ${MAX_REFERENCE_IMAGES})`}
         required={false}
         max={MAX_REFERENCE_IMAGES}
         images={areaPhotos.images}
         error={areaPhotos.error}
         onPick={(files) => void areaPhotos.pick(files)}
+        onRetry={(id) => void areaPhotos.retry(id)}
         onRemove={areaPhotos.remove}
         disabled={isLoading}
       />
       <CategorizedImagesField
         category={AppointmentAttachmentCategory.Reference}
         label="Reference images"
+        purpose="The style or idea you have in mind, so your artist can plan the design."
         helperText={`Click to add photos — JPEG, PNG, or WebP (up to ${MAX_REFERENCE_IMAGES})`}
         required={false}
         max={MAX_REFERENCE_IMAGES}
         images={referenceImages.images}
         error={referenceImages.error}
         onPick={(files) => void referenceImages.pick(files)}
+        onRetry={(id) => void referenceImages.retry(id)}
         onRemove={referenceImages.remove}
         disabled={isLoading}
       />

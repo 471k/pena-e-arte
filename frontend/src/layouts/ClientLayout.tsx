@@ -1,7 +1,7 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import {
   CalendarDays, Palette, FileText, ScrollText, User, PenLine, Building2, MessageCircle,
-  ListOrdered, Package as PackageIcon, CreditCard, Layers,
+  ListOrdered, ListChecks, Package as PackageIcon, CreditCard, Layers,
 } from "lucide-react";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
@@ -28,6 +28,8 @@ const NAV_SECTIONS: NavSection[] = [
   {
     id: "overview",
     entries: [
+      // C01: the client's home first, then the task. `end` so it doesn't also light up on one booking's page.
+      { label: "My bookings",      href: "/my-appointments", icon: <ListChecks className={ICON} />, tourId: "client-bookings-nav", end: true },
       { label: "Book Appointment", href: "/book", icon: <CalendarDays className={ICON} />, tourId: "client-book-nav" },
     ],
   },

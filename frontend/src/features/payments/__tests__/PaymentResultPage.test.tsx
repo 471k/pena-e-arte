@@ -119,7 +119,7 @@ describe("PaymentResultPage (C08)", () => {
     { row: 5, fields: { status: "Captured" },                            heading: /^payment authorised$/i,        money: /authorised €50 and it's being held — not charged yet/i,     tryAgain: false },
     { row: 6, fields: { status: "Refunded", refundedAmount: 50 },        heading: /^payment refunded$/i,          money: /refunded — €50 went back to your card\. refunds usually/i,  tryAgain: false },
     { row: 6, fields: { status: "Refunded", refundedAmount: null },      heading: /^payment refunded$/i,          money: /has since been refunded\. refunds usually/i,                tryAgain: false },
-    { row: 7, fields: { status: "Failed" },                              heading: /^payment not completed$/i,     money: /bank reported that this payment didn't go through/i,        tryAgain: "/book" },
+    { row: 7, fields: { status: "Failed" },                              heading: /^payment not completed$/i,     money: /bank reported that this payment didn't go through/i,        tryAgain: "/my-appointments" },
     { row: 8, fields: { status: "Pending" },                             heading: /^payment not confirmed yet$/i, money: /haven't had confirmation from your bank yet/i,              tryAgain: `/pay/${PAYMENT}` },
     { row: 9, fields: { status: "CashPending" },                         heading: /^cash payment$/i,              money: /recorded as cash/i,                                         tryAgain: false },
     { row: 3, fields: { status: "Pending", appointmentCancelled: true }, heading: /^appointment cancelled$/i,     money: /being returned to your card automatically/i,                tryAgain: false },
@@ -135,9 +135,9 @@ describe("PaymentResultPage (C08)", () => {
       if (tryAgain) expect(retry).toHaveAttribute("href", tryAgain);
       else expect(retry).not.toBeInTheDocument();
       // Exactly one way to My bookings: the retry when it goes there, "Go to My bookings" otherwise.
-      const toBookings = screen.getAllByRole("link").filter((a) => a.getAttribute("href") === "/book");
+      const toBookings = screen.getAllByRole("link").filter((a) => a.getAttribute("href") === "/my-appointments");
       expect(toBookings).toHaveLength(1);
-      if (tryAgain !== "/book") expect(toBookings[0]).toHaveAccessibleName(/go to my bookings/i);
+      if (tryAgain !== "/my-appointments") expect(toBookings[0]).toHaveAccessibleName(/go to my bookings/i);
     });
   });
 
@@ -146,7 +146,7 @@ describe("PaymentResultPage (C08)", () => {
     renderAt(`?payment=${PAYMENT}`);
 
     await heading(/payment not completed/i);
-    expect(screen.getByRole("link", { name: /try again in my bookings/i })).toHaveAttribute("href", "/book");
+    expect(screen.getByRole("link", { name: /try again in my bookings/i })).toHaveAttribute("href", "/my-appointments");
     expect(pageText()).toMatch(/"Pay deposit" on the booking in My bookings/);
     expect(screen.getAllByRole("link").map((a) => a.getAttribute("href"))).not.toContain(`/pay/${PAYMENT}`);
   });

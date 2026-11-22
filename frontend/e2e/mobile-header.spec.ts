@@ -18,7 +18,8 @@ const ARTIST = {
 const ROLES: ReadonlyArray<{ name: string; token: string; email: string; landing: RegExp; path?: string }> = [
   { name: "owner",  token: OWNER_TOKEN,  email: "owner@tinta-alma.com",   landing: /^(?!.*\/login).+/, path: `/artists/${ARTIST_ID}` },
   { name: "artist", token: ARTIST_TOKEN, email: "rafaela@tinta-alma.com", landing: /^(?!.*\/login).+/, path: `/artists/${ARTIST_ID}` },
-  { name: "client", token: CLIENT_TOKEN, email: "ana@example.com",        landing: /\/book/i },
+  // C01: a client lands on their bookings.
+  { name: "client", token: CLIENT_TOKEN, email: "ana@example.com",        landing: /\/my-appointments/i },
   { name: "admin",  token: ADMIN_TOKEN,  email: "admin@tattooos.co",      landing: /^(?!.*\/login).+/ },
 ];
 

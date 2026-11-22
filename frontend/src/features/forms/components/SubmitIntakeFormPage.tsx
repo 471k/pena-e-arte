@@ -144,7 +144,7 @@ export function SubmitIntakeFormPage() {
   useDocumentMeta({ title: "Submit Intake Form — TattooOS", canonical: "/forms/intake/new" });
 
   const navigate = useNavigate();
-  const goBack = useGoBack("/book");
+  const goBack = useGoBack("/my-appointments");
   const user = useCurrentUser();
 
   const { data: appointments, isLoading: apptsLoading, isError: apptsError, refetch: refetchAppts } =
@@ -272,8 +272,8 @@ export function SubmitIntakeFormPage() {
             <Button variant="outline" size="sm" onClick={resetMutation}>
               Submit another
             </Button>
-            <Button size="sm" onClick={() => navigate("/book")}>
-              Back to booking
+            <Button size="sm" onClick={() => navigate("/my-appointments")}>
+              Back to my bookings
             </Button>
           </div>
         </div>

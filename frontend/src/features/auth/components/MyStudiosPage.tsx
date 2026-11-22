@@ -216,7 +216,8 @@ export function MyStudiosPage() {
           ? "Joined studio — welcome!"
           : "Studio switched successfully."
       );
-      navigate("/book", { replace: true });
+      // The new studio's bookings: the client's home (C01).
+      navigate("/my-appointments", { replace: true });
     } catch {
       toast.error("Couldn't switch studios. Please try again.");
     } finally {
