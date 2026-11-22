@@ -7784,3 +7784,29 @@ real content: zero sideways scroll everywhere. (The first run measured error scr
 those results were discarded and re-measured.) **The tour JS is unchanged:** its 640/1024 decide drawer versus
 sidebar, which is the shell, and no tour step targets a migrated element. **Help:** no change; nothing in Help or the
 manual describes width-dependent behaviour on these pages.
+
+## Public product pages on the package's breakpoints (slice 6e) — 2026-11-22
+
+Desktop's 6c review split the public pages: the product surfaces a client walks through move, the marketing pages
+stay out (handoff pack `docs/01:24` reserves pricing, features, use cases and legal). Reason: the same lines existed
+on both sides, so a client saw two portfolio columns at 700px signed out and three on the same artist signed in.
+
+**Moved, by 6c's rule** (30 class uses on 20 lines in four files): column counts and stacking grids to `page-md`
+(artist and studio portfolio masonry, flash and Instagram grids, studio artist cards, Discover's studio cards
+`page-md:2` / `page-lg:3`, the feed `page-md:2` / `page-lg:3`, Discover's search row and footer); side columns and
+their sticky offsets to `page-lg` (artist page 340px, studio page 300px). **The artist page's fixed "Book with ..."
+bar and its clearing padding moved with its side column** (`page-lg:hidden`, `pb-20 page-lg:pb-8`): the bar shows
+exactly while the column holding the booking button is stacked. Pinned by `e2e/public-page-breakpoints.spec.ts`
+(1099/1100 for column + bar + padding together, 799/800 for portfolio columns, 799/800/1099/1100 for Discover).
+
+**Left on the shell scale, each with its reason in a comment or `frontend.md`:** both image lightboxes' split (`md:`,
+sized to the dialog's own `max-w-3xl`), the horizontal scrollers' gutter bleed, and Discover's location name beside
+"Near me".
+
+**Two pre-existing overflows the pass found and fixed (signed-out only, so the signed-in passes never saw them):**
+the public header's nav ran 39px past a 320px screen (the Wordmark now hides below 360px, the app shell's own rule;
+the link keeps its aria-label and the pen mark), and the shared `CategoryTabs` group (~338px) pushed Discover 34px
+sideways at 320 (it now scrolls inside its own width, like the style chips beside it). Each is mutation-checked.
+
+**Known, not changed:** the studio page has no quick-book bar, so below 1100 its "Book an Appointment" button sits
+after the portfolio, which the 1024-1099 band now shares with phones. Flagged for Desktop.

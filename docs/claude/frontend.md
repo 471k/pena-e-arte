@@ -407,8 +407,17 @@ gutters (`px-4 sm:px-6`, which must line up with the shell header's own gutter),
 card (the booking form's date/length split sits in a `max-w-md` card, so the viewport is the wrong measure),
 the artist profile's six-tab strip (needs ~600px), the schedule toolbar's label width, sheet widths (the sheet
 primitive's own), and component-internal layout (`AppointmentCard`, `DataTable`'s card/table switch,
-`ConnectionRow`). The public pages (portfolio, discover, pricing, features) were not moved: they keep their old
-look (handoff pack `docs/01`).
+`ConnectionRow`).
+
+**Slice 6e moved the public product pages by the same rule** (artist portfolio, studio portfolio, Discover,
+the portfolio feed), so a client sees the same column count on an artist's work signed in or out. The artist
+page's fixed "Book with …" bar and the padding that clears it (`page-lg:hidden` / `pb-20 page-lg:pb-8`) move
+**with** its side column: the bar shows exactly while the column holding the booking button is stacked, so the
+three change together or not at all. Left on the shell scale there: the two image lightboxes' split (`md:`,
+sized to the dialog's own `max-w-3xl` = 768px, not to the page), the horizontal scrollers' gutter bleed
+(`-mx-4 px-4 sm:mx-0 sm:px-0`, a gutter), and Discover's location name beside "Near me" (shown whenever that
+chip row has room, which it does from 640 in both search layouts). **The marketing pages stay out**
+(pricing, features, use cases, legal): handoff pack `docs/01:24` reserves those.
 
 **Target sizes: 44px and 46px are project targets, not WCAG.** docs/03 sets frequent controls at a
 46px minimum height, with 44px as a comfortable-target project goal. WCAG 2.2 AA (2.5.8) is **24x24 CSS px

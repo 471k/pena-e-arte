@@ -242,7 +242,7 @@ function StudioPageSkeleton() {
       <Skeleton className="h-72 w-full rounded-none" />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 page-lg:grid-cols-[1fr_300px] gap-8 page-lg:gap-12 items-start">
           <div className="space-y-6">
             <div className="space-y-3">
               <Skeleton className="h-8 w-56" />
@@ -250,7 +250,7 @@ function StudioPageSkeleton() {
               <Skeleton className="h-4 w-20" />
               <Skeleton className="h-16 w-full" />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 page-md:grid-cols-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full rounded-lg" />
               ))}
@@ -378,7 +378,7 @@ export function StudioPortfolioPage() {
           {canGoBack ? "Back" : "Browse studios"}
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 page-lg:grid-cols-[1fr_300px] gap-8 page-lg:gap-12 items-start">
 
           {/* Left: main content */}
           <div className="space-y-10">
@@ -424,7 +424,7 @@ export function StudioPortfolioPage() {
                     ({studio.artists.length})
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 page-md:grid-cols-2">
                   {studio.artists.map((a) => (
                     <ArtistCard key={a.artistId} artist={a} />
                   ))}
@@ -446,7 +446,7 @@ export function StudioPortfolioPage() {
                     ({studio.galleryImages.length})
                   </span>
                 </div>
-                <div className="columns-2 sm:columns-3 gap-3">
+                <div className="columns-2 page-md:columns-3 gap-3">
                   {studio.galleryImages.map((url, i) => (
                     <button
                       key={url}
@@ -493,7 +493,7 @@ export function StudioPortfolioPage() {
           </div>
 
           {/* Right: sticky sidebar */}
-          <aside className="lg:sticky lg:top-[72px] space-y-4">
+          <aside className="page-lg:sticky page-lg:top-[72px] space-y-4">
 
             <div className="rounded-xl border bg-muted/10 p-5 space-y-4">
               {studio.showBookingCta && (
