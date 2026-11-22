@@ -25,10 +25,17 @@ interface AreaCopy {
   tourId?: string;
   /** For an area that can be "set for you, not yet reviewed": what to tell the owner, and the button to check it. */
   unreviewed?: { note: string; cta: string; canConfirm: boolean };
+  /** Why a not-configured area matters, when the label alone doesn't say. */
+  notConfiguredNote?: string;
 }
 
 const COPY: Record<SetupAreaKey, AreaCopy> = {
   Artists:      { label: "Add your first artist", href: "/artists/new", cta: "Add artist" },
+  // C04: with no active service, clients booking online are asked for a session length instead of a service.
+  Services: {
+    label: "Add your services", href: "/services", cta: "Add services",
+    notConfiguredNote: "Until a service is active, clients booking online choose a session length themselves.",
+  },
   DepositRules: { label: "Set a deposit rule",    href: "/deposit-rules/new", cta: "Set rule", tourId: "owner-deposit-rules-nav" },
   Hours: {
     // E05c: Studio Settings is grouped; the link opens the group with the hours in it.
@@ -86,8 +93,11 @@ export function SetupChecklist() {
     );
   }
 
-  const doneCount = data.areas.filter((a) => a.state === "Reviewed").length;
-  if (doneCount === data.areas.length) return null;
+  // Only areas this build knows how to show. A newer server can add an area before an open tab has reloaded
+  // (or before the frontend finishes rolling out); an unknown key used to crash the dashboard on COPY[key].label.
+  const areas = data.areas.filter((a) => Object.prototype.hasOwnProperty.call(COPY, a.area));
+  const doneCount = areas.filter((a) => a.state === "Reviewed").length;
+  if (doneCount === areas.length) return null;
 
   async function onConfirmHours() {
     try {
@@ -104,11 +114,11 @@ export function SetupChecklist() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium">Studio setup</h2>
           <span className="text-xs text-muted-foreground">
-            {doneCount}/{data.areas.length} complete
+            {doneCount}/{areas.length} complete
           </span>
         </div>
         <ul className="space-y-2">
-          {data.areas.map((area) => {
+          {areas.map((area) => {
             const copy = COPY[area.area];
             const reviewed = area.state === "Reviewed";
             const unreviewedDefault = area.state === "DefaultUnreviewed";
@@ -127,6 +137,9 @@ export function SetupChecklist() {
                     </span>
                     {unreviewedDefault && copy.unreviewed && (
                       <p className="text-xs text-muted-foreground">{copy.unreviewed.note}</p>
+                    )}
+                    {area.state === "NotConfigured" && copy.notConfiguredNote && (
+                      <p className="text-xs text-muted-foreground">{copy.notConfiguredNote}</p>
                     )}
                     <span className="sr-only">
                       {reviewed ? " (done)" : unreviewedDefault ? " (set for you, not yet reviewed)" : " (not set up yet)"}

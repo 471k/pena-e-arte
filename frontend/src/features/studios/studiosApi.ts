@@ -171,8 +171,9 @@ export interface UpsertStudioHoursRequest {
   entries: StudioHoursEntry[];
 }
 
-/** E05a (O02): where one setup area stands. Only Hours can be "DefaultUnreviewed" (registration seeds them). */
-export type SetupAreaKey = "Artists" | "DepositRules" | "Hours" | "PayModel";
+/** E05a (O02): where one setup area stands. Hours and PayModel can be "DefaultUnreviewed" (registration seeds them).
+ *  "Services" (22 Nov 2026): at least one active service, so a client books a service rather than a length. */
+export type SetupAreaKey = "Artists" | "DepositRules" | "Hours" | "PayModel" | "Services";
 export type SetupAreaState = "NotConfigured" | "DefaultUnreviewed" | "Reviewed";
 
 export interface SetupAreaResponse {
