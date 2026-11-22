@@ -35,13 +35,3 @@ spec:
             # always times out on a clean boot. Never set on the API Deployment itself.
             - name: Migrations__ExitAfterMigrate
               value: "true"
-            # Workstation GC for this Job only: an experiment, started 22 Nov 2026. Since the
-            # 21 Nov node rescale (which also first booted kernel 7.0.0-43, after 7.0.0-22), this
-            # Job's first pod has aborted with exit 139 on 5 of 12 runs: glibc abort() reaching its
-            # final hlt, mostly on ".NET Server GC" threads, with nothing on stdout/stderr. Zero
-            # such faults since 1 Oct before that reboot. Server GC off here tells us whether it
-            # is involved. The Job allocates little and exits in seconds, so it loses nothing; the
-            # API Deployment keeps Server GC. Read the result from the Job's first-pod exit code
-            # over several deploys, then keep or remove this with the reason.
-            - name: DOTNET_gcServer
-              value: "0"
