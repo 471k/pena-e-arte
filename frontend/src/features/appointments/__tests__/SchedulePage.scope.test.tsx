@@ -16,12 +16,16 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { SchedulePage } from "@/features/appointments/components/SchedulePage";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
+import { studioMidnight, studioWallDate } from "@/shared/utils/studioDay";
 
 // E05c (O03): the schedule says whose appointments it shows, and an owner can narrow it to one artist
 // through the server's existing artistId filter. Its own file, so it mounts only SchedulePage.
 
-const today = new Date();
-today.setHours(10, 0, 0, 0);
+// 10:00 on the studio's calendar (the stub's Europe/Tirane), not the runner's: the schedule shows the studio's day
+// (S01), and seeding the runner's day failed CI from 23:00 to 24:00 UTC, when Tirane is already on the next day.
+const today = new Date(
+  studioMidnight(studioWallDate(new Date(), "Europe/Tirane"), "Europe/Tirane").getTime() + 10 * 3_600_000,
+);
 
 function appt(over: Partial<AppointmentResponse>): AppointmentResponse {
   return {
