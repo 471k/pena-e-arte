@@ -397,9 +397,18 @@ breakpoints, so `lg` still means 1024. **The token JSON's 720/1050 are legacy me
 
 **Which set new code uses:** `page-*` for any page-level layout band (when a page's columns stack, where a
 page's grid changes). `sm:` / `md:` / `lg:` only for the shell, or inside a component that has its own
-reason to differ from the page, and say that reason in a comment. Existing pages still use `sm/md/lg`
-for their layout. Moving them to `page-*` is a named slice 6 item, so until a page has moved, the
-package's values do not apply to it.
+reason to differ from the page, and say that reason in a comment.
+
+**Slice 6c moved the authenticated pages** (the Decisions Log has the table). The rule it applied: a page's
+columns stack below 800 (`sm:grid-cols-N` → `page-md:grid-cols-N`, and title/actions rows likewise); a side
+column joins at 1100 (`lg:` → `page-lg:`), so **a 1024–1099px window gets the stacked layout**; a small control
+pair goes side by side at 420 (`page-sm:`). Deliberately left on the shell scale: page header and scope-bar
+gutters (`px-4 sm:px-6`, which must line up with the shell header's own gutter), anything inside a fixed-width
+card (the booking form's date/length split sits in a `max-w-md` card, so the viewport is the wrong measure),
+the artist profile's six-tab strip (needs ~600px), the schedule toolbar's label width, sheet widths (the sheet
+primitive's own), and component-internal layout (`AppointmentCard`, `DataTable`'s card/table switch,
+`ConnectionRow`). The public pages (portfolio, discover, pricing, features) were not moved: they keep their old
+look (handoff pack `docs/01`).
 
 **Target sizes: 44px and 46px are project targets, not WCAG.** docs/03 sets frequent controls at a
 46px minimum height, with 44px as a comfortable-target project goal. WCAG 2.2 AA (2.5.8) is **24x24 CSS px

@@ -310,7 +310,7 @@ export function PlanEditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="min-h-screen bg-background pb-20 page-md:pb-0">
       <header className="flex items-center justify-between gap-4 px-6 py-3 border-b bg-background sticky top-[var(--admin-nav-height)] z-10">
         <div className="min-w-0">
           <Link
@@ -324,7 +324,7 @@ export function PlanEditPage() {
             {isEditMode ? plan?.name ?? "Edit plan" : "New plan"}
           </h1>
         </div>
-        <div className="hidden md:flex items-center gap-2 shrink-0">
+        <div className="hidden page-md:flex items-center gap-2 shrink-0">
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate("/platform/plans")}>
             Cancel
           </Button>
@@ -347,7 +347,7 @@ export function PlanEditPage() {
             <CardHeader>
               <CardTitle className="text-sm">Basic info</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 page-md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="planName">Name</Label>
                 <Input id="planName" {...register("name")} aria-invalid={!!errors.name} />
@@ -383,7 +383,7 @@ export function PlanEditPage() {
                   <Label className="font-medium">Monthly price</Label>
                 </div>
                 {watchedMonthlyEnabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-2">
+                  <div className="grid grid-cols-1 page-md:grid-cols-2 gap-3 pl-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="monthlyPrice" className="text-xs text-muted-foreground">Monthly price (€)</Label>
                       <Input id="monthlyPrice" type="number" step="0.01" min="0"
@@ -409,7 +409,7 @@ export function PlanEditPage() {
                   <Label className="font-medium">Yearly price</Label>
                 </div>
                 {watchedYearlyEnabled && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-2">
+                  <div className="grid grid-cols-1 page-md:grid-cols-2 gap-3 pl-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="yearlyPrice" className="text-xs text-muted-foreground">Yearly price (€)</Label>
                       <Input id="yearlyPrice" type="number" step="0.01" min="0"
@@ -468,7 +468,7 @@ export function PlanEditPage() {
             <CardHeader>
               <CardTitle className="text-sm">Usage limits</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-1 page-md:grid-cols-2 gap-4">
               <LimitField id="maxArtists" label="Artists" name="maxArtists"
                 control={control} register={register} setValue={setValue}
                 error={errors.maxArtists?.message} />
@@ -495,7 +495,7 @@ export function PlanEditPage() {
       </main>
 
       {/* Sticky mobile footer — desktop uses the header actions instead */}
-      <div className="md:hidden fixed bottom-0 inset-x-0 z-10 flex gap-2 border-t bg-background px-4 py-3">
+      <div className="page-md:hidden fixed bottom-0 inset-x-0 z-10 flex gap-2 border-t bg-background px-4 py-3">
         <Button type="button" variant="ghost" className="flex-1" onClick={() => navigate("/platform/plans")}>
           Cancel
         </Button>

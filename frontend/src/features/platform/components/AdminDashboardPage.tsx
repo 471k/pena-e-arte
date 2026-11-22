@@ -32,16 +32,16 @@ import type { PlatformSubscriptionResponse } from "@/features/platform/platform.
 function KpiGridSkeleton() {
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
         <KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
         <KpiSkeleton /><KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
         <KpiSkeleton /><KpiSkeleton /><KpiSkeleton />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
         <KpiSkeleton /><KpiSkeleton />
       </div>
     </div>
@@ -239,7 +239,7 @@ export function AdminDashboardPage() {
         ) : (
           <div className="space-y-3">
             {/* Row 1 — totals */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
               <KpiCard
                 label="Total Studios"
                 value={stats?.totalStudios ?? 0}
@@ -276,7 +276,7 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Row 2 — pipeline */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
               <KpiCard
                 label="Trialing"
                 value={stats?.trialStudios ?? 0}
@@ -315,7 +315,7 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Row 3 — health */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
               <KpiCard
                 label="Trial Conversion"
                 value={formatPercent(stats?.trialConversionRate ?? 0)}
@@ -345,7 +345,7 @@ export function AdminDashboardPage() {
             </div>
 
             {/* Row 4 — retention (recorded revenue ledger, last COMPLETED month — a ratio over a partial month misleads) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 page-md:grid-cols-4 gap-3">
               {retentionLoading ? (
                 <><KpiSkeleton /><KpiSkeleton /></>
               ) : (

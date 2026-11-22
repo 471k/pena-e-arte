@@ -219,7 +219,7 @@ export function PlanManagementPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 page-md:grid-cols-2 page-lg:grid-cols-3 gap-4">
             <PlanCardSkeleton />
             <PlanCardSkeleton />
             <PlanCardSkeleton />
@@ -247,7 +247,7 @@ export function PlanManagementPage() {
         )}
 
         {!isLoading && !isError && plans && plans.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 page-md:grid-cols-2 page-lg:grid-cols-3 gap-4">
             {plans.map((p) => (
               <PlanCard key={p.id} plan={p} />
             ))}

@@ -102,7 +102,7 @@ function StudioRowSkeleton() {
       <CardContent className="p-4 space-y-2">
         {/* Same stacked-on-phones / side-by-side-from-sm layout as the real row, so the skeleton
             doesn't push the page wider than the viewport while loading. */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 page-md:flex-row page-md:items-start page-md:justify-between page-md:gap-4">
           <div className="space-y-1.5 flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <Skeleton className="h-4 w-32" />
@@ -212,7 +212,7 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
         {/* ── Main row ─────────────────────────────────────────────────── */}
         {/* Stacked on phones, side by side from sm up (see SubscriptionOversightPage). The name / slug /
             status line wraps instead of forcing the page wider than the viewport. */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 page-md:flex-row page-md:items-start page-md:justify-between page-md:gap-4">
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
               <span className="font-medium text-sm">{studio.name}</span>
@@ -253,7 +253,7 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
           </div>
 
           {/* ── Action buttons ──────────────────────────────────────────── */}
-          <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 sm:justify-end">
+          <div className="flex items-center gap-1.5 flex-wrap page-md:shrink-0 page-md:justify-end">
 
             {/* 0. View detail — always visible, never hidden by anyExpanded */}
             <Link to={`/platform/studios/${studio.id}`} state={{ listSearch }} onClick={onOpen}>

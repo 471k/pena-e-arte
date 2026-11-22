@@ -152,7 +152,7 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
       <CardContent className="p-4 space-y-2">
         {/* Stacked on phones, side by side from sm up: the action group below is wider than a phone
             and must be free to wrap there, or it pushes the whole page past the viewport. */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex flex-col gap-2 page-md:flex-row page-md:items-start page-md:justify-between page-md:gap-4">
           <div className="space-y-0.5 min-w-0">
             <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
               <span className="font-medium text-sm">{sub.studioName}</span>
@@ -200,7 +200,7 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap sm:justify-end sm:shrink-0">
+          <div className="flex items-center gap-1.5 flex-wrap page-md:justify-end page-md:shrink-0">
             <Link to={`/platform/studios/${sub.studioId}`}>
               <Button
                 size="sm"
