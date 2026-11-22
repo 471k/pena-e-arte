@@ -49,7 +49,8 @@ function renderMenu(role: Role = "client" as Role) {
   render(
     <Provider store={store}>
       <MemoryRouter>
-        <HelpMenu />
+        {/* As OwnerLayout does once GET /artists/me has answered; the owner tour waits for it (other roles ignore it). */}
+        <HelpMenu ownerHasArtistProfile={true} />
       </MemoryRouter>
     </Provider>,
   );

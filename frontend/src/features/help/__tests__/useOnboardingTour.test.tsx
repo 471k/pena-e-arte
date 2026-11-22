@@ -44,8 +44,9 @@ function makeStore() {
   });
 }
 
-function TestHost({ role }: { role: Role | null }) {
-  const { tourElement, restartTour } = useOnboardingTour(role);
+// `ownerHasArtistProfile` undefined = still loading (no default: a default would replace an explicit undefined).
+function TestHost({ role, ownerHasArtistProfile }: { role: Role | null; ownerHasArtistProfile: boolean | undefined }) {
+  const { tourElement, restartTour } = useOnboardingTour(role, undefined, undefined, false, ownerHasArtistProfile);
   return (
     <>
       <button onClick={restartTour}>Restart</button>
@@ -60,10 +61,23 @@ function renderHost(role: Role | null = Role.Owner) {
   render(
     <Provider store={makeStore()}>
       <MemoryRouter>
-        <TestHost role={role} />
+        <TestHost role={role} ownerHasArtistProfile={true} />
       </MemoryRouter>
     </Provider>,
   );
+}
+
+function renderOwnerHost(ownerHasArtistProfile: boolean | undefined) {
+  const store = makeStore();
+  const ui = (value: boolean | undefined) => (
+    <Provider store={store}>
+      <MemoryRouter>
+        <TestHost role={Role.Owner} ownerHasArtistProfile={value} />
+      </MemoryRouter>
+    </Provider>
+  );
+  const { rerender } = render(ui(ownerHasArtistProfile));
+  return { setOwnerHasArtistProfile: (value: boolean | undefined) => rerender(ui(value)) };
 }
 
 describe("useOnboardingTour", () => {
@@ -94,6 +108,23 @@ describe("useOnboardingTour", () => {
 
     await waitFor(() => expect(completeCallCount).toBe(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("an owner's tour waits until it's known whether they have an artist profile, instead of timing a step out", async () => {
+    const { setOwnerHasArtistProfile } = renderOwnerHost(undefined);
+
+    // The tour status is long back by now; the tour still waits.
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    setOwnerHasArtistProfile(true);
+    expect(await screen.findByRole("dialog", {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it("an owner without an artist profile still gets the tour", async () => {
+    renderOwnerHost(false);
+
+    expect(await screen.findByRole("dialog", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it("'Take the tour again' (restartTour) bypasses the completed-check", async () => {
