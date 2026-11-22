@@ -77,14 +77,24 @@ test("owner at 390px: the tour's Owner/Artist step spotlights the switch in the 
   // /artists and is skipped because this owner already has a profile) until the switch step shows.
   // Each click waits for the next popover's counter: a skipped step shows no popover while it polls,
   // so clicking on a timer would press the following step's Next and step straight past it.
+  // `seen` records each stop (counter, heading, whether the drawer was open, and the spotlight's box), so a CI
+  // failure says which step the tour skipped or where it stopped instead of only "not found". Since #415 this
+  // test fails intermittently on CI at the line below (the switch step's popover never shows), never at the
+  // spotlight-size check further down.
+  const seen: string[] = [];
   for (let i = 0; i < 8; i++) {
     await expect(counter).toBeVisible();
-    if ((await tour.getByRole("heading").first().textContent())?.includes("Switch between Owner and Artist")) break;
+    const heading = (await tour.getByRole("heading").first().textContent()) ?? "";
+    const spotBox = await page.getByTestId("tour-spotlight").boundingBox();
+    // The tour popover is itself a dialog, so "drawer open" is read as "the drawer's switch is showing".
+    const drawerSwitchShowing = await page.getByRole("dialog").getByRole("tablist", SWITCH).first().isVisible();
+    seen.push(`${await counter.textContent()} "${heading}" drawerSwitch=${drawerSwitchShowing} spot=${spotBox ? `${Math.round(spotBox.x)},${Math.round(spotBox.y)} ${Math.round(spotBox.width)}x${Math.round(spotBox.height)}` : "none"}`);
+    if (heading.includes("Switch between Owner and Artist")) break;
     const before = await counter.textContent();
     await tour.getByRole("button", { name: /^next/i }).click();
     await expect(counter).not.toHaveText(before ?? "");
   }
-  await expect(tour.getByText("Switch between Owner and Artist", { exact: true })).toBeVisible();
+  await expect(tour.getByText("Switch between Owner and Artist", { exact: true }), `tour stops seen: ${seen.join(" | ")}`).toBeVisible();
   await expect(counter).toHaveText(/^5 \//);
 
   const spot = await page.getByTestId("tour-spotlight").boundingBox();

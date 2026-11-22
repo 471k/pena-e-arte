@@ -741,25 +741,5 @@ describe("DashboardPage — the studio's today (S01)", () => {
   });
 });
 
-describe("DashboardPage — C04: no active services is the studio's gap, not the client's question", () => {
-  it("tells the owner when clients are asked for a session length, and links to Services", async () => {
-    server.use(http.get("http://localhost/api/v1/services", () => HttpResponse.json([{ id: "svc-1", isActive: false }])));
-    renderPage();
-    const notice = await screen.findByTestId("services-gap-notice");
-    expect(notice).toHaveTextContent(/choose a session length themselves/i);
-    expect(within(notice).getByRole("link", { name: "Add services" })).toHaveAttribute("href", "/services");
-  });
-
-  it("says nothing when the studio has an active service", async () => {
-    renderPage();
-    expect(await screen.findByText("No appointments today.")).toBeInTheDocument();
-    expect(screen.queryByTestId("services-gap-notice")).toBeNull();
-  });
-
-  it("says nothing when the read fails (advice, not a status: it doesn't guess)", async () => {
-    server.use(http.get("http://localhost/api/v1/services", () => new HttpResponse(null, { status: 500 })));
-    renderPage();
-    expect(await screen.findByText("No appointments today.")).toBeInTheDocument();
-    expect(screen.queryByTestId("services-gap-notice")).toBeNull();
-  });
-});
+// C04's "no active services" moved from a dashboard notice to the server's setup checklist (22 Nov 2026):
+// SetupChecklist.test.tsx and SetupReadinessTests / OwnerDashboardIntegrationTests cover it.

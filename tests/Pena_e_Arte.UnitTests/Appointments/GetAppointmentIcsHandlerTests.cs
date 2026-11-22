@@ -42,7 +42,7 @@ public class GetAppointmentIcsHandlerTests
         _rates.GetLatestAsync("EUR", "ALL", Arg.Any<CancellationToken>())
               .Returns(new ExchangeRateSnapshot(rate, new DateOnly(2026, 10, 23), "BoA-Fix", false));
 
-    private Guid SeedAppointment(bool includeArtist = true, Guid? clientId = null)
+    private Guid SeedAppointment(bool includeArtist = true, Guid? clientId = null, AppointmentStatus status = AppointmentStatus.Confirmed)
     {
         Artist? artist = includeArtist
             ? new Artist { StudioId = _studioId, FirstName = "Ink", LastName = "Master", Email = "ink@test.com" }
@@ -58,7 +58,7 @@ public class GetAppointmentIcsHandlerTests
             Date = new DateTime(2026, 9, 15, 10, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc),
             DurationMinutes = 120,
-            Status = AppointmentStatus.Confirmed,
+            Status = status,
             DepositStatus = DepositStatus.Paid,
             DepositAmount = 50m,
         };
@@ -244,6 +244,43 @@ public class GetAppointmentIcsHandlerTests
 
         ics.Should().Contain("DESCRIPTION:Deposit: 50.00 ALL").And.NotContain("50.00 ALL (").And.NotContain("≈");
         await _rates.DidNotReceiveWithAnyArgs().GetLatestAsync(default!, default!, default);
+    }
+
+    // STATUS (22 Nov 2026): before this the file had no STATUS line, so a request or a cancelled booking
+    // imported looking confirmed. Staff can download it for any status.
+    [Theory]
+    [InlineData(AppointmentStatus.Pending, "TENTATIVE")]
+    [InlineData(AppointmentStatus.Confirmed, "CONFIRMED")]
+    [InlineData(AppointmentStatus.Cancelled, "CANCELLED")]
+    [InlineData(AppointmentStatus.Completed, "CONFIRMED")]
+    [InlineData(AppointmentStatus.NoShow, "CONFIRMED")]
+    public async Task Handle_WritesTheBookingsStatus_AndSequenceZero(AppointmentStatus status, string expected)
+    {
+        Guid apptId = SeedAppointment(status: status);
+
+        string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
+
+        string[] lines = ics.Split('\n').Select(l => l.TrimEnd('\r')).ToArray();
+        lines.Should().ContainSingle(l => l.StartsWith("STATUS:")).Which.Should().Be($"STATUS:{expected}");
+        lines.Should().ContainSingle(l => l.StartsWith("SEQUENCE:")).Which.Should().Be("SEQUENCE:0");
+        // A download is a PUBLISH-style import: no METHOD line, and nothing here can retract an imported event.
+        lines.Should().NotContain(l => l.StartsWith("METHOD:"));
+    }
+
+    // Walks the enum, so a status added later can't silently import as confirmed: it fails here first.
+    [Fact]
+    public async Task EveryAppointmentStatus_HasAnIcsStatus()
+    {
+        string[] allowed = ["TENTATIVE", "CONFIRMED", "CANCELLED"];
+        foreach (AppointmentStatus status in Enum.GetValues<AppointmentStatus>())
+        {
+            Guid apptId = SeedAppointment(status: status);
+
+            string ics = await CreateSut().Handle(new GetAppointmentIcsQuery(apptId), default);
+
+            string line = ics.Split('\n').Select(l => l.TrimEnd('\r')).Single(l => l.StartsWith("STATUS:"));
+            allowed.Should().Contain(line["STATUS:".Length..], $"{status} must map to an RFC 5545 VEVENT status");
+        }
     }
 
     [Fact]

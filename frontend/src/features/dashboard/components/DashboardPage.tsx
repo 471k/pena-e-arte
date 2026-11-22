@@ -18,7 +18,6 @@ import type { SubscriptionResponse } from "@/features/billing/billing.types";
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { SetupChecklist } from "./SetupChecklist";
-import { ServicesGapNotice } from "./ServicesGapNotice";
 import { OwnerExceptions } from "./OwnerExceptions";
 import { OwnerExceptionKind } from "../dashboard.types";
 import { useStudioZone } from "@/features/studios/useStudioZone";
@@ -340,8 +339,8 @@ export function DashboardPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {sub && <SubscriptionBanner sub={sub} />}
+        {/* Includes "Add your services" (C04): one source with the server, which replaced 6d's separate notice. */}
         <SetupChecklist />
-        <ServicesGapNotice />
 
         {/* E05a (O01): what needs a decision comes first; the counts and today's list follow. */}
         <OwnerExceptions />

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Domain.Entities;
+using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Domain.Money;
@@ -49,21 +50,45 @@ public class GetAppointmentIcsHandler(IAppDbContext db, IExchangeRateProvider ra
             ? $" with {appt.Artist.FirstName} {appt.Artist.LastName}".Trim()
             : string.Empty;
 
+        string status = IcsStatus(appt.Status);
+
+        // STATUS says what the booking is at the moment of download, so a request imports as tentative and a
+        // cancelled booking as cancelled instead of both looking confirmed (before 22 Nov 2026 there was no
+        // STATUS line at all). What it does NOT do: retract an event someone already imported. Removing an
+        // imported event needs METHOD:CANCEL on the calendar and a higher SEQUENCE, sent to the person. We only
+        // ever offer this file as a download (a PUBLISH-style import, no METHOD line), never send it, so a stale
+        // entry in someone's calendar stays until they delete it. SEQUENCE:0 is the field a future cancel-send
+        // would have to increment.
         return $"""
 BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//TattooOS//Appointment//EN
 BEGIN:VEVENT
 UID:{uid}
+SEQUENCE:0
 DTSTAMP:{dtStamp}
 DTSTART:{dtStart}
 DTEND:{dtEnd}
+STATUS:{status}
 SUMMARY:{summary}{artist}
 DESCRIPTION:Deposit: {deposit}
 END:VEVENT
 END:VCALENDAR
 """;
     }
+
+    // Every AppointmentStatus is named, so a new one fails here (and in the test that walks the enum) rather
+    // than silently importing as confirmed. Completed and NoShow are CONFIRMED: the slot was held, and the file
+    // records the booking, not attendance.
+    private static string IcsStatus(AppointmentStatus status) => status switch
+    {
+        AppointmentStatus.Pending => "TENTATIVE",
+        AppointmentStatus.Confirmed => "CONFIRMED",
+        AppointmentStatus.Cancelled => "CANCELLED",
+        AppointmentStatus.Completed => "CONFIRMED",
+        AppointmentStatus.NoShow => "CONFIRMED",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "No iCalendar STATUS for this appointment status."),
+    };
 
     // Albanian EUR studios show lek next to the deposit (spec D7): the lek frozen on the deposit payment
     // once the client has paid, otherwise the latest BoA rate, marked approximate. Every other studio:

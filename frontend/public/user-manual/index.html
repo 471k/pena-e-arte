@@ -2254,11 +2254,11 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Setup checklist</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✗</td></tr><tr><td>Client</td><td>✗</td></tr><tr><td>Artist</td><td>✗</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✗</td></tr></table>
-<p>A card at the top of the Dashboard with four steps: <span class="step-title">Add your first artist</span>, <span class="step-title">Set a deposit rule</span>, <span class="step-title">Set your hours</span> and <span class="step-title">Set how artists get paid</span>. A step counts as done only once you've done it yourself, so a new studio is never shown as set up just because we filled something in for it. The card hides itself once all four are done.</p>
+<p>A card at the top of the Dashboard with five steps: <span class="step-title">Add your first artist</span>, <span class="step-title">Add your services</span>, <span class="step-title">Set a deposit rule</span>, <span class="step-title">Set your hours</span> and <span class="step-title">Set how artists get paid</span>. A step counts as done only once you've done it yourself, so a new studio is never shown as set up just because we filled something in for it. <span class="step-title">Add your services</span> is done once at least one service is active; until then the card says clients booking online choose a session length themselves (a service you've turned off doesn't count). The card hides itself once all five are done.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Setup checklist wireframe">
 <rect x="200" y="130" width="360" height="190" rx="8" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.15"/>
-<text x="216" y="156" font-size="11" font-weight="700">Studio setup</text><text x="490" y="156" font-size="9" fill-opacity="0.6">1/4 complete</text>
+<text x="216" y="156" font-size="11" font-weight="700">Studio setup</text><text x="490" y="156" font-size="9" fill-opacity="0.6">1/5 complete</text>
 <text x="216" y="182" font-size="9">✓ <tspan text-decoration="line-through" fill-opacity="0.5">Add your first artist</tspan></text>
 <text x="216" y="206" font-size="9">○ Set a deposit rule</text>
 <rect x="470" y="194" width="70" height="20" rx="4" fill="currentColor" fill-opacity="0.08"/><text x="482" y="208" font-size="8">Set rule</text>
@@ -2640,7 +2640,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-owner">Owner</span> Service catalog</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓ (read-only, active only)</td></tr><tr><td>Client</td><td>✓ (read-only)</td></tr><tr><td>Artist</td><td>✓ (read-only)</td></tr><tr><td>Owner</td><td>✓</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>At <code>/services</code>: bookable services (e.g. "New Tattoo Session", "Touch-Up") clients choose when booking. Each service carries its own duration and, optionally, its own price and deposit amount. Clients choose a service and the session length follows from it; with no active services they're asked for a length themselves, and your Dashboard shows a note with <span class="step-title">Add services</span> until you add one.</p>
+<p>At <code>/services</code>: bookable services (e.g. "New Tattoo Session", "Touch-Up") clients choose when booking. Each service carries its own duration and, optionally, its own price and deposit amount. Clients choose a service and the session length follows from it; with no active services they're asked for a length themselves, and <span class="step-title">Add your services</span> stays on the Dashboard's setup checklist until one is active.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Service catalog wireframe">
 <rect width="760" height="40" fill="currentColor" fill-opacity="0.06"/>
