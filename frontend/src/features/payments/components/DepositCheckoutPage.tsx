@@ -77,8 +77,8 @@ function CheckoutForm({
             ? DEPOSIT_PAID_TEXT
             : "Your card has been authorised. The studio charges the deposit, usually at your appointment; its cancellation policy applies if you cancel late or miss it."}
         </p>
-        <Button variant="outline" size="sm" onClick={() => navigate("/book")}>
-          Back to booking
+        <Button variant="outline" size="sm" onClick={() => navigate("/my-appointments")}>
+          Back to my bookings
         </Button>
       </div>
     );

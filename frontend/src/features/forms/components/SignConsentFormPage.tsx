@@ -35,7 +35,7 @@ export function SignConsentFormPage() {
   useDocumentMeta({ title: "Sign Consent Form — TattooOS", canonical: "/forms/consent/new" });
 
   const navigate = useNavigate();
-  const goBack = useGoBack("/book");
+  const goBack = useGoBack("/my-appointments");
   const user = useCurrentUser();
   // ?appointmentId= pre-selects the appointment (the client appointment page's readiness links here).
   const [searchParams] = useSearchParams();
@@ -104,8 +104,8 @@ export function SignConsentFormPage() {
             <Button variant="outline" size="sm" onClick={resetMutation}>
               Sign another
             </Button>
-            <Button size="sm" onClick={() => navigate("/book")}>
-              Back to booking
+            <Button size="sm" onClick={() => navigate("/my-appointments")}>
+              Back to my bookings
             </Button>
           </div>
         </div>

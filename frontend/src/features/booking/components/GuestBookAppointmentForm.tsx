@@ -40,6 +40,8 @@ import {
 } from "../../public/publicApi";
 import type { PublicServiceResponse } from "../../public/publicApi";
 import { FieldLabel } from "@/features/appointments/components/FieldLabel";
+import { ServiceChoiceSelect } from "@/features/appointments/components/ServiceChoiceSelect";
+import { describeSessionLength } from "@/features/appointments/sessionLength";
 import { TattooIntakeFields } from "@/features/appointments/components/TattooIntakeFields";
 import { validateTattooIntake, type TattooIntakeValues } from "@/features/appointments/components/tattooIntakeValidation";
 import { CategorizedImagesField } from "@/features/appointments/components/CategorizedImagesField";
@@ -211,6 +213,9 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
     tattooDescription: "", style: "", referralSource: "", referralSourceOther: "", safetyNotes: "",
   });
   const [tattooDescriptionError, setTattooDescriptionError] = useState<string | null>(null);
+  // C04: "Something else (choose a session length)" picked on purpose; a waitlist claim carries its own length.
+  const [customLength, setCustomLength] = useState<boolean>(!!waitlistClaim);
+  const [serviceChoiceError, setServiceChoiceError] = useState<string | null>(null);
   const [referralSourceOtherError, setReferralSourceOtherError] = useState<string | null>(null);
   const [desiredPlacement, setDesiredPlacement] = useState<string[]>([]);
   const [referralCode, setReferralCode] = useState("");
@@ -275,7 +280,10 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
   const [takenIso, setTakenIso] = useState<string | null>(null);
   const slotToday = studioTz ? studioWallDate(new Date(), studioTz) : null;
   const rangeStart = rangeStartState ?? slotToday;
-  const canListSlots = rangeStart !== null && watchedDuration > 0 && (watchedBookAnyArtist || !!watchedArtistId);
+  // C04: with services to choose from, one is chosen (or "something else") before any length is assumed.
+  const serviceUnchosen = !watchedServiceId && !customLength && (services ?? []).length > 0;
+  const canListSlots = rangeStart !== null && watchedDuration > 0 && !serviceUnchosen
+    && (watchedBookAnyArtist || !!watchedArtistId);
   const slotsQuery = useGetPublicAvailableSlotsQuery(
     canListSlots && rangeStart
       ? {
@@ -305,6 +313,7 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       { name: "scheduledAt", label: "Date & time" },
       { name: "durationMinutes", label: "Duration" },
     ]),
+    ...extraErrorItem("serviceId", "Service", serviceChoiceError),
     ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
     ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
     ...extraErrorItem(`images-${AppointmentAttachmentCategory.AreaPhoto}`, "Area photo", areaPhotoError),
@@ -331,7 +340,9 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       setReferenceImageError("At least one reference image is required.");
       valid = false;
     }
-    return valid;
+    const serviceError = serviceUnchosen ? "Choose a service, or \"Something else\" to choose a session length yourself." : null;
+    setServiceChoiceError(serviceError);
+    return valid && !serviceError;
   }
 
   async function onSubmit(values: FormValues) {
@@ -544,38 +555,21 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
         />
       </div>
 
-      {/* Service — picking one locks Duration (and, when the service has its own
-          DepositAmount, replaces the deposit estimate below) to what the studio configured;
-          matches CreateAppointmentCommand's server-side override. */}
+      {/* Service — picking one locks the session length (and, when the service has its own DepositAmount, replaces
+          the deposit estimate below) to what the studio configured; matches CreateAppointmentCommand's server-side
+          override. C04: it starts unchosen, and "Something else" is the last option, not the default. */}
       {services && services.length > 0 && (
-        <div className="space-y-1.5">
-          <FieldLabel htmlFor="serviceId">Service</FieldLabel>
-          <Controller
-            control={control}
-            name="serviceId"
-            render={({ field }) => (
-              <Select
-                value={field.value ?? "custom"}
-                onValueChange={(v) => field.onChange(v === "custom" ? null : v)}
-              >
-                <SelectTrigger id="serviceId">
-                  <SelectValue placeholder="Custom (choose your own duration)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="custom">Custom (choose your own duration)</SelectItem>
-                  {services.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {s.durationMinutes} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          {selectedService?.description && (
-            <p className="text-xs text-muted-foreground">{selectedService.description}</p>
-          )}
-        </div>
+        <ServiceChoiceSelect
+          services={services}
+          choice={{ serviceId: watchedServiceId ?? null, custom: customLength }}
+          requireChoice
+          error={serviceChoiceError}
+          onChange={(choice) => {
+            setValue("serviceId", choice.serviceId, { shouldDirty: true });
+            setCustomLength(choice.custom);
+            setServiceChoiceError(null);
+          }}
+        />
       )}
 
       {/* Open times (C03) — fills Date & Time below, which stays for typing a time by hand */}
@@ -588,7 +582,9 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
         query={canListSlots ? slotsQuery : null}
         waitingFor={zone.status === "error"
           ? "Open times need the studio's time zone, which couldn't be loaded."
-          : "Choose an artist, or let the studio choose, to see open times."}
+          : serviceUnchosen
+            ? "Choose a service to see open times."
+            : "Choose an artist, or let the studio choose, to see open times."}
         selectedIso={pickedIso}
         onPick={pickSlot}
         takenIso={takenIso !== null && takenIso === pickedIso ? takenIso : null}
@@ -614,15 +610,20 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
           )}
         </div>
         <div className="space-y-1.5 col-span-2 sm:col-span-1">
-          <FieldLabel htmlFor="durationMinutes" required>Appointment Duration</FieldLabel>
+          <FieldLabel htmlFor="durationMinutes" required={!selectedService && !serviceUnchosen}>Session length</FieldLabel>
+          {/* C04: a consequence of the service, not a question; asked only for "something else". */}
           {selectedService ? (
             <div
               id="durationMinutes"
-              className="flex h-9 items-center rounded-md border border-input bg-muted/40
-                         px-3 text-sm text-muted-foreground"
+              className="flex min-h-9 items-center rounded-md border border-input bg-muted/40
+                         px-3 py-1.5 text-sm text-muted-foreground"
             >
-              {selectedService.durationMinutes} min — set by "{selectedService.name}"
+              {describeSessionLength(selectedService.durationMinutes, selectedService.name)}
             </div>
+          ) : serviceUnchosen ? (
+            <p id="durationMinutes" className="flex min-h-9 items-center text-sm text-muted-foreground">
+              Set by the service you choose.
+            </p>
           ) : (
             <Controller
               control={control}
@@ -705,24 +706,28 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       <CategorizedImagesField
         category={AppointmentAttachmentCategory.AreaPhoto}
         label="Area photo"
+        purpose="So your artist can see the skin, the size and the placement before your session."
         helperText={`Click to add a photo of the area — JPEG, PNG, or WebP (up to ${MAX_IMAGES})`}
         required
         max={MAX_IMAGES}
         images={areaPhotos.images}
         error={areaPhotos.error ?? areaPhotoError}
         onPick={(files) => void areaPhotos.pick(files)}
+        onRetry={(id) => void areaPhotos.retry(id)}
         onRemove={areaPhotos.remove}
         disabled={submitting}
       />
       <CategorizedImagesField
         category={AppointmentAttachmentCategory.Reference}
         label="Reference images"
+        purpose="The style or idea you have in mind, so your artist can plan the design."
         helperText={`Click to add photos — JPEG, PNG, or WebP (up to ${MAX_IMAGES})`}
         required
         max={MAX_IMAGES}
         images={referenceImages.images}
         error={referenceImages.error ?? referenceImageError}
         onPick={(files) => void referenceImages.pick(files)}
+        onRetry={(id) => void referenceImages.retry(id)}
         onRemove={referenceImages.remove}
         disabled={submitting}
       />

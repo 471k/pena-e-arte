@@ -94,7 +94,8 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
       });
     });
 
-    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    // C01: a client lands on their bookings, /my-appointments.
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/my-appointments/i);
     await page.goto("/my-studios");
     await expect(page.getByText("Tinta & Alma")).toBeVisible();
     await assertNoViolations(new AxeBuilder({ page }), page);
@@ -197,7 +198,8 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
       await route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
     });
 
-    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    // C01: a client lands on their bookings, /my-appointments.
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/my-appointments/i);
     await page.goto(`/pay/${PAYMENT_ID}`);
     await expect(page.getByText("Payment not found or you don't have access to it.")).toBeVisible();
     await assertNoViolations(new AxeBuilder({ page }), page);
@@ -259,7 +261,9 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
       }
     });
 
-    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    // C01: a client lands on their bookings, /my-appointments.
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/my-appointments/i);
+    await page.goto("/book");
 
     await page.getByRole("combobox", { name: "Select artist" }).click();
     await page.getByRole("option", { name: "Rafaela Costa" }).waitFor({ state: "visible", timeout: 5_000 });
@@ -272,7 +276,7 @@ test.describe("Accessibility (WCAG 2.1 AA) — critical surfaces", () => {
       `T${pad(future.getHours())}:${pad(future.getMinutes())}`;
     await page.getByLabel("Date & Time").fill(dateStr);
 
-    await page.getByLabel("Appointment Duration").click();
+    await page.getByLabel("Session length").click();
     await page.getByRole("option", { name: "2 hours" }).waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "2 hours" }).click();
 
@@ -352,7 +356,9 @@ test.describe("After Hours palette — scoped to authenticated layouts", () => {
       });
     });
 
-    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    // C01: a client lands on their bookings, /my-appointments.
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/my-appointments/i);
+    await page.goto("/book");
     const mode = await colourScheme(page);
     const palette = AFTER_HOURS[mode];
 
@@ -447,7 +453,9 @@ test.describe("After Hours palette — scoped to authenticated layouts", () => {
         await route.fallback();
       }
     });
-    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    // C01: a client lands on their bookings, /my-appointments.
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/my-appointments/i);
+    await page.goto("/book");
     await page.getByRole("combobox", { name: "Select artist" }).click();
     await page.getByRole("option", { name: "Rafaela Costa" }).waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "Rafaela Costa" }).click();
@@ -457,7 +465,7 @@ test.describe("After Hours palette — scoped to authenticated layouts", () => {
       `${future.getFullYear()}-${pad(future.getMonth() + 1)}-${pad(future.getDate())}` +
       `T${pad(future.getHours())}:${pad(future.getMinutes())}`,
     );
-    await page.getByLabel("Appointment Duration").click();
+    await page.getByLabel("Session length").click();
     await page.getByRole("option", { name: "2 hours" }).waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "2 hours" }).click();
     await page.getByLabel("What are you looking to get done?").fill("A small rose");

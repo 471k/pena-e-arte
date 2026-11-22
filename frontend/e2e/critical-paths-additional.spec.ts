@@ -70,7 +70,9 @@ test.describe("Deposit payment — cash", () => {
       });
     });
 
-    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/book/i);
+    // C01: a client lands on their bookings, /my-appointments.
+    await loginAs(page, CLIENT_TOKEN, "ana@example.com", /\/my-appointments/i);
+    await page.goto("/book");
 
     await page.getByRole("combobox", { name: "Select artist" }).click();
     await page.getByRole("option", { name: "Rafaela Costa" }).waitFor({ state: "visible", timeout: 5_000 });
@@ -83,7 +85,7 @@ test.describe("Deposit payment — cash", () => {
       `T${pad(future.getHours())}:${pad(future.getMinutes())}`;
     await page.getByLabel("Date & Time").fill(dateStr);
 
-    await page.getByLabel("Appointment Duration").click();
+    await page.getByLabel("Session length").click();
     await page.getByRole("option", { name: "2 hours" }).waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "2 hours" }).click();
 
@@ -155,7 +157,7 @@ test.describe("Intake form — consent flow", () => {
     await page.getByLabel("Email").fill("ana@example.com");
     await page.getByLabel("Password", { exact: true }).fill("Password123!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/book/i, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/my-appointments/i, { timeout: 10_000 }); // C01: the client home
 
     await page.goto("/forms/intake/new");
     // "Intake Form" is a plain <span> in the page header, not a semantic heading — this

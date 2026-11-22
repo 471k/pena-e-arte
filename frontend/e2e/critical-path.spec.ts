@@ -219,13 +219,14 @@ test.describe("Critical path — register, login, create appointment", () => {
     await mockStudioMe(page);
     await mockBookingApis(page);
 
-    // Log in as client; redirect lands on /book
+    // Log in as client; the redirect lands on their bookings (C01), and booking is one step from there
     await page.goto("/login");
     await page.getByLabel("Email").fill("ana@example.com");
     await page.getByLabel("Password", { exact: true }).fill("Password123!");
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await expect(page).toHaveURL(/\/book/i, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/my-appointments/i, { timeout: 10_000 });
+    await page.goto("/book");
 
     // ── Fill the booking form ──────────────────────────────────────────────
     // Artist picker: Radix Select trigger, aria-label="Select artist" (id="artistId").
@@ -248,8 +249,8 @@ test.describe("Critical path — register, login, create appointment", () => {
     await page.getByLabel("Date & Time").fill(dateStr);
 
     // Duration: Radix Select (no longer a free-text number input), id="durationMinutes",
-    // Label "Appointment Duration". 120 minutes is the "2 hours" option.
-    await page.getByLabel("Appointment Duration").click();
+    // Label "Session length" (C04). 120 minutes is the "2 hours" option.
+    await page.getByLabel("Session length").click();
     await page.getByRole("option", { name: "2 hours" })
       .waitFor({ state: "visible", timeout: 5_000 });
     await page.getByRole("option", { name: "2 hours" }).click();

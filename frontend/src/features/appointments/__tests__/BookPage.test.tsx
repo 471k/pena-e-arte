@@ -357,9 +357,9 @@ describe("BookPage", () => {
     expect(screen.getByRole("link", { name: /back/i })).toBeInTheDocument();
   });
 
-  it("renders the 'My bookings' section", () => {
+  it("links to the client's bookings, which moved to their home (C01)", () => {
     renderBookPage();
-    expect(screen.getByText("My bookings")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "See my bookings" })).toHaveAttribute("href", "/my-appointments");
   });
 });
 
@@ -391,13 +391,13 @@ describe("BookAppointmentForm", () => {
   it("Duration field is a select not a number input", async () => {
     renderForm();
     await screen.findByText("Luna Artista");
-    expect(screen.getByRole("combobox", { name: /appointment duration/i })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /session length/i })).toBeInTheDocument();
   });
 
   it("Duration select default shows '1 hour'", async () => {
     renderForm();
     await screen.findByText("Luna Artista");
-    const durationSelect = screen.getByRole("combobox", { name: /appointment duration/i });
+    const durationSelect = screen.getByRole("combobox", { name: /session length/i });
     expect(durationSelect).toHaveTextContent(/1 hour/i);
   });
 
@@ -405,7 +405,7 @@ describe("BookAppointmentForm", () => {
     const user = userEvent.setup();
     renderForm();
     await screen.findByText("Luna Artista");
-    await user.click(screen.getByRole("combobox", { name: /appointment duration/i }));
+    await user.click(screen.getByRole("combobox", { name: /session length/i }));
     expect(await screen.findByRole("option", { name: /1 hour/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /30 min/i })).toBeInTheDocument();
   });
@@ -1595,7 +1595,7 @@ describe("BookAppointmentForm — flash catalog booking", () => {
     await user.click(await screen.findByRole("combobox", { name: /select artist/i }));
     await user.click(await screen.findByRole("option", { name: /luna artista/i }));
     fireEvent.change(screen.getByLabelText(/date & time/i), { target: { value: "2099-01-01T10:00" } });
-    await user.click(screen.getByRole("combobox", { name: /appointment duration/i }));
+    await user.click(screen.getByRole("combobox", { name: /session length/i }));
     await user.click(await screen.findByRole("option", { name: "1 hour" }));
     fireEvent.change(screen.getByLabelText(/what are you looking to get done/i), { target: { value: "A small rose" } });
     await user.click(screen.getByRole("button", { name: /request appointment/i }));
@@ -1671,5 +1671,65 @@ describe("MyBookingsSection — the card loses nothing (After Hours slice 2)", (
     expect(await screen.findByText("2 things to do before your appointment")).toBeInTheDocument();
     expect(screen.getAllByText(/things? to do before your appointment/)).toHaveLength(1);
     expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
+  });
+});
+
+// ── C04: the client chooses a service and the length follows (slice 6d) ───────
+describe("BookAppointmentForm — C04: a service, not a duration", () => {
+  const SERVICE = {
+    id: "svc-1", studioId: "s-001", name: "Large colour session", description: null, durationMinutes: 120,
+    price: null, depositAmount: null, isActive: true, createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-01T00:00:00Z",
+  };
+  function withService() {
+    server.use(http.get("http://localhost/api/v1/services", () => HttpResponse.json([SERVICE])));
+  }
+
+  it("a client starts with no service chosen, no length asked, and no open times for a length nobody chose", async () => {
+    withService();
+    renderForm(Role.Client);
+    const picker = await screen.findByRole("combobox", { name: /service/i });
+    expect(picker).toHaveTextContent("Choose a service");
+    expect(screen.getByText("Set by the service you choose.")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /session length/i })).toBeNull();
+    expect(screen.getByText("Choose a service to see open times.")).toBeInTheDocument();
+  });
+
+  it("submitting without choosing lists Service in the error summary", async () => {
+    withService();
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+    await screen.findByRole("combobox", { name: /service/i });
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+    const summary = await screen.findByRole("alert", { name: /things? to fix/i });
+    expect(within(summary).getByRole("link", { name: /service/i })).toHaveAttribute("href", "#serviceId");
+  });
+
+  it("choosing the service shows the length as a consequence, in the shared words", async () => {
+    withService();
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+    await user.click(await screen.findByRole("combobox", { name: /service/i }));
+    await user.click(await screen.findByRole("option", { name: "Large colour session — 2 hours" }));
+    expect(await screen.findByText("2 hours, set by “Large colour session”")).toBeInTheDocument();
+    expect(screen.queryByText("Choose a service to see open times.")).toBeNull();
+  });
+
+  it("\"Something else\" is the last option, and only it asks for a length", async () => {
+    withService();
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+    await user.click(await screen.findByRole("combobox", { name: /service/i }));
+    const options = await screen.findAllByRole("option");
+    expect(options[options.length - 1]).toHaveTextContent("Something else (choose a session length)");
+    await user.click(options[options.length - 1]);
+    expect(await screen.findByRole("combobox", { name: /session length/i })).toBeInTheDocument();
+  });
+
+  it("staff booking for a client keep the old default: they know the length of unlisted work", async () => {
+    withService();
+    renderForm(Role.Owner);
+    const picker = await screen.findByRole("combobox", { name: /service/i });
+    expect(picker).toHaveTextContent("Something else (choose a session length)");
+    expect(screen.getByRole("combobox", { name: /session length/i })).toBeInTheDocument();
   });
 });

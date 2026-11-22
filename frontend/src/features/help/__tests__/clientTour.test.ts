@@ -15,11 +15,12 @@ describe("getClientTourSteps", () => {
     expect(selectors.slice(-2)).toEqual([PAYMENT_METHODS_STEP, '[data-tour="client-help-button"]']);
   });
 
-  it("puts the appointment-page step right after the booking step, on My bookings (After Hours slice 2)", () => {
+  it("starts at the client's home (C01), then booking, then one appointment's page on My bookings", () => {
     const steps = getClientTourSteps(false, false);
-    expect(steps[0].targetSelector).toBe('[data-tour="client-book-nav"]');
-    expect(steps[1].targetSelector).toBe('[data-tour="client-appointment-details-link"]');
-    expect(steps[1].route).toBe("/book");
+    expect(steps[0].targetSelector).toBe('[data-tour="client-bookings-nav"]');
+    expect(steps[1].targetSelector).toBe('[data-tour="client-book-nav"]');
+    expect(steps[2].targetSelector).toBe('[data-tour="client-appointment-details-link"]');
+    expect(steps[2].route).toBe("/my-appointments");
   });
 
   it("still adds the studios step independently of saved cards", () => {

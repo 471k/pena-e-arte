@@ -27,6 +27,8 @@ interface SlotsResult {
   isError: boolean;
   refetch: () => unknown;
 }
+type PublicService = { id: string; name: string; description: string | null; durationMinutes: number; price: number | null; depositAmount: number | null };
+let mockServices: PublicService[] = [];
 let mockSlots: (args: unknown) => SlotsResult = () => ({ data: undefined, isFetching: false, isError: false, refetch: mockSlotsRefetch });
 
 vi.mock("@/features/public/publicApi", async (importOriginal) => {
@@ -37,7 +39,7 @@ vi.mock("@/features/public/publicApi", async (importOriginal) => {
     useCheckPublicSlotAvailabilityQuery: () => ({ data: { available: true, reason: null }, isFetching: false }),
     useGetPublicAvailableSlotsQuery: (args: unknown) => mockSlots(args),
     useGetPublicDepositRuleQuery: () => ({ data: null }),
-    useGetPublicServicesQuery: () => ({ data: [] }),
+    useGetPublicServicesQuery: () => ({ data: mockServices }),
     useGetPublicStudioQuery: () => ({ data: mockStudio }),
     useCreateGuestAppointmentMutation: () => [mockCreateGuestAppointment, { isLoading: false }],
     usePresignGuestUploadMutation: () => [mockPresignGuestUpload, { isLoading: false }],
@@ -554,4 +556,23 @@ describe("GuestBookAppointmentForm — error summary (S04)", () => {
     expect(screen.getByLabelText(/what are you looking to get done/i)).toHaveValue("A small rose");
     expect(screen.getAllByRole("img")).toHaveLength(2);
   }, FULL_FORM_TIMEOUT);
+});
+
+describe("GuestBookAppointmentForm — C04: a guest chooses a service, not a duration", () => {
+  it("starts unchosen, waits for a choice before listing open times, and shows the length as a consequence", async () => {
+    mockServices = [{ id: "svc-1", name: "Small linework", description: "Up to palm size.", durationMinutes: 90, price: null, depositAmount: null }];
+    const user = userEvent.setup();
+    try {
+      renderForm();
+      const picker = await screen.findByRole("combobox", { name: /service/i });
+      expect(picker).toHaveTextContent("Choose a service");
+      expect(screen.getByText("Choose a service to see open times.")).toBeInTheDocument();
+      await user.click(picker);
+      await user.click(await screen.findByRole("option", { name: "Small linework — 1 hour 30 min" }));
+      expect(await screen.findByText("1 hour 30 min, set by “Small linework”")).toBeInTheDocument();
+      expect(screen.getByText("Up to palm size.")).toBeInTheDocument();
+    } finally {
+      mockServices = [];
+    }
+  });
 });

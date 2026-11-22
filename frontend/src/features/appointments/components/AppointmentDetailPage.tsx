@@ -22,7 +22,7 @@ import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery, useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
-import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
+import { useAppointmentCalendarDownload } from "../useAppointmentCalendarDownload";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
 import { AppointmentStatus, DepositStatus, ReferralSource } from "../appointment.types";
@@ -104,11 +104,10 @@ export function AppointmentDetailPage() {
   const isArtistPlus = usePermission(Role.Artist);
   const canOwner     = usePermission(Role.Owner);
   const role         = useAppSelector((s) => s.auth.role);
-  const { token, tenantId } = useAppSelector((s) => s.auth);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
-  const [downloadingIcs, setDownloadingIcs] = useState(false);
+  const { download: downloadIcs, downloading: downloadingIcs } = useAppointmentCalendarDownload();
   const { data: studio } = useGetMyStudioQuery();
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
@@ -186,22 +185,10 @@ export function AppointmentDetailPage() {
     else                  toast.error("Failed to assign artist.");
   }
 
-  async function handleDownloadIcs() {
-    if (!appt) return;
-    setDownloadingIcs(true);
-    try {
-      await downloadAuthenticatedFile(
-        `appointments/${appt.id}/calendar.ics`,
-        `appointment-${appt.id}.ics`,
-        token,
-        tenantId,
-      );
-    } catch {
-      toast.error("Couldn't download the calendar file. Please try again.");
-    } finally {
-      setDownloadingIcs(false);
-    }
+  function handleDownloadIcs() {
+    if (appt) void downloadIcs(appt.id);
   }
+
 
   return (
     <div className="min-h-screen bg-background">

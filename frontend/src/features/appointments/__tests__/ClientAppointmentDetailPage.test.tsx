@@ -193,7 +193,7 @@ describe("ClientAppointmentDetailPage — states", () => {
       HttpResponse.json({ message: "not found" }, { status: 404 })));
     renderPage();
     expect(await screen.findByRole("heading", { name: "Appointment not found" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to my bookings" })).toHaveAttribute("href", "/book");
+    expect(screen.getByRole("link", { name: "Go to my bookings" })).toHaveAttribute("href", "/my-appointments");
   });
 
   it("shows a failure with a working retry", async () => {
@@ -698,4 +698,22 @@ describe("ClientAppointmentDetailPage — aftercare per channel (E04c)", () => {
       cleanup();
     }
   });
+});
+
+describe("ClientAppointmentDetailPage — AP10: the calendar file where the client is", () => {
+  it("a confirmed appointment offers Add to calendar", async () => {
+    server.use(detailReturns(detail({ status: "Confirmed" })));
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Add to calendar" })).toBeInTheDocument();
+  });
+
+  it.each(["Pending", "Cancelled", "Completed"] as const)(
+    "a %s one doesn't: the file has no status line, so it would land in the calendar looking confirmed",
+    async (status) => {
+      server.use(detailReturns(detail({ status })));
+      renderPage();
+      expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Add to calendar" })).toBeNull();
+    },
+  );
 });

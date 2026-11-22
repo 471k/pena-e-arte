@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, CircleDashed, Loader2, RotateCw, Send } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronLeft, CircleDashed, Loader2, RotateCw, Send } from "lucide-react";
+import { useAppointmentCalendarDownload } from "../useAppointmentCalendarDownload";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -59,7 +60,7 @@ function PageShell({ children }: { children: ReactNode }) {
     <div className="bg-background flex items-start justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <Link
-          to="/book"
+          to="/my-appointments"
           className="inline-flex items-center gap-1 text-xs text-muted-foreground
                      hover:text-foreground transition-colors"
         >
@@ -104,7 +105,7 @@ function NotFoundState() {
           or account.
         </p>
         <Button asChild variant="outline" size="sm">
-          <Link to="/book">Go to my bookings</Link>
+          <Link to="/my-appointments">Go to my bookings</Link>
         </Button>
       </CardContent>
     </Card>
@@ -186,8 +187,25 @@ function Summary({
           </dd>
         </dl>
         <StatusNote appt={appt} />
+        <CalendarDownload appt={appt} />
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * AP10: the calendar file where the person who needs it is. It used to be offered only on the staff page.
+ * Confirmed only: the file carries no STATUS line, so a request or a cancelled booking would land in the client's
+ * calendar looking like a confirmed appointment (flagged for a backend change; not built here).
+ */
+function CalendarDownload({ appt }: { appt: AppointmentResponse }) {
+  const { download, downloading } = useAppointmentCalendarDownload();
+  if (appt.status !== AppointmentStatus.Confirmed) return null;
+  return (
+    <Button variant="outline" size="sm" className="gap-1.5" loading={downloading} onClick={() => void download(appt.id)}>
+      {!downloading && <CalendarPlus className="h-4 w-4" aria-hidden="true" />}
+      Add to calendar
+    </Button>
   );
 }
 

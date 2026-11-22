@@ -85,7 +85,7 @@ function renderPage(initialPath = "/login") {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/login"    element={<LoginPage />} />
-          <Route path="/book"     element={<div data-testid="client-home" />} />
+          <Route path="/my-appointments" element={<div data-testid="client-home" />} />
           <Route path="/today"    element={<div data-testid="artist-home" />} />
           <Route path="/dashboard" element={<div data-testid="owner-home" />} />
           <Route path="/platform" element={<div data-testid="admin-home" />} />
@@ -103,7 +103,7 @@ function renderLoggedIn(role: string) {
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
           <Route path="/login"     element={<LoginPage />} />
-          <Route path="/book"      element={<div data-testid="client-home" />} />
+          <Route path="/my-appointments" element={<div data-testid="client-home" />} />
           <Route path="/today"     element={<div data-testid="artist-home" />} />
           <Route path="/dashboard" element={<div data-testid="owner-home" />} />
           <Route path="/platform"  element={<div data-testid="admin-home" />} />
@@ -201,7 +201,7 @@ describe("LoginPage", () => {
     expect(localStorage.getItem("auth_refresh_token")).toBe("fake-refresh-token");
   });
 
-  it("successful client login navigates to /book", async () => {
+  it("successful client login lands on their bookings, /my-appointments (C01)", async () => {
     server.use(
       http.post("http://localhost/api/v1/auth/login", () =>
         HttpResponse.json({ accessToken: makeFakeJwt("client", "client@test.com"), tokenType: "Bearer" }),
@@ -438,7 +438,7 @@ describe("LoginPage", () => {
           <Routes>
             <Route path="/login"    element={<LoginPage />} />
             <Route path="/s/:slug"  element={<div data-testid="studio-profile" />} />
-            <Route path="/book"     element={<div data-testid="client-home" />} />
+            <Route path="/my-appointments" element={<div data-testid="client-home" />} />
           </Routes>
         </MemoryRouter>
       </Provider>,
