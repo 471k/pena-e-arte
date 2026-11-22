@@ -24,7 +24,8 @@ public class GetSetupReadinessValidator : AbstractValidator<GetSetupReadinessQue
 public class GetSetupReadinessHandler(IAppDbContext db, ICurrentTenant tenant)
     : IRequestHandler<GetSetupReadinessQuery, SetupReadinessResponse>
 {
-    private sealed record Facts(bool AnyArtist, bool AnyDepositRule, bool AnyHours, DateTime? HoursReviewedAt, DateTime? PayModelReviewedAt);
+    private sealed record Facts(
+        bool AnyArtist, bool AnyActiveService, bool AnyDepositRule, bool AnyHours, DateTime? HoursReviewedAt, DateTime? PayModelReviewedAt);
 
     public async Task<SetupReadinessResponse> Handle(GetSetupReadinessQuery query, CancellationToken ct)
     {
@@ -33,6 +34,7 @@ public class GetSetupReadinessHandler(IAppDbContext db, ICurrentTenant tenant)
             .Where(s => s.Id == tenant.StudioId)
             .Select(s => new Facts(
                 db.Artists.Any(),
+                db.Services.Any(sv => sv.IsActive),
                 db.DepositRules.Any(),
                 db.StudioHours.Any(),
                 s.HoursReviewedAt,
@@ -43,6 +45,10 @@ public class GetSetupReadinessHandler(IAppDbContext db, ICurrentTenant tenant)
         return new SetupReadinessResponse(
         [
             new SetupAreaResponse("Artists", SetupReadiness.OwnerCreated(facts.AnyArtist).ToString(), null),
+            // C04 (22 Nov 2026): with no ACTIVE service, a client booking online is asked for a session length
+            // instead of a service. Nothing seeds services, so "one is active" is the owner's own act; an
+            // inactive-only list counts as not set up, because the booking form offers none of it.
+            new SetupAreaResponse("Services", SetupReadiness.OwnerCreated(facts.AnyActiveService).ToString(), null),
             new SetupAreaResponse("DepositRules", SetupReadiness.OwnerCreated(facts.AnyDepositRule).ToString(), null),
             new SetupAreaResponse(
                 "Hours",

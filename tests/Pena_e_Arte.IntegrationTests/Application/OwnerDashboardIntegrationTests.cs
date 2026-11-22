@@ -57,14 +57,43 @@ public class OwnerDashboardIntegrationTests(DatabaseFixture fixture)
     public async Task SetupReadiness_SeededHoursAreUnreviewed_AndOtherStudiosRowsDontCount()
     {
         Guid bare = await BareStudio(withHours: true);
-        await Seed(perGroup: 1); // a studio that has artists and a deposit rule
+        await Seed(perGroup: 1); // a studio that has artists, a deposit rule and an active service
 
         await using AppDbContext db = fixture.CreateDbContext(bare);
         SetupReadinessResponse r = await new GetSetupReadinessHandler(db, Tenant(bare)).Handle(new GetSetupReadinessQuery(), default);
 
         r.Areas.Select(a => (a.Area, a.State)).Should().Equal(
-            ("Artists", "NotConfigured"), ("DepositRules", "NotConfigured"), ("Hours", "DefaultUnreviewed"),
-            ("PayModel", "DefaultUnreviewed"));
+            ("Artists", "NotConfigured"), ("Services", "NotConfigured"), ("DepositRules", "NotConfigured"),
+            ("Hours", "DefaultUnreviewed"), ("PayModel", "DefaultUnreviewed"));
+    }
+
+    // C04 (22 Nov 2026), against real MySQL and the real tenant filter: only this studio's ACTIVE services count.
+    [Fact]
+    public async Task SetupReadiness_Services_CountsOnlyThisStudiosActiveServices()
+    {
+        Guid bare = await BareStudio(withHours: false);
+        await Seed(perGroup: 1); // another studio, with an active service of its own
+        await using (AppDbContext ctx = fixture.CreateDbContext(bare))
+        {
+            ctx.Services.Add(new Service { StudioId = bare, Name = "Retired flash day", DurationMinutes = 60, IsActive = false });
+            await ctx.SaveChangesAsync();
+        }
+
+        async Task<string> ServicesState()
+        {
+            await using AppDbContext db = fixture.CreateDbContext(bare);
+            SetupReadinessResponse r = await new GetSetupReadinessHandler(db, Tenant(bare)).Handle(new GetSetupReadinessQuery(), default);
+            return r.Areas.Single(a => a.Area == "Services").State;
+        }
+
+        (await ServicesState()).Should().Be("NotConfigured", "an inactive service is offered to nobody, and another studio's active one isn't ours");
+
+        await using (AppDbContext ctx = fixture.CreateDbContext(bare))
+        {
+            ctx.Services.Add(new Service { StudioId = bare, Name = "Large colour session", DurationMinutes = 240, IsActive = true });
+            await ctx.SaveChangesAsync();
+        }
+        (await ServicesState()).Should().Be("Reviewed");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -117,6 +146,7 @@ public class OwnerDashboardIntegrationTests(DatabaseFixture fixture)
         ctx.Clients.Add(client);
         ctx.Services.Add(needsConsent);
         ctx.DepositRules.Add(new DepositRule { StudioId = studioId, Name = "Std", AmountFixed = 50m, IsActive = true });
+        ctx.Services.Add(new Service { StudioId = studioId, Name = "Session", DurationMinutes = 120, IsActive = true });
         await ctx.SaveChangesAsync();
 
         HashSet<Guid> ids = [];
