@@ -197,6 +197,18 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 14
 
+      # A flaky test fails its first attempt and passes on retry, so the job is green and the step above never
+      # runs. test-results/ only holds output from failed attempts (first-attempt traces kept on failure,
+      # screenshots on failure, error context), so it's empty on a clean run and nothing is uploaded.
+      - name: Upload failed-attempt traces (failures and flakes)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-failed-attempts
+          path: frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   docker-build:
     name: Docker images build (no push)
     runs-on: ubuntu-latest

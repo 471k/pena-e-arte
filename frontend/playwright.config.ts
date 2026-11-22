@@ -14,10 +14,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: process.env.CI ? "github" : "html",
+  // CI keeps the html report too (never opened), so a failure or a flake leaves something to read besides
+  // the one-line annotations the github reporter prints.
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "html",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
-    trace: "on-first-retry",
+    // CI traces the FIRST attempt and keeps it only if that attempt failed. "on-first-retry" traced the retry,
+    // which for a flaky test is the attempt that passed, so the failure itself was never recorded (the
+    // owner-phone-navigation tour test, flaky since #415, had no trace to read).
+    trace: process.env.CI ? "retain-on-first-failure" : "on-first-retry",
     screenshot: "only-on-failure",
   },
   // Two full projects, not one — this app has no manual light/dark toggle, it renders
