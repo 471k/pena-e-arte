@@ -241,7 +241,7 @@ export function AuditLogPage() {
           both included.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 page-md:grid-cols-3 gap-3">
           <div className="space-y-1">
             <Label htmlFor="filter-action" className="text-xs">Action</Label>
             <select id="filter-action" value={filter("action")} onChange={(e) => setFilter("action", e.target.value)} className={selectClass}>

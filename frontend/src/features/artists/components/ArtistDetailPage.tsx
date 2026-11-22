@@ -752,7 +752,7 @@ export function ArtistDetailPage() {
                   )}
                 </div>
               ) : (
-                <div className="columns-2 md:columns-3 gap-3 space-y-3">
+                <div className="columns-2 page-md:columns-3 gap-3 space-y-3">
                   {artist.portfolioImages.map(({ imageId, imageUrl, style, category }) => (
                     <div key={imageId} className="relative break-inside-avoid group space-y-1.5">
                       <div className="relative">

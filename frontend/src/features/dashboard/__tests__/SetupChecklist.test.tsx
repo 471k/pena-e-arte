@@ -11,6 +11,7 @@ import authReducer from "@/features/auth/authSlice";
 import {
   studiosApi,
   type SetupAreaState,
+  type SetupAreaKey,
   type SetupReadinessResponse,
 } from "@/features/studios/studiosApi";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
@@ -76,6 +77,7 @@ function renderChecklist() {
           <Route path="/artists/new" element={<div data-testid="new-artist-page" />} />
           <Route path="/deposit-rules/new" element={<div data-testid="new-deposit-rule-page" />} />
           <Route path="/studios/me" element={<div data-testid="studio-settings-page" />} />
+          <Route path="/services" element={<div data-testid="services-page" />} />
         </Routes>
       </MemoryRouter>
     </Provider>,
@@ -235,5 +237,53 @@ describe("SetupChecklist", () => {
     readinessResponse = withPayModel("Reviewed");
     renderChecklist();
     await waitFor(() => expect(screen.queryByTestId("setup-checklist")).not.toBeInTheDocument());
+  });
+
+  // 22 Nov 2026: a newer server can send an area this build doesn't know (an open tab, or a rollout where the API
+  // lands first). COPY[key].label on an unknown key used to throw and take the dashboard down with it.
+  it("ignores an area it doesn't know: no crash, and it doesn't count toward the total", async () => {
+    readinessResponse = {
+      areas: [
+        ...readiness("Reviewed", "NotConfigured", "Reviewed").areas,
+        { area: "SomethingNewer" as SetupAreaKey, state: "NotConfigured", reviewedAt: null },
+      ],
+    };
+    renderChecklist();
+    expect(await screen.findByTestId("setup-checklist")).toBeInTheDocument();
+    expect(screen.getByText("2/3 complete")).toBeInTheDocument();
+    expect(screen.queryByTestId("setup-area-SomethingNewer")).not.toBeInTheDocument();
+  });
+
+  it("an unknown area that isn't done can't keep the card up once every known area is", async () => {
+    readinessResponse = {
+      areas: [
+        ...readiness("Reviewed", "Reviewed", "Reviewed").areas,
+        { area: "SomethingNewer" as SetupAreaKey, state: "NotConfigured", reviewedAt: null },
+      ],
+    };
+    renderChecklist();
+    await waitFor(() => expect(screen.queryByTestId("setup-checklist")).not.toBeInTheDocument());
+  });
+
+  it("Services: says why it matters while no service is active, and 'Add services' goes to /services", async () => {
+    readinessResponse = {
+      areas: [...readiness("Reviewed", "Reviewed", "Reviewed").areas, { area: "Services", state: "NotConfigured", reviewedAt: null }],
+    };
+    renderChecklist();
+    const row = await screen.findByTestId("setup-area-Services");
+    expect(within(row).getByText("Add your services")).toBeInTheDocument();
+    expect(within(row).getByText(/clients booking online choose a session length themselves/i)).toBeInTheDocument();
+    await userEvent.click(within(row).getByRole("button", { name: "Add services" }));
+    expect(await screen.findByTestId("services-page")).toBeInTheDocument();
+  });
+
+  it("Services: once a service is active the row is done and the note is gone", async () => {
+    readinessResponse = {
+      areas: [...readiness("NotConfigured", "Reviewed", "Reviewed").areas, { area: "Services", state: "Reviewed", reviewedAt: null }],
+    };
+    renderChecklist();
+    const row = await screen.findByTestId("setup-area-Services");
+    expect(row).toHaveAttribute("data-state", "Reviewed");
+    expect(within(row).queryByText(/choose a session length themselves/i)).not.toBeInTheDocument();
   });
 });

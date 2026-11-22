@@ -282,7 +282,7 @@ export function LiveTrafficPage() {
           </p>
         )}
 
-        <section className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <section className="grid grid-cols-2 page-md:grid-cols-5 gap-3">
           {snapshotBusy || !snapshot ? (
             <>{Array.from({ length: 5 }, (_, i) => <KpiSkeleton key={i} />)}</>
           ) : (
@@ -375,7 +375,7 @@ export function LiveTrafficPage() {
           </CardContent>
         </Card>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid page-md:grid-cols-2 page-lg:grid-cols-4 gap-4">
           <BreakdownCard
             title="Top countries"
             busy={breakdownBusy}
