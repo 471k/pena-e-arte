@@ -43,14 +43,14 @@ function ShareHeadline({ data }: { data: ArtistEarningsResponse }) {
   const label = describeArtistArrangement(data.arrangement, data.commissionRate, data.flatFeePerSession, data.currency);
   return (
     <Card data-testid="earnings-share">
-      <CardContent className="p-4 grid gap-3 sm:grid-cols-2">
+      <CardContent className="p-4 grid gap-3 page-md:grid-cols-2">
         <div className="space-y-0.5">
           <p className="text-xs font-medium text-muted-foreground">Your share (last 30 days) · {label}</p>
           <p className="text-3xl font-bold tabular-nums" data-testid="earnings-period-total">
             {formatCurrency(data.periodTotal ?? 0, data.currency)}
           </p>
         </div>
-        <div className="space-y-0.5 sm:text-right">
+        <div className="space-y-0.5 page-md:text-right">
           <p className="text-xs text-muted-foreground">What clients paid (last 30 days)</p>
           <p className="text-lg tabular-nums text-muted-foreground" data-testid="earnings-client-paid-total">
             {formatCurrency(data.clientPaidTotal, data.currency)}

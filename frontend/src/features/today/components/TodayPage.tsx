@@ -78,12 +78,12 @@ export function TodayPage() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-2 page-md:flex-row page-md:items-end page-md:justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Today</h1>
           {timeZone && <p className="text-sm text-muted-foreground">{dateLabel}</p>}
         </div>
-        <Button asChild variant="outline" size="sm" className="gap-1.5 self-start sm:self-auto">
+        <Button asChild variant="outline" size="sm" className="gap-1.5 self-start page-md:self-auto">
           <Link to={scheduleHref}>
             <CalendarDays aria-hidden="true" className="h-4 w-4" />
             Open schedule

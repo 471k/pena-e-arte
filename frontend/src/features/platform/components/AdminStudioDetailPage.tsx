@@ -241,9 +241,9 @@ export function AdminStudioDetailPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        {/* grid-cols-1 is load-bearing below lg: without an explicit column the implicit track sizes to the
+        {/* grid-cols-1 is load-bearing below page-lg (1100; slice 6c moved this side column from lg): without an explicit column the implicit track sizes to the
             widest item's max-content and drags the whole page wider than a phone (measured 539px at 390px). */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_288px] gap-4 lg:gap-6 lg:items-start">
+        <div className="grid grid-cols-1 page-lg:grid-cols-[minmax(0,1fr)_288px] gap-4 page-lg:gap-6 page-lg:items-start">
 
           {/* Left column */}
           <div className="space-y-4">
@@ -494,7 +494,7 @@ export function AdminStudioDetailPage() {
           </div>
 
           {/* Right column */}
-          <div className="lg:sticky lg:top-[72px]">
+          <div className="page-lg:sticky page-lg:top-[72px]">
             {/* ── Actions Card ──────────────────────────────────────────────── */}
             <Card>
               <CardHeader className="pb-2">
