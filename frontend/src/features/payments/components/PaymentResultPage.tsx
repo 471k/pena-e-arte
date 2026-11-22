@@ -241,7 +241,10 @@ export function PaymentResultPage() {
         )}
 
         {!view.checking && (
-          <div className="flex flex-col page-sm:flex-row gap-2 justify-center pt-2">
+          // flex-wrap: Pending can show three buttons (retry + Refresh + home), each whitespace-nowrap, on a row
+          // that goes horizontal from 420px. It fits today; wrapping makes sideways scroll impossible on the page
+          // that says whether someone was charged, rather than measured once (Desktop's 6c review, 22 Nov).
+          <div className="flex flex-col flex-wrap page-sm:flex-row gap-2 justify-center pt-2">
             {view.signIn && (
               <Button asChild className="bg-violet-600 hover:bg-violet-700 text-white">
                 <Link to={loginPathFor(location)}>Sign in</Link>

@@ -5,6 +5,11 @@ import { STUDIO_ID, OWNER_TOKEN, makeJwt, mockApiFallback, loginAs } from "./hel
 // behaviour visibly changed: a side column now joins at 1100, not 1024 (so a 1024-1099px window gets the stacked
 // layout), and Messages shows list and thread side by side from 800, not 640 (a 320px list left 320-479px for the
 // thread). The full ten-width, two-theme pass is recorded in the PR.
+//
+// Both tests assert ON the boundary (1100 and 800 exactly), with zero margin, on purpose: that is where the
+// breakpoint is. If one starts failing with nothing relevant in the diff, suspect a classic (space-taking)
+// vertical scrollbar first: a page that newly scrolls vertically loses its width from the layout viewport, so 800
+// becomes ~785 and the query no longer matches. That is a scrollbar, not a layout regression.
 
 const ADMIN_TOKEN = makeJwt("admin", "user-id-admin", "admin@tattooos.co");
 const json = (b: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(b) });
