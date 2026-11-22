@@ -62,6 +62,7 @@ public class SetupReadinessTests
         states.Should().Equal(new Dictionary<string, string>
         {
             ["Artists"] = "NotConfigured",
+            ["Services"] = "NotConfigured",
             ["DepositRules"] = "NotConfigured",
             ["Hours"] = "DefaultUnreviewed",
             ["PayModel"] = "DefaultUnreviewed",
@@ -145,7 +146,20 @@ public class SetupReadinessTests
     [Fact]
     public async Task AreasComeBackInAFixedOrder()
     {
-        (await Read()).Areas.Select(a => a.Area).Should().Equal("Artists", "DepositRules", "Hours", "PayModel");
+        (await Read()).Areas.Select(a => a.Area).Should().Equal("Artists", "Services", "DepositRules", "Hours", "PayModel");
+    }
+
+    // C04 (22 Nov 2026). The tenant half is pinned in OwnerDashboardIntegrationTests (this fake applies no filters).
+    [Fact]
+    public async Task Services_OnlyAnActiveServiceCounts()
+    {
+        _db.Services.Add(new Service { StudioId = _studioId, Name = "Retired", DurationMinutes = 60, IsActive = false });
+        _db.SaveChanges();
+        (await States())["Services"].Should().Be("NotConfigured", "the booking form offers no inactive service");
+
+        _db.Services.Add(new Service { StudioId = _studioId, Name = "Session", DurationMinutes = 120, IsActive = true });
+        _db.SaveChanges();
+        (await States())["Services"].Should().Be("Reviewed");
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────
