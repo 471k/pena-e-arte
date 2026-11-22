@@ -299,7 +299,7 @@ function PortfolioGrid({
   }
 
   return (
-    <div className="columns-2 sm:columns-3 gap-3">
+    <div className="columns-2 page-md:columns-3 gap-3">
       {images.map((item, i) => (
         <button
           key={item.imageId}
@@ -360,6 +360,7 @@ function Lightbox({
         aria-describedby={undefined}
       >
         {item && (
+          // md:, not page-md: the split is sized to this dialog's own max-w-3xl (768px), not to the page (6e).
           <div className="grid md:grid-cols-2">
             <DialogTitle className="sr-only">Portfolio image by {artistName}</DialogTitle>
 
@@ -411,7 +412,7 @@ function ArtistPageSkeleton() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <Skeleton className="h-4 w-32 mb-6" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 page-lg:grid-cols-[340px_1fr] gap-8 page-lg:gap-12">
           <div className="space-y-5">
             <Skeleton className="h-24 w-24 rounded-full" />
             <Skeleton className="h-7 w-48" />
@@ -424,7 +425,7 @@ function ArtistPageSkeleton() {
             <Skeleton className="h-11 w-full rounded-md" />
           </div>
 
-          <div className="columns-2 sm:columns-3 gap-3">
+          <div className="columns-2 page-md:columns-3 gap-3">
             {["h-52", "h-40", "h-64", "h-48", "h-60", "h-44"].map((h, i) => (
               <div key={i} className={`mb-3 break-inside-avoid ${h}`}>
                 <Skeleton className="w-full h-full rounded-lg" />
@@ -546,7 +547,7 @@ export function ArtistPortfolioPage() {
 
       <PublicPageHeader />
 
-      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6 pb-20 lg:pb-8">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6 pb-20 page-lg:pb-8">
         {/* Back link */}
         <button
           type="button"
@@ -561,10 +562,10 @@ export function ArtistPortfolioPage() {
         </button>
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12 items-start">
+        <div className="grid grid-cols-1 page-lg:grid-cols-[340px_1fr] gap-8 page-lg:gap-12 items-start">
 
           {/* LEFT: sticky profile panel */}
-          <aside className="lg:sticky lg:top-[72px] space-y-5">
+          <aside className="page-lg:sticky page-lg:top-[72px] space-y-5">
 
             {artist.isOwnProfile && (
               <ProfileStrengthNudge
@@ -745,7 +746,7 @@ export function ArtistPortfolioPage() {
                   <Sparkles className="h-5 w-5 text-muted-foreground/70" aria-hidden="true" />
                   Flash
                 </h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 page-md:grid-cols-3">
                   {flashCatalog.map((item) => (
                     <FlashCatalogCard key={item.id} item={item} ctaUrl={ctaUrl} countryCode={artist.countryCode} />
                   ))}
@@ -762,7 +763,7 @@ export function ArtistPortfolioPage() {
                   <AtSign className="h-4 w-4" aria-hidden="true" />
                   Instagram
                 </h2>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 page-md:grid-cols-3">
                   {instagramPosts.map((post) => (
                     <img
                       key={post.id}
@@ -817,7 +818,7 @@ export function ArtistPortfolioPage() {
 
       {artist.showBookingCta && (
         <div
-          className="fixed bottom-0 inset-x-0 z-[90] lg:hidden
+          className="fixed bottom-0 inset-x-0 z-[90] page-lg:hidden
                      border-t bg-background/95 backdrop-blur-sm px-4 py-3
                      safe-area-inset-bottom"
           aria-label="Quick book bar"

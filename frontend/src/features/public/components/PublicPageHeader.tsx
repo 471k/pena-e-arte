@@ -32,7 +32,10 @@ export function BrandMark() {
         <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
         <line x1="8" y1="9" x2="16" y2="9" />
       </svg>
-      <Wordmark className="text-sm" />
+      {/* Hidden below 360px, as in the app shell's header: signed out, "Discover · Sign in · Sign up · Register
+          studio" ran 39px past a 320px screen (found by slice 6e's pass; 1.4.10 reflow). The link keeps its
+          aria-label and the pen mark, so it is still named and visible. */}
+      <Wordmark className="text-sm max-[359px]:hidden" />
     </Link>
   );
 }

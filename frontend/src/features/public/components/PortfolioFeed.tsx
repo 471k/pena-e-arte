@@ -159,6 +159,7 @@ function PortfolioLightbox({ images, currentIndex, token, onClose, onNavigate }:
           <X className="h-4 w-4" />
         </button>
 
+        {/* md:, not page-md: the split is sized to this dialog's own max-w-3xl (768px), not to the page (6e). */}
         <div className="grid md:grid-cols-2">
           {/* Image panel */}
           <div className="bg-black flex items-center justify-center min-h-[280px] relative">
@@ -438,7 +439,7 @@ function MasonryGrid({ images, onOpen, savedIds, onToggleSave, token }: MasonryG
   // regardless of item count or height variance.
   return (
     <div
-      className="columns-1 sm:columns-2 lg:columns-3 gap-3"
+      className="columns-1 page-md:columns-2 page-lg:columns-3 gap-3"
       role="list"
       aria-label="Portfolio images"
     >
