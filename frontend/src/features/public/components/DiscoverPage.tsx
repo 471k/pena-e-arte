@@ -133,7 +133,7 @@ function StudioCard({ studio }: { studio: NearbyStudioResponse }) {
 
 function StudioSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    <div className="grid grid-cols-1 gap-4 page-md:grid-cols-2 page-lg:grid-cols-3"
          aria-label="Loading studios" aria-busy="true">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="rounded-lg overflow-hidden border border-border/40">
@@ -386,10 +386,10 @@ export function DiscoverPage() {
 
         {/* Bottom row: search + tabs + location toggle. flex-wrap: with two search
             inputs the cluster no longer fits beside the tabs/location chip below
-            ~640px. */}
+            ~640px, so it takes the full row below page-md (800, slice 6e; it was sm). */}
         <div className="flex flex-wrap items-center gap-2 px-4 pb-2.5 pt-2.5">
           {/* Search cluster — "What" (keyword, Portfolio tab only) + "Where" (city, unchanged) */}
-          <div className="flex flex-1 min-w-full sm:min-w-0 items-center gap-2 max-w-full sm:max-w-lg">
+          <div className="flex flex-1 min-w-full page-md:min-w-0 items-center gap-2 max-w-full page-md:max-w-lg">
             {activeTab === "portfolio" && (
               <div className="relative flex-1 min-w-[110px]">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5
@@ -620,7 +620,7 @@ export function DiscoverPage() {
                       <span className="text-foreground/70">{locationName}</span>{" "}
                       within {radiusKm} km
                     </p>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 page-md:grid-cols-2 page-lg:grid-cols-3">
                       {studios.map((s) => (
                         <StudioCard key={s.studioId} studio={s} />
                       ))}
@@ -635,7 +635,7 @@ export function DiscoverPage() {
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer className="py-5 border-t border-border/40">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center
+        <div className="max-w-6xl mx-auto px-4 flex flex-col page-md:flex-row items-center
                         justify-between gap-3 text-xs text-foreground/65">
           <span>© {new Date().getFullYear()} TattooOS. All rights reserved.</span>
           <nav aria-label="Footer links" className="flex items-center gap-4">
