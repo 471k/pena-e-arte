@@ -189,23 +189,6 @@ jobs:
         env:
           CI: true
 
-      # TEMPORARY (removed before merge): provoke the owner-tour flake on CI's runner, no retries.
-      - name: TEMP repeat the owner tour test
-        if: always()
-        continue-on-error: true
-        working-directory: frontend
-        run: pnpm exec playwright test e2e/owner-phone-navigation.spec.ts -g "tour's Owner/Artist" --repeat-each=12 --retries=0 --trace=retain-on-failure --output=test-results-repeat
-        env:
-          CI: true
-
-      - name: TEMP upload repeat traces
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: tour-repeat-traces
-          path: frontend/test-results-repeat/
-          if-no-files-found: ignore
-
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
