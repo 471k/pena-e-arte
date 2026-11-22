@@ -278,7 +278,12 @@ export function OwnerLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
+          {/* The value that renders both ArtistModeSwitcher copies, so the tour and its targets can't disagree. */}
+          <HelpMenu
+            onBeforeTourStep={onBeforeTourStep}
+            onTourEnd={onTourEnd}
+            ownerHasArtistProfile={myArtistLoading ? undefined : hasArtistProfile}
+          />
           <MessagesNavBadge />
           <StudioJoinInviteBell enabled={!!studio?.isSolo} />
           <NotificationBell />

@@ -28,9 +28,14 @@ interface HelpMenuProps {
   onTourEnd?: () => void;
   /** Client only: include the tour's "Payment Methods" step (shown only while saved cards are on, C-9). */
   showPaymentMethodsTourStep?: boolean;
+  /** Owner only: whether the owner has their own artist profile, `undefined` while still loading. The owner
+   * tour waits for it and shows exactly one of "Also work as an artist?" and the Owner/Artist switch. */
+  ownerHasArtistProfile?: boolean;
 }
 
-export function HelpMenu({ onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep = false }: HelpMenuProps) {
+export function HelpMenu({
+  onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep = false, ownerHasArtistProfile,
+}: HelpMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
@@ -40,7 +45,7 @@ export function HelpMenu({ onBeforeTourStep, onTourEnd, showPaymentMethodsTourSt
   const [logHelpSearch] = useLogHelpSearchMutation();
   const loggedQueriesRef = useRef<Set<string>>(new Set());
   const { tourElement, restartTour } = useOnboardingTour(
-    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep,
+    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep, ownerHasArtistProfile,
   );
 
   const scopedArticles = useMemo(() => {

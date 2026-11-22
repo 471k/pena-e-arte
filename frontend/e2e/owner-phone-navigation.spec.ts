@@ -26,11 +26,14 @@ const MY_ARTIST = {
   userId: "user-id-owner", createdAt: "2024-01-15T10:00:00.000Z", updatedAt: "2024-06-01T10:00:00.000Z",
 };
 
-async function signInAsDualRoleOwner(page: Page, opts: { tour?: boolean } = {}) {
+async function signInAsDualRoleOwner(page: Page, opts: { tour?: boolean; myArtistDelayMs?: number } = {}) {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApiFallback(page);
   await page.route("**/api/v1/studios/me", (route) => route.fulfill(json(STUDIO)));
-  await page.route("**/api/v1/artists/me", (route) => route.fulfill(json(MY_ARTIST)));
+  await page.route("**/api/v1/artists/me", async (route) => {
+    if (opts.myArtistDelayMs) await new Promise((r) => setTimeout(r, opts.myArtistDelayMs));
+    await route.fulfill(json(MY_ARTIST));
+  });
   await page.route(`**/api/v1/artists/${ARTIST_ID}`, (route) => route.fulfill(json(MY_ARTIST)));
   await page.route(`**/api/v1/artists/${ARTIST_ID}/schedule`, (route) => route.fulfill(json({ schedule: [], timeOff: [] })));
   if (opts.tour) {
@@ -67,23 +70,23 @@ test("owner at 390px: the nav drawer's Owner/Artist switch enters artist mode, a
   await expect(page.getByRole("dialog").getByRole("tab", { name: /artist/i })).toHaveAttribute("aria-selected", "true");
 });
 
-test("owner at 390px: the tour's Owner/Artist step spotlights the switch in the drawer, not a hidden box", async ({ page }) => {
-  await signInAsDualRoleOwner(page, { tour: true });
-  await page.goto("/dashboard");
-
+// Walks the owner tour from the start to the Owner/Artist switch step and checks its spotlight is on the drawer copy.
+// `firstStopTimeoutMs`: the tour waits for GET /artists/me before its first stop, so a delayed answer delays it.
+async function expectTourReachesTheDrawerSwitch(page: Page, firstStopTimeoutMs = 5_000) {
   const tour = page.locator("[data-onboarding-tour]");
   const counter = tour.getByText(/^\d+ \/ \d+$/);
-  // Step through the earlier owner steps (some open the drawer; "Also work as an artist?" visits
-  // /artists and is skipped because this owner already has a profile) until the switch step shows.
+  // Step through the earlier owner steps (some open the drawer) until the switch step shows. "Also work as an
+  // artist?" isn't in this owner's tour at all: they already have a profile, so the switch is step 4.
   // Each click waits for the next popover's counter: a skipped step shows no popover while it polls,
   // so clicking on a timer would press the following step's Next and step straight past it.
   // `seen` records each stop (counter, heading, whether the drawer was open, and the spotlight's box), so a CI
   // failure says which step the tour skipped or where it stopped instead of only "not found". Since #415 this
-  // test fails intermittently on CI at the line below (the switch step's popover never shows), never at the
-  // spotlight-size check further down.
+  // test failed intermittently on CI with the switch step's popover never shown: the tour started before
+  // GET /artists/me answered, so the switch wasn't rendered yet and OnboardingTour timed the step out. The tour
+  // now waits for that answer (useOnboardingTour); the delayed-/artists/me test below pins it.
   const seen: string[] = [];
   for (let i = 0; i < 8; i++) {
-    await expect(counter).toBeVisible();
+    await expect(counter).toBeVisible({ timeout: i === 0 ? firstStopTimeoutMs : 5_000 });
     const heading = (await tour.getByRole("heading").first().textContent()) ?? "";
     const spotBox = await page.getByTestId("tour-spotlight").boundingBox();
     // The tour popover is itself a dialog, so "drawer open" is read as "the drawer's switch is showing".
@@ -95,18 +98,38 @@ test("owner at 390px: the tour's Owner/Artist step spotlights the switch in the 
     await expect(counter).not.toHaveText(before ?? "");
   }
   await expect(tour.getByText("Switch between Owner and Artist", { exact: true }), `tour stops seen: ${seen.join(" | ")}`).toBeVisible();
-  await expect(counter).toHaveText(/^5 \//);
+  await expect(counter).toHaveText(/^4 \//);
 
-  const spot = await page.getByTestId("tour-spotlight").boundingBox();
   const target = await page.getByRole("dialog").getByRole("tablist", SWITCH).boundingBox();
-  expect(spot, "no spotlight").not.toBeNull();
   expect(target, "the drawer switch isn't showing").not.toBeNull();
-  expect(spot!.width, "the spotlight has no size: it's on the hidden header copy").toBeGreaterThan(40);
-  // The spotlight surrounds the drawer switch (it adds a few px of padding on every side).
-  expect(spot!.x).toBeLessThanOrEqual(target!.x);
-  expect(spot!.y).toBeLessThanOrEqual(target!.y);
-  expect(spot!.x + spot!.width).toBeGreaterThanOrEqual(target!.x + target!.width);
-  expect(spot!.y + spot!.height).toBeGreaterThanOrEqual(target!.y + target!.height);
+  // The spotlight glides from the previous step's target (a CSS transition, ~250 ms; measured 22 Nov: the switch
+  // stays put while the spotlight travels y 233 -> 87), so poll until it has arrived rather than reading frame one.
+  await expect.poll(async () => {
+    const spot = await page.getByTestId("tour-spotlight").boundingBox();
+    if (!spot) return "no spotlight";
+    if (spot.width <= 40) return "the spotlight has no size: it's on the hidden header copy";
+    // The spotlight surrounds the drawer switch (it adds a few px of padding on every side).
+    const surrounds = spot.x <= target!.x && spot.y <= target!.y
+      && spot.x + spot.width >= target!.x + target!.width && spot.y + spot.height >= target!.y + target!.height;
+    return surrounds ? "surrounds the drawer switch" : `spot ${Math.round(spot.x)},${Math.round(spot.y)} ${Math.round(spot.width)}x${Math.round(spot.height)} misses it`;
+  }).toBe("surrounds the drawer switch");
+}
+
+test("owner at 390px: the tour's Owner/Artist step spotlights the switch in the drawer, not a hidden box", async ({ page }) => {
+  await signInAsDualRoleOwner(page, { tour: true });
+  await page.goto("/dashboard");
+  await expectTourReachesTheDrawerSwitch(page);
+});
+
+// The CI flake reproduced on purpose (22 Nov): before the tour waited for GET /artists/me, a 5 s answer made it skip
+// the switch step and the next ones too (it stopped at "Build your service catalog"). The old skip needed about
+// 3.6 s locally, so 5 s is past it there. On a slower runner the old code needed longer, so this test can pass
+// against the old code on CI: its mutation check was run locally.
+test("owner at 390px: a slow GET /artists/me doesn't make the tour skip the Owner/Artist step", async ({ page }) => {
+  test.slow();
+  await signInAsDualRoleOwner(page, { tour: true, myArtistDelayMs: 5_000 });
+  await page.goto("/dashboard");
+  await expectTourReachesTheDrawerSwitch(page, 15_000);
 });
 
 for (const width of [390, 320]) {
