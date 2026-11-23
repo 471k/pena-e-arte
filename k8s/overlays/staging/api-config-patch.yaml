@@ -35,3 +35,8 @@ data:
   Payments__CardDepositsEnabled: "false"
   # Saved cards (backlog C-9): on; only takes effect while card deposits are on.
   Payments__SavedCardsEnabled: "true"
+  # Orphaned-object sweep Phase 3 (docs/infra/orphan-quarantine-runbook.md): staging only. Moves unreferenced
+  # objects to _quarantine/ and never hard-deletes. The 30-day lock rule on pena-e-arte-staging's
+  # _quarantine/ prefix was set and read back on 23 Nov BEFORE this line existed (lock first, then switch).
+  # Production stays report-only: it needs Phi's go on its own lock rule and its own switch.
+  OrphanedObjectSweep__Mode: "Quarantine"
