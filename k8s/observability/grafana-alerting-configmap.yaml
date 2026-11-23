@@ -6,8 +6,8 @@ metadata:
 data:
   # Grafana's file-based Alerting provisioning format (apiVersion: 1) — same provisioning
   # mechanism grafana-configmap.yaml already uses for dashboards/datasources, extended with a
-  # third mounted file rather than a new mechanism. Six rules, all evaluated every 1m (the
-  # fourth to sixth are described next to them below):
+  # third mounted file rather than a new mechanism. Seven rules, all evaluated every 1m (the
+  # fourth to seventh are described next to them below):
   #
   # 1. api-pod-not-ready: reuses the exact `up{service="tattooos-api", environment=...}`
   #    series api-overview.json's "Scrape target up" panel already renders (no new metric).
@@ -368,6 +368,69 @@ data:
               severity: critical
             annotations:
               summary: "{{ $labels.environment }}: the database migration Job failed, so the last deploy stopped before the API (docs/infra/alerting-runbook.md, 'Deploy failed at the database migration')"
+
+          # The admin studio list's paging trigger (slice 8 D08; Desktop 23 Nov). The list loads every
+          # studio in one response and pages in the browser. Server-side paging is deferred until this
+          # fires: p95 above 1 s over the last hour on GET /api/v1/studios or GET
+          # /api/v1/platform/subscriptions, counted only when that route had at least 3 requests in the
+          # hour, so one cold first request after a deploy can't fire it. It replaced the "~300
+          # studios" half of the trigger, because the dashboard's studio count leaves out suspended
+          # studios and so undercounts the list. Silent until the routes have traffic (no series, or
+          # fewer than 3 requests -> no data -> OK), so it can't fire before launch. The http_route
+          # values are route templates; a group's root carries a trailing slash, hence the "/?".
+          # max() collapses the two routes into the single value reduce->threshold needs; checked
+          # against the live Prometheus on 23 Nov. Severity warning: a capacity signal, not an outage.
+          - uid: admin-list-p95-slow
+            title: Admin studio list is slow (paging trigger)
+            condition: C
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: prometheus-uid
+                model:
+                  refId: A
+                  expr: >-
+                    max(histogram_quantile(0.95, sum by (le, http_route)
+                    (rate(http_server_request_duration_seconds_bucket{service="tattooos-api", environment="production",
+                    http_route=~"/api/v1/studios/?|/api/v1/platform/subscriptions/?"}[1h])))
+                    and on (http_route) (sum by (http_route)
+                    (increase(http_server_request_duration_seconds_count{service="tattooos-api", environment="production",
+                    http_route=~"/api/v1/studios/?|/api/v1/platform/subscriptions/?"}[1h])) >= 3))
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+              - refId: B
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: B
+                  type: reduce
+                  expression: A
+                  reducer: last
+              - refId: C
+                relativeTimeRange:
+                  from: 3600
+                  to: 0
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params: [1]
+            for: 0m
+            noDataState: OK
+            execErrState: Alerting
+            labels:
+              severity: warning
+            annotations:
+              summary: "The admin studio or subscriptions list took over 1 s at p95 in the last hour: time to page it on the server (docs/infra/alerting-runbook.md, 'Admin studio list is slow')"
 
     # Grafana's built-in "email" contact-point type only ever speaks SMTP — it needs the
     # server-level [smtp]/GF_SMTP_* config grafana-deployment.yaml now sets (sourced from
