@@ -23,7 +23,8 @@ import type { OwnerTourFacts } from "../tours/ownerTour";
 
 const SEARCH_LOG_DEBOUNCE_MS = 800;
 
-interface HelpMenuProps {
+/** The layout's tour wiring, which HeaderActions passes through unchanged. */
+export interface HelpMenuTourProps {
   onBeforeTourStep?: (step: TourStep) => void;
   /** Called when the tour is completed or skipped (the layout makes its nav drawer modal again). */
   onTourEnd?: () => void;
@@ -34,10 +35,24 @@ interface HelpMenuProps {
   ownerTourFacts?: OwnerTourFacts;
 }
 
+interface HelpMenuProps extends HelpMenuTourProps {
+  /** Controlled open state, for a header that opens Help from its "More" menu. Uncontrolled when omitted. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** False when the header is folded: Help is then opened from "More", and this stays mounted for its sheet and
+   * the tours. */
+  showTrigger?: boolean;
+  /** The header's fold (useHeaderFold): the tour's Help step points at "More" instead of the hidden button. */
+  headerFolded?: boolean;
+}
+
 export function HelpMenu({
   onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep = false, ownerTourFacts,
+  open: controlledOpen, onOpenChange, showTrigger = true, headerFolded = false,
 }: HelpMenuProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => (onOpenChange ? onOpenChange(next) : setUncontrolledOpen(next));
   const [query, setQuery] = useState("");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [showAllRoles, setShowAllRoles] = useState(false);
@@ -46,7 +61,7 @@ export function HelpMenu({
   const [logHelpSearch] = useLogHelpSearchMutation();
   const loggedQueriesRef = useRef<Set<string>>(new Set());
   const { tourElement, restartTour } = useOnboardingTour(
-    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep, ownerTourFacts,
+    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep, ownerTourFacts, headerFolded,
   );
 
   const scopedArticles = useMemo(() => {
@@ -107,18 +122,21 @@ export function HelpMenu({
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setOpen only switches between two stable setters
   }, []);
 
   return (
     <>
-      <Button
-        variant="ghost" size="icon" className="h-8 w-8"
-        onClick={() => setOpen(true)}
-        title="Help" aria-label="Open help menu"
-        data-tour={role ? `${role}-help-button` : undefined}
-      >
-        <HelpCircle className="h-4 w-4" />
-      </Button>
+      {showTrigger && (
+        <Button
+          variant="ghost" size="icon" className="h-8 w-8"
+          onClick={() => setOpen(true)}
+          title="Help" aria-label="Open help menu"
+          data-tour={role ? `${role}-help-button` : undefined}
+        >
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+      )}
 
       {tourElement}
 
