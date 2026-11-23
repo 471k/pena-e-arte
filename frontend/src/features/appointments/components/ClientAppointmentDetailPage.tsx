@@ -12,9 +12,9 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/shared/components/ui/accordion";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatStudioTime, type StudioZone } from "@/shared/utils/formatInStudioTimezone";
 import { aftercareIntro, aftercareTextLine } from "./clientAftercareCopy";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { useCreateConversationMutation, useSendMessageMutation } from "@/features/messaging/messagingApi";
 import { useGetMyAppointmentQuery } from "../appointmentsApi";
 import { AppointmentStatus, ReadinessKey } from "../appointment.types";
@@ -145,18 +145,18 @@ function Section({ title, children, labelledBy }: { title: string; children: Rea
 }
 
 function Summary({
-  appt, depositIsNextAction, timezone,
+  appt, depositIsNextAction, zone,
 }: {
   appt: AppointmentResponse;
   depositIsNextAction: boolean;
-  timezone: string | undefined;
+  zone: StudioZone;
 }) {
-  const day = new Date(appt.date).toLocaleDateString("en-GB", withStudioTimeZone({
+  // S01: the studio's zone or nothing. Until it loads these read as pending, never as the browser's zone,
+  // which is what the frontend clock sweep caught this page doing on first paint.
+  const day = formatStudioTime(appt.date, {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
-  }, timezone));
-  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", withStudioTimeZone({
-    hour: "2-digit", minute: "2-digit",
-  }, timezone));
+  }, zone);
+  const time = (iso: string) => formatStudioTime(iso, { hour: "2-digit", minute: "2-digit" }, zone);
 
   const artist = appt.artistId === null
     ? "The studio will assign an artist"
@@ -398,10 +398,8 @@ function Visit({ appt, visit }: { appt: AppointmentResponse; visit: ClientAppoin
 
 // E04c phase C: says per channel what actually went out (sent / couldn't be sent / no record), never that
 // it was emailed when it wasn't. The steps themselves are shown either way.
-function Aftercare({ aftercare, timezone }: { aftercare: ClientAppointmentAftercare; timezone: string | undefined }) {
-  const when = (iso: string) => new Date(iso).toLocaleDateString("en-GB", withStudioTimeZone({
-    day: "numeric", month: "long", year: "numeric",
-  }, timezone));
+function Aftercare({ aftercare, zone }: { aftercare: ClientAppointmentAftercare; zone: StudioZone }) {
+  const when = (iso: string) => formatStudioTime(iso, { day: "numeric", month: "long", year: "numeric" }, zone);
   const emailFailed = aftercare.channels?.some((c) => c.channel === "Email" && !c.sent) ?? false;
   const textLine = aftercareTextLine(aftercare, when);
   return (
@@ -558,7 +556,7 @@ function AppointmentView({
   refreshFailed: boolean;
   onRetry: () => void;
 }) {
-  const { data: studio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
   const appt = data.appointment;
   const upcoming = UPCOMING.has(appt.status);
 
@@ -584,12 +582,12 @@ function AppointmentView({
       <Summary
         appt={appt}
         depositIsNextAction={next?.key === ReadinessKey.DepositPaid}
-        timezone={studio?.timezone}
+        zone={zone}
       />
       {next && <NextAction appt={appt} item={next} />}
       {upcoming && data.readiness.length > 0 && <Preparation items={data.readiness} next={next} />}
       {appt.status === AppointmentStatus.Completed && data.aftercare && (
-        <Aftercare aftercare={data.aftercare} timezone={studio?.timezone} />
+        <Aftercare aftercare={data.aftercare} zone={zone} />
       )}
       <Design appt={appt} />
       {upcoming && <Visit appt={appt} visit={data.visit} />}

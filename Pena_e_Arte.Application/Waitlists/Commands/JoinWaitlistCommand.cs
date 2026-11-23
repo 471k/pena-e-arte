@@ -67,12 +67,14 @@ public class JoinWaitlistHandler(IAppDbContext db, ICurrentTenant tenant, ICurre
         db.WaitlistEntries.Add(entry);
         await db.SaveChangesAsync(ct);
 
-        return Map(entry, null, client is null ? null : $"{client.FirstName} {client.LastName}");
+        string? studioTimezone = await db.StudioTimezoneAsync(studioId, ct);
+        return Map(entry, studioTimezone, null, client is null ? null : $"{client.FirstName} {client.LastName}");
     }
 
     internal static WaitlistEntryResponse Map(
-        Waitlist w, string? artistName = null, string? clientName = null, string? claimToken = null) => new(
-        w.Id, w.StudioId, w.ArtistId, artistName, w.ClientId, clientName,
+        Waitlist w, string? studioTimezone, string? artistName = null, string? clientName = null,
+        string? claimToken = null) => new(
+        w.Id, w.StudioId, studioTimezone, w.ArtistId, artistName, w.ClientId, clientName,
         w.GuestName, w.GuestEmail, w.GuestPhone,
         w.PreferredDateFrom, w.PreferredDateTo, w.Status.ToString(),
         w.NotifiedAt, w.Notes, w.CreatedAt,

@@ -7846,3 +7846,30 @@ sideways at 320 (it now scrolls inside its own width, like the style chips besid
 
 **Known, not changed:** the studio page has no quick-book bar, so below 1100 its "Book an Appointment" button sits
 after the portfolio, which the 1024-1099 band now shares with phones. Flagged for Desktop.
+
+## The studio's zone, applied: the waitlist, first paints, and record dates (S01 follow-up) — 2026-11-23
+
+The nightly frontend clock sweep's UTC+14 and UTC-11 legs (#439) found S01's model existing but not applied. S01 had
+been marked Present in slice 3; it is **Partial** until this lands.
+
+- **A waitlist entry carries its studio's zone** (`WaitlistEntryResponse.StudioTimezone`, from `StudioTimezoneAsync`).
+  `MyWaitlistPage` formatted the offered slot and the preferred dates with no zone at all, so a client elsewhere was
+  told the wrong day for an offer that expires. The zone travels on the entry, so the page has no "loading" state
+  for it; a missing studio row reads "Time unavailable", never a guessed zone. The staff queue shows the preferred
+  window in the studio's zone and "Joined" in the viewer's.
+- **A time the studio's zone governs is shown in that zone or as pending (`…`), never in the browser's zone first.**
+  `withStudioTimeZone(options, studio?.timezone)` returns the options unchanged until the studio loads, which paints
+  the viewer's zone. Pages that render before the studio query resolves use `useStudioZone` + `formatStudioTime` (or
+  `formatStudioSessionSpan`). The audit of every `withStudioTimeZone` caller asked one question per file: does it
+  paint a time before the zone has loaded? Fixed: ClientAppointmentDetailPage, AppointmentDetailPage,
+  ClientCommunicationCard, OwnerExceptions, DesignDetailPage (`designWaiting`), TimeOffImpactDialog. Safe as they
+  stand: AppointmentCard (its one parent, SchedulePage, renders cards only once the shared studio query has a zone),
+  TodayPage and TodaySessionCard (rendered only once `timeZone` exists), WaitlistClaimPage (the zone comes in the same
+  response), the messaging label (both callers render it only with a zone). Paints early but on money pages, so
+  kept out of this change and held separately: PaymentDetailPage's appointment date, MyEarningsPage, NoShowConfirmDialog.
+- **Record timestamps read in the viewer's own zone** ("Paid at", terms "Saved", form dates, "erasure requested on",
+  report "generated"): when something happened, read by whoever is looking. Their tests compute the expected text with
+  the same `Intl` call. **A better fixture time cannot fix them**: the sweep spans UTC-11 to UTC+14, 25 hours, and no
+  instant keeps one calendar date across it.
+- This is conformance to S01's own requirement (a booking time in the venue's zone is also the category norm), not a
+  benchmark discovery.

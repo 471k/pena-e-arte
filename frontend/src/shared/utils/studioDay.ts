@@ -1,4 +1,6 @@
-import { withStudioTimeZone, type StudioZone } from "./formatInStudioTimezone";
+import {
+  STUDIO_TIME_PENDING, STUDIO_TIME_UNAVAILABLE, withStudioTimeZone, type StudioZone,
+} from "./formatInStudioTimezone";
 
 /**
  * Calendar helpers for "today" in the studio's timezone (the artist's Today view). These are wall-clock
@@ -149,6 +151,16 @@ export function formatSessionSpan(startIso: string, endIso: string, timeZone: st
   return isSameStudioDay(start, end, timeZone)
     ? `${day(start)}, ${time(start)} – ${time(end)}`
     : `${day(start)}, ${time(start)} – ${day(end)}, ${time(end)}`;
+}
+
+/**
+ * formatSessionSpan for a zone that may not have loaded yet: pending or unavailable rather than the browser's
+ * zone (S01). Use this wherever the session can render before the studio does.
+ */
+export function formatStudioSessionSpan(startIso: string, endIso: string, zone: StudioZone): string {
+  if (zone.status === "loading") return STUDIO_TIME_PENDING;
+  if (zone.status === "error") return STUDIO_TIME_UNAVAILABLE;
+  return formatSessionSpan(startIso, endIso, zone.timeZone);
 }
 
 /**

@@ -6,10 +6,10 @@ import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Money } from "@/shared/components/Money";
 import { cn } from "@/shared/utils/cn";
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatStudioTime, type StudioZone } from "@/shared/utils/formatInStudioTimezone";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useGetOwnerExceptionsQuery } from "@/features/appointments/appointmentsApi";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { describeDeposit } from "@/features/payments/depositOutcome";
 import { CashDepositConfirmButton } from "@/features/payments/components/CashDepositConfirmButton";
 import {
@@ -78,10 +78,11 @@ const COPY: Record<OwnerExceptionKind, GroupCopy> = {
   },
 };
 
-function formatWhen(iso: string, timeZone: string | undefined): string {
-  return new Date(iso).toLocaleString("en-GB", withStudioTimeZone({
+// S01: the studio's zone or a pending mark; the exceptions and the studio load separately.
+function formatWhen(iso: string, zone: StudioZone): string {
+  return formatStudioTime(iso, {
     weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-  }, timeZone));
+  }, zone);
 }
 
 /** The line under the client's name that says what the decision is about. */
@@ -150,16 +151,16 @@ function Action({ kind, item }: { kind: OwnerExceptionKind; item: OwnerException
 interface ItemRowProps {
   kind:        OwnerExceptionKind;
   item:        OwnerExceptionItem;
-  timeZone:    string | undefined;
+  zone:        StudioZone;
   generatedAt: string;
 }
 
-function ItemRow({ kind, item, timeZone, generatedAt }: ItemRowProps) {
+function ItemRow({ kind, item, zone, generatedAt }: ItemRowProps) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5">
       <div className="min-w-0 space-y-0.5">
         <p className="text-sm break-words">
-          <span className="font-medium tabular-nums">{formatWhen(item.appointmentDate, timeZone)}</span>
+          <span className="font-medium tabular-nums">{formatWhen(item.appointmentDate, zone)}</span>
           {" · "}
           <span className="font-medium">{item.clientName}</span>
         </p>
@@ -193,11 +194,11 @@ function AgedCashNote({ group, generatedAt }: { group: OwnerExceptionGroup; gene
 interface GroupProps {
   group:       OwnerExceptionGroup;
   windowDays:  number;
-  timeZone:    string | undefined;
+  zone:        StudioZone;
   generatedAt: string;
 }
 
-function Group({ group, windowDays, timeZone, generatedAt }: GroupProps) {
+function Group({ group, windowDays, zone, generatedAt }: GroupProps) {
   const [open, setOpen] = useState(false);
   const headingId = useId();
   const regionId = useId();
@@ -214,7 +215,7 @@ function Group({ group, windowDays, timeZone, generatedAt }: GroupProps) {
       {group.kind === OwnerExceptionKind.CashToConfirm && <AgedCashNote group={group} generatedAt={generatedAt} />}
       <ul className="divide-y divide-border">
         {visible.map((item, i) => (
-          <ItemRow key={`${item.appointmentId}-${i}`} kind={group.kind} item={item} timeZone={timeZone} generatedAt={generatedAt} />
+          <ItemRow key={`${item.appointmentId}-${i}`} kind={group.kind} item={item} zone={zone} generatedAt={generatedAt} />
         ))}
       </ul>
       {rest.length > 0 && (
@@ -232,7 +233,7 @@ function Group({ group, windowDays, timeZone, generatedAt }: GroupProps) {
           {/* `hidden` while collapsed, so nothing inside is focusable or announced (E04c's pattern). */}
           <ul id={regionId} hidden={!open} aria-label={`More: ${copy.title(windowDays)}`} className="divide-y divide-border border-t border-border">
             {rest.map((item, i) => (
-              <ItemRow key={`${item.appointmentId}-more-${i}`} kind={group.kind} item={item} timeZone={timeZone} generatedAt={generatedAt} />
+              <ItemRow key={`${item.appointmentId}-more-${i}`} kind={group.kind} item={item} zone={zone} generatedAt={generatedAt} />
             ))}
           </ul>
         </>
@@ -252,7 +253,7 @@ export function OwnerExceptions() {
   // public page) happen without an action in this browser to invalidate the cache.
   const { data, isLoading, isError, refetch, isFetching } =
     useGetOwnerExceptionsQuery(undefined, { refetchOnMountOrArgChange: true });
-  const { data: studio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
   // A response without a groups list is treated like a failed read, never as "nothing needs you".
   const malformed = !isLoading && !isError && data !== undefined && !Array.isArray(data.groups);
   const errorMessage = useSuspensionAwareError(isError || malformed, "We couldn't load what needs you.");
@@ -297,7 +298,7 @@ export function OwnerExceptions() {
         {!isLoading && !errorMessage && data && groups && groups.length > 0 && (
           <div className="divide-y divide-border">
             {groups.map((g) => (
-              <Group key={g.kind} group={g} windowDays={data.windowDays} timeZone={studio?.timezone} generatedAt={data.generatedAt} />
+              <Group key={g.kind} group={g} windowDays={data.windowDays} zone={zone} generatedAt={data.generatedAt} />
             ))}
           </div>
         )}

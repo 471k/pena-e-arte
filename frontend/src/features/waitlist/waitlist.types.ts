@@ -10,6 +10,9 @@ export type WaitlistStatus = (typeof WaitlistStatus)[keyof typeof WaitlistStatus
 export interface WaitlistEntryResponse {
   id:                string;
   studioId:          string;
+  /** S01: the studio's IANA zone; every date on the entry is a day on the studio's calendar. Null only if the
+   * studio row is missing, which reads as "Time unavailable", never as the viewer's zone. */
+  studioTimezone:    string | null;
   artistId:          string | null;
   artistName:        string | null;
   clientId:          string | null;

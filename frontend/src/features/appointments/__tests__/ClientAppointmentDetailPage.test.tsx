@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 import { Toaster } from "sonner";
 
@@ -26,6 +26,7 @@ import type {
 } from "@/features/appointments/appointment.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -211,13 +212,28 @@ describe("ClientAppointmentDetailPage — states", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Half sleeve session" })).toBeInTheDocument();
   });
 
+  it("before the studio's zone loads, the date and times read as pending and never in the viewer's zone (S01)", async () => {
+    // The zone sweep caught this page painting the browser's zone first: at UTC-11 the client saw 9 December for a
+    // 10 December appointment until the studio loaded. Hold /studios/me back and look at that window directly.
+    server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+      await delay(400);
+      return HttpResponse.json(STUDIO);
+    }));
+    renderPage();
+    await loaded();
+    expect(screen.queryByText(/December 2030/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d{2}:\d{2} – \d{2}:\d{2}/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(STUDIO_TIME_PENDING).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/^Tuesday,? 10 December 2030$/)).toBeInTheDocument();
+  });
+
   it("renders the summary in full: date with weekday and year, times, duration, artist, both statuses", async () => {
     renderPage();
     await loaded();
-    expect(screen.getByText(/^Tuesday,? 10 December 2030$/)).toBeInTheDocument();
-    // Times are in the studio's timezone, which arrives with GET /studios/me; until then the browser's
-    // own zone is used (CI runs in UTC), so wait for it.
-    expect(await screen.findByText(/10:00 – 12:00/)).toBeInTheDocument();
+    // The date and times are in the studio's zone, which arrives with GET /studios/me; until then they read
+    // as pending (S01), so wait for it.
+    expect(await screen.findByText(/^Tuesday,? 10 December 2030$/)).toBeInTheDocument();
+    expect(screen.getByText(/10:00 – 12:00/)).toBeInTheDocument();
     expect(screen.getByText(/120 min/)).toBeInTheDocument();
     expect(screen.getByText("Luna Artista")).toBeInTheDocument();
     expect(screen.getByText("Confirmed")).toBeInTheDocument();
@@ -421,7 +437,7 @@ describe("ClientAppointmentDetailPage — progressive disclosure", () => {
     server.use(detailReturns(detail({}, [item("DepositPaid", false)])));
     renderPage();
     await loaded();
-    expect(screen.getByText(/^Tuesday,? 10 December 2030$/)).not.toHaveClass("truncate");
+    expect(await screen.findByText(/^Tuesday,? 10 December 2030$/)).not.toHaveClass("truncate");
     expect(screen.getByText("Confirmed")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument(); // deposit status badge
     const pay = await screen.findByRole("button", { name: /pay deposit/i });
@@ -620,7 +636,7 @@ describe("ClientAppointmentDetailPage — visit and aftercare", () => {
     expect(within(aftercare).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
       "Step from the server one.", "Step from the server two.",
     ]);
-    expect(within(aftercare).getByText(/10 December 2030/)).toBeInTheDocument();
+    expect(await within(aftercare).findByText(/10 December 2030/)).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Your visit" })).not.toBeInTheDocument();
   });
 
@@ -643,7 +659,10 @@ describe("ClientAppointmentDetailPage — aftercare per channel (E04c)", () => {
     server.use(detailReturns({ ...detail({ status: "Completed" }), aftercare }));
     renderPage();
     await loaded();
-    return screen.getByRole("region", { name: "Aftercare" });
+    const region = screen.getByRole("region", { name: "Aftercare" });
+    // The dates wait for the studio's zone (S01): pending first, never the browser's zone.
+    await waitFor(() => expect(within(region).getByTestId("aftercare-intro")).not.toHaveTextContent(STUDIO_TIME_PENDING));
+    return region;
   }
 
   it("email sent: says it was sent to their email, with the steps", async () => {

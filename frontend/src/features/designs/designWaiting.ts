@@ -1,4 +1,4 @@
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatStudioTime, type StudioZone } from "@/shared/utils/formatInStudioTimezone";
 import type { DesignResponse, DesignWaitingOn } from "./design.types";
 
 // E04c (A05): whose move it is on a design, worded for whoever is looking. The state itself is derived
@@ -14,11 +14,11 @@ export function waitingLabel(waitingOn: DesignWaitingOn, viewer: DesignViewer): 
   return waitingOn === "Artist" ? "Waiting on artist" : "Waiting on client";
 }
 
-/** "5 Nov 2026, 10:30" in the studio's timezone. */
-export function formatStudioDateTime(iso: string, timeZone: string | undefined): string {
-  return new Date(iso).toLocaleString("en-GB", withStudioTimeZone({
+/** "5 Nov 2026, 10:30" in the studio's timezone; pending until it loads, never the browser's zone (S01). */
+export function formatStudioDateTime(iso: string, zone: StudioZone): string {
+  return formatStudioTime(iso, {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }, timeZone));
+  }, zone);
 }
 
 /**
@@ -29,11 +29,11 @@ export function waitingMessage(
   design: Pick<DesignResponse, "waitingOn" | "status" | "latestVersionNumber" | "latestUploadedAt">,
   viewer: DesignViewer,
   latestApproval: string | null | undefined,
-  timeZone: string | undefined,
+  zone: StudioZone,
 ): string {
   const v = design.latestVersionNumber;
   const version = v != null ? `version ${v}` : null;
-  const uploaded = design.latestUploadedAt ? `, uploaded ${formatStudioDateTime(design.latestUploadedAt, timeZone)}` : "";
+  const uploaded = design.latestUploadedAt ? `, uploaded ${formatStudioDateTime(design.latestUploadedAt, zone)}` : "";
   const expired = latestApproval === "Expired";
 
   if (design.waitingOn === "Nobody") {

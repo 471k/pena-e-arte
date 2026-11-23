@@ -195,7 +195,83 @@ public class WaitlistHandlerIntegrationTests(DatabaseFixture fixture)
         result.Should().OnlyContain(w => w.ArtistId == artistAId);
     }
 
+    // S01: every waitlist entry carries its studio's zone, so the client's list can show an offered slot on the
+    // studio's calendar. A non-default zone, so the entity's Europe/Tirane default can't pass these by accident.
+    private const string FarZone = "Pacific/Kiritimati";
+
+    [Fact]
+    public async Task GetMyWaitlistEntries_CarriesTheStudiosZone()
+    {
+        Guid tenantId = Guid.NewGuid();
+        await SeedStudioInZone(tenantId, FarZone);
+        Guid userId = Guid.NewGuid();
+        Guid clientId = await SeedClient(tenantId, userId);
+        await SeedWaitlistEntry(tenantId, clientId);
+
+        ICurrentUser clientUser = Substitute.For<ICurrentUser>();
+        clientUser.IsAuthenticated.Returns(true);
+        clientUser.Role.Returns("client");
+        clientUser.UserId.Returns(userId);
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        GetMyWaitlistEntriesHandler handler = new(db, clientUser, Substitute.For<IWaitlistClaimTokens>());
+        List<WaitlistEntryResponse> result = await handler.Handle(new GetMyWaitlistEntriesQuery(), default);
+
+        result.Should().ContainSingle().Which.StudioTimezone.Should().Be(FarZone);
+    }
+
+    [Fact]
+    public async Task GetWaitlist_StaffList_CarriesTheStudiosZone()
+    {
+        Guid tenantId = Guid.NewGuid();
+        await SeedStudioInZone(tenantId, FarZone);
+        await SeedWaitlistEntry(tenantId, null);
+
+        ICurrentUser owner = Substitute.For<ICurrentUser>();
+        owner.Role.Returns("owner");
+
+        await using AppDbContext db = fixture.CreateDbContext(tenantId);
+        List<WaitlistEntryResponse> result = await new GetWaitlistHandler(db, owner)
+            .Handle(new GetWaitlistQuery(), default);
+
+        result.Should().ContainSingle().Which.StudioTimezone.Should().Be(FarZone);
+    }
+
+    [Fact]
+    public async Task JoinWaitlist_Guest_ResponseCarriesTheStudiosZone()
+    {
+        Guid tenantId = Guid.NewGuid();
+        string slug = await SeedStudioInZone(tenantId, FarZone);
+
+        ICurrentUser guest = Substitute.For<ICurrentUser>();
+        guest.IsAuthenticated.Returns(false);
+
+        await using AppDbContext db = fixture.CreateDbContext(Guid.Empty);
+        WaitlistEntryResponse result = await new JoinWaitlistHandler(db, TenantFor(Guid.Empty), guest).Handle(
+            new JoinWaitlistCommand(new JoinWaitlistRequest(slug, null, DateTime.UtcNow.AddDays(1),
+                DateTime.UtcNow.AddDays(5), "Guest Name", "guest@example.com", "+355691234567", null)), default);
+
+        result.StudioTimezone.Should().Be(FarZone);
+    }
+
     // ── Seeding helpers ──────────────────────────────────────────────────────────
+
+    private async Task<string> SeedStudioInZone(Guid tenantId, string timezone)
+    {
+        await using AppDbContext ctx = fixture.CreateDbContext(Guid.Empty);
+        string slug = $"studio-{Guid.NewGuid():N}";
+        ctx.Studios.Add(new Studio
+        {
+            Id = tenantId,
+            Name = "Test Studio",
+            Slug = slug,
+            IsActive = true,
+            IsPublished = true,
+            Timezone = timezone,
+        });
+        await ctx.SaveChangesAsync();
+        return slug;
+    }
 
     private async Task<Guid> SeedClient(Guid tenantId, Guid userId)
     {

@@ -115,7 +115,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Each booking has its own page with everything about it in one place: when it is, what to do before it, your design, where to go, and how to reach the studio.",
     steps: [
       "Under \"My Bookings\", click \"View appointment details\" on any booking. You can bookmark the page or open it from a link; if you're signed out, you're asked to sign in and then taken straight to it.",
-      "At the top: the date, start and end time, length, your artist, and two separate statuses: the booking itself (Requested, Confirmed, Cancelled, Completed or No Show) and your deposit.",
+      "At the top: the date, start and end time, length, your artist, and two separate statuses: the booking itself (Requested, Confirmed, Cancelled, Completed or No Show) and your deposit. The date and times are the studio's local time, so they match what the studio expects even if you're somewhere else; for a moment while the page loads they show \"…\" rather than a time in your own zone.",
       "If there's something to do before your appointment, the next one is a single button under \"Next step\", for example \"Pay your deposit\", \"Fill in the intake form\" or \"Sign the consent form\". The form pages open with this appointment already selected.",
       "\"Before your appointment\" lists anything else still to do. Things you've already done are folded under \"Done\"; open it to check them.",
       "\"Your design\" shows what you described, the style and placement, and your photos. A long description is shortened: click \"Show more\" to read all of it.",
@@ -190,7 +190,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "When the booking form shows your requested slot is unavailable, click \"Notify me when a slot opens up\".",
       "Fill in your details (already filled in if you're signed in) and confirm.",
-      "See all your waitlist entries and their status on My Waitlist — you can remove yourself at any time.",
+      "See all your waitlist entries and their status on My Waitlist — you can remove yourself at any time. Its dates (the days you asked for, and the day of any slot you're offered) are the studio's days in its time zone, so they match the email even if you're somewhere else.",
       "When a matching slot frees up, you get an email saying which slot it is. Its \"Book this slot\" button opens a page showing the slot (in the studio's time), and from there the booking form with the artist and time already filled in. You add the rest, like what you'd like done, and send the request as usual.",
       "Signed in? The same \"Book this slot\" button appears next to that entry on My Waitlist.",
       "The offer is yours for 24 hours from the email. After that it moves to the next person in line and your entry shows as Expired; you can join again from the studio's page.",
@@ -1892,7 +1892,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["waitlist", "notify me", "slot opened", "auto notify", "waiting list", "24 hours", "claim window"],
     summary: "See every client waiting for a slot at your studio and track who's been notified.",
     steps: [
-      "Go to Waitlist to see everyone waiting, filterable by status: Waiting, Notified, Booked, Expired, or Cancelled.",
+      "Go to Waitlist to see everyone waiting, filterable by status: Waiting, Notified, Booked, Expired, or Cancelled. Each preferred window is shown in your studio's time zone; the date someone joined is in your own.",
       "When an appointment is cancelled or rescheduled, the oldest matching waitlist entry (same artist, or \"any artist\", whose preferred date window covers the freed slot) is automatically notified by email — you don't need to do anything. Before anyone is notified, the slot is checked to still be bookable: a slot that's already taken, or outside your hours, is never offered.",
       "The client's email links to a page showing that slot, and from there to the booking form with the artist and time filled in. The slot isn't held for them: whoever books it first gets it, which is how waitlists work across booking apps.",
       "When the client books from the offer, their entry turns Booked by itself. If they book a different time, the slot they were offered goes to the next person in line.",

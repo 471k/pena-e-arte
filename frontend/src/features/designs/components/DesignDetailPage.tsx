@@ -22,7 +22,8 @@ import { useAppSelector } from "@/app/hooks";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetClientByIdQuery } from "@/features/clients/clientsApi";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import type { StudioZone } from "@/shared/utils/formatInStudioTimezone";
 import {
   useDeleteRevisionMutation,
   useGetDesignQuery,
@@ -79,10 +80,10 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 /** What happened to this revision's review, in words, with its date. */
-function ReviewHistory({ revision, latestVersion, timeZone }: {
-  revision: DesignRevisionResponse; latestVersion: number; timeZone: string | undefined;
+function ReviewHistory({ revision, latestVersion, zone }: {
+  revision: DesignRevisionResponse; latestVersion: number; zone: StudioZone;
 }) {
-  const when = revision.reviewedAt ? ` on ${formatStudioDateTime(revision.reviewedAt, timeZone)}` : "";
+  const when = revision.reviewedAt ? ` on ${formatStudioDateTime(revision.reviewedAt, zone)}` : "";
   const isLatest = revision.versionNumber === latestVersion;
   let line: string | null;
   switch (revision.approvalStatus) {
@@ -113,10 +114,10 @@ interface RevisionCardProps {
   latestApproved: boolean;
   canReview:     boolean;
   canDelete:     boolean;
-  timeZone:      string | undefined;
+  zone:          StudioZone;
 }
 
-function RevisionCard({ revision, latestVersion, latestApproved, canReview, canDelete, timeZone }: RevisionCardProps) {
+function RevisionCard({ revision, latestVersion, latestApproved, canReview, canDelete, zone }: RevisionCardProps) {
   const [mode, setMode]           = useState<"idle" | "changes">("idle");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [review,  { isLoading }]  = useReviewRevisionMutation();
@@ -127,7 +128,7 @@ function RevisionCard({ revision, latestVersion, latestApproved, canReview, canD
     useForm<NotesForm>({ resolver: zodResolver(notesSchema) });
 
   const isLatest = revision.versionNumber === latestVersion;
-  const uploaded = formatStudioDateTime(revision.uploadedAt, timeZone);
+  const uploaded = formatStudioDateTime(revision.uploadedAt, zone);
   // Review is offered on the latest version only (see the file comment); the API is unchanged.
   const isReviewable = canReview && isLatest && revision.approvalStatus !== "Approved";
 
@@ -228,7 +229,7 @@ function RevisionCard({ revision, latestVersion, latestApproved, canReview, canD
         )}
 
         {/* What happened to this version's review, and the client's feedback on it */}
-        <ReviewHistory revision={revision} latestVersion={latestVersion} timeZone={timeZone} />
+        <ReviewHistory revision={revision} latestVersion={latestVersion} zone={zone} />
 
         {/* Going back to an earlier version: the client asks, the artist brings it back as the newest. */}
         {!isLatest && !latestApproved && canReview && (
@@ -362,8 +363,7 @@ export function DesignDetailPage() {
 
   const { data: design } = useGetDesignQuery(designId ?? "", { skip: !designId });
   const { data: client } = useGetClientByIdQuery(design?.clientId ?? "", { skip: !design?.clientId });
-  const { data: studio } = useGetMyStudioQuery();
-  const timeZone = studio?.timezone;
+  const { zone } = useStudioZone();
 
   useDocumentMeta({
     title:     design ? `${design.title} — Designs — TattooOS` : "Designs — TattooOS",
@@ -438,7 +438,7 @@ export function DesignDetailPage() {
                 {needsAttention
                   ? <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
                   : <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />}
-                <span>{waitingMessage(design, viewer, latest?.approvalStatus, timeZone)}</span>
+                <span>{waitingMessage(design, viewer, latest?.approvalStatus, zone)}</span>
               </div>
             )}
           </div>
@@ -482,7 +482,7 @@ export function DesignDetailPage() {
               latestApproved={latest.approvalStatus === "Approved"}
               canReview={canReview}
               canDelete={canUpload}
-              timeZone={timeZone}
+              zone={zone}
             />
             {earlier.length > 0 && (
               <EarlierVersions count={earlier.length}>
@@ -494,7 +494,7 @@ export function DesignDetailPage() {
                     latestApproved={latest.approvalStatus === "Approved"}
                     canReview={canReview}
                     canDelete={canUpload}
-                    timeZone={timeZone}
+                    zone={zone}
                   />
                 ))}
               </EarlierVersions>

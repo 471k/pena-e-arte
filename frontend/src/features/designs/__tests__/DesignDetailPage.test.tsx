@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
@@ -15,6 +15,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { DesignDetailPage } from "@/features/designs/components/DesignDetailPage";
 import type { DesignRevisionResponse, DesignResponse } from "@/features/designs/design.types";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 // ── SignalR mock (ShareDesignButton dialog uses no SignalR, but guard against
 //   any parent component that may eventually call the hook in the test tree) ───
@@ -663,5 +664,25 @@ describe("DesignDetailPage — going back to an earlier version", () => {
     await screen.findByText("v2");
     expect(screen.queryByRole("button", { name: /bring back/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /ask for version/i })).not.toBeInTheDocument();
+  });
+});
+
+/** S01: hold GET /studios/me back so the window before the studio's zone arrives can be looked at directly. */
+function holdStudio() {
+  server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+    await delay(400);
+    return HttpResponse.json({ id: "s-001", timezone: "UTC", currency: "EUR" });
+  }));
+}
+
+describe("DesignDetailPage — first paint (S01)", () => {
+  it("shows the upload time as pending until the studio's zone loads, never in the viewer's zone", async () => {
+    holdStudio();
+    serveRevisions([V1_CHANGES, V2_PENDING], { waitingOn: "Client", latestVersionNumber: 2, latestUploadedAt: V2_PENDING.uploadedAt });
+    renderPage(Role.Client);
+
+    await screen.findByRole("group", { name: `Your review of version 2, uploaded ${STUDIO_TIME_PENDING}` });
+    expect(screen.queryByText(/15 Jan 2024/)).not.toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: "Your review of version 2, uploaded 15 Jan 2024, 10:00" })).toBeInTheDocument();
   });
 });

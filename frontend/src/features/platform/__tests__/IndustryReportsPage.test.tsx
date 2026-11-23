@@ -12,6 +12,12 @@ import { platformApi } from "@/features/platform/platformApi";
 import { IndustryReportsPage } from "@/features/platform/components/IndustryReportsPage";
 import type { IndustryReportSummary, PlanUsageReportResponse } from "@/features/platform/platform.types";
 
+// S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
+// computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
+// runs from UTC-11 to UTC+14, a 25-hour span, and no instant keeps one calendar date across all of it.
+const viewerDay = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const REPORTS: IndustryReportSummary[] = [
@@ -116,9 +122,8 @@ describe("IndustryReportsPage", () => {
   it("shows generated date in 'D Mon YYYY' format for each report", async () => {
     renderPage();
     await screen.findByText("May 2026");
-    // formatDate uses { day: "numeric", month: "short", year: "numeric" }
-    // → "1 Jun 2026"
-    expect(screen.getByText(/generated 1 jun 2026/i)).toBeInTheDocument();
+    // formatDate uses { day: "numeric", month: "short", year: "numeric" }: "1 Jun 2026" in UTC.
+    expect(screen.getByText(new RegExp(`generated ${viewerDay("2026-06-01T08:00:00Z")}`, "i"))).toBeInTheDocument();
   });
 
   it("renders Open links with the correct download URLs", async () => {

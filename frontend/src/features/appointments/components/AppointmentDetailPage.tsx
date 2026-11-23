@@ -21,7 +21,8 @@ import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import { useGetArtistsQuery, useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatStudioTime, type StudioZone } from "@/shared/utils/formatInStudioTimezone";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { useAppointmentCalendarDownload } from "../useAppointmentCalendarDownload";
 import { useAppSelector } from "@/app/hooks";
 import { useCreateConversationMutation } from "@/features/messaging";
@@ -44,15 +45,17 @@ import {
 } from "../appointmentsApi";
 import { Money } from "@/shared/components/Money";
 
-function formatDateTime(dateStr: string, studioTimezone: string | undefined): string {
-  return new Date(dateStr).toLocaleString("en-GB", withStudioTimeZone({
+// S01: the studio's zone or a pending mark. The appointment and the studio load separately, so a fallback to the
+// browser's zone painted a wrong time first for anyone viewing from elsewhere.
+function formatDateTime(dateStr: string, zone: StudioZone): string {
+  return formatStudioTime(dateStr, {
     weekday: "long",
     day:     "numeric",
     month:   "long",
     year:    "numeric",
     hour:    "2-digit",
     minute:  "2-digit",
-  }, studioTimezone));
+  }, zone);
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -109,6 +112,7 @@ export function AppointmentDetailPage() {
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const { download: downloadIcs, downloading: downloadingIcs } = useAppointmentCalendarDownload();
   const { data: studio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
 
   const { data: appt, isLoading, isError } = useGetAppointmentQuery(id ?? "", {
     skip: !id,
@@ -263,7 +267,7 @@ export function AppointmentDetailPage() {
                   }
                 />
                 <Separator />
-                <Row label="Date &amp; time" value={formatDateTime(appt.date, studio?.timezone)} />
+                <Row label="Date &amp; time" value={formatDateTime(appt.date, zone)} />
                 <Separator />
                 <Row label="Duration"  value={`${appt.durationMinutes} min`} />
                 <Separator />
