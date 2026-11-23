@@ -35,3 +35,18 @@ spec:
             # always times out on a clean boot. Never set on the API Deployment itself.
             - name: Migrations__ExitAfterMigrate
               value: "true"
+          # This Job had no resources at all until 22 Nov 2026, so it was scheduled with no guarantee and could
+          # use the whole node during a rollout. It also meant .NET sized itself from the node: the CPX22 -> CPX32
+          # rescale on 21 Nov took it from 2 to 4 processors, so Server GC (the Web SDK default) went from 2 heaps
+          # and GC threads to 4. Every exit-139 abort since the rescale has been on a GC or thread-pool thread
+          # (claude-shared handoffs/code-tracked-exit139-crashes-2026-11-22.md).
+          # limits.cpu 2 is a CFS quota, which .NET reads as Environment.ProcessorCount = 2: the pre-rescale GC
+          # topology, chosen here rather than decided by the hosting plan. It is the one variable this change moves.
+          # No memory limit yet on purpose: a limit also sets the GC's heap hard limit (75% of it), which would be a
+          # second variable in the same experiment. Add one once the crash question reads out.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
