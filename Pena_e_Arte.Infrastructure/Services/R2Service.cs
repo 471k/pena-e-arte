@@ -151,6 +151,75 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
     }
 
     /// <summary>
+    /// S3 has no "list everything except" call, so this lists the top level with Delimiter "/" (loose root
+    /// objects plus one CommonPrefix per top-level folder) and then lists each folder that is not skipped.
+    /// A skipped folder's objects are never requested. Only top-level folders can be skipped: a deeper prefix
+    /// would need its parent listed, which is the cost this method exists to avoid.
+    /// </summary>
+    public async Task<IReadOnlyList<R2ObjectInfo>> ListAllExceptAsync(
+        IReadOnlyCollection<string> skippedTopLevelFolders, CancellationToken ct)
+    {
+        foreach (string folder in skippedTopLevelFolders)
+        {
+            if (folder.Length < 2 || folder.IndexOf('/') != folder.Length - 1)
+                throw new ArgumentException($"'{folder}' is not a top-level folder (expected 'name/').", nameof(skippedTopLevelFolders));
+        }
+
+        List<R2ObjectInfo> objects = [];
+        List<string> folders = [];
+        string? continuationToken = null;
+        do
+        {
+            ListObjectsV2Response response = await s3.ListObjectsV2Async(new ListObjectsV2Request
+            {
+                BucketName = _opts.BucketName,
+                Delimiter = "/",
+                ContinuationToken = continuationToken,
+            }, ct);
+
+            objects.AddRange((response.S3Objects ?? [])
+                .Select(o => new R2ObjectInfo(o.Key, ToUtc(o.LastModified), o.Size ?? 0L)));
+            folders.AddRange(response.CommonPrefixes ?? []);
+
+            continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
+        }
+        while (!string.IsNullOrEmpty(continuationToken));
+
+        foreach (string folder in folders.Where(f => !skippedTopLevelFolders.Contains(f, StringComparer.Ordinal)))
+            objects.AddRange(await ListByPrefixAsync(folder, ct));
+
+        return objects;
+    }
+
+    public async Task CopyAsync(string sourceKey, string destinationKey, CancellationToken ct)
+    {
+        await s3.CopyObjectAsync(new CopyObjectRequest
+        {
+            SourceBucket = _opts.BucketName,
+            SourceKey = sourceKey,
+            DestinationBucket = _opts.BucketName,
+            DestinationKey = destinationKey,
+        }, ct);
+    }
+
+    public async Task<long?> GetObjectSizeAsync(string objectKey, CancellationToken ct)
+    {
+        try
+        {
+            GetObjectMetadataResponse response = await s3.GetObjectMetadataAsync(new GetObjectMetadataRequest
+            {
+                BucketName = _opts.BucketName,
+                Key = objectKey,
+            }, ct);
+            return response.ContentLength;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Every LastModified leaves here as DateTimeKind.Utc. Callers compare it with a UTC cutoff, and DateTime
     /// comparison ignores Kind, so a Local or Unspecified value would be correct only while the pod's clock
     /// happens to be UTC. OrphanedObjectSweepJob's minimum age depends on it, and the unsafe direction (an

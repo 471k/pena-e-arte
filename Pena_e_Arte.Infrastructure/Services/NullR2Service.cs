@@ -33,4 +33,14 @@ internal sealed class NullR2Service : IR2Service
 
     public Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct)
         => Task.FromResult<IReadOnlyList<R2ObjectInfo>>(Array.Empty<R2ObjectInfo>());
+
+    public Task<IReadOnlyList<R2ObjectInfo>> ListAllExceptAsync(IReadOnlyCollection<string> skippedTopLevelFolders, CancellationToken ct)
+        => Task.FromResult<IReadOnlyList<R2ObjectInfo>>(Array.Empty<R2ObjectInfo>());
+
+    // Unreachable in practice: the listing above is empty, so the sweep never has anything to copy.
+    public Task CopyAsync(string sourceKey, string destinationKey, CancellationToken ct)
+        => throw new InvalidOperationException("Cloudflare R2 is not configured.");
+
+    public Task<long?> GetObjectSizeAsync(string objectKey, CancellationToken ct)
+        => throw new InvalidOperationException("Cloudflare R2 is not configured.");
 }

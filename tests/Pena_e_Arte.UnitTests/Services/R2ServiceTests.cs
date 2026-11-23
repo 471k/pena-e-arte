@@ -188,4 +188,77 @@ public class R2ServiceTests
     {
         CreateMovedSut(OldAddress).TryGetObjectKey(url).Should().Be(expected);
     }
+
+    // The quarantine folder is excluded AT the list call: its objects are never requested at all.
+    [Fact]
+    public async Task ListAllExceptAsync_NeverRequestsASkippedFolder_AndListsEveryOtherOne()
+    {
+        _s3.ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Delimiter == "/" && r.ContinuationToken == null), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response
+            {
+                S3Objects = [new S3Object { Key = "loose.jpg", Size = 1L }],
+                CommonPrefixes = ["s1/"],
+                IsTruncated = true,
+                NextContinuationToken = "top-2",
+            });
+        _s3.ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Delimiter == "/" && r.ContinuationToken == "top-2"), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { CommonPrefixes = ["_quarantine/", "s2/"] });
+        _s3.ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Delimiter == null && r.Prefix == "s1/"), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { S3Objects = [new S3Object { Key = "s1/a/1.jpg", Size = 2L }] });
+        _s3.ListObjectsV2Async(Arg.Is<ListObjectsV2Request>(r => r.Delimiter == null && r.Prefix == "s2/"), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { S3Objects = [new S3Object { Key = "s2/b/2.jpg", Size = 3L }] });
+
+        IReadOnlyList<R2ObjectInfo> result = await CreateSut().ListAllExceptAsync(["_quarantine/"], default);
+
+        result.Select(o => o.Key).Should().BeEquivalentTo("loose.jpg", "s1/a/1.jpg", "s2/b/2.jpg");
+        await _s3.DidNotReceive().ListObjectsV2Async(
+            Arg.Is<ListObjectsV2Request>(r => r.Prefix != null && r.Prefix.StartsWith("_quarantine/")), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("_quarantine")]
+    [InlineData("s1/_quarantine/")]
+    [InlineData("/")]
+    public async Task ListAllExceptAsync_RejectsAnythingButATopLevelFolder(string folder)
+    {
+        Func<Task> act = () => CreateSut().ListAllExceptAsync([folder], default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task CopyAsync_CopiesInsideTheOneBucket()
+    {
+        await CreateSut().CopyAsync("s1/a.jpg", "_quarantine/2026-11-23/s1/a.jpg", default);
+
+        await _s3.Received(1).CopyObjectAsync(
+            Arg.Is<CopyObjectRequest>(r =>
+                r.SourceBucket == "test-bucket" && r.SourceKey == "s1/a.jpg" &&
+                r.DestinationBucket == "test-bucket" && r.DestinationKey == "_quarantine/2026-11-23/s1/a.jpg"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetObjectSizeAsync_ReturnsTheLength_OrNullWhenTheKeyIsAbsent()
+    {
+        _s3.GetObjectMetadataAsync(Arg.Is<GetObjectMetadataRequest>(r => r.Key == "there"), Arg.Any<CancellationToken>())
+            .Returns(new GetObjectMetadataResponse { ContentLength = 75L });
+        _s3.GetObjectMetadataAsync(Arg.Is<GetObjectMetadataRequest>(r => r.Key == "gone"), Arg.Any<CancellationToken>())
+            .Returns<GetObjectMetadataResponse>(_ => throw new AmazonS3Exception("Not Found") { StatusCode = System.Net.HttpStatusCode.NotFound });
+
+        (await CreateSut().GetObjectSizeAsync("there", default)).Should().Be(75L);
+        (await CreateSut().GetObjectSizeAsync("gone", default)).Should().BeNull();
+    }
+
+    // Anything other than "not found" is not an answer about the object, so it must not read as "absent".
+    [Fact]
+    public async Task GetObjectSizeAsync_OtherErrors_Throw()
+    {
+        _s3.GetObjectMetadataAsync(Arg.Any<GetObjectMetadataRequest>(), Arg.Any<CancellationToken>())
+            .Returns<GetObjectMetadataResponse>(_ => throw new AmazonS3Exception("Forbidden") { StatusCode = System.Net.HttpStatusCode.Forbidden });
+
+        Func<Task> act = () => CreateSut().GetObjectSizeAsync("k", default);
+
+        await act.Should().ThrowAsync<AmazonS3Exception>();
+    }
 }

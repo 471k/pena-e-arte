@@ -1,4 +1,7 @@
+using System.Globalization;
+using Amazon.S3;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Pena_e_Arte.Domain.Interfaces;
 using Pena_e_Arte.Infrastructure.Services;
 
@@ -10,8 +13,18 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// cleaned, so removed files stay in the bucket, stay fetchable and keep counting against the studio's
 /// storage quota (StorageReconciliationJob sums the bucket, not the rows).
 ///
-/// **REPORT-ONLY. This job deletes nothing.** It has no delete call at all; deletion is Phase 3, behind
-/// configuration, and waits for Desktop to read a staging and a production run, then Phi's go.
+/// **Two modes, report-only by default** (OrphanedObjectSweepOptions). Report-only logs what it would act on
+/// and touches nothing. Quarantine MOVES each unreferenced object to _quarantine/{yyyy-MM-dd}/{original key}:
+/// a server-side copy, a size check on the copy, and only then a delete of the original. A failed copy or a
+/// copy that doesn't verify leaves the original where it was. Nothing is ever hard-deleted here: emptying the
+/// quarantine is Phase 4, a separate decision. Restoring is in docs/infra/orphan-quarantine-runbook.md.
+///
+/// _quarantine/ is TOP-LEVEL on purpose: the presign route lets a caller choose any folder under
+/// {studioId}/, so {studioId}/_quarantine/ would be a quarantine users can write into. It is skipped at the
+/// list call (IR2Service.ListAllExceptAsync), so the next run never sees, re-condemns or pays memory for it.
+/// On prod a bucket lock rule on that prefix keeps quarantined objects for 30 days. The lock is a Cloudflare
+/// account setting, not something this job sets or checks: OUR code can't delete from quarantine; someone
+/// with lock permission can.
 ///
 /// A sweep, not a delete at each remove site, because objects are shared between rows (the catalog
 /// design is one object in three rows) and a sweep also recovers what is already orphaned. Same shape as
@@ -38,6 +51,7 @@ public class OrphanedObjectSweepJob(
     IR2Service r2,
     StoredObjectReferenceReader references,
     TimeProvider clock,
+    IOptions<OrphanedObjectSweepOptions> options,
     ILogger<OrphanedObjectSweepJob> logger)
 {
     /// <summary>
@@ -49,41 +63,196 @@ public class OrphanedObjectSweepJob(
 
     internal static readonly string[] ExcludedPrefixes = ["consent/", "reports/industry/"];
 
+    /// <summary>Top-level, never under a studio id: see the class comment.</summary>
+    internal const string QuarantineFolder = "_quarantine/";
+
+    /// <summary>Never listed at all, unlike ExcludedPrefixes, which are listed and counted as "excluded".</summary>
+    internal static readonly string[] NotListedTopLevelFolders = [QuarantineFolder];
+
+    /// <summary>
+    /// The quarantine run refuses to move anything when more than this share of the candidates (old enough and
+    /// not excluded) looks unreferenced, once there are at least RefusalMinimumCount of them. A reference
+    /// reader that silently reads too little would otherwise condemn live files in bulk. The move is
+    /// reversible, so this is a brake, not the only protection. The minimum keeps a small bucket (production
+    /// holds 6 objects) from tripping it on ordinary numbers.
+    /// </summary>
+    internal const double RefusalShare = 0.5;
+    internal const int RefusalMinimumCount = 20;
+
     public async Task RunAsync(CancellationToken ct = default)
     {
-        IReadOnlyList<R2ObjectInfo> listed = await r2.ListByPrefixAsync("", ct);
+        bool quarantine = ResolveQuarantineMode();
+
+        IReadOnlyList<R2ObjectInfo> listed = await r2.ListAllExceptAsync(NotListedTopLevelFolders, ct);
         StoredObjectReferences refs = await references.ReadAsync(ct);
 
-        DateTime cutoff = clock.GetUtcNow().UtcDateTime - MinimumAge;
+        DateTime now = clock.GetUtcNow().UtcDateTime;
+        DateTime cutoff = now - MinimumAge;
         int excluded = 0, tooYoung = 0, referenced = 0;
-        Dictionary<(string Owner, string Area), (int Count, long Bytes)> orphans = [];
+        List<(R2ObjectInfo Object, (string Owner, string Area) Group)> orphans = [];
 
         foreach (R2ObjectInfo obj in listed)
         {
             if (ExcludedPrefixes.Any(p => obj.Key.StartsWith(p, StringComparison.Ordinal))) { excluded++; continue; }
             if (obj.LastModified >= cutoff) { tooYoung++; continue; }
             if (refs.IsReferenced(obj.Key)) { referenced++; continue; }
+            orphans.Add((obj, Classify(obj.Key)));
+        }
 
-            (string Owner, string Area) group = Classify(obj.Key);
-            orphans.TryGetValue(group, out (int Count, long Bytes) sum);
-            orphans[group] = (sum.Count + 1, sum.Bytes + obj.SizeBytes);
+        if (!quarantine)
+        {
+            ReportOnly(listed.Count, excluded, tooYoung, referenced, orphans, refs);
+            return;
+        }
+
+        string date = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        string? refusal = RefusalReason(orphans.Count, referenced, refs.Keys.Count);
+        if (refusal is not null)
+        {
+            logger.LogError(
+                "OrphanedObjectSweepJob (quarantine, refused) listed {Listed} object(s): {Excluded} excluded, {TooYoung} younger than {MinimumAgeDays} days, " +
+                "{Referenced} referenced, {Orphans} unreferenced ({OrphanBytes} bytes); moved 0 because {Reason}; hard-deleted 0. " +
+                "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address",
+                listed.Count, excluded, tooYoung, (int)MinimumAge.TotalDays,
+                referenced, orphans.Count, orphans.Sum(o => o.Object.SizeBytes), refusal,
+                refs.Keys.Count, refs.ValuesRead, refs.ValuesOnNoKnownAddress);
+            return;
+        }
+
+        int copyFailed = 0, notVerified = 0, deleteFailed = 0;
+        Dictionary<(string Owner, string Area), (int Count, long Bytes)> moved = [];
+
+        foreach ((R2ObjectInfo obj, (string Owner, string Area) group) in orphans)
+        {
+            string destination = $"{QuarantineFolder}{date}/{obj.Key}";
+
+            try { await r2.CopyAsync(obj.Key, destination, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                copyFailed++;
+                LogStepFailure("copy", group, ex, "the original stays in place");
+                continue;
+            }
+
+            // A copy is only trusted once it reads back at the original's size. S3's CopyObject can fail after
+            // its 200 status, and the original is deleted next, so this check is what stands between a bad copy
+            // and a lost file.
+            long? copiedSize;
+            try { copiedSize = await r2.GetObjectSizeAsync(destination, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                notVerified++;
+                LogStepFailure("verify", group, ex, "the original stays in place");
+                continue;
+            }
+            if (copiedSize != obj.SizeBytes)
+            {
+                notVerified++;
+                logger.LogWarning(
+                    "OrphanedObjectSweepJob (quarantine) verify failed for one object, owner {Owner}, area {Area}: the copy is " +
+                    "{CopiedBytes} bytes against {OriginalBytes}; the original stays in place",
+                    group.Owner, group.Area, copiedSize?.ToString(CultureInfo.InvariantCulture) ?? "missing", obj.SizeBytes);
+                continue;
+            }
+
+            try { await r2.DeleteAsync(obj.Key, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                deleteFailed++;
+                LogStepFailure("delete", group, ex, "the original stays in place and a copy is in quarantine");
+                continue;
+            }
+
+            moved.TryGetValue(group, out (int Count, long Bytes) sum);
+            moved[group] = (sum.Count + 1, sum.Bytes + obj.SizeBytes);
         }
 
         foreach (KeyValuePair<(string Owner, string Area), (int Count, long Bytes)> g in
-                 orphans.OrderBy(o => o.Key.Owner, StringComparer.Ordinal).ThenBy(o => o.Key.Area, StringComparer.Ordinal))
+                 moved.OrderBy(o => o.Key.Owner, StringComparer.Ordinal).ThenBy(o => o.Key.Area, StringComparer.Ordinal))
+        {
+            logger.LogInformation(
+                "OrphanedObjectSweepJob (quarantine) moved {Count} object(s), {Bytes} bytes, owner {Owner}, area {Area} to _quarantine/{QuarantineDate}/",
+                g.Value.Count, g.Value.Bytes, g.Key.Owner, g.Key.Area, date);
+        }
+
+        int movedCount = moved.Values.Sum(v => v.Count);
+        logger.LogInformation(
+            "OrphanedObjectSweepJob (quarantine) listed {Listed} object(s): {Excluded} excluded, {TooYoung} younger than {MinimumAgeDays} days, " +
+            "{Referenced} referenced, {Orphans} unreferenced ({OrphanBytes} bytes); moved {Moved} ({MovedBytes} bytes) to _quarantine/{QuarantineDate}/, " +
+            "{CopyFailed} copy failed, {NotVerified} copy not verified, {DeleteFailed} copied but original kept; hard-deleted 0. " +
+            "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address; _quarantine/ not listed",
+            listed.Count, excluded, tooYoung, (int)MinimumAge.TotalDays,
+            referenced, orphans.Count, orphans.Sum(o => o.Object.SizeBytes), movedCount, moved.Values.Sum(v => v.Bytes), date,
+            copyFailed, notVerified, deleteFailed,
+            refs.Keys.Count, refs.ValuesRead, refs.ValuesOnNoKnownAddress);
+
+        // Same rule as R2ExportService: one object failing is logged and retried next run, but EVERY object
+        // failing is a systemic problem (lost permission, a lock on the wrong prefix), so it fails the job,
+        // which HangfireJobOutcomeLogFilter logs and the Hangfire alert can see.
+        int failed = copyFailed + notVerified + deleteFailed;
+        if (failed > 0 && movedCount == 0)
+            throw new InvalidOperationException(
+                $"OrphanedObjectSweepJob: all {failed} move(s) failed ({copyFailed} copy, {notVerified} verify, {deleteFailed} delete). See the warnings above.");
+    }
+
+    private void ReportOnly(
+        int listed, int excluded, int tooYoung, int referenced,
+        List<(R2ObjectInfo Object, (string Owner, string Area) Group)> orphans, StoredObjectReferences refs)
+    {
+        // Both templates are unchanged since Phase 2: the gate predictions were written against them.
+        foreach (IGrouping<(string Owner, string Area), (R2ObjectInfo Object, (string Owner, string Area) Group)> g in orphans
+                     .GroupBy(o => o.Group)
+                     .OrderBy(g => g.Key.Owner, StringComparer.Ordinal).ThenBy(g => g.Key.Area, StringComparer.Ordinal))
         {
             logger.LogInformation(
                 "OrphanedObjectSweepJob (report-only) would delete {Count} object(s), {Bytes} bytes, owner {Owner}, area {Area}",
-                g.Value.Count, g.Value.Bytes, g.Key.Owner, g.Key.Area);
+                g.Count(), g.Sum(o => o.Object.SizeBytes), g.Key.Owner, g.Key.Area);
         }
 
         logger.LogInformation(
             "OrphanedObjectSweepJob (report-only) listed {Listed} object(s): {Excluded} excluded, {TooYoung} younger than {MinimumAgeDays} days, " +
             "{Referenced} referenced, {Orphans} unreferenced ({OrphanBytes} bytes) that it would delete; deleted 0. " +
             "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address",
-            listed.Count, excluded, tooYoung, (int)MinimumAge.TotalDays,
-            referenced, orphans.Values.Sum(v => v.Count), orphans.Values.Sum(v => v.Bytes),
+            listed, excluded, tooYoung, (int)MinimumAge.TotalDays,
+            referenced, orphans.Count, orphans.Sum(o => o.Object.SizeBytes),
             refs.Keys.Count, refs.ValuesRead, refs.ValuesOnNoKnownAddress);
+    }
+
+    /// <summary>
+    /// Off unless the setting says exactly "Quarantine" (any case). An unknown value runs report-only and says
+    /// so, so a typo can never switch the move on, and never goes unnoticed either.
+    /// </summary>
+    private bool ResolveQuarantineMode()
+    {
+        string? mode = options.Value.Mode;
+        if (string.IsNullOrWhiteSpace(mode) || string.Equals(mode, "ReportOnly", StringComparison.OrdinalIgnoreCase)) return false;
+        if (string.Equals(mode, "Quarantine", StringComparison.OrdinalIgnoreCase)) return true;
+        logger.LogWarning(
+            "OrphanedObjectSweepJob: {Setting} is '{Mode}', which is not a mode (ReportOnly, Quarantine); running report-only",
+            OrphanedObjectSweepOptions.Section + ":Mode", mode);
+        return false;
+    }
+
+    internal static string? RefusalReason(int unreferenced, int referenced, int referenceKeys)
+    {
+        if (unreferenced > 0 && referenceKeys == 0)
+            return "the reference reader returned no keys at all";
+        int candidates = unreferenced + referenced;
+        if (candidates >= RefusalMinimumCount && unreferenced > candidates * RefusalShare)
+            return string.Create(CultureInfo.InvariantCulture,
+                $"{unreferenced} of {candidates} candidates look unreferenced, more than {RefusalShare * 100:0}%");
+        return null;
+    }
+
+    private void LogStepFailure(string step, (string Owner, string Area) group, Exception ex, string consequence)
+    {
+        // The error code and status only: an exception message can quote the key, and this job logs no keys.
+        string error = ex is AmazonS3Exception s3
+            ? string.Create(CultureInfo.InvariantCulture, $"{s3.ErrorCode} ({(int)s3.StatusCode})")
+            : ex.GetType().Name;
+        logger.LogWarning(
+            "OrphanedObjectSweepJob (quarantine) {Step} failed for one object, owner {Owner}, area {Area}: {Error}; {Consequence}",
+            step, group.Owner, group.Area, error, consequence);
     }
 
     /// <summary>
