@@ -655,7 +655,7 @@ ol.steps li { margin: 6px 0; }
 <h2><span class="role-badge role-guest">Guest</span> Studio profile page</h2>
 <table class="access-table"><tr><th>Role</th><th>Access</th></tr>
 <tr><td>Guest</td><td>✓</td></tr><tr><td>Client</td><td>✓</td></tr><tr><td>Artist</td><td>✓</td></tr><tr><td>Owner</td><td>✓ (own studio, reply to reviews)</td></tr><tr><td>Admin</td><td>✓</td></tr></table>
-<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, social media links, and a "Get Directions" link to Google Maps — in the sidebar. A social link shows a green "Verified" badge when the studio has proven it owns that account. The address to share is <code>tattooos.co/s/&lt;slug&gt;</code>: the page also opens under the app's own address, but <code>tattooos.co</code> is the one used in the QR code, in search results and in link previews.</p>
+<p>A studio's public page at <code>/s/&lt;slug&gt;</code> — a hero cover photo, description, star rating, the studio's artist roster, a portfolio gallery, and reviews, with a sticky "Book an Appointment" button and contact details — phone, social media links, and a "Get Directions" link to Google Maps — in the sidebar. On phones and tablets, where the sidebar comes after the portfolio, the same "Book an Appointment" button stays pinned to the bottom of the screen, as on an artist's page, and scrolling to the very end never hides the page's last line under it. A social link shows a green "Verified" badge when the studio has proven it owns that account. The address to share is <code>tattooos.co/s/&lt;slug&gt;</code>: the page also opens under the app's own address, but <code>tattooos.co</code> is the one used in the QR code, in search results and in link previews.</p>
 <figure class="wireframe">
 <svg viewBox="0 0 760 480" role="img" aria-label="Studio profile page wireframe">
 <rect width="760" height="34" fill="currentColor" fill-opacity="0.06"/>
@@ -732,7 +732,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li><span class="step-title">Profile strength nudge</span> — shown only when viewing your own profile as an artist, listing missing fields (bio, photo, specialties, portfolio, rate).</li>
 <li>Avatar, name, studio link, star rating, bio, specialty chips, hourly rate.</li>
-<li><span class="step-title">Book an Appointment</span> button (also pinned to the bottom of the screen on mobile).</li>
+<li><span class="step-title">Book an Appointment</span> button (also pinned to the bottom of the screen on phones and tablets, as <span class="step-title">Book with [first name]</span>).</li>
 <li><span class="step-title">Portfolio</span> grid with category tabs (Fresh Tattoos / Healed Tattoos / Designs, shown only when the artist has at least 2 categories tagged) and style filter chips — click any photo for a lightbox with per-photo reviews.</li>
 <li><span class="step-title">Flash</span> section (only shown when the artist has catalog items) — a grid of pre-made designs with price and a <span class="step-title">Book this design</span> button per item.</li>
 <li><span class="step-title">Social links</span> next to the artist's name — Instagram, TikTok, Facebook, X, YouTube, whichever they've verified — plus an <span class="step-title">Instagram</span> photo section (only shown if the artist connected an account and has visible posts).</li>
