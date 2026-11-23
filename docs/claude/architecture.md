@@ -7910,3 +7910,45 @@ the account menu stay, because they are what people reach for under pressure and
 - **Admin never shows More**: Help is its only foldable control, and a one-item menu saves nothing.
 - This is a WCAG 1.4.10 reflow fix driven by our own measurement, not a benchmark finding: the category's published
   guidance is mobile-first with large targets, and no published practice for collapsing a crowded header was found.
+## D03 closed, and what `NoSubscription` actually does (slice 8 follow-up) — 2026-11-23
+
+**D03 is delivered.** Extending a Cancelled studio's trial is refused, as Phi decided on 20 Nov:
+`ExtendTrialCommand.cs:30-33` (`CancelledMessage`) and `:57-58` (the refusal), with `subscriptionKnowledge.ts` leaving
+`Cancelled` out of `TRIAL_EXTENDABLE`. The "raised with Phi, not decided" note in the table above is out of date.
+
+**`NoSubscription` — verified from source and with a real run. It is right for cash activation and wrong for trial
+extension.**
+
+- `TenantMiddleware.EnforceAsync` reads only `SubscriptionAccessService.GetSnapshotAsync`, which reads the
+  `Subscription` row. **It never reads `Studio.TrialExpiresAt`.** With no row the snapshot is null and every tenant
+  request gets a 402, `/studios/me` included (`if (snapshot is null) throw new SubscriptionRequiredException`), pinned
+  by `TenantMiddlewareTests.InvokeAsync_NoSubscriptionRecord_Throws`. (`SubscriptionAccessService` exists:
+  `Pena_e_Arte.Infrastructure/Services/SubscriptionAccessService.cs`, since #35. Its comment calls a missing row
+  "data corruption".)
+- **Cash activation** on a studio with no row *creates* an Active `Subscription`
+  (`ActivateSubscriptionManuallyCommand.cs`, the `studio.Subscription is null` branch), so access returns.
+  `NoSubscription` in `CASH_ACTIVATABLE` is **correct**.
+- **Trial extension** on a studio with no row only moves `Studio.TrialExpiresAt` (`ExtendTrialCommand.cs:63`; the
+  `Subscription` branch at `:65` is skipped). The middleware never reads that field, so **the extension reports success
+  and grants nothing.** That is the same defect as PastDue and Cancelled, which Phi chose to refuse.
+- **The real run** (23 Nov, local MySQL, a throwaway integration probe, not committed): a studio with an expired
+  trial and no `Subscription` row, then the real `ExtendTrialHandler` (+14 days), then the real
+  `SubscriptionAccessService`. Result: `Studio.TrialExpiresAt` moved from 20 Nov to 7 Dec, **no row was created, and
+  the snapshot was null**. That is the input that 402s.
+
+### Spec (not built): refuse trial extension for `NoSubscription`
+
+1. `ExtendTrialHandler`: when `studio.Subscription is null`, throw `BusinessRuleViolationException(NoSubscriptionMessage)`,
+   in the same shape as `PastDueMessage`/`CancelledMessage`. Suggested text: *"This studio has no subscription record,
+   so a trial extension wouldn't restore access. Record a cash payment with Activate on the studio's page, which
+   creates one."* It names the move that works (cash activation creates the row), so it isn't a dead end.
+2. `subscriptionKnowledge.ts`: remove `NoSubscription` from `TRIAL_EXTENDABLE`. Keep it in `CASH_ACTIVATABLE`.
+3. `AdminStudioDetailPage.tsx:149` shows the trial date for `NoSubscription`. That is `Studio.TrialExpiresAt`, which
+   nothing enforces, so either drop `NoSubscription` from that condition or label the date as not in effect.
+4. Tests: the handler refuses with the message; the admin list and detail don't offer Extend for `NoSubscription`;
+   cash activation still does. Mutation: put `NoSubscription` back into `TRIAL_EXTENDABLE`.
+5. Help: `admin-studio-detail` / the manual say Extend isn't offered for a studio with no subscription record, and why.
+
+**Why not built:** Phase 7 verifies, it doesn't build. It's a one-line refusal of the same kind Phi already decided
+twice, so it should be a short decision, not a design question. **Rollback cost of leaving it:** an admin can
+extend a `NoSubscription` studio, see a success toast, and the studio stays locked out.
