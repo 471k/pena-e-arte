@@ -179,6 +179,8 @@ export function DepositReviewValue({ estimate, currency, studio, discountPending
  * Promotion and referral codes behind a disclosure (C02: "collapse optional promotion/referral fields"). Starts
  * open only when a code is already filled in; a code can only be typed with it open, and it stays open after, so
  * the review's "Codes" row is the reminder rather than a forced-open panel the person can't close.
+ * Nothing prefills a code today (no link parameter, no restored draft), so both forms pass false at mount; the
+ * open-when-filled start is for the first thing that does (slice 7 phase D's drafts, or a link carrying a code).
  */
 export function OptionalCodes({ defaultOpen, children }: { defaultOpen: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
