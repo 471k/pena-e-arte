@@ -12,6 +12,12 @@ import { studiosApi, type StudioPayModel, type UpdateStudioPayModelRequest } fro
 import { StudioPayModelCard } from "@/features/studios/components/StudioPayModelCard";
 import { parseRate } from "@/features/studios/payModel";
 
+// S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
+// computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
+// runs from UTC-11 to UTC+14, a 25-hour span, and no instant keeps one calendar date across all of it.
+const viewerDay = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
 // A07a phase 4: the owner's pay-model card, mounted on its own (not through StudioProfilePage, whose
 // whole-page tests are the suite's slowest).
 
@@ -80,7 +86,7 @@ describe("StudioPayModelCard", () => {
     renderCard();
     const state = await screen.findByTestId("pay-model-state");
     expect(state).toHaveAttribute("data-state", "Reviewed");
-    expect(state).toHaveTextContent("Saved 1 Nov 2026");
+    expect(state).toHaveTextContent(`Saved ${viewerDay("2026-11-01T10:00:00Z")}`);
     expect(screen.getByLabelText(/Artist's share/)).toHaveValue("60");
   });
 
@@ -153,7 +159,7 @@ describe("StudioPayModelCard", () => {
     const before = reads;
     store.dispatch(studiosApi.util.invalidateTags(["StudioPayModel"]));
     await waitFor(() => expect(reads).toBe(before + 1));
-    await screen.findByText("Saved 2 Nov 2026"); // the refetch has rendered
+    await screen.findByText(`Saved ${viewerDay("2026-11-02T10:00:00Z")}`); // the refetch has rendered
     expect(screen.getByLabelText(/Artist's share/)).toHaveValue("6");
   });
 

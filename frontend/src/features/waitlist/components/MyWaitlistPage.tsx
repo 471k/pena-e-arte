@@ -7,11 +7,8 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetMyWaitlistEntriesQuery, useCancelWaitlistEntryMutation } from "../waitlistApi";
+import { formatWaitlistDate } from "../waitlistDates";
 import { WaitlistStatus } from "../waitlist.types";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
 
 const STATUS_STYLES: Record<WaitlistStatus, string> = {
   [WaitlistStatus.Waiting]:   "border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
@@ -72,12 +69,12 @@ export function MyWaitlistPage() {
                 <Badge variant="outline" className={cn(STATUS_STYLES[entry.status])}>{entry.status}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">
-                {formatDate(entry.preferredDateFrom)} – {formatDate(entry.preferredDateTo)}
+                {formatWaitlistDate(entry.preferredDateFrom, entry)} – {formatWaitlistDate(entry.preferredDateTo, entry)}
               </p>
               {entry.status === WaitlistStatus.Notified && (
                 <p className="text-xs text-info-text font-medium">
                   {entry.notifiedSlotStart
-                    ? `A slot opened up on ${formatDate(entry.notifiedSlotStart)}. `
+                    ? `A slot opened up on ${formatWaitlistDate(entry.notifiedSlotStart, entry)}. `
                     : "A slot opened up. "}
                   It isn&apos;t held: whoever books first gets it. The offer is yours for 24 hours from when we
                   emailed you.

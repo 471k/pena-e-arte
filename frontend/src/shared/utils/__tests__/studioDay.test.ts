@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
-  addWallDays, formatSessionSpan, formatWallDate, isSameStudioDay, resolveStudioWallTime, studioDayBounds,
+  addWallDays, formatSessionSpan, formatStudioSessionSpan, formatWallDate, isSameStudioDay, resolveStudioWallTime, studioDayBounds,
   studioMidnight, studioWallDate, studioWeekStart, toStudioInputValue,
   checkStudioTime, studioTimeProblem, studioWallInstant, studioZoneFrom,
 } from "../studioDay";
+import { STUDIO_TIME_PENDING, STUDIO_TIME_UNAVAILABLE } from "../formatInStudioTimezone";
 
 describe("studioDayBounds", () => {
   it("gives the studio's midnight-to-midnight, not the runner's", () => {
@@ -175,5 +176,23 @@ describe("checkStudioTime", () => {
   it("the past message is the caller's own; the rest are shared", () => {
     expect(studioTimeProblem("past", "Appointment must be in the future")).toBe("Appointment must be in the future");
     expect(studioTimeProblem("gap", "x")).toMatch(/clocks go forward/);
+  });
+});
+
+describe("formatStudioSessionSpan (S01: a zone that may not have loaded)", () => {
+  const start = "2026-11-04T13:00:00Z";
+  const end = "2026-11-04T15:00:00Z";
+
+  it("reads as pending while the zone loads, never as the viewer's zone", () => {
+    expect(formatStudioSessionSpan(start, end, { status: "loading" })).toBe(STUDIO_TIME_PENDING);
+  });
+
+  it("says the time is unavailable when the zone couldn't be read", () => {
+    expect(formatStudioSessionSpan(start, end, { status: "error" })).toBe(STUDIO_TIME_UNAVAILABLE);
+  });
+
+  it("is formatSessionSpan in the studio's zone once it has loaded", () => {
+    expect(formatStudioSessionSpan(start, end, { status: "ready", timeZone: "Europe/Tirane" }))
+      .toBe("Wed 4 Nov, 14:00 – 16:00");
   });
 });

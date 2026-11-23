@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
@@ -21,6 +21,7 @@ import type {
   AftercareCommunication, AppointmentCommunicationResponse, AppointmentResponse,
 } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 // E04b (A08): communication state shows not sent / sent / failed, from the server's records, and never
 // claims a message was delivered, received or read — nothing in the data can prove that.
@@ -152,5 +153,26 @@ describe("Communication copy never claims delivery or reading", () => {
     const card = await screen.findByTestId("client-communication");
     expect(within(card).getByText(/every attempt failed/i)).toBeInTheDocument();
     expect(card.textContent ?? "").not.toMatch(FORBIDDEN);
+  });
+});
+
+/** S01: hold GET /studios/me back so the window before the studio's zone arrives can be looked at directly. */
+function holdStudio() {
+  server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+    await delay(400);
+    return HttpResponse.json({ id: "s-001", timezone: "UTC", currency: "EUR" });
+  }));
+}
+
+describe("ClientCommunicationCard — first paint (S01)", () => {
+  it("shows when the session moved as pending until the studio's zone loads, never in the viewer's zone", async () => {
+    holdStudio();
+    commsBody = comms({ reschedule: { state: "NotSent", rescheduledAt: MOVED, messagedAt: null } });
+    renderCard();
+
+    const line = await screen.findByText(/isn't told automatically/i);
+    expect(line).not.toHaveTextContent(/\d{2}:\d{2}/);
+    expect(line).toHaveTextContent(STUDIO_TIME_PENDING);
+    await waitFor(() => expect(screen.getByText(/isn't told automatically/i)).toHaveTextContent("1 Dec, 08:00"));
   });
 });

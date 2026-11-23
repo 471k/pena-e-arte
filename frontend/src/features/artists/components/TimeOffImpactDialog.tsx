@@ -7,8 +7,8 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog";
 import { Button } from "@/shared/components/ui/button";
-import { formatSessionSpan } from "@/shared/utils/studioDay";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { formatStudioSessionSpan } from "@/shared/utils/studioDay";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { AppointmentStatusBadge } from "@/features/appointments/components/AppointmentStatusBadge";
 import { AppointmentStatus } from "@/features/appointments/appointment.types";
 import { useGetTimeOffAffectedSessionsQuery } from "../artistsApi";
@@ -49,7 +49,7 @@ export function TimeOffImpactDialog({
   mode, artistId, startDate, endDate, reason, open, onOpenChange, onConfirm, confirming,
 }: TimeOffImpactDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const { data: studio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
   const check = useGetTimeOffAffectedSessionsQuery(
     { artistId, startDate: startDate.slice(0, 10), endDate: endDate.slice(0, 10) },
     { skip: !open, refetchOnMountOrArgChange: true },
@@ -110,7 +110,7 @@ export function TimeOffImpactDialog({
                 to={`/appointments/${s.appointmentId}`}
                 className="text-sm font-medium text-link underline underline-offset-2"
               >
-                {formatSessionSpan(s.date, s.endDate, studio?.timezone)}
+                {formatStudioSessionSpan(s.date, s.endDate, zone)}
               </Link>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                 <span>{s.clientName}</span>
