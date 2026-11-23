@@ -13,7 +13,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/utils/cn";
-import { Money } from "@/shared/components/Money";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import {
   checkStudioTime, studioTimeProblem, studioWallDate, studioWallInstant, studioZoneFrom, toStudioInputValue,
@@ -38,10 +37,16 @@ import {
   useCreateGuestAppointmentMutation,
   usePresignGuestUploadMutation,
 } from "../../public/publicApi";
-import type { PublicServiceResponse } from "../../public/publicApi";
 import { FieldLabel } from "@/features/appointments/components/FieldLabel";
 import { ServiceChoiceSelect } from "@/features/appointments/components/ServiceChoiceSelect";
 import { describeSessionLength } from "@/features/appointments/sessionLength";
+import { estimateDeposit } from "@/features/appointments/depositEstimate";
+import {
+  BookingReview, BookingSection, DepositReviewValue, OptionalCodes, type ReviewGroup,
+} from "@/features/appointments/components/BookingSections";
+import { useBookingSections } from "@/features/appointments/components/useBookingSections";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { bodyZoneLabel } from "@/features/clients/components/BodyMap";
 import { TattooIntakeFields } from "@/features/appointments/components/TattooIntakeFields";
 import { validateTattooIntake, type TattooIntakeValues } from "@/features/appointments/components/tattooIntakeValidation";
 import { CategorizedImagesField } from "@/features/appointments/components/CategorizedImagesField";
@@ -125,54 +130,14 @@ function useGuestPresignUpload() {
   };
 }
 
-function DepositPreview({
-  durationMinutes,
-  hourlyRate,
-  rule,
-  currency,
-  studio,
-}: {
-  durationMinutes: number;
-  hourlyRate:       number | null;
-  rule:             { name: string; amountFixed: number | null; amountPercent: number | null };
-  currency:         string | undefined;
-  studio:           MoneyStudio;
-}) {
-  let estimated: number | null = null;
-  if (rule.amountFixed !== null) {
-    estimated = rule.amountFixed;
-  } else if (rule.amountPercent !== null && hourlyRate !== null) {
-    const sessionHours = durationMinutes / 60;
-    estimated = (sessionHours * hourlyRate * rule.amountPercent) / 100;
-  }
-  if (estimated === null) return null;
+// The review's date and time, on the studio's clock (formatStudioTime adds the zone; never the browser's).
+const REVIEW_TIME_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+};
 
-  return (
-    <div className="flex items-center justify-between rounded-md
-                    bg-muted/40 border border-border/30 px-3 py-2">
-      <span className="text-xs text-muted-foreground">Estimated deposit</span>
-      <span className="text-sm font-semibold tabular-nums">
-        {currency ? <Money amount={estimated} currency={currency} studio={studio} /> : estimated}
-      </span>
-    </div>
-  );
-}
-
-// Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
-// (see CreateAppointmentCommand.cs) — mirrors DepositPreview above but for that override.
-function ServiceDepositPreview({ service, currency, studio }: {
-  service: PublicServiceResponse; currency: string | undefined; studio: MoneyStudio;
-}) {
-  if (service.depositAmount === null) return null;
-  return (
-    <div className="flex items-center justify-between rounded-md
-                    bg-muted/40 border border-border/30 px-3 py-2">
-      <span className="text-xs text-muted-foreground">Deposit for this service</span>
-      <span className="text-sm font-semibold tabular-nums">
-        {currency ? <Money amount={service.depositAmount} currency={currency} studio={studio} /> : service.depositAmount}
-      </span>
-    </div>
-  );
+// Long free text is shortened in the review; the section above holds the whole of it.
+function clip(text: string, max = 160): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
 interface GuestBookAppointmentFormProps {
@@ -301,23 +266,87 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
     setValue("scheduledAt", toStudioInputValue(new Date(iso), studioTz), { shouldValidate: true, shouldDirty: true });
   }
 
+  // C02: the review states what the sections above hold, in the words the sections use.
+  const sections = useBookingSections("guest-review");
+  const [watchedFirst, watchedLast, watchedEmail, watchedPhone, watchedOptIn, watchedPromoCode, watchedNotes] =
+    useWatch({ control, name: ["firstName", "lastName", "email", "phone", "marketingOptIn", "promoCode", "notes"] });
+  const depositEstimate = estimateDeposit({
+    packageCovered:  false,
+    serviceDeposit:  selectedService?.depositAmount ?? null,
+    rule:            depositRule ?? null,
+    artistChosen:    !watchedBookAnyArtist && !!selectedArtist,
+    studioAssigns:   watchedBookAnyArtist,
+    hourlyRate:      selectedArtist?.hourlyRate ?? null,
+    durationMinutes: watchedDuration,
+  });
+  const reviewGroups = buildReviewGroups();
+
+  function buildReviewGroups(): ReviewGroup[] {
+    const session: ReviewGroup = { section: "guest-session", title: "Session", rows: [
+      { label: "Studio", value: publicStudio ? `${publicStudio.name}${studioTz ? ` · ${studioTz}` : ""}` : "…" },
+      { label: "Artist", value: watchedBookAnyArtist ? "The studio assigns one" : selectedArtist?.name ?? "Not chosen yet" },
+    ] };
+    if ((services ?? []).length > 0) {
+      session.rows.push({ label: "Service", value: selectedService?.name ?? (customLength ? "Something else" : "Not chosen yet") });
+    }
+    session.rows.push(
+      { label: "Session length", value: serviceUnchosen
+        ? "Set by the service you choose"
+        : describeSessionLength(watchedDuration, selectedService?.name ?? null) },
+      { label: "Date & time", value: pickedIso
+        ? `${formatStudioTime(pickedIso, REVIEW_TIME_FORMAT, zone)}${studioTz ? ` (studio time, ${studioTz})` : ""}`
+        : "Not chosen yet" },
+    );
+
+    const imageCount = (n: number, one: string, many: string) => (n === 0 ? null : `${n} ${n === 1 ? one : many}`);
+    const images = [
+      imageCount(areaPhotos.images.length, "area photo", "area photos"),
+      imageCount(referenceImages.images.length, "reference image", "reference images"),
+    ].filter((c): c is string => c !== null);
+    const idea: ReviewGroup = { section: "guest-idea", title: "Idea & references", rows: [
+      { label: "Your idea", value: intake.tattooDescription.trim() ? clip(intake.tattooDescription.trim()) : "Not written yet" },
+      { label: "Placement", value: desiredPlacement.length > 0
+        ? desiredPlacement.map((id) => bodyZoneLabel(id) ?? id).join(", ")
+        : "None marked" },
+      { label: "Images", value: images.length > 0 ? images.join(", ") : "None added" },
+    ] };
+    if (watchedNotes?.trim()) idea.rows.push({ label: "Notes", value: clip(watchedNotes.trim()) });
+
+    const name = [watchedFirst, watchedLast].map((v) => v?.trim()).filter(Boolean).join(" ");
+    const contact: ReviewGroup = { section: "guest-contact", title: "Contact", rows: [
+      { label: "Name", value: name || "Not filled in yet" },
+      { label: "Email", value: watchedEmail?.trim() || "Not filled in yet" },
+      { label: "Phone", value: watchedPhone?.trim() || "Not filled in yet" },
+      { label: "News and updates", value: watchedOptIn ? "Yes, sign me up" : "No" },
+    ] };
+    const codes = [
+      watchedPromoCode ? `Promo code ${watchedPromoCode}` : null,
+      referralCode.trim() ? `Referral code ${referralCode.trim()}` : null,
+    ].filter((c): c is string => c !== null);
+    if (codes.length > 0) contact.rows.push({ label: "Codes", value: codes.join(" · ") });
+    return [session, idea, contact];
+  }
+
   // S04: one list of everything to fix, and a deliberate choice before leaving with entered details.
   const [attempt, setAttempt] = useState(0);
   const errorItems: FormErrorItem[] = [
+    // In the order the sections show them (C02: session, idea and references, then contact).
+    ...rhfErrorItems(errors, [{ name: "artistId", label: "Artist" }]),
+    ...extraErrorItem("serviceId", "Service", serviceChoiceError),
+    ...rhfErrorItems(errors, [
+      { name: "scheduledAt", label: "Date & time" },
+      { name: "durationMinutes", label: "Duration" },
+    ]),
+    ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
+    ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
+    ...extraErrorItem(`images-${AppointmentAttachmentCategory.AreaPhoto}`, "Area photo", areaPhotoError),
+    ...extraErrorItem(`images-${AppointmentAttachmentCategory.Reference}`, "Reference images", referenceImageError),
     ...rhfErrorItems(errors, [
       { name: "firstName", label: "First name" },
       { name: "lastName", label: "Last name" },
       { name: "email", label: "Email" },
       { name: "phone", label: "Phone" },
-      { name: "artistId", label: "Artist" },
-      { name: "scheduledAt", label: "Date & time" },
-      { name: "durationMinutes", label: "Duration" },
     ]),
-    ...extraErrorItem("serviceId", "Service", serviceChoiceError),
-    ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
-    ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
-    ...extraErrorItem(`images-${AppointmentAttachmentCategory.AreaPhoto}`, "Area photo", areaPhotoError),
-    ...extraErrorItem(`images-${AppointmentAttachmentCategory.Reference}`, "Reference images", referenceImageError),
   ];
   const hasEntered = isDirty || intake.tattooDescription !== "" || intake.style !== "" || intake.referralSource !== ""
     || intake.safetyNotes !== "" || desiredPlacement.length > 0 || referralCode !== ""
@@ -446,75 +475,14 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
 
       {waitlistClaim && <WaitlistClaimNotice handoff={waitlistClaim} />}
 
-      {submitError && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 rounded-md border border-destructive/30
-                     bg-destructive/5 px-3 py-3 text-sm text-destructive-text"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {submitError}
-        </div>
-      )}
-
-      {/* Identity */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <FieldLabel htmlFor="firstName" required>First name</FieldLabel>
-          <Input id="firstName" {...register("firstName")}
-                 className={cn(errors.firstName && "border-destructive")} />
-          {errors.firstName && <p className="text-xs text-destructive-text" role="alert">{errors.firstName.message}</p>}
-        </div>
-        <div className="space-y-1.5">
-          <FieldLabel htmlFor="lastName" required>Last name</FieldLabel>
-          <Input id="lastName" {...register("lastName")}
-                 className={cn(errors.lastName && "border-destructive")} />
-          {errors.lastName && <p className="text-xs text-destructive-text" role="alert">{errors.lastName.message}</p>}
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="email" required>Email</FieldLabel>
-        <Input id="email" type="email" {...register("email")}
-               className={cn(errors.email && "border-destructive")} />
-        {errors.email && <p className="text-xs text-destructive-text" role="alert">{errors.email.message}</p>}
-      </div>
-
-      <div className="flex items-center justify-between rounded-md border border-border/40
-                      bg-muted/20 px-3 py-2">
-        <p className="text-xs font-medium">Sign up for news and updates</p>
-        <Controller
-          control={control}
-          name="marketingOptIn"
-          render={({ field }) => (
-            <ToggleSwitch
-              checked={field.value}
-              onChange={() => field.onChange(!field.value)}
-              aria-label="Sign up for news and updates"
-            />
-          )}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="phone" required>Phone</FieldLabel>
-        <Controller
-          control={control}
-          name="phone"
-          render={({ field }) => (
-            <PhoneInput
-              id="phone"
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              defaultCountry={asPhoneCountry(publicStudio?.countryCode)}
-              aria-invalid={!!errors.phone}
-            />
-          )}
-        />
-        {errors.phone && <p className="text-xs text-destructive-text" role="alert">{errors.phone.message}</p>}
-      </div>
-
+      <BookingSection
+        id="guest-session"
+        number={1}
+        title="Session"
+        description="Who, what and when."
+        showBack={sections.changing === "guest-session"}
+        onBack={sections.backToReview}
+      >
       {/* Artist selector */}
       {!watchedBookAnyArtist && (
         <div className="space-y-1.5">
@@ -654,31 +622,16 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
         status={debouncedCheck !== null ? slotStatus : undefined}
       />
 
-      {selectedService && selectedService.depositAmount !== null ? (
-        <ServiceDepositPreview service={selectedService} currency={publicStudio?.currency} studio={moneyStudio} />
-      ) : (
-        depositRule && watchedDuration > 0 && (
-          <DepositPreview
-            durationMinutes={watchedDuration}
-            hourlyRate={selectedArtist?.hourlyRate ?? null}
-            rule={depositRule}
-            currency={publicStudio?.currency}
-            studio={moneyStudio}
-          />
-        )
-      )}
+      </BookingSection>
 
-      {/* Promo code */}
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
-        <Input
-          id="promoCode"
-          placeholder="Optional"
-          autoCapitalize="characters"
-          {...register("promoCode")}
-        />
-      </div>
-
+      <BookingSection
+        id="guest-idea"
+        number={2}
+        title="Idea & references"
+        description="What you'd like done, where, and photos that show it."
+        showBack={sections.changing === "guest-idea"}
+        onBack={sections.backToReview}
+      >
       {/* Tattoo description, referral source, safety notes */}
       <TattooIntakeFields
         value={intake}
@@ -688,18 +641,6 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       />
 
       <DesiredPlacementField locations={desiredPlacement} onChange={setDesiredPlacement} />
-
-      {/* Referral code — distinct from "how did you hear about us" above. */}
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="guestReferralCode">Referral code (optional)</FieldLabel>
-        <Input
-          id="guestReferralCode"
-          placeholder="e.g. ABC12345"
-          value={referralCode}
-          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-          disabled={submitting}
-        />
-      </div>
 
       {/* Both required for guest checkout (Decision #6) — unlike the existing authenticated
           form, which keeps both optional (Part 6d note). */}
@@ -732,6 +673,127 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
         disabled={submitting}
       />
 
+      </BookingSection>
+
+      <BookingSection
+        id="guest-contact"
+        number={3}
+        title="Contact"
+        description="How the studio reaches you about this request."
+        showBack={sections.changing === "guest-contact"}
+        onBack={sections.backToReview}
+      >
+      {/* Identity */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="firstName" required>First name</FieldLabel>
+          <Input id="firstName" {...register("firstName")}
+                 className={cn(errors.firstName && "border-destructive")} />
+          {errors.firstName && <p className="text-xs text-destructive-text" role="alert">{errors.firstName.message}</p>}
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="lastName" required>Last name</FieldLabel>
+          <Input id="lastName" {...register("lastName")}
+                 className={cn(errors.lastName && "border-destructive")} />
+          {errors.lastName && <p className="text-xs text-destructive-text" role="alert">{errors.lastName.message}</p>}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="email" required>Email</FieldLabel>
+        <Input id="email" type="email" {...register("email")}
+               className={cn(errors.email && "border-destructive")} />
+        {errors.email && <p className="text-xs text-destructive-text" role="alert">{errors.email.message}</p>}
+      </div>
+
+      <div className="flex items-center justify-between rounded-md border border-border/40
+                      bg-muted/20 px-3 py-2">
+        <p className="text-xs font-medium">Sign up for news and updates</p>
+        <Controller
+          control={control}
+          name="marketingOptIn"
+          render={({ field }) => (
+            <ToggleSwitch
+              checked={field.value}
+              onChange={() => field.onChange(!field.value)}
+              aria-label="Sign up for news and updates"
+            />
+          )}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <FieldLabel htmlFor="phone" required>Phone</FieldLabel>
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field }) => (
+            <PhoneInput
+              id="phone"
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              defaultCountry={asPhoneCountry(publicStudio?.countryCode)}
+              aria-invalid={!!errors.phone}
+            />
+          )}
+        />
+        {errors.phone && <p className="text-xs text-destructive-text" role="alert">{errors.phone.message}</p>}
+      </div>
+
+      {/* C02: optional promotion and referral fields behind a disclosure; the referral code stays distinct from
+          "how did you hear about us" in the idea section. */}
+      <OptionalCodes defaultOpen={!!watchedPromoCode || referralCode !== ""}>
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
+          <Input
+            id="promoCode"
+            placeholder="Optional"
+            autoCapitalize="characters"
+            {...register("promoCode")}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="guestReferralCode">Referral code (optional)</FieldLabel>
+          <Input
+            id="guestReferralCode"
+            placeholder="e.g. ABC12345"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+            disabled={submitting}
+          />
+        </div>
+      </OptionalCodes>
+      </BookingSection>
+
+      <BookingReview
+        id="guest-review"
+        number={4}
+        groups={reviewGroups}
+        onChange={sections.change}
+        deposit={
+          <DepositReviewValue
+            estimate={depositEstimate}
+            currency={publicStudio?.currency}
+            studio={moneyStudio}
+            discountPending={!!watchedPromoCode || referralCode.trim() !== ""}
+          />
+        }
+        request={watchedBookAnyArtist
+          ? "A request, not a confirmed appointment. The studio assigns an artist, then confirms it. We'll email you the next steps."
+          : "A request, not a confirmed appointment, until it's confirmed. We'll email you the next steps."}
+      >
+      {/* A refusal from the server shows beside the button that sent the request, not at the top of the page. */}
+      {submitError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2 rounded-md border border-destructive/30
+                     bg-destructive/5 px-3 py-3 text-sm text-destructive-text"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {submitError}
+        </div>
+      )}
       <Button
         type="submit"
         className="w-full bg-violet-600 hover:bg-violet-700 text-white font-medium
@@ -751,6 +813,7 @@ export function GuestBookAppointmentForm({ slug, waitlistClaim = null }: GuestBo
       <p className="text-center text-[11px] text-muted-foreground">
         No account needed — we&apos;ll set one up for you and email you a link to manage this booking.
       </p>
+      </BookingReview>
     </form>
   );
 }
