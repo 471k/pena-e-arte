@@ -141,7 +141,8 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
                 .Select(o => new R2ObjectInfo(
                     o.Key,
                     ToUtc(o.LastModified),
-                    o.Size ?? 0L)));
+                    o.Size ?? 0L,
+                    o.ETag)));
 
             continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
         }
@@ -178,7 +179,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
             }, ct);
 
             objects.AddRange((response.S3Objects ?? [])
-                .Select(o => new R2ObjectInfo(o.Key, ToUtc(o.LastModified), o.Size ?? 0L)));
+                .Select(o => new R2ObjectInfo(o.Key, ToUtc(o.LastModified), o.Size ?? 0L, o.ETag)));
             folders.AddRange(response.CommonPrefixes ?? []);
 
             continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
@@ -202,7 +203,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
         }, ct);
     }
 
-    public async Task<long?> GetObjectSizeAsync(string objectKey, CancellationToken ct)
+    public async Task<R2ObjectStat?> HeadAsync(string objectKey, CancellationToken ct)
     {
         try
         {
@@ -211,7 +212,7 @@ public class R2Service(IAmazonS3 s3, IOptions<R2Options> options) : IR2Service
                 BucketName = _opts.BucketName,
                 Key = objectKey,
             }, ct);
-            return response.ContentLength;
+            return new R2ObjectStat(response.ContentLength, response.ETag);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {

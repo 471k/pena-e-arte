@@ -120,6 +120,17 @@ public class R2ServiceTests
         result[0].SizeBytes.Should().Be(1024L);
     }
 
+    // The sweep verifies a quarantine copy against the source's ETag, which comes from the listing.
+    [Fact]
+    public async Task BothListings_CarryTheETag()
+    {
+        _s3.ListObjectsV2Async(Arg.Any<ListObjectsV2Request>(), Arg.Any<CancellationToken>())
+            .Returns(new ListObjectsV2Response { S3Objects = [new S3Object { Key = "k.jpg", Size = 1L, ETag = "\"abc\"" }] });
+
+        (await CreateSut().ListByPrefixAsync("", default)).Single().ETag.Should().Be("\"abc\"");
+        (await CreateSut().ListAllExceptAsync(["_quarantine/"], default)).Single().ETag.Should().Be("\"abc\"");
+    }
+
     // ListObjectsV2 returns at most 1,000 keys per call; only the first page used to be read.
     [Fact]
     public async Task ListByPrefixAsync_FollowsTheContinuationTokenAcrossPages()
@@ -239,25 +250,25 @@ public class R2ServiceTests
     }
 
     [Fact]
-    public async Task GetObjectSizeAsync_ReturnsTheLength_OrNullWhenTheKeyIsAbsent()
+    public async Task HeadAsync_ReturnsSizeAndETag_OrNullWhenTheKeyIsAbsent()
     {
         _s3.GetObjectMetadataAsync(Arg.Is<GetObjectMetadataRequest>(r => r.Key == "there"), Arg.Any<CancellationToken>())
-            .Returns(new GetObjectMetadataResponse { ContentLength = 75L });
+            .Returns(new GetObjectMetadataResponse { ContentLength = 75L, ETag = "\"abc\"" });
         _s3.GetObjectMetadataAsync(Arg.Is<GetObjectMetadataRequest>(r => r.Key == "gone"), Arg.Any<CancellationToken>())
             .Returns<GetObjectMetadataResponse>(_ => throw new AmazonS3Exception("Not Found") { StatusCode = System.Net.HttpStatusCode.NotFound });
 
-        (await CreateSut().GetObjectSizeAsync("there", default)).Should().Be(75L);
-        (await CreateSut().GetObjectSizeAsync("gone", default)).Should().BeNull();
+        (await CreateSut().HeadAsync("there", default)).Should().Be(new R2ObjectStat(75L, "\"abc\""));
+        (await CreateSut().HeadAsync("gone", default)).Should().BeNull();
     }
 
     // Anything other than "not found" is not an answer about the object, so it must not read as "absent".
     [Fact]
-    public async Task GetObjectSizeAsync_OtherErrors_Throw()
+    public async Task HeadAsync_OtherErrors_Throw()
     {
         _s3.GetObjectMetadataAsync(Arg.Any<GetObjectMetadataRequest>(), Arg.Any<CancellationToken>())
             .Returns<GetObjectMetadataResponse>(_ => throw new AmazonS3Exception("Forbidden") { StatusCode = System.Net.HttpStatusCode.Forbidden });
 
-        Func<Task> act = () => CreateSut().GetObjectSizeAsync("k", default);
+        Func<Task> act = () => CreateSut().HeadAsync("k", default);
 
         await act.Should().ThrowAsync<AmazonS3Exception>();
     }

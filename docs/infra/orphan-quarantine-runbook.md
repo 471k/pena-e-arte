@@ -14,24 +14,35 @@ It has two modes, chosen by the setting `OrphanedObjectSweep:Mode` (env var `Orp
 | Mode | Setting | What happens to an unreferenced object |
 |---|---|---|
 | **Report-only** (default) | unset, empty, `ReportOnly`, or **any unknown value** (logged as a warning) | Nothing. One log line per owner/area, one summary line |
-| **Quarantine** | `Quarantine` | Copied server-side to `_quarantine/<yyyy-MM-dd>/<original key>`, the copy's size read back and compared, and only then the original deleted |
+| **Quarantine** | `Quarantine` | Copied server-side to `_quarantine/<yyyy-MM-dd>/<original key>`, the copy read back with a HEAD and its size **and ETag** compared with the original's (the ETag from the listing), and only then the original deleted |
 
 There is **no hard-delete mode**. Emptying the quarantine is Phase 4, a separate decision.
 
 **In quarantine mode a step that fails stops that object's move:**
 - **Copy fails:** the original stays where it was.
-- **The copy doesn't read back at the original's size:** the original stays.
+- **The copy doesn't read back with the original's size and ETag** (or either ETag is missing): the original stays.
+  These objects arrive by presigned single PUT, so their ETags are plain MD5, and a server-side copy keeps the
+  ETag (checked on staging, 23 Nov). If a multipart upload path is ever added, re-check that before trusting
+  this for those objects.
 - **The delete of the original fails:** the original stays, and a copy also sits in quarantine.
 
 Each failure is a warning line with the owner, area and S3 error code, never the key. If **every** move fails,
 the job fails (Hangfire marks it Failed) after logging its summary.
 
-**The brake.** Quarantine mode moves nothing and logs an **error** line `(quarantine, refused)` when:
+**Retries are off** (`[AutomaticRetry(Attempts = 0)]`). A failed run lands in Failed once, where the Hangfire
+alert sees it, instead of retrying ten times. A daily sweep loses nothing: tomorrow lists the same objects.
+
+**The brake.** Quarantine mode moves nothing, logs an **error** line `(quarantine, refused)`, and then **fails
+the job** so the alert sees it, when:
 - the reference reader returned no keys at all, or
 - at least 20 objects are candidates and more than half of them look unreferenced.
 
-A reader that silently read too little would otherwise condemn live files in bulk. Production holds 6 objects,
-so the share rule can't fire there today.
+A reader that silently read too little would otherwise condemn live files in bulk.
+
+**The brake does not protect the first production run.** Production holds 6 objects, below the 20-candidate
+minimum, so the share rule can't fire there. On that run the protection is the prediction written before it,
+the lock, and the quarantine itself. The brake is there for a future reader regression at scale. Don't read
+its existence as cover for the first run.
 
 ## Why `_quarantine/` is at the top level
 
@@ -84,7 +95,8 @@ U unreferenced (B bytes); moved M (MB bytes) to _quarantine/<date>/, C copy fail
 D copied but original kept; hard-deleted 0. References: ...; _quarantine/ not listed
 ```
 - **Every run names its mode** in the parentheses: `report-only`, `quarantine`, or `quarantine, refused`.
-- **The report-only lines are unchanged since Phase 2,** so earlier predictions still read against them.
+- **Both modes' summaries end `_quarantine/ not listed`** (report-only since 23 Nov), so `listed N` means the
+  same thing in every mode: live objects only. Predictions written before 23 Nov used the line without the suffix.
 - **`U = M + C + V + D`** on every quarantine run that isn't refused.
 
 ## Restoring an object from quarantine

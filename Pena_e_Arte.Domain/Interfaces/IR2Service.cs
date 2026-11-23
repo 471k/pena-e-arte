@@ -1,6 +1,10 @@
 namespace Pena_e_Arte.Domain.Interfaces;
 
-public record R2ObjectInfo(string Key, DateTime LastModified, long SizeBytes);
+/// <param name="ETag">As listed (S3 quotes it); null when the listing gave none.</param>
+public record R2ObjectInfo(string Key, DateTime LastModified, long SizeBytes, string? ETag = null);
+
+/// <summary>What a HEAD request says about an object: its size and ETag.</summary>
+public record R2ObjectStat(long SizeBytes, string? ETag);
 
 public interface IR2Service
 {
@@ -45,6 +49,6 @@ public interface IR2Service
     /// <summary>Server-side copy inside the bucket (no download). Content type and metadata are copied too.</summary>
     Task CopyAsync(string sourceKey, string destinationKey, CancellationToken ct);
 
-    /// <summary>The object's size in bytes, or null when no object has that key.</summary>
-    Task<long?> GetObjectSizeAsync(string objectKey, CancellationToken ct);
+    /// <summary>The object's size and ETag from a HEAD request, or null when no object has that key.</summary>
+    Task<R2ObjectStat?> HeadAsync(string objectKey, CancellationToken ct);
 }

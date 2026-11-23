@@ -167,17 +167,21 @@ public class OrphanedObjectSweepJobTests
 
     private const string QuarantineDay = "_quarantine/2026-11-17/";
 
+    // A faithful server-side copy: the HEAD of _quarantine/<day>/<key> answers with the original's size and ETag.
     private void CopiesVerify() =>
-        _r2.GetObjectSizeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => SizeOf(ci.Arg<string>()[QuarantineDay.Length..]));
+        _r2.HeadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(ci => StatOf(ci.Arg<string>()[QuarantineDay.Length..]));
 
-    private readonly Dictionary<string, long> _sizes = [];
-    private long? SizeOf(string key) => _sizes.TryGetValue(key, out long size) ? size : null;
+    private readonly Dictionary<string, R2ObjectStat> _stats = [];
+    private R2ObjectStat? StatOf(string key) => _stats.TryGetValue(key, out R2ObjectStat? stat) ? stat : null;
 
+    // ETags arrive quoted from the listing and the HEAD alike; the copy's is given unquoted to pin that the
+    // comparison is on the value inside the quotes.
     private R2ObjectInfo Obj(string key, long size, DateTime? at = null)
     {
-        _sizes[key] = size;
-        return new R2ObjectInfo(key, at ?? Old, size);
+        string etag = $"md5-{key.GetHashCode():x8}";
+        _stats[key] = new R2ObjectStat(size, etag);
+        return new R2ObjectInfo(key, at ?? Old, size, $"\"{etag}\"");
     }
 
     private string QuarantineSummary =>
@@ -256,7 +260,7 @@ public class OrphanedObjectSweepJobTests
         Received.InOrder(() =>
         {
             _r2.CopyAsync(orphan, QuarantineDay + orphan, Arg.Any<CancellationToken>());
-            _r2.GetObjectSizeAsync(QuarantineDay + orphan, Arg.Any<CancellationToken>());
+            _r2.HeadAsync(QuarantineDay + orphan, Arg.Any<CancellationToken>());
             _r2.DeleteAsync(orphan, Arg.Any<CancellationToken>());
         });
         await _r2.Received(1).CopyAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -290,22 +294,72 @@ public class OrphanedObjectSweepJobTests
         QuarantineSummary.Should().Contain("moved 1 (20 bytes)").And.Contain("1 copy failed");
     }
 
-    // The copy must read back at the original's size before the original is deleted.
+    // The copy must read back with the original's size AND ETag before the original is deleted. A length is
+    // not an identity: the same-size, different-ETag case is the one a size-only check would have passed.
     [Theory]
-    [InlineData(19L)]
-    [InlineData(null)]
-    public async Task ACopyThatDoesNotVerify_NeverDeletesTheOriginal(long? copiedSize)
+    [InlineData("missing", "the copy is missing")]
+    [InlineData("shorter", "the copy is 19 bytes against 20")]
+    [InlineData("same size, other content", "the copy's ETag differs from the original's")]
+    [InlineData("copy without an ETag", "an ETag is missing")]
+    public async Task ACopyThatDoesNotVerify_NeverDeletesTheOriginal(string copyState, string reason)
     {
         await AnyReference();
         string orphan = $"{_studio}/portfolio/a/2.jpg";
         Bucket(Obj(orphan, 20), Obj($"{_studio}/portfolio/a/3.jpg", 30));
         CopiesVerify();
-        _r2.GetObjectSizeAsync(QuarantineDay + orphan, Arg.Any<CancellationToken>()).Returns(copiedSize);
+        string etag = _stats[orphan].ETag!;
+        R2ObjectStat? copy = copyState switch
+        {
+            "missing" => null,
+            "shorter" => new R2ObjectStat(19, etag),
+            "same size, other content" => new R2ObjectStat(20, "md5-somethingelse"),
+            _ => new R2ObjectStat(20, null),
+        };
+        _r2.HeadAsync(QuarantineDay + orphan, Arg.Any<CancellationToken>()).Returns(copy);
 
         await Run(mode: "Quarantine");
 
         await _r2.DidNotReceive().DeleteAsync(orphan, Arg.Any<CancellationToken>());
+        _logger.Messages(LogLevel.Warning).Should().ContainSingle(m => m.Contains("verify failed") && m.Contains(reason));
         QuarantineSummary.Should().Contain("1 copy not verified").And.Contain("moved 1 (30 bytes)");
+    }
+
+    // The source's ETag comes from the listing. A listing without one can't be verified against: refuse.
+    [Fact]
+    public async Task AnOriginalListedWithoutAnETag_IsNeverDeleted()
+    {
+        await AnyReference();
+        string orphan = $"{_studio}/portfolio/a/2.jpg";
+        Bucket(Obj(orphan, 20) with { ETag = null }, Obj($"{_studio}/portfolio/a/3.jpg", 30));
+        CopiesVerify();
+
+        await Run(mode: "Quarantine");
+
+        await _r2.DidNotReceive().DeleteAsync(orphan, Arg.Any<CancellationToken>());
+        QuarantineSummary.Should().Contain("1 copy not verified");
+    }
+
+    // Retries off: a refusal or an all-failed run must land in Failed once, not retry ten times.
+    [Fact]
+    public void TheJobNeverRetries()
+    {
+        typeof(OrphanedObjectSweepJob).GetCustomAttributes(typeof(Hangfire.AutomaticRetryAttribute), inherit: false)
+            .Cast<Hangfire.AutomaticRetryAttribute>().Should().ContainSingle().Which.Attempts.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task BothModes_SayTheQuarantineWasNotListed()
+    {
+        await AnyReference();
+        Bucket(Obj($"{_studio}/portfolio/a/2.jpg", 20));
+        CopiesVerify();
+
+        await Run();
+        await Run(mode: "Quarantine");
+
+        _logger.Messages(LogLevel.Information).Single(m => m.StartsWith("OrphanedObjectSweepJob (report-only) listed"))
+            .Should().EndWith("_quarantine/ not listed");
+        QuarantineSummary.Should().EndWith("_quarantine/ not listed");
     }
 
     [Fact]
@@ -340,13 +394,15 @@ public class OrphanedObjectSweepJobTests
         QuarantineSummary.Should().Contain("moved 0 (0 bytes)").And.Contain("1 copy failed");
     }
 
+    // A brake that engages silently is not a brake: the refusal fails the job (after logging) so the alert sees it.
     [Fact]
-    public async Task AReferenceReaderThatReturnsNoKeys_RefusesToMoveAnything()
+    public async Task AReferenceReaderThatReturnsNoKeys_RefusesToMoveAnything_AndFailsTheJob()
     {
         Bucket(Obj($"{_studio}/portfolio/a/1.jpg", 10));
 
-        await Run(mode: "Quarantine");
+        Func<Task> act = () => Run(mode: "Quarantine");
 
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*refused to move anything*");
         _logger.Messages(LogLevel.Error).Should().ContainSingle(m =>
             m.StartsWith("OrphanedObjectSweepJob (quarantine, refused)") && m.Contains("moved 0 because the reference reader returned no keys at all"));
         await _r2.DidNotReceive().CopyAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -371,8 +427,10 @@ public class OrphanedObjectSweepJobTests
         Bucket([.. objects]);
         CopiesVerify();
 
-        await Run(mode: "Quarantine");
+        Func<Task> act = () => Run(mode: "Quarantine");
 
+        if (refused) await act.Should().ThrowAsync<InvalidOperationException>();
+        else await act.Should().NotThrowAsync();
         if (refused)
         {
             _logger.Messages(LogLevel.Error).Should().ContainSingle(m => m.Contains("moved 0 because 11 of 20 candidates look unreferenced, more than 50%"));
@@ -411,6 +469,9 @@ public class OrphanedObjectSweepJobTests
 
         await Run();
         await Run(mode: "Quarantine");
+        // Third run: every verify fails (wrong stat) and the other copy still throws, so the run fails the job.
+        _r2.HeadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new R2ObjectStat(1, "x"));
+        await FluentActions.Awaiting(() => Run(mode: "Quarantine")).Should().ThrowAsync<InvalidOperationException>();
 
         _logger.Entries.Should().NotBeEmpty().And.OnlyContain(e => !e.Message.Contains("secretname") && !e.Message.Contains("othername"));
     }

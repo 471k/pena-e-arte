@@ -1,5 +1,6 @@
 using System.Globalization;
 using Amazon.S3;
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pena_e_Arte.Domain.Interfaces;
@@ -47,6 +48,12 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 ///
 /// Logs counts, bytes, studio ids and area names only, never a key or a URL.
 /// </summary>
+/// <remarks>
+/// Retries are off ([AutomaticRetry(Attempts = 0)]): a refused run and a run where every move fails both throw,
+/// and Hangfire's default of 10 retries would repeat each one. One failure lands in Failed, where the Hangfire
+/// alert sees it. A daily, idempotent sweep loses nothing by skipping a retry: tomorrow lists the same objects.
+/// </remarks>
+[AutomaticRetry(Attempts = 0)]
 public class OrphanedObjectSweepJob(
     IR2Service r2,
     StoredObjectReferenceReader references,
@@ -112,11 +119,13 @@ public class OrphanedObjectSweepJob(
             logger.LogError(
                 "OrphanedObjectSweepJob (quarantine, refused) listed {Listed} object(s): {Excluded} excluded, {TooYoung} younger than {MinimumAgeDays} days, " +
                 "{Referenced} referenced, {Orphans} unreferenced ({OrphanBytes} bytes); moved 0 because {Reason}; hard-deleted 0. " +
-                "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address",
+                "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address; _quarantine/ not listed",
                 listed.Count, excluded, tooYoung, (int)MinimumAge.TotalDays,
                 referenced, orphans.Count, orphans.Sum(o => o.Object.SizeBytes), refusal,
                 refs.Keys.Count, refs.ValuesRead, refs.ValuesOnNoKnownAddress);
-            return;
+            // A brake that engages silently is not a brake: an error line reaches nobody, a Failed job reaches
+            // the Hangfire alert. Summary first, so the diagnostic survives the failure.
+            throw new InvalidOperationException($"OrphanedObjectSweepJob refused to move anything: {refusal}. See the summary line above.");
         }
 
         int copyFailed = 0, notVerified = 0, deleteFailed = 0;
@@ -134,24 +143,29 @@ public class OrphanedObjectSweepJob(
                 continue;
             }
 
-            // A copy is only trusted once it reads back at the original's size. S3's CopyObject can fail after
-            // its 200 status, and the original is deleted next, so this check is what stands between a bad copy
-            // and a lost file.
-            long? copiedSize;
-            try { copiedSize = await r2.GetObjectSizeAsync(destination, ct); }
+            // A copy is only trusted once an independent HEAD reads it back with the original's size AND ETag.
+            // CopyObject's 200 is the API's promise; the HEAD is evidence. S3's CopyObject can even fail after
+            // its 200, and the original is deleted next, so this is what stands between a bad copy and a lost
+            // file. A length alone is not an identity; the ETag is (verified on staging 23 Nov: a server-side
+            // copy keeps the ETag). These objects arrive by presigned single PUT, so their ETags are plain MD5.
+            // If a multipart upload path is ever added (ETag "<md5>-<n>"), re-check that a copy preserves it
+            // before trusting this for those objects. A missing ETag on either side fails the check: the
+            // original stays.
+            R2ObjectStat? copy;
+            try { copy = await r2.HeadAsync(destination, ct); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 notVerified++;
                 LogStepFailure("verify", group, ex, "the original stays in place");
                 continue;
             }
-            if (copiedSize != obj.SizeBytes)
+            string? mismatch = VerifyMismatch(obj, copy);
+            if (mismatch is not null)
             {
                 notVerified++;
                 logger.LogWarning(
-                    "OrphanedObjectSweepJob (quarantine) verify failed for one object, owner {Owner}, area {Area}: the copy is " +
-                    "{CopiedBytes} bytes against {OriginalBytes}; the original stays in place",
-                    group.Owner, group.Area, copiedSize?.ToString(CultureInfo.InvariantCulture) ?? "missing", obj.SizeBytes);
+                    "OrphanedObjectSweepJob (quarantine) verify failed for one object, owner {Owner}, area {Area}: {Mismatch}; the original stays in place",
+                    group.Owner, group.Area, mismatch);
                 continue;
             }
 
@@ -199,7 +213,9 @@ public class OrphanedObjectSweepJob(
         int listed, int excluded, int tooYoung, int referenced,
         List<(R2ObjectInfo Object, (string Owner, string Area) Group)> orphans, StoredObjectReferences refs)
     {
-        // Both templates are unchanged since Phase 2: the gate predictions were written against them.
+        // Phase 2's two lines, plus "_quarantine/ not listed" on the summary (23 Nov): the same suffix as the
+        // quarantine line, so "listed N" means one thing in every mode. No prediction is outstanding against
+        // the old wording.
         foreach (IGrouping<(string Owner, string Area), (R2ObjectInfo Object, (string Owner, string Area) Group)> g in orphans
                      .GroupBy(o => o.Group)
                      .OrderBy(g => g.Key.Owner, StringComparer.Ordinal).ThenBy(g => g.Key.Area, StringComparer.Ordinal))
@@ -212,7 +228,7 @@ public class OrphanedObjectSweepJob(
         logger.LogInformation(
             "OrphanedObjectSweepJob (report-only) listed {Listed} object(s): {Excluded} excluded, {TooYoung} younger than {MinimumAgeDays} days, " +
             "{Referenced} referenced, {Orphans} unreferenced ({OrphanBytes} bytes) that it would delete; deleted 0. " +
-            "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address",
+            "References: {Keys} key(s) from {Values} stored value(s), {OnNoKnownAddress} on no known address; _quarantine/ not listed",
             listed, excluded, tooYoung, (int)MinimumAge.TotalDays,
             referenced, orphans.Count, orphans.Sum(o => o.Object.SizeBytes),
             refs.Keys.Count, refs.ValuesRead, refs.ValuesOnNoKnownAddress);
@@ -231,6 +247,25 @@ public class OrphanedObjectSweepJob(
             "OrphanedObjectSweepJob: {Setting} is '{Mode}', which is not a mode (ReportOnly, Quarantine); running report-only",
             OrphanedObjectSweepOptions.Section + ":Mode", mode);
         return false;
+    }
+
+    /// <summary>Null when the copy matches the original; otherwise what differs. Never names the key.</summary>
+    internal static string? VerifyMismatch(R2ObjectInfo original, R2ObjectStat? copy)
+    {
+        if (copy is null) return "the copy is missing";
+        if (copy.SizeBytes != original.SizeBytes)
+            return string.Create(CultureInfo.InvariantCulture, $"the copy is {copy.SizeBytes} bytes against {original.SizeBytes}");
+        string? want = NormalizeETag(original.ETag), got = NormalizeETag(copy.ETag);
+        if (want is null || got is null) return "an ETag is missing, so the copy can't be identified";
+        if (!string.Equals(want, got, StringComparison.Ordinal)) return "the copy's ETag differs from the original's";
+        return null;
+    }
+
+    /// <summary>S3 sends ETags quoted; compare the value inside the quotes.</summary>
+    private static string? NormalizeETag(string? etag)
+    {
+        string? v = etag?.Trim().Trim('"');
+        return string.IsNullOrEmpty(v) ? null : v;
     }
 
     internal static string? RefusalReason(int unreferenced, int referenced, int referenceKeys)

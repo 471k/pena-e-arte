@@ -41,6 +41,6 @@ internal sealed class NullR2Service : IR2Service
     public Task CopyAsync(string sourceKey, string destinationKey, CancellationToken ct)
         => throw new InvalidOperationException("Cloudflare R2 is not configured.");
 
-    public Task<long?> GetObjectSizeAsync(string objectKey, CancellationToken ct)
+    public Task<R2ObjectStat?> HeadAsync(string objectKey, CancellationToken ct)
         => throw new InvalidOperationException("Cloudflare R2 is not configured.");
 }
