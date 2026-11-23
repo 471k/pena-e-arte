@@ -569,10 +569,73 @@ describe("GuestBookAppointmentForm — C04: a guest chooses a service, not a dur
       expect(screen.getByText("Choose a service to see open times.")).toBeInTheDocument();
       await user.click(picker);
       await user.click(await screen.findByRole("option", { name: "Small linework — 1 hour 30 min" }));
-      expect(await screen.findByText("1 hour 30 min, set by “Small linework”")).toBeInTheDocument();
+      // Twice, on purpose: the field and the review state the same length in the same words (C02).
+      expect(await screen.findAllByText("1 hour 30 min, set by “Small linework”")).toHaveLength(2);
       expect(screen.getByText("Up to palm size.")).toBeInTheDocument();
     } finally {
       mockServices = [];
     }
+  });
+});
+
+// ── C02: one sectioned page with a final review (not a wizard) ────────────────
+
+describe("GuestBookAppointmentForm — C02 sections and review", () => {
+  const review = () => screen.getByRole("region", { name: "4. Review your request" });
+
+  it("is one page in four sections, in the requirement's order: session, idea, contact, review", () => {
+    renderForm();
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(["1. Session", "2. Idea & references", "3. Contact", "4. Review your request"]);
+    // Contact sits after the idea, so the identity fields come third, not first.
+    const contact = screen.getByRole("region", { name: "3. Contact" });
+    expect(within(contact).getByLabelText(/first name/i)).toBeInTheDocument();
+    expect(within(contact).getByLabelText(/^phone/i)).toBeInTheDocument();
+  });
+
+  it("the error summary lists problems in the order the sections show them", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByRole("button", { name: /request appointment/i }));
+    const summary = await screen.findByRole("alert", { name: /things to fix/i });
+    const links = within(summary).getAllByRole("link").map((l) => l.textContent ?? "");
+    expect(links[0]).toMatch(/^artist/i);
+    expect(links.findIndex((l) => /reference images/i.test(l))).toBeLessThan(links.findIndex((l) => /first name/i.test(l)));
+  });
+
+  it("reviews the contact details and says the request is not a confirmed appointment", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await fillIdentityFields(user);
+    const r = within(review());
+    expect(r.getByText("Jamie Guest")).toBeInTheDocument();
+    expect(r.getByText("jamie@example.com")).toBeInTheDocument();
+    expect(screen.getByTestId("review-request")).toHaveTextContent("A request, not a confirmed appointment");
+    expect(screen.getByTestId("review-request")).toHaveTextContent("We'll email you the next steps.");
+  });
+
+  it("Change contact moves focus there, keeps the entry, and Back to review returns", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await fillIdentityFields(user);
+    await user.click(within(review()).getByRole("button", { name: "Change contact" }));
+    expect(screen.getByRole("heading", { name: "3. Contact" })).toHaveFocus();
+    expect(screen.getByLabelText(/first name/i)).toHaveValue("Jamie");
+    await user.click(screen.getByRole("button", { name: "Back to review" }));
+    expect(screen.getByRole("heading", { name: "4. Review your request" })).toHaveFocus();
+  });
+
+  it("keeps promo and referral codes behind a closed disclosure in the contact section", () => {
+    renderForm();
+    const details = screen.getByText("Promo or referral code (optional)").closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(screen.getByRole("region", { name: "3. Contact" })).toContainElement(details);
+    expect(within(details).getByLabelText("Promo code")).toBeInTheDocument();
+    expect(within(details).getByLabelText(/referral code/i)).toBeInTheDocument();
+  });
+
+  it("with no deposit rule and no service deposit, says none is expected", () => {
+    renderForm();
+    expect(screen.getByTestId("review-deposit")).toHaveTextContent("None expected for this booking.");
   });
 });

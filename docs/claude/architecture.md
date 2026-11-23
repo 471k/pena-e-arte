@@ -7611,6 +7611,42 @@ customer consent before a session (a product decision).
   answers and photographs, the subject of the open retention and erasure questions.
 - `noValidate` on the three forms, so the browser's own bubbles don't pre-empt the summary.
 
+## Booking as one sectioned page with a review, not a wizard (slice 7 phase C, C02) — 2026-11-23
+
+**The wizard was not built, on purpose.** C02 asks to compare staged steps against a well-sectioned single page
+*before* choosing a wizard, and that comparison is a usability test nobody has run. Both booking forms are therefore
+one page in numbered sections (signed in: **1. Session**, **2. Idea & references**, **3. Review your request**;
+guest: Session, Idea & references, **Contact**, Review). The comparison stays open; shipping this does not settle it.
+
+- **Back/Change is a scroll and a focus call, not routing state.** Every field stays mounted, so nothing entered can
+  be lost by going back. The review's **Change** buttons move focus to that section's heading
+  (`useBookingSections`), and only that section then shows **Back to review**, which returns focus to the review.
+- **The review states the session in the sections' own words**: studio and zone, artist, client (staff), service,
+  session length via `describeSessionLength` (the same sentence the field shows), date and time on the studio's
+  clock, package, codes, idea, placement, images, and the guest's contact details.
+- **Request, not appointment.** Every new booking is `Pending` (`CreateAppointmentCommand` sets it for staff and
+  clients alike), so the review says "A request, not a confirmed appointment", plus the studio's assignment step
+  when the studio chooses the artist.
+- **Estimate, not charge.** The deposit appears once, in the review, always called an estimate, with "sending this
+  request charges nothing". `estimateDeposit` replaces two identical in-form copies of the arithmetic and mirrors the
+  server's order (package, service deposit, rule via `DepositCalculator`); the amount anyone is asked to pay is still
+  the server's (`booked.depositAmount`). One behaviour change, to match the server: a percentage rule with an artist
+  who has no rate is "none" (`DepositCalculator` returns 0), where the old preview said "set once an artist is
+  picked" about an artist already picked. A percentage rule with no artist yet says it is worked out from the rate
+  once one is chosen or assigned, which is what `AssignAppointmentArtistCommand` does.
+- **Known gap, not closed here:** the estimate is still a browser mirror of a server rule. A server-side quote read
+  would remove the mirror; it is a backlog item, not part of C02.
+- **Promo and referral codes** sit behind a closed "Promo or referral code (optional)" disclosure (signed in: end of
+  Session; guest: Contact, as in the prototype). The referral *credit* toggle stays visible, since it is the client's
+  own money. Entered codes show in the review.
+- **`describeSessionLength` without a service** now says only the length. "The length you chose" was false on a
+  staff-made booking and unprovable afterwards (no creator on `Appointment`); the clause was removed rather than a
+  column added (Desktop, 22 Nov).
+- **Benchmark:** Fresha's online booking ends in a review screen (services, date and time, team member, total price,
+  business information) after a staged flow, and an appointment is confirmed once a required deposit is paid. We
+  diverge in two stated ways: a single sectioned page pending the usability comparison, and a booking that stays a
+  request until the studio confirms it whatever is paid, so the review must say so rather than imply a confirmation.
+
 ## Booking start times: the slot list's step is a studio setting — 2026-11-20
 
 Phi's decision (20 Nov), on Desktop's framing: a step equal to the session length made the list correct but
