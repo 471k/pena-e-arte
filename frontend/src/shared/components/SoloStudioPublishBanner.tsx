@@ -2,16 +2,7 @@ import { useState } from "react";
 import { X, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { StudioResponse } from "@/features/studios/studiosApi";
-
-const STORAGE_KEY = "solo-studio-publish-banner-dismissed";
-
-function wasDismissedThisSession(): boolean {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
+import { SOLO_PUBLISH_BANNER_STORAGE_KEY as STORAGE_KEY, soloPublishBannerApplies, wasDismissedThisSession } from "./soloPublishBanner";
 
 type SoloStudioPublishBannerProps = {
   studio?: StudioResponse;
@@ -23,7 +14,7 @@ type SoloStudioPublishBannerProps = {
 export function SoloStudioPublishBanner({ studio }: SoloStudioPublishBannerProps) {
   const [dismissed, setDismissed] = useState(wasDismissedThisSession);
 
-  if (!studio?.isSolo || studio.isPublished || dismissed) return null;
+  if (dismissed || !soloPublishBannerApplies(studio)) return null;
 
   function dismiss() {
     try {

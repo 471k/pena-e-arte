@@ -159,7 +159,8 @@ try
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 5)); // staggered after retention-purge (4am)
 
-        // REPORT-ONLY: logs what it would delete and deletes nothing (orphaned-object cleanup, Phase 2).
+        // Report-only by default; OrphanedObjectSweep:Mode=Quarantine moves unreferenced objects to _quarantine/
+        // and never hard-deletes (Phase 3, docs/infra/orphan-quarantine-runbook.md). Set it only after the lock rule.
         // After guest-pending-upload-cleanup (5am), which acts first on its own prefix.
         recurringJobs.AddOrUpdate<OrphanedObjectSweepJob>(
             "orphaned-object-sweep",

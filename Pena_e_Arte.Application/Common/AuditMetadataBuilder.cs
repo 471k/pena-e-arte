@@ -2,6 +2,7 @@ using System.Text.Json;
 using Pena_e_Arte.Application.Appointments.Commands;
 using Pena_e_Arte.Application.Billing.Commands;
 using Pena_e_Arte.Application.Clients.Commands;
+using Pena_e_Arte.Application.Feedback.Commands;
 using Pena_e_Arte.Application.GiftCards.Commands;
 using Pena_e_Arte.Application.Instagram.Commands;
 using Pena_e_Arte.Application.Plans.Commands;
@@ -60,6 +61,20 @@ public static class AuditMetadataBuilder
         {
             // Plan name is a studio-facing product label, not PII.
             ["planName"] = c.Request.Name,
+        },
+        CreatePlanCommand c => new Dictionary<string, object?> { ["planName"] = c.Request.Name },
+        DeletePlanCommand c => new Dictionary<string, object?> { ["planName"] = c.DeletedPlanName },
+        // Never the code itself: a live single-use code is worth a free month to whoever reads it.
+        AdminGenerateReferralCodeCommand c => new Dictionary<string, object?>
+        {
+            ["expiresAt"] = c.ExpiresAt,
+            ["deactivatedCount"] = c.DeactivatedCount,
+        },
+        // Status and the FACT of a note change only. The note's text never goes here (see the command).
+        UpdateFeedbackStatusCommand c => new Dictionary<string, object?>
+        {
+            ["status"] = c.Request.Status,
+            ["adminNoteChanged"] = c.AdminNoteChanged,
         },
         RescheduleAppointmentCommand c => new Dictionary<string, object?>
         {

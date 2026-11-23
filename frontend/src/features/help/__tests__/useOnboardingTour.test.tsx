@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { authApi } from "@/features/auth/authApi";
 import { onboardingApi } from "../onboardingApi";
+import type { OwnerTourFacts } from "../tours/ownerTour";
 import { useOnboardingTour } from "../useOnboardingTour";
 import { Role } from "@/shared/types/roles";
 
@@ -44,9 +45,12 @@ function makeStore() {
   });
 }
 
-// `ownerHasArtistProfile` undefined = still loading (no default: a default would replace an explicit undefined).
-function TestHost({ role, ownerHasArtistProfile }: { role: Role | null; ownerHasArtistProfile: boolean | undefined }) {
-  const { tourElement, restartTour } = useOnboardingTour(role, undefined, undefined, false, ownerHasArtistProfile);
+const facts = (hasArtistProfile: boolean): OwnerTourFacts =>
+  ({ hasArtistProfile, showsPublishBanner: false, hasJoinInvite: false });
+
+// `ownerTourFacts` undefined = still loading (no default: a default would replace an explicit undefined).
+function TestHost({ role, ownerTourFacts }: { role: Role | null; ownerTourFacts: OwnerTourFacts | undefined }) {
+  const { tourElement, restartTour } = useOnboardingTour(role, undefined, undefined, false, ownerTourFacts);
   return (
     <>
       <button onClick={restartTour}>Restart</button>
@@ -61,23 +65,23 @@ function renderHost(role: Role | null = Role.Owner) {
   render(
     <Provider store={makeStore()}>
       <MemoryRouter>
-        <TestHost role={role} ownerHasArtistProfile={true} />
+        <TestHost role={role} ownerTourFacts={facts(true)} />
       </MemoryRouter>
     </Provider>,
   );
 }
 
-function renderOwnerHost(ownerHasArtistProfile: boolean | undefined) {
+function renderOwnerHost(ownerTourFacts: OwnerTourFacts | undefined) {
   const store = makeStore();
-  const ui = (value: boolean | undefined) => (
+  const ui = (value: OwnerTourFacts | undefined) => (
     <Provider store={store}>
       <MemoryRouter>
-        <TestHost role={Role.Owner} ownerHasArtistProfile={value} />
+        <TestHost role={Role.Owner} ownerTourFacts={value} />
       </MemoryRouter>
     </Provider>
   );
-  const { rerender } = render(ui(ownerHasArtistProfile));
-  return { setOwnerHasArtistProfile: (value: boolean | undefined) => rerender(ui(value)) };
+  const { rerender } = render(ui(ownerTourFacts));
+  return { setOwnerTourFacts: (value: OwnerTourFacts | undefined) => rerender(ui(value)) };
 }
 
 describe("useOnboardingTour", () => {
@@ -110,19 +114,19 @@ describe("useOnboardingTour", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("an owner's tour waits until it's known whether they have an artist profile, instead of timing a step out", async () => {
-    const { setOwnerHasArtistProfile } = renderOwnerHost(undefined);
+  it("an owner's tour waits until its conditional steps are known, instead of timing steps out", async () => {
+    const { setOwnerTourFacts } = renderOwnerHost(undefined);
 
     // The tour status is long back by now; the tour still waits.
     await new Promise((r) => setTimeout(r, 300));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    setOwnerHasArtistProfile(true);
+    setOwnerTourFacts(facts(true));
     expect(await screen.findByRole("dialog", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
   it("an owner without an artist profile still gets the tour", async () => {
-    renderOwnerHost(false);
+    renderOwnerHost(facts(false));
 
     expect(await screen.findByRole("dialog", {}, { timeout: 3000 })).toBeInTheDocument();
   });

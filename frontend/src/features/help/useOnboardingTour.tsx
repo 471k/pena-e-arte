@@ -4,17 +4,18 @@ import { useGetMyStudiosQuery } from "@/features/auth/authApi";
 import { OnboardingTour, type TourStep } from "@/shared/components/OnboardingTour";
 import { getClientTourSteps } from "./tours/clientTour";
 import { artistTourSteps } from "./tours/artistTour";
-import { getOwnerTourSteps } from "./tours/ownerTour";
+import { getOwnerTourSteps, type OwnerTourFacts } from "./tours/ownerTour";
 import { adminTourSteps } from "./tours/adminTour";
 import { Role } from "@/shared/types/roles";
 
 function getStepsForRole(
-  role: Role, hasMultipleStudios: boolean, showPaymentMethods: boolean, ownerHasArtistProfile: boolean,
+  role: Role, hasMultipleStudios: boolean, showPaymentMethods: boolean, ownerTourFacts: OwnerTourFacts | undefined,
 ): TourStep[] {
   switch (role) {
     case Role.Client: return getClientTourSteps(hasMultipleStudios, showPaymentMethods);
     case Role.Artist: return artistTourSteps;
-    case Role.Owner:  return getOwnerTourSteps(ownerHasArtistProfile);
+    // Only reached once the facts are known (the tour waits for them); the fallback is never shown.
+    case Role.Owner:  return ownerTourFacts ? getOwnerTourSteps(ownerTourFacts) : [];
     case Role.Admin: return adminTourSteps;
   }
 }
@@ -22,11 +23,11 @@ function getStepsForRole(
 /** `showPaymentMethods`: whether the client nav has its "Payment Methods" entry (saved cards on,
  * C-9). ClientLayout knows from its capabilities query and passes it down through HelpMenu, so the
  * tour never points at an entry that isn't there.
- * `ownerHasArtistProfile`: whether the owner has their own artist profile, `undefined` while that isn't
- * known yet. OwnerLayout passes the same value that renders the Owner/Artist switch, for the same reason. */
+ * `ownerTourFacts`: whether each conditional owner step's target will render, `undefined` while any of it
+ * isn't known yet. OwnerLayout passes the same values that render those targets, for the same reason. */
 export function useOnboardingTour(
   role: Role | null, onBeforeStep?: (step: TourStep) => void, onTourEnd?: () => void,
-  showPaymentMethods = false, ownerHasArtistProfile?: boolean,
+  showPaymentMethods = false, ownerTourFacts?: OwnerTourFacts,
 ) {
   const [forceActive, setForceActive] = useState(false);
   // Hides the tour immediately on skip/complete without waiting for the
@@ -38,10 +39,11 @@ export function useOnboardingTour(
     { skip: !role },
   );
   const [markComplete] = useMarkOnboardingTourCompleteMutation();
-  // Two owner steps depend on whether the owner has their own artist profile. The tour waits until that is
-  // known rather than starting with both steps and letting OnboardingTour time one out: a timeout can't tell
-  // "not rendered yet" from "never will be", and skipped the Owner/Artist switch whenever /artists/me was slow.
-  const ownerFactsKnown = role !== Role.Owner || ownerHasArtistProfile !== undefined;
+  // Four owner steps depend on async queries (artist profile, studio, join invites). The tour waits until all
+  // of it is known rather than letting OnboardingTour time steps out: a timeout can't tell "not rendered yet"
+  // from "never will be". It skipped the Owner/Artist switch whenever /artists/me was slow, and cost every
+  // ordinary owner two dead seconds on the banner and bell steps.
+  const ownerFactsKnown = role !== Role.Owner || ownerTourFacts !== undefined;
 
   const shouldShow = !!role && !dismissed && ownerFactsKnown
     && (forceActive || (status !== undefined && !status.hasCompletedTour));
@@ -59,7 +61,7 @@ export function useOnboardingTour(
   }
 
   const steps = role
-    ? getStepsForRole(role, (studios?.length ?? 0) > 1, showPaymentMethods, ownerHasArtistProfile ?? false)
+    ? getStepsForRole(role, (studios?.length ?? 0) > 1, showPaymentMethods, ownerTourFacts)
     : [];
 
   const tourElement = shouldShow && role

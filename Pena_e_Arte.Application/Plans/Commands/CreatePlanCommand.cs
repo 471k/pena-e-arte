@@ -8,10 +8,18 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Constants;
 
 namespace Pena_e_Arte.Application.Plans.Commands;
 
-public record CreatePlanCommand(CreatePlanRequest Request) : IRequest<PlanResponse>;
+// Audited (D04 follow-up, 23 Nov): creating a plan changes what every studio can buy. The target id is the
+// new plan's, set by the handler after the save (AuditLogBehavior reads it after Handle).
+public record CreatePlanCommand(CreatePlanRequest Request) : IRequest<PlanResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.PlanCreated;
+    public string AuditTargetType => AuditTargetTypes.Plan;
+    public Guid AuditTargetId { get; set; }
+}
 
 public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
     : IRequestHandler<CreatePlanCommand, PlanResponse>
@@ -55,6 +63,7 @@ public class CreatePlanHandler(IAppDbContext db, IStripeBillingService stripe)
 
         db.Plans.Add(plan);
         await db.SaveChangesAsync(ct);
+        command.AuditTargetId = plan.Id;
 
         return Map(plan, subscriberCount: 0);
     }

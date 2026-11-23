@@ -173,6 +173,7 @@ public static class InfrastructureServiceExtensions
         services.AddTransient<RetentionPurgeJob>();
         services.AddTransient<GuestPendingUploadCleanupJob>();
         services.AddTransient<StoredObjectReferenceReader>();
+        services.Configure<OrphanedObjectSweepOptions>(configuration.GetSection(OrphanedObjectSweepOptions.Section));
         services.AddTransient<OrphanedObjectSweepJob>();
 
         // Secrets backend (Vault by default — see docs/infra/ADR-0002-secrets-management.md).

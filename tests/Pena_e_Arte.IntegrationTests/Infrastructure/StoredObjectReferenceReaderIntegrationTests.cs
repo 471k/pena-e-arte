@@ -112,7 +112,7 @@ public class StoredObjectReferenceReaderIntegrationTests(DatabaseFixture fixture
         r2.IsR2Url(Arg.Any<string>()).Returns(ci => real.IsR2Url(ci.Arg<string>()));
         r2.TryGetObjectKey(Arg.Any<string>()).Returns(ci => real.TryGetObjectKey(ci.Arg<string>()));
         DateTime old = DateTime.UtcNow.AddDays(-30);
-        r2.ListByPrefixAsync("", Arg.Any<CancellationToken>()).Returns(new List<R2ObjectInfo>
+        r2.ListAllExceptAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>()).Returns(new List<R2ObjectInfo>
         {
             new(referenced, old, 100),
             new(orphan, old, 200),
@@ -121,10 +121,12 @@ public class StoredObjectReferenceReaderIntegrationTests(DatabaseFixture fixture
         ListLogger<OrphanedObjectSweepJob> logger = new();
 
         await using AppDbContext job = fixture.CreateDbContext(Guid.Empty);
-        await new OrphanedObjectSweepJob(r2, new StoredObjectReferenceReader(job, r2), TimeProvider.System, logger).RunAsync();
+        await new OrphanedObjectSweepJob(r2, new StoredObjectReferenceReader(job, r2), TimeProvider.System,
+            Options.Create(new OrphanedObjectSweepOptions()), logger).RunAsync();
 
         logger.Messages(Microsoft.Extensions.Logging.LogLevel.Information).Should().Contain(m =>
             m.Contains($"would delete 1 object(s), 200 bytes, owner {studio}, area portfolio"));
         await r2.DidNotReceive().DeleteAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await r2.DidNotReceive().CopyAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }
