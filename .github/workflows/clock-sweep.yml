@@ -198,14 +198,26 @@ jobs:
           path: test-results/*.trx
           retention-days: 14
 
+  # The RUNNER'S ZONE is the second axis. A test that builds "today" or an expected time in the runner's
+  # zone, while the page uses the studio's (Europe/Tirane), passes in most hours under TZ=UTC: UTC and
+  # Tirane are one hour apart, so they disagree about the date for ONE HOUR IN 24. That is why the SchedulePage
+  # seeds (fixed in #431) took a nightly CI run inside 23:00-24:00 UTC to show up. Under UTC+14 or UTC-11 the
+  # runner and the studio disagree about the date for most of the day, so one run at the control moment finds
+  # what UTC finds only by luck. Both zones have no DST, so the offset is the same on every date.
+  # These two legs run at `midday` only: the zone axis is about runner-vs-studio, which the moment legs
+  # already cover for the studio's own midnight.
   frontend:
-    name: Frontend @ ${{ matrix.moment.name }}
+    name: Frontend @ ${{ matrix.moment.name }} (${{ matrix.zone.tz }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         moment: *moments
+        zone: [{ tz: UTC, label: utc }]
+        include:
+          - { moment: { name: midday, start: "2026-11-25 10:00:00" }, zone: { tz: Pacific/Kiritimati, label: utc+14 } }
+          - { moment: { name: midday, start: "2026-11-25 10:00:00" }, zone: { tz: Pacific/Pago_Pago, label: utc-11 } }
     steps:
       - uses: actions/checkout@v7
 
@@ -232,17 +244,30 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
-      # The runner's zone is UTC, as on CI. The browser-zone bugs (S01) are the case where a test formats an
-      # expected value in the runner's zone while the page uses the studio's.
-      - name: Unit / component tests (faked clock)
+      # libfaketime reads an absolute FAKETIME ("@YYYY-MM-DD hh:mm:ss") in the process's OWN zone, so the
+      # UTC start is converted to the leg's local time first. Without this a UTC+14 leg would start 14 hours
+      # early and silently test a different moment. The check below fails the leg if the UTC instant is wrong.
+      - name: Convert the UTC start to the leg's zone
+        env:
+          TZ: ${{ matrix.zone.tz }}
+        run: |
+          local_start=$(date -d '${{ matrix.moment.start }} UTC' '+%Y-%m-%d %H:%M:%S')
+          echo "FAKE_LOCAL_START=$local_start" >> "$GITHUB_ENV"
+          echo "zone ${{ matrix.zone.tz }}: ${{ matrix.moment.start }} UTC = $local_start local"
+
+      # The browser-zone bugs (S01) are the case where a test formats an expected value in the runner's zone
+      # while the page uses the studio's. The zone is in the job name and the summary, so a red leg names it.
+      - name: Unit / component tests (faked clock, ${{ matrix.zone.tz }})
         working-directory: frontend
         env:
-          TZ: UTC
+          TZ: ${{ matrix.zone.tz }}
           LD_PRELOAD: ${{ env.FAKETIME_LIB }}
-          FAKETIME: "@${{ matrix.moment.start }}"
+          FAKETIME: "@${{ env.FAKE_LOCAL_START }}"
           FAKETIME_DONT_FAKE_MONOTONIC: "1"
         run: |
-          echo "faked date: $(date -u '+%Y-%m-%d %H:%M')"
+          now=$(date -u '+%Y-%m-%d %H:%M')
+          echo "faked date: $now UTC, $(date '+%Y-%m-%d %H:%M %z') in $TZ"
+          [ "$now" = "$(echo '${{ matrix.moment.start }}' | cut -c1-16)" ] || { echo "::error::clock is not faked to the intended UTC instant"; exit 1; }
           pnpm exec vitest run --reporter=default --reporter=junit --outputFile.junit=../test-results/vitest.xml
 
       - name: Name the failing tests
@@ -276,6 +301,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: clock-sweep-frontend-${{ matrix.moment.name }}
+          name: clock-sweep-frontend-${{ matrix.moment.name }}-${{ matrix.zone.label }}
           path: test-results/vitest.xml
           retention-days: 14
