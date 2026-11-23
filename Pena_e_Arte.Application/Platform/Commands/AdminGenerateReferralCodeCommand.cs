@@ -9,10 +9,23 @@ using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Constants;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record AdminGenerateReferralCodeCommand(Guid StudioId, DateTime? ExpiresAt = null) : IRequest<PlatformReferralCodeResponse>;
+// Audited (D04 follow-up, 23 Nov): the target is the new code, set by the handler before it returns, since
+// AuditLogBehavior reads these properties after Handle (same pattern as CreateManualReminderCommand).
+public record AdminGenerateReferralCodeCommand(Guid StudioId, DateTime? ExpiresAt = null)
+    : IRequest<PlatformReferralCodeResponse>, IAuditableCommand
+{
+    public string AuditAction => AuditActions.ReferralCodeGeneratedByAdmin;
+    public string AuditTargetType => AuditTargetTypes.ReferralCode;
+    public Guid AuditTargetId { get; set; }
+    public Guid? AuditStudioId => StudioId;
+
+    /// <summary>How many active codes this deactivated. Set by the handler; audit metadata only.</summary>
+    public int DeactivatedCount { get; set; }
+}
 
 public class AdminGenerateReferralCodeHandler(
     IAppDbContext db,
@@ -38,6 +51,7 @@ public class AdminGenerateReferralCodeHandler(
             .ToListAsync(ct);
         foreach (ReferralCode old in existing)
             old.IsActive = false;
+        command.DeactivatedCount = existing.Count;
 
         string code = await GenerateUniqueCodeAsync(ct);
 
@@ -51,6 +65,7 @@ public class AdminGenerateReferralCodeHandler(
         };
 
         db.ReferralCodes.Add(referralCode);
+        command.AuditTargetId = referralCode.Id;
 
         string shareUrl = $"https://tattooos.co/register?ref={referralCode.Code}";
 

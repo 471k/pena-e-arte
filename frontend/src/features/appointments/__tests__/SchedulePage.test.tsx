@@ -18,7 +18,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { SchedulePage } from "@/features/appointments/components/SchedulePage";
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
-import { addWallDays, formatWallDate, studioWeekStart, type WallDate } from "@/shared/utils/studioDay";
+import { addWallDays, formatWallDate, studioMidnight, studioWallDate, studioWeekStart, type WallDate } from "@/shared/utils/studioDay";
 import { Role } from "@/shared/types/roles";
 
 // ── SignalR mock ───────────────────────────────────────────────────────────────
@@ -44,9 +44,13 @@ vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
-// An appointment that falls on today
-const todayStart = new Date();
-todayStart.setHours(10, 0, 0, 0);
+// An appointment that falls on today, 10:00 on the STUDIO's calendar (the stub's Europe/Tirane), not the runner's:
+// the schedule shows the studio's day (S01). Seeding the runner's day failed CI every night from 23:00 to 24:00 UTC,
+// when Tirane is already on the next day (main, 22 Nov 23:10 UTC, run 45081647707). +10 h is 09:00 or 11:00 on
+// a DST-change day, still the same day.
+const todayStart = new Date(
+  studioMidnight(studioWallDate(new Date(), "Europe/Tirane"), "Europe/Tirane").getTime() + 10 * 3_600_000,
+);
 const todayEnd = new Date(todayStart.getTime() + 3_600_000);
 
 const APPT_TODAY: AppointmentResponse = {

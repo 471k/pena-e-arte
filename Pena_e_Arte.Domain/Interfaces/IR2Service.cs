@@ -1,6 +1,10 @@
 namespace Pena_e_Arte.Domain.Interfaces;
 
-public record R2ObjectInfo(string Key, DateTime LastModified, long SizeBytes);
+/// <param name="ETag">As listed (S3 quotes it); null when the listing gave none.</param>
+public record R2ObjectInfo(string Key, DateTime LastModified, long SizeBytes, string? ETag = null);
+
+/// <summary>What a HEAD request says about an object: its size and ETag.</summary>
+public record R2ObjectStat(long SizeBytes, string? ETag);
 
 public interface IR2Service
 {
@@ -34,4 +38,17 @@ public interface IR2Service
 
     /// <summary>Every object under the prefix ("" lists the whole bucket), across all result pages.</summary>
     Task<IReadOnlyList<R2ObjectInfo>> ListByPrefixAsync(string prefix, CancellationToken ct);
+
+    /// <summary>
+    /// Every object in the bucket except those under the named TOP-LEVEL folders (each "name/"), which are
+    /// never fetched at all: the exclusion happens at the list call, so their objects cost no listing memory.
+    /// For OrphanedObjectSweepJob, whose quarantine folder holds objects for 30 days.
+    /// </summary>
+    Task<IReadOnlyList<R2ObjectInfo>> ListAllExceptAsync(IReadOnlyCollection<string> skippedTopLevelFolders, CancellationToken ct);
+
+    /// <summary>Server-side copy inside the bucket (no download). Content type and metadata are copied too.</summary>
+    Task CopyAsync(string sourceKey, string destinationKey, CancellationToken ct);
+
+    /// <summary>The object's size and ETag from a HEAD request, or null when no object has that key.</summary>
+    Task<R2ObjectStat?> HeadAsync(string objectKey, CancellationToken ct);
 }

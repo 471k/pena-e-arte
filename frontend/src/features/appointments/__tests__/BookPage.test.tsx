@@ -453,10 +453,13 @@ describe("BookAppointmentForm", () => {
   // C-11 production test (28 Oct 2026): the form offered a "Deposit rule" picker preset to
   // "No deposit", but the server always applies the studio's active rule, so clients were
   // charged after seemingly choosing none. The deposit is now shown read-only.
+  // C02: the estimate now lives in the review, stated once, and is always called an estimate.
   it("shows the studio's active deposit as a read-only estimate, with no rule picker", async () => {
     renderForm();
-    const row = (await screen.findByText("Estimated deposit")).parentElement!;
-    expect(row).toHaveTextContent("50");
+    const row = screen.getByTestId("review-deposit");
+    await waitFor(() => expect(row).toHaveTextContent("50"));
+    expect(row).toHaveTextContent(/estimated/i);
+    expect(row).toHaveTextContent("doesn't charge you anything");
     expect(row).not.toHaveTextContent("100");
     expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
     expect(screen.queryByText("No deposit")).not.toBeInTheDocument();
@@ -464,17 +467,19 @@ describe("BookAppointmentForm", () => {
 
   it("shows staff the same read-only deposit estimate", async () => {
     renderForm(Role.Owner);
-    expect(await screen.findByText("Estimated deposit")).toBeInTheDocument();
+    const row = screen.getByTestId("review-deposit");
+    await waitFor(() => expect(row).toHaveTextContent(/estimated/i));
+    expect(row).toHaveTextContent("charges nothing");
     expect(screen.queryByLabelText("Deposit rule")).not.toBeInTheDocument();
   });
 
-  it("does NOT show a deposit estimate when the studio has no active rule", async () => {
+  it("says no deposit is expected when the studio has no active rule", async () => {
     server.use(
       http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([INACTIVE_RULE])),
     );
     renderForm();
     await screen.findByText("Luna Artista");
-    expect(screen.queryByText("Estimated deposit")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("review-deposit")).toHaveTextContent("None expected for this booking."));
   });
 
   it("artist dropdown includes a search input", async () => {
@@ -878,6 +883,100 @@ async function fillMinimalValidForm(user: ReturnType<typeof userEvent.setup>) {
   );
   await fillTattooDescription(user);
 }
+
+// ── C02: one sectioned page with a final review (not a wizard) ────────────────
+
+describe("BookAppointmentForm — C02 sections and review", () => {
+  const review = () => screen.getByRole("region", { name: "3. Review your request" });
+
+  it("is one page in three sections ending in a review, with no step navigation", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(screen.getByRole("heading", { level: 2, name: "1. Session" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "2. Idea & references" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "3. Review your request" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^(continue|next)$/i })).toBeNull();
+    // Every field is mounted at once, so nothing entered can be lost by moving between sections.
+    expect(screen.getByLabelText(/what are you looking to get done/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/date.*time/i)).toBeInTheDocument();
+  });
+
+  it("says a request is not a confirmed appointment", async () => {
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(screen.getByTestId("review-request")).toHaveTextContent("A request, not a confirmed appointment");
+  });
+
+  it("reflects what was entered, in the studio's own time", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await fillMinimalValidForm(user);
+    const r = within(review());
+    expect(r.getByText("Luna Artista")).toBeInTheDocument();
+    expect(r.getByText("A small rose on the forearm")).toBeInTheDocument();
+    expect(r.getByText(/studio time, Europe\/Tirane/)).toBeInTheDocument();
+    expect(r.getByText("1 hour")).toBeInTheDocument();
+  });
+
+  it("Change moves focus to the section and keeps what was entered; Back to review returns", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await fillTattooDescription(user);
+    expect(screen.queryByRole("button", { name: "Back to review" })).toBeNull();
+
+    await user.click(within(review()).getByRole("button", { name: "Change idea & references" }));
+    expect(screen.getByRole("heading", { name: "2. Idea & references" })).toHaveFocus();
+    expect(screen.getByLabelText(/what are you looking to get done/i)).toHaveValue("A small rose on the forearm");
+    // Only the section opened from the review offers the way back.
+    expect(screen.getAllByRole("button", { name: "Back to review" })).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Back to review" }));
+    expect(screen.getByRole("heading", { name: "3. Review your request" })).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Back to review" })).toBeNull();
+    expect(within(review()).getByText("A small rose on the forearm")).toBeInTheDocument();
+  });
+
+  it("keeps promo and referral codes behind a closed disclosure, and shows an entered code in the review", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    const details = screen.getByText("Promo or referral code (optional)").closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByLabelText("Promo code")).toBeInTheDocument();
+    expect(within(details).getByLabelText(/referral code/i)).toBeInTheDocument();
+
+    await user.type(within(details).getByLabelText("Promo code"), "SPRING");
+    expect(within(review()).getByText("Promo code SPRING")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("review-deposit")).toHaveTextContent("after any code or credit"));
+  });
+
+  it("with a percentage rule and the studio choosing, says the deposit follows the studio's assignment", async () => {
+    server.use(http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([
+      { ...ACTIVE_RULE, amountFixed: null, amountPercent: 20 },
+    ])));
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    await user.click(screen.getByRole("switch", { name: /let the studio choose my artist/i }));
+    await waitFor(() => expect(screen.getByTestId("review-deposit")).toHaveTextContent("once the studio assigns one"));
+    expect(screen.getByTestId("review-request")).toHaveTextContent("The studio assigns an artist, then confirms it.");
+  });
+
+  it("with a percentage rule and a chosen artist, estimates from that artist's rate", async () => {
+    server.use(http.get("http://localhost/api/v1/deposit-rules", () => HttpResponse.json([
+      { ...ACTIVE_RULE, amountFixed: null, amountPercent: 20 },
+    ])));
+    const user = userEvent.setup();
+    renderForm();
+    await screen.findByText("Luna Artista");
+    expect(screen.getByTestId("review-deposit")).toHaveTextContent("once you choose one");
+    await user.click(screen.getByLabelText("Select artist"));
+    await user.click(await screen.findByRole("option", { name: "Luna Artista" }));
+    // 20% of one hour at 80.
+    await waitFor(() => expect(screen.getByTestId("review-deposit")).toHaveTextContent("16"));
+  });
+});
 
 describe("BookAppointmentForm — reference images", () => {
   it("renders the reference images dropzone", () => {
@@ -1710,7 +1809,8 @@ describe("BookAppointmentForm — C04: a service, not a duration", () => {
     renderForm(Role.Client);
     await user.click(await screen.findByRole("combobox", { name: /service/i }));
     await user.click(await screen.findByRole("option", { name: "Large colour session — 2 hours" }));
-    expect(await screen.findByText("2 hours, set by “Large colour session”")).toBeInTheDocument();
+    // Twice, on purpose: the field and the review state the same length in the same words (C02).
+    expect(await screen.findAllByText("2 hours, set by “Large colour session”")).toHaveLength(2);
     expect(screen.queryByText("Choose a service to see open times.")).toBeNull();
   });
 

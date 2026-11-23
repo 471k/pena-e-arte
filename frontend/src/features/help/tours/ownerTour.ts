@@ -1,6 +1,21 @@
 import { settingsSectionHref } from "@/features/studios/settingsGroups";
 import type { TourStep } from "@/shared/components/OnboardingTour";
 
+// Exactly one of these two steps applies to a given owner: the "become an artist" call to action only renders
+// for an owner without their own artist profile, and the Owner/Artist switch only for an owner with one.
+const BECOME_ARTIST_CTA = '[data-tour="owner-become-artist-cta"]';
+const ARTIST_MODE_SWITCH = '[data-tour="owner-artist-mode-switch"]';
+
+/** The owner tour for what is known about this owner. Both targets depend on GET /artists/me, so the tour
+ * leaves out the step that can't apply instead of polling for it. OnboardingTour's poll-then-skip can't tell
+ * "not rendered yet" from "never will be", and with a slow /artists/me it silently skipped the switch step
+ * (owner-phone-navigation e2e, flaky since #415; reproduced 22 Nov by delaying /artists/me 5 s). */
+export function getOwnerTourSteps(hasArtistProfile: boolean): TourStep[] {
+  const notApplicable = hasArtistProfile ? BECOME_ARTIST_CTA : ARTIST_MODE_SWITCH;
+  return ownerTourSteps.filter((step) => step.targetSelector !== notApplicable);
+}
+
+/** Every owner step, both artist-profile variants included. Use getOwnerTourSteps to show a tour. */
 export const ownerTourSteps: TourStep[] = [
   {
     targetSelector: '[data-tour="owner-dashboard-nav"]',
@@ -18,13 +33,13 @@ export const ownerTourSteps: TourStep[] = [
     body: "Send a real-time message to any artist or client at your studio, right from here.",
   },
   {
-    targetSelector: '[data-tour="owner-become-artist-cta"]',
+    targetSelector: BECOME_ARTIST_CTA,
     title: "Also work as an artist?",
     body: "If you tattoo yourself, enable your own artist profile here — no second account needed.",
     route: "/artists",
   },
   {
-    targetSelector: '[data-tour="owner-artist-mode-switch"]',
+    targetSelector: ARTIST_MODE_SWITCH,
     title: "Switch between Owner and Artist",
     body: "Once your own artist profile is enabled, jump between your Owner dashboard and your Artist profile from here anytime.",
     // In the header from sm up; on a phone the same switch sits at the top of the menu.

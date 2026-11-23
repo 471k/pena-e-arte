@@ -11,8 +11,15 @@ export function formatSessionLength(minutes: number): string {
   return m === 0 ? hours : `${hours} ${m} min`;
 }
 
-/** "2 hours, set by “Large colour session”" when a service decides it; "2 hours, the length you chose" otherwise. */
+/**
+ * "2 hours, set by “Large colour session”" when a service decides it; just "2 hours" otherwise.
+ *
+ * The no-service case says nothing about WHO chose the length. It used to say "the length you chose", which is
+ * false when staff make the booking for a client and can't be proved either way afterwards, since an appointment
+ * records no creator (Desktop's ruling, 22 Nov). An unprovable clause is removed rather than a column added to
+ * make it true.
+ */
 export function describeSessionLength(minutes: number, serviceName: string | null): string {
   const length = formatSessionLength(minutes);
-  return serviceName ? `${length}, set by “${serviceName}”` : `${length}, the length you chose`;
+  return serviceName ? `${length}, set by “${serviceName}”` : length;
 }

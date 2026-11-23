@@ -2,10 +2,17 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Domain.Constants;
 
 namespace Pena_e_Arte.Application.Platform.Commands;
 
-public record TriggerIndustryReportCommand : IRequest;
+// Audited (D04 follow-up, 23 Nov): platform-wide, so the target is Platform with an empty id.
+public record TriggerIndustryReportCommand : IRequest, IAuditableCommand
+{
+    public string AuditAction => AuditActions.IndustryReportTriggered;
+    public string AuditTargetType => AuditTargetTypes.Platform;
+    public Guid AuditTargetId => Guid.Empty;
+}
 
 public class TriggerIndustryReportHandler(
     IJobScheduler jobs,

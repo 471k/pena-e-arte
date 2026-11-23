@@ -33,6 +33,9 @@ import {
 import type { StudioZone } from "@/shared/utils/formatInStudioTimezone";
 import { StudioDateTimeNote } from "@/shared/components/StudioDateTimeNote";
 import { useStudioZone } from "@/features/studios/useStudioZone";
+import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { bodyZoneLabel } from "@/features/clients/components/BodyMap";
 import { Role }            from "@/shared/types/roles";
 import { skipToken } from "@reduxjs/toolkit/query";
 import {
@@ -63,6 +66,11 @@ import { SlotAvailabilityIndicator }              from "./SlotAvailabilityIndica
 import { FieldLabel }                             from "./FieldLabel";
 import { ServiceChoiceSelect }                    from "./ServiceChoiceSelect";
 import { describeSessionLength }                  from "../sessionLength";
+import { estimateDeposit }                        from "../depositEstimate";
+import {
+  BookingReview, BookingSection, DepositReviewValue, OptionalCodes, type ReviewGroup,
+} from "./BookingSections";
+import { useBookingSections } from "./useBookingSections";
 import { TattooIntakeFields } from "./TattooIntakeFields";
 import { validateTattooIntake, type TattooIntakeValues } from "./tattooIntakeValidation";
 import { CategorizedImagesField } from "./CategorizedImagesField";
@@ -71,7 +79,6 @@ import { AppointmentAttachmentCategory } from "../appointment.types";
 import type { AppointmentResponse } from "../appointment.types";
 import type { ArtistResponse }      from "@/features/artists/artistsApi";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
-import type { ServiceResponse }     from "@/features/services/service.types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -92,6 +99,16 @@ const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 360, label: "6 hours" },
   { value: 480, label: "Full day (8 h)" },
 ];
+
+// The review's date and time, on the studio's clock (formatStudioTime adds the zone; never the browser's).
+const REVIEW_TIME_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+};
+
+// Long free text is shortened in the review; the section above holds the whole of it.
+function clip(text: string, max = 160): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
@@ -183,60 +200,6 @@ function ArtistSelectItem({ artist }: { artist: ArtistResponse }) {
         </span>
       </span>
     </SelectPrimitive.Item>
-  );
-}
-
-function DepositPreview({
-  rule,
-  durationMinutes,
-  hourlyRate,
-  currency,
-  studio,
-}: {
-  rule:            DepositRuleResponse;
-  durationMinutes: number;
-  hourlyRate:      number | null;
-  currency:        string | undefined;
-  studio:          MoneyStudio;
-}) {
-  let estimated: number | null = null;
-  if (rule.amountFixed !== null) {
-    estimated = rule.amountFixed;
-  } else if (rule.amountPercent !== null && hourlyRate !== null) {
-    const sessionHours = durationMinutes / 60;
-    estimated = (sessionHours * hourlyRate * rule.amountPercent) / 100;
-  }
-
-  return (
-    <div className="flex items-center justify-between rounded-md
-                    bg-muted/40 border border-border/30 px-3 py-2">
-      <span className="text-xs text-muted-foreground">Estimated deposit</span>
-      <span className="text-sm font-semibold tabular-nums">
-        {estimated === null
-          // A percentage rule needs the artist's hourly rate, unknown until one is picked.
-          ? <span className="text-xs font-normal text-muted-foreground">Set once an artist is picked</span>
-          : currency ? <Money amount={estimated} currency={currency} studio={studio} /> : "…"}
-      </span>
-    </div>
-  );
-}
-
-// Service.DepositAmount, when set, overrides the studio's DepositRule calculation entirely
-// for a booking that picks this service (see CreateAppointmentCommand.cs) — this preview
-// mirrors that, not DepositPreview's rule-based estimate.
-function ServiceDepositPreview({ service, currency, studio }: {
-  service: ServiceResponse; currency: string | undefined; studio: MoneyStudio;
-}) {
-  if (service.depositAmount === null) return null;
-
-  return (
-    <div className="flex items-center justify-between rounded-md
-                    bg-muted/40 border border-border/30 px-3 py-2">
-      <span className="text-xs text-muted-foreground">Deposit for this service</span>
-      <span className="text-sm font-semibold tabular-nums">
-        {currency ? <Money amount={service.depositAmount} currency={currency} studio={studio} /> : "…"}
-      </span>
-    </div>
   );
 }
 
@@ -503,6 +466,72 @@ export function BookAppointmentForm() {
       setValue("durationMinutes", selectedService.durationMinutes);
     }
   }, [selectedService, setValue]);
+
+  // C02: the review states what the sections above hold, in the words the sections use.
+  const sections = useBookingSections("book-review");
+  const { data: myStudio } = useGetMyStudioQuery();
+  const watchedPromoCode = useWatch({ control, name: "promoCode" });
+  const watchedNotes     = useWatch({ control, name: "notes" });
+  const watchedClientId  = useWatch({ control, name: "clientId" });
+  const creditApplied = isClientRole && applyOwnReward && !!unredeemedReward;
+  const depositEstimate = estimateDeposit({
+    packageCovered:  !!packagePurchaseId,
+    serviceDeposit:  selectedService?.depositAmount ?? null,
+    rule:            appliedRule,
+    artistChosen:    !watchedBookAnyArtist && !!selectedArtist,
+    studioAssigns:   watchedBookAnyArtist,
+    hourlyRate:      selectedArtist?.hourlyRate ?? null,
+    durationMinutes: watchedDuration,
+  });
+  const reviewGroups = buildReviewGroups();
+
+  function buildReviewGroups(): ReviewGroup[] {
+    const studioName = targetStudio?.name ?? myStudio?.name;
+    const session: ReviewGroup = { section: "book-session", title: "Session", rows: [
+      { label: "Studio", value: studioName ? `${studioName}${studioTz ? ` · ${studioTz}` : ""}` : "…" },
+      { label: "Artist", value: watchedBookAnyArtist
+        ? "The studio assigns one"
+        : selectedArtist ? `${selectedArtist.firstName} ${selectedArtist.lastName}` : "Not chosen yet" },
+    ] };
+    if (isStaffRole) {
+      const client = clients?.find((c) => c.id === watchedClientId);
+      session.rows.push({ label: "Client", value: client ? `${client.firstName} ${client.lastName}` : "Not chosen yet" });
+    }
+    if (activeServices.length > 0) {
+      session.rows.push({ label: "Service", value: selectedService?.name ?? (customLength ? "Something else" : "Not chosen yet") });
+    }
+    session.rows.push(
+      { label: "Session length", value: serviceUnchosen
+        ? "Set by the service you choose"
+        : describeSessionLength(watchedDuration, selectedService?.name ?? null) },
+      { label: "Date & time", value: pickedIso
+        ? `${formatStudioTime(pickedIso, REVIEW_TIME_FORMAT, zone)}${studioTz ? ` (studio time, ${studioTz})` : ""}`
+        : "Not chosen yet" },
+    );
+    const pkg = usablePackages.find((p) => p.id === packagePurchaseId);
+    if (pkg) session.rows.push({ label: "Package", value: pkg.packageName ?? "Package" });
+    const codes = [
+      watchedPromoCode ? `Promo code ${watchedPromoCode}` : null,
+      referralCode.trim() ? `Referral code ${referralCode.trim()}` : null,
+      creditApplied ? "Your referral credit" : null,
+    ].filter((c): c is string => c !== null);
+    if (codes.length > 0) session.rows.push({ label: "Codes", value: codes.join(" · ") });
+
+    const imageCount = (n: number, one: string, many: string) => (n === 0 ? null : `${n} ${n === 1 ? one : many}`);
+    const images = [
+      imageCount(areaPhotos.images.length, "area photo", "area photos"),
+      imageCount(referenceImages.images.length, "reference image", "reference images"),
+    ].filter((c): c is string => c !== null);
+    const idea: ReviewGroup = { section: "book-idea", title: "Idea & references", rows: [
+      { label: "Your idea", value: intake.tattooDescription.trim() ? clip(intake.tattooDescription.trim()) : "Not written yet" },
+      { label: "Placement", value: desiredPlacement.length > 0
+        ? desiredPlacement.map((id) => bodyZoneLabel(id) ?? id).join(", ")
+        : "None marked" },
+      { label: "Images", value: images.length > 0 ? images.join(", ") : "None added" },
+    ] };
+    if (watchedNotes?.trim()) idea.rows.push({ label: "Notes", value: clip(watchedNotes.trim()) });
+    return [session, idea];
+  }
 
   // S04: one list of everything to fix, and a deliberate choice before leaving with entered details.
   const [attempt, setAttempt] = useState(0);
@@ -781,6 +810,14 @@ export function BookAppointmentForm() {
         </div>
       )}
 
+      <BookingSection
+        id="book-session"
+        number={1}
+        title="Session"
+        description="Who, what and when."
+        showBack={sections.changing === "book-session"}
+        onBack={sections.backToReview}
+      >
       {/* Let the studio choose */}
       <div className="flex items-center justify-between rounded-md border border-border/40
                       bg-muted/20 px-3 py-2">
@@ -1059,49 +1096,55 @@ export function BookAppointmentForm() {
         </div>
       )}
 
-      {/* A service with its own DepositAmount overrides the studio's DepositRule entirely
-          (no stacking) — see CreateAppointmentCommand.cs. Show that instead of the rule
-          picker below, which would otherwise imply a choice that doesn't actually apply. */}
-      {selectedService && selectedService.depositAmount !== null && !packagePurchaseId && (
-        <div className="space-y-1.5">
-          <FieldLabel htmlFor="serviceDeposit">Deposit</FieldLabel>
-          <div id="serviceDeposit">
-            <ServiceDepositPreview service={selectedService} currency={bookingCurrency} studio={bookingStudio} />
+      {isClientRole && unredeemedReward && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-3">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Apply your referral credit</p>
+            <p className="text-xs text-muted-foreground">
+              {unredeemedReward.rewardPercent}% off this booking's deposit.
+            </p>
           </div>
+          <ToggleSwitch
+            checked={applyOwnReward}
+            onChange={() => setApplyOwnReward((v) => !v)}
+            aria-label="Apply your referral credit"
+          />
         </div>
       )}
 
-      {/* Deposit — the studio's active rule, read-only: the server applies it on every booking,
-          so a picker here would only imply a choice that doesn't exist (C-11 production test,
-          28 Oct 2026: clients saw "No deposit" preselected and were then charged). Hidden when a
-          selected service fixes its own deposit, or a package already pays for the booking. */}
-      {appliedRule && !packagePurchaseId
-        && !(selectedService && selectedService.depositAmount !== null) && watchedDuration > 0 && (
+      {/* C02: optional promotion and referral fields behind a disclosure. Kept as separately labelled fields
+          ("Promo code", "Referral code") rather than one ambiguous "discount code", since a booking can carry
+          both. */}
+      <OptionalCodes defaultOpen={!!watchedPromoCode || referralCode !== ""}>
         <div className="space-y-1.5">
-          <FieldLabel htmlFor="depositEstimate">Deposit</FieldLabel>
-          <div id="depositEstimate">
-            <DepositPreview
-              rule={appliedRule}
-              durationMinutes={watchedDuration}
-              hourlyRate={selectedArtist?.hourlyRate ?? null}
-              currency={bookingCurrency}
-              studio={bookingStudio}
-            />
-          </div>
+          <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
+          <Input
+            id="promoCode"
+            placeholder="Optional"
+            autoCapitalize="characters"
+            {...register("promoCode")}
+          />
         </div>
-      )}
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="referralCode">Referral code (optional)</FieldLabel>
+          <Input
+            id="referralCode"
+            placeholder="e.g. ABC12345"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+          />
+        </div>
+      </OptionalCodes>
+      </BookingSection>
 
-      {/* Promo code */}
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
-        <Input
-          id="promoCode"
-          placeholder="Optional"
-          autoCapitalize="characters"
-          {...register("promoCode")}
-        />
-      </div>
-
+      <BookingSection
+        id="book-idea"
+        number={2}
+        title="Idea & references"
+        description="What you'd like done, where, and anything that shows it."
+        showBack={sections.changing === "book-idea"}
+        onBack={sections.backToReview}
+      >
       {/* Tattoo description, referral source, safety notes — shared with guest checkout */}
       <TattooIntakeFields
         value={intake}
@@ -1124,36 +1167,6 @@ export function BookAppointmentForm() {
           className="resize-none"
         />
       </div>
-
-      {/* Referral code — distinct from "how did you hear about us" above, and from any
-          promo-code/gift-card fields other features add at this same site. Keep these
-          clearly labeled ("Promo code", "Gift card", "Referral code") rather than one
-          ambiguous "discount code" field, since a booking can carry all three. */}
-      <div className="space-y-1.5">
-        <FieldLabel htmlFor="referralCode">Referral code (optional)</FieldLabel>
-        <Input
-          id="referralCode"
-          placeholder="e.g. ABC12345"
-          value={referralCode}
-          onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-        />
-      </div>
-
-      {isClientRole && unredeemedReward && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-3">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium">Apply your referral credit</p>
-            <p className="text-xs text-muted-foreground">
-              {unredeemedReward.rewardPercent}% off this booking's deposit.
-            </p>
-          </div>
-          <ToggleSwitch
-            checked={applyOwnReward}
-            onChange={() => setApplyOwnReward((v) => !v)}
-            aria-label="Apply your referral credit"
-          />
-        </div>
-      )}
 
       {/* Area photo + reference images */}
       <CategorizedImagesField
@@ -1184,7 +1197,28 @@ export function BookAppointmentForm() {
         onRemove={referenceImages.remove}
         disabled={isLoading}
       />
+      </BookingSection>
 
+      {/* C02: the review. The deposit here is the old read-only estimate (C-11, 28 Oct: never a picker, since the
+          server applies the studio's rule itself), now stated once and always called an estimate. */}
+      <BookingReview
+        id="book-review"
+        number={3}
+        groups={reviewGroups}
+        onChange={sections.change}
+        deposit={
+          <DepositReviewValue
+            estimate={depositEstimate}
+            currency={bookingCurrency}
+            studio={bookingStudio}
+            discountPending={!!watchedPromoCode || referralCode.trim() !== "" || creditApplied}
+            staff={isStaffRole}
+          />
+        }
+        request={watchedBookAnyArtist
+          ? "A request, not a confirmed appointment. The studio assigns an artist, then confirms it."
+          : "A request, not a confirmed appointment, until it's confirmed."}
+      >
       <Button
         type="submit"
         className="w-full bg-violet-600 hover:bg-violet-700 text-white font-medium
@@ -1204,6 +1238,7 @@ export function BookAppointmentForm() {
       <p className="text-center text-[11px] text-muted-foreground">
         Your artist will confirm availability within 24 hours.
       </p>
+      </BookingReview>
     </form>
   );
 }

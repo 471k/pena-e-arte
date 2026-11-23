@@ -13,11 +13,14 @@ interface CategoryTabsProps {
 export function CategoryTabs({
   activeCategory, onChange, categories = CATEGORIES, className = "",
 }: CategoryTabsProps) {
+  // max-w-full + overflow-x-auto: the four labels need ~338px, so at 320px the group pushed the whole Discover
+  // page 34px sideways (found by slice 6e's pass; 1.4.10 reflow). Now it scrolls inside its own width, like the
+  // style chips beside it; w-fit still keeps it compact wherever it fits. Focusing a button scrolls it into view.
   return (
     <div
       role="group"
       aria-label="Filter by portfolio category"
-      className={`flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 w-fit ${className}`}
+      className={`flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 w-fit max-w-full overflow-x-auto scrollbar-none ${className}`}
     >
       {categories.map(({ value, label }) => {
         const isActive = activeCategory === value;

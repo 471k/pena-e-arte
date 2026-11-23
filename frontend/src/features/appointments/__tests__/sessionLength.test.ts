@@ -10,6 +10,6 @@ describe("session length wording (C04; slice 7 phase C's review block reads the 
 
   it("names its basis: the service, or the client's own choice", () => {
     expect(describeSessionLength(120, "Large colour session")).toBe("2 hours, set by “Large colour session”");
-    expect(describeSessionLength(90, null)).toBe("1 hour 30 min, the length you chose");
+    expect(describeSessionLength(90, null)).toBe("1 hour 30 min");
   });
 });
