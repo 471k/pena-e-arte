@@ -11,6 +11,8 @@ import authReducer from "@/features/auth/authSlice";
 import { socialApi } from "@/features/social/socialApi";
 import type { SocialLinkStatus, SocialConnectUrlResponse, SocialVerificationCodeResponse, SocialVerifyResult } from "@/features/social/socialApi";
 import { SocialLinksCard } from "@/features/social/components/SocialLinksCard";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -55,6 +57,10 @@ const server = setupServer(
     return new HttpResponse(null, { status: 204 });
   }),
   http.put(`${BASE}/:platform/handle`, () => new HttpResponse(null, { status: 204 })),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", isActive: true, timezone: "Europe/Tirane", currency: "EUR" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -70,8 +76,9 @@ afterAll(() => server.close());
 
 function makeStore() {
   return configureStore({
-    reducer: { auth: authReducer, [socialApi.reducerPath]: socialApi.reducer },
-    middleware: (gd) => gd().concat(socialApi.middleware),
+    reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer, auth: authReducer, [socialApi.reducerPath]: socialApi.reducer },
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, socialApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },

@@ -1,6 +1,5 @@
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -12,6 +11,7 @@ import {
   useUpsertStudioHoursMutation,
   type StudioHoursEntry,
 } from "../studiosApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DEFAULT_START = "09:00:00";
@@ -129,10 +129,10 @@ export function StudioHoursCard() {
               </div>
             ))}
 
-            <Button onClick={handleSave} disabled={saving} className="gap-2 mt-2">
+            <SubscriptionGatedButton onClick={handleSave} disabled={saving} className="gap-2 mt-2">
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Save studio hours
-            </Button>
+            </SubscriptionGatedButton>
           </>
         )}
       </CardContent>

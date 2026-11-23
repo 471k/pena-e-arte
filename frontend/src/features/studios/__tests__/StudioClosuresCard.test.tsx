@@ -10,6 +10,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { studiosApi, type StudioResponse, type StudioClosureResponse } from "@/features/studios/studiosApi";
 import { StudioClosuresCard } from "@/features/studios/components/StudioClosuresCard";
+import { billingApi } from "@/features/billing/billingApi";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,8 @@ const CLOSURE: StudioClosureResponse = {
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO)),
   http.get("http://localhost/api/v1/studios/studio-001/closures", () => HttpResponse.json([])),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -63,10 +66,11 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth:                     authReducer,
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
   });
 }
 

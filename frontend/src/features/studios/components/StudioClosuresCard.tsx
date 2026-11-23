@@ -11,6 +11,7 @@ import {
   useAddStudioClosureMutation,
   useDeleteStudioClosureMutation,
 } from "../studiosApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -99,7 +100,7 @@ export function StudioClosuresCard() {
                     {formatDate(c.startDate)} – {formatDate(c.endDate)}
                   </p>
                 </div>
-                <Button
+                <SubscriptionGatedButton
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 shrink-0"
@@ -108,7 +109,7 @@ export function StudioClosuresCard() {
                   aria-label={`Remove closure: ${c.reason}`}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                </Button>
+                </SubscriptionGatedButton>
               </li>
             ))}
           </ul>
@@ -150,10 +151,10 @@ export function StudioClosuresCard() {
             </div>
             {error && <p className="text-xs text-destructive-text">{error}</p>}
             <div className="flex items-center gap-2">
-              <Button size="sm" onClick={handleAdd} disabled={adding} className="gap-2">
+              <SubscriptionGatedButton size="sm" onClick={handleAdd} disabled={adding} className="gap-2">
                 {adding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Add closure
-              </Button>
+              </SubscriptionGatedButton>
               <Button variant="ghost" size="sm" onClick={resetForm} disabled={adding} className="gap-1">
                 <X className="h-3.5 w-3.5" />
                 Cancel
@@ -161,9 +162,9 @@ export function StudioClosuresCard() {
             </div>
           </div>
         ) : (
-          <Button variant="outline" size="sm" onClick={() => setIsFormOpen(true)}>
+          <SubscriptionGatedButton variant="outline" size="sm" onClick={() => setIsFormOpen(true)}>
             Add closure
-          </Button>
+          </SubscriptionGatedButton>
         )}
       </CardContent>
     </Card>

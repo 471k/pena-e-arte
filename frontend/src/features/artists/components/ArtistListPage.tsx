@@ -32,6 +32,7 @@ import {
 } from "../artistsApi";
 import { useGetPlanUsageQuery } from "@/features/billing/billingApi";
 import type { ArtistResponse } from "../artistsApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 function specializationLabel(style: string): string {
   return TATTOO_STYLE_OPTIONS.find((o) => o.value === style)?.label ?? style;
@@ -222,7 +223,7 @@ export function ArtistListPage() {
                 >
                   Cancel
                 </Button>
-                <Button
+                <SubscriptionGatedButton
                   variant="destructive"
                   size="sm"
                   className="h-6 text-xs"
@@ -241,10 +242,10 @@ export function ArtistListPage() {
                   }}
                 >
                   {isDeletingArtist ? "Deleting…" : "Confirm"}
-                </Button>
+                </SubscriptionGatedButton>
               </div>
             ) : (
-              <Button
+              <SubscriptionGatedButton
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs gap-1 text-destructive-text hover:text-destructive-text hover:bg-destructive/10"
@@ -252,7 +253,7 @@ export function ArtistListPage() {
               >
                 <Trash2 className="h-3 w-3" />
                 Delete
-              </Button>
+              </SubscriptionGatedButton>
             )
           )}
         </div>
@@ -287,10 +288,10 @@ export function ArtistListPage() {
             </span>
           )}
           {canManage && (isLoading || hasArtists || !!search) && (
-            <Button size="sm" onClick={() => navigate("/artists/new")} className="gap-1.5">
+            <SubscriptionGatedButton size="sm" onClick={() => navigate("/artists/new")} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               New Artist
-            </Button>
+            </SubscriptionGatedButton>
           )}
         </div>
       </header>
@@ -314,14 +315,14 @@ export function ArtistListPage() {
                 Enable your own artist profile — no second account needed.
               </p>
             </div>
-            <Button
+            <SubscriptionGatedButton
               size="sm"
               variant="outline"
               data-tour="owner-become-artist-cta"
               onClick={() => setBecomeArtistOpen(true)}
             >
               Enable my artist profile
-            </Button>
+            </SubscriptionGatedButton>
           </div>
         )}
 
@@ -350,14 +351,14 @@ export function ArtistListPage() {
               Add your first artist to get started.
             </p>
             {canManage && (
-              <Button
+              <SubscriptionGatedButton
                 size="sm"
                 onClick={() => navigate("/artists/new")}
                 className="gap-1.5 mt-1"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New Artist
-              </Button>
+              </SubscriptionGatedButton>
             )}
           </div>
         )}
@@ -420,7 +421,7 @@ export function ArtistListPage() {
                       confirmDeleteId === a.id ? (
                         <div className="flex items-center gap-1.5">
                           <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
-                          <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={isDeletingArtist} onClick={async () => {
+                          <SubscriptionGatedButton variant="destructive" size="sm" className="h-8 text-xs" disabled={isDeletingArtist} onClick={async () => {
                             try { await deleteArtist(a.id).unwrap(); toast.success("Artist deleted."); }
                             catch (err: unknown) {
                               const message = (err as { data?: { message?: string } } | undefined)?.data?.message ?? "Failed to delete artist.";
@@ -429,12 +430,12 @@ export function ArtistListPage() {
                             setConfirmDeleteId(null);
                           }}>
                             {isDeletingArtist ? "Deleting…" : "Confirm"}
-                          </Button>
+                          </SubscriptionGatedButton>
                         </div>
                       ) : (
-                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 text-destructive-text hover:text-destructive-text hover:bg-destructive/10" onClick={() => setConfirmDeleteId(a.id)}>
+                        <SubscriptionGatedButton variant="ghost" size="sm" className="h-8 text-xs gap-1 text-destructive-text hover:text-destructive-text hover:bg-destructive/10" onClick={() => setConfirmDeleteId(a.id)}>
                           <Trash2 className="h-3.5 w-3.5" /> Delete
-                        </Button>
+                        </SubscriptionGatedButton>
                       )
                     )}
                   </div>
@@ -496,12 +497,12 @@ export function ArtistListPage() {
             <Button variant="outline" onClick={() => setBecomeArtistOpen(false)} disabled={isEnabling}>
               Cancel
             </Button>
-            <Button
+            <SubscriptionGatedButton
               onClick={() => void onEnableOwnArtistProfile()}
               disabled={isEnabling || !baFirstName.trim() || !baLastName.trim()}
             >
               {isEnabling ? "Enabling…" : "Enable my artist profile"}
-            </Button>
+            </SubscriptionGatedButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -7873,3 +7873,22 @@ been marked Present in slice 3; it is **Partial** until this lands.
   instant keeps one calendar date across it.
 - This is conformance to S01's own requirement (a booking time in the venue's zone is also the category norm), not a
   benchmark discovery.
+
+## Write controls say why they are off during a support view (D05 phase 4b) — 2026-11-23
+
+- **One default, not forty marks.** `useSubscriptionGuard` gains the cause `"support"` (an admin's support session,
+  `useSupportView`), which takes precedence over suspension and subscription because the server refuses every
+  write in the session whatever the studio's state. `SubscriptionGatedButton` shows `SUPPORT_VIEW_READ_ONLY_REASON`
+  for it. The write controls on the pages that do load in a session became `SubscriptionGatedButton`, so the
+  default is right and cannot rot; a `writes` prop set at each call site would have been wrong by default.
+- **Disabled with a reason, not hidden.** A vanished control reads as a bug to the admin; a visible, turned-off one
+  says what is happening. The Button keeps focus and its `aria-describedby` reason (slice 6a).
+- **Controls that aren't Buttons** (the artist picker `Select`, the flash-catalog checkbox and price, the branding
+  switch, the client list's row-menu items) are disabled in a session with the same sentence attached by
+  `aria-describedby`. A menu trigger can't be blocked by a reason (Radix opens on pointer-down; the Button only stops
+  the click), so the artist portfolio's "Add image" menu renders as a plain gated button during a session.
+- **Server-side refusal stays** the real protection (`ImpersonationAllowList`); this only stops offering an action
+  that cannot work.
+- Reads are untouched: tabs, filters, the schedule's dates, Export CSV, Add to Calendar, copy buttons.
+- Side effect, intended: the same controls are now also gated for an owner whose studio is read-only for
+  subscription reasons (GracePeriod), which the server already refuses.

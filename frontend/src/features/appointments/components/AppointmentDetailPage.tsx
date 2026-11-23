@@ -44,6 +44,8 @@ import {
   useAssignAppointmentArtistMutation,
 } from "../appointmentsApi";
 import { Money } from "@/shared/components/Money";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { SUPPORT_VIEW_READ_ONLY_REASON, useSupportView } from "@/shared/hooks/useSupportView";
 
 // S01: the studio's zone or a pending mark. The appointment and the studio load separately, so a fallback to the
 // browser's zone painted a wrong time first for anyone viewing from elsewhere.
@@ -130,6 +132,8 @@ export function AppointmentDetailPage() {
   // A04: a no-show is confirmed in a dialog that first shows what it does to the deposit.
   const [noShowOpen, setNoShowOpen] = useState(false);
   const [assignArtist, { isLoading: assigning }] = useAssignAppointmentArtistMutation();
+  // D05 4b: in a support session the picker stays visible, disabled, and says why (a Select isn't a Button).
+  const supportView = useSupportView();
   const [createConversation, { isLoading: startingConversation }] = useCreateConversationMutation();
 
   // Admin can view this page but is not a valid messaging participant (see messaging
@@ -241,9 +245,11 @@ export function AppointmentDetailPage() {
                   label="Artist"
                   value={
                     canOwner ? (
-                      <Select value={appt.artistId ?? undefined} onValueChange={handleAssignArtist} disabled={assigning}>
+                      <>
+                      <Select value={appt.artistId ?? undefined} onValueChange={handleAssignArtist} disabled={assigning || supportView}>
                         <SelectTrigger
                           aria-label="Assigned artist"
+                          aria-describedby={supportView ? "assign-artist-support-reason" : undefined}
                           className="h-7 w-auto gap-1.5 border-none px-0 shadow-none text-sm ml-auto"
                         >
                           <SelectValue placeholder="Unassigned — pick an artist" />
@@ -256,6 +262,10 @@ export function AppointmentDetailPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {supportView && (
+                        <span id="assign-artist-support-reason" className="sr-only">{SUPPORT_VIEW_READ_ONLY_REASON}</span>
+                      )}
+                      </>
                     ) : appt.artistName ? (
                       appt.artistName
                     ) : (
@@ -351,7 +361,7 @@ export function AppointmentDetailPage() {
             <ClientCommunicationCard appt={appt} />
 
             {canMessageClient && (
-              <Button
+              <SubscriptionGatedButton
                 variant="outline"
                 className="w-full gap-2"
                 disabled={startingConversation}
@@ -359,7 +369,7 @@ export function AppointmentDetailPage() {
               >
                 {startingConversation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                 Message {appt.clientName ?? "client"}
-              </Button>
+              </SubscriptionGatedButton>
             )}
 
             {/* P-09: Add to Calendar */}
@@ -379,14 +389,14 @@ export function AppointmentDetailPage() {
             {isArtistPlus && !isTerminal && (
               <div className="flex flex-col gap-2">
                 {isPending && appt.artistId !== null && (
-                  <Button
+                  <SubscriptionGatedButton
                     className="w-full gap-2"
                     disabled={anyLoading}
                     onClick={handleConfirm}
                   >
                     {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Confirm appointment
-                  </Button>
+                  </SubscriptionGatedButton>
                 )}
                 {isPending && appt.artistId === null && canOwner && (
                   <p className="text-xs text-muted-foreground text-center">
@@ -395,17 +405,17 @@ export function AppointmentDetailPage() {
                 )}
 
                 {isConfirmed && (
-                  <Button
+                  <SubscriptionGatedButton
                     className="w-full gap-2"
                     disabled={anyLoading}
                     onClick={handleComplete}
                   >
                     {completing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                     Mark as complete
-                  </Button>
+                  </SubscriptionGatedButton>
                 )}
 
-                <Button
+                <SubscriptionGatedButton
                   variant="outline"
                   className="w-full gap-2"
                   disabled={anyLoading}
@@ -413,10 +423,10 @@ export function AppointmentDetailPage() {
                 >
                   <CalendarClock className="h-4 w-4" />
                   Reschedule
-                </Button>
+                </SubscriptionGatedButton>
 
                 {appt.artistId !== null && (
-                  <Button
+                  <SubscriptionGatedButton
                     variant="outline"
                     className="w-full gap-2"
                     disabled={anyLoading}
@@ -424,11 +434,11 @@ export function AppointmentDetailPage() {
                   >
                     <Send className="h-4 w-4" />
                     Send Reminder
-                  </Button>
+                  </SubscriptionGatedButton>
                 )}
 
                 {appt.depositStatus === DepositStatus.Pending && canOwner && (
-                  <Button
+                  <SubscriptionGatedButton
                     variant="outline"
                     className="w-full gap-2"
                     onClick={() =>
@@ -439,11 +449,11 @@ export function AppointmentDetailPage() {
                   >
                     <CreditCard className="h-4 w-4" />
                     Charge deposit
-                  </Button>
+                  </SubscriptionGatedButton>
                 )}
 
                 {!isPending && canMarkNoShow && (
-                  <Button
+                  <SubscriptionGatedButton
                     variant="ghost"
                     className="w-full gap-2 text-muted-foreground"
                     disabled={anyLoading}
@@ -451,10 +461,10 @@ export function AppointmentDetailPage() {
                   >
                     <UserX className="h-4 w-4" aria-hidden="true" />
                     Mark no-show
-                  </Button>
+                  </SubscriptionGatedButton>
                 )}
 
-                <Button
+                <SubscriptionGatedButton
                   variant="ghost"
                   className="w-full gap-2 text-destructive-text hover:text-destructive-text"
                   disabled={anyLoading}
@@ -462,7 +472,7 @@ export function AppointmentDetailPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                   {isPending ? "Decline request" : "Cancel appointment"}
-                </Button>
+                </SubscriptionGatedButton>
               </div>
             )}
           </>

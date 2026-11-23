@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import { studiosApi, type StudioResponse } from "@/features/studios/studiosApi";
 import { CurrencySettingsCard } from "@/features/studios/components/CurrencySettingsCard";
+import { billingApi } from "@/features/billing/billingApi";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,8 @@ const LOCKED_STUDIO: StudioResponse = { ...UNLOCKED_STUDIO, currency: "ALL", cur
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(UNLOCKED_STUDIO)),
   http.put("http://localhost/api/v1/studios/me/currency", () => HttpResponse.json({ ...UNLOCKED_STUDIO, currency: "ALL" })),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -60,10 +63,11 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth:                     authReducer,
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
   });
 }
 

@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import authReducer from "@/features/auth/authSlice";
 import { studiosApi, type StudioResponse, type StudioApiKeyStatusResponse } from "@/features/studios/studiosApi";
 import { DeveloperSettingsCard } from "@/features/studios/components/DeveloperSettingsCard";
+import { billingApi } from "@/features/billing/billingApi";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,8 @@ const ACTIVE_KEY_STATUS: StudioApiKeyStatusResponse = {
 const server = setupServer(
   http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(STUDIO_WITH_API_ACCESS)),
   http.get("http://localhost/api/v1/studios/me/api-key", () => HttpResponse.json(NO_KEY_STATUS)),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => {
@@ -71,10 +74,11 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth:                     authReducer,
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
   });
 }
 

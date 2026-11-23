@@ -3,11 +3,13 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import { useGetMyStudioQuery, useUpdateStudioBrandingMutation } from "../studiosApi";
+import { SUPPORT_VIEW_READ_ONLY_REASON, useSupportView } from "@/shared/hooks/useSupportView";
 
 export function BrandingSettingsCard() {
   const { data: studio } = useGetMyStudioQuery();
   const [updateBranding, { isLoading }] = useUpdateStudioBrandingMutation();
 
+  const supportView = useSupportView();
   if (!studio) return null;
 
   const canToggleOff = studio.allowBrandingRemoval;
@@ -66,12 +68,17 @@ export function BrandingSettingsCard() {
               <ToggleSwitch
                 checked={studio.showPlatformBranding}
                 onChange={handleToggle}
-                disabled={isDisabled}
+                disabled={isDisabled || supportView}
                 aria-label="Show platform branding to your clients"
+                aria-describedby={supportView ? "branding-support-reason" : undefined}
               />
             )
           }
         </div>
+        {/* D05 4b: a switch isn't a Button, so it is disabled and the reason is said here. */}
+        {supportView && (
+          <p id="branding-support-reason" className="mt-2 text-xs text-muted-foreground">{SUPPORT_VIEW_READ_ONLY_REASON}</p>
+        )}
       </CardContent>
     </Card>
   );
