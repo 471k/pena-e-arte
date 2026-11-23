@@ -1,8 +1,8 @@
 import { CheckCircle2, CircleAlert, CircleDashed, RotateCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { MessageClientAboutAppointment } from "@/features/messaging/components/MessageClientAboutAppointment";
 import { useGetAppointmentCommunicationQuery } from "../appointmentsApi";
 import { AppointmentStatus } from "../appointment.types";
@@ -26,10 +26,11 @@ function errorStatus(error: unknown): number | undefined {
 }
 
 export function ClientCommunicationCard({ appt }: { appt: AppointmentResponse }) {
-  const { data: studio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
   const { data, isLoading, isError, error, refetch, isFetching } = useGetAppointmentCommunicationQuery(appt.id);
-  const when = (iso: string) => new Date(iso).toLocaleString(
-    "en-GB", withStudioTimeZone({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, studio?.timezone));
+  // S01: pending until the studio's zone loads, never the browser's zone in the meantime.
+  const when = (iso: string) => formatStudioTime(
+    iso, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, zone);
 
   // An artist on a colleague's session gets 404 by design: there is no task of theirs to show.
   if (isError && errorStatus(error) === 404) return null;

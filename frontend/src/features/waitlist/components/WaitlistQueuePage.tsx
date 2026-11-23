@@ -6,9 +6,12 @@ import { DataTable } from "@/shared/components/DataTable";
 import { cn } from "@/shared/utils/cn";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { useGetWaitlistQuery } from "../waitlistApi";
+import { formatWaitlistDate } from "../waitlistDates";
 import { WaitlistStatus, type WaitlistEntryResponse } from "../waitlist.types";
 
-function formatDate(iso: string): string {
+/** A record date (when someone joined) reads in the viewer's own zone (S01 rule B); the preferred range is a
+ * day on the studio's calendar and goes through formatWaitlistDate. */
+function formatRecordDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -112,12 +115,12 @@ export function WaitlistQueuePage() {
                 header: "Preferred window",
                 cell: (e) => (
                   <span className="text-sm text-muted-foreground">
-                    {formatDate(e.preferredDateFrom)} – {formatDate(e.preferredDateTo)}
+                    {formatWaitlistDate(e.preferredDateFrom, e)} – {formatWaitlistDate(e.preferredDateTo, e)}
                   </span>
                 ),
               },
               { header: "Status", cell: (e) => <StatusBadge status={e.status} /> },
-              { header: "Joined", cell: (e) => formatDate(e.createdAt) },
+              { header: "Joined", cell: (e) => formatRecordDate(e.createdAt) },
             ]}
             data={filtered}
             keyExtractor={(e) => e.id}
@@ -132,7 +135,7 @@ export function WaitlistQueuePage() {
                 </div>
                 <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
                   <span>{e.artistName ?? "Any artist"}</span>
-                  <span>{formatDate(e.preferredDateFrom)} – {formatDate(e.preferredDateTo)}</span>
+                  <span>{formatWaitlistDate(e.preferredDateFrom, e)} – {formatWaitlistDate(e.preferredDateTo, e)}</span>
                 </div>
               </div>
             )}

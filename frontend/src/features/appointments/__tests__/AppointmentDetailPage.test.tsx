@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedF
 
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
@@ -650,5 +651,31 @@ describe("AppointmentDetailPage opened directly", () => {
     const dialog = screen.getByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: /^cancel appointment$/i }));
     expect(await screen.findByTestId("schedule-page")).toBeInTheDocument();
+  });
+});
+
+/** S01: hold GET /studios/me back so the window before the studio's zone arrives can be looked at directly. */
+function holdStudio() {
+  server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+    await delay(400);
+    return HttpResponse.json({ id: "s-001", timezone: "America/New_York", currency: "EUR" });
+  }));
+}
+
+describe("AppointmentDetailPage — first paint (S01)", () => {
+  it("reads 'Date & time' as pending until the studio's zone loads, never in the viewer's zone", async () => {
+    holdStudio();
+    server.use(http.get("http://localhost/api/v1/appointments/:id", () =>
+      HttpResponse.json({ ...APPT_PENDING, date: "2026-06-15T20:00:00Z" })));
+    renderPage("appt-001");
+
+    await screen.findByText("Date & time");
+    expect(screen.queryByText(/15 June 2026/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(STUDIO_TIME_PENDING).length).toBeGreaterThan(0);
+    const expected = new Date("2026-06-15T20:00:00Z").toLocaleString("en-GB", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      hour: "2-digit", minute: "2-digit", timeZone: "America/New_York",
+    });
+    expect(await screen.findByText(expected)).toBeInTheDocument();
   });
 });

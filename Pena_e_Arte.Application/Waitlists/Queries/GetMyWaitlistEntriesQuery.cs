@@ -28,10 +28,14 @@ public class GetMyWaitlistEntriesHandler(IAppDbContext db, ICurrentUser currentU
             .OrderByDescending(w => w.CreatedAt)
             .ToListAsync(ct);
 
+        // S01: the client belongs to one studio, so every entry here shares its zone.
+        string? studioTimezone = await db.StudioTimezoneAsync(client.StudioId, ct);
+
         DateTime now = DateTime.UtcNow;
         return entries
             .Select(w => JoinWaitlistHandler.Map(
                 w,
+                studioTimezone,
                 w.Artist != null ? w.Artist.FirstName + " " + w.Artist.LastName : null,
                 null,
                 // C09: the caller's own entry with a still-open offer gets the same claim token the email

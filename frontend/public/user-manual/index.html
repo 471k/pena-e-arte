@@ -1032,7 +1032,7 @@ ol.steps li { margin: 6px 0; }
 <p>At <code>/my-appointments/&lt;id&gt;</code>: everything about one of your bookings in one place. Open it with <span class="step-title">View appointment details</span> on any booking under My Bookings. You can bookmark it or open it from a link; if you're signed out, you sign in and land straight on it. Someone else's appointment shows "Appointment not found".</p>
 <h3>What's on the page, top to bottom</h3>
 <ol class="steps">
-<li><span class="step-title">Summary</span>: the date, start and end time, length, your artist, and two separate statuses: the booking (Requested, Confirmed, Cancelled, Completed or No Show) and your deposit. Once the booking is confirmed, <span class="step-title">Add to calendar</span> downloads it as a calendar file (.ics); it isn't offered for a request, or once a booking is cancelled or done, so your calendar never shows one that isn't confirmed.</li>
+<li><span class="step-title">Summary</span>: the date, start and end time, length, your artist, and two separate statuses: the booking (Requested, Confirmed, Cancelled, Completed or No Show) and your deposit. The date and times are the studio's local time, wherever you are; for a moment while the page loads they show "…" rather than a time in your own zone. Once the booking is confirmed, <span class="step-title">Add to calendar</span> downloads it as a calendar file (.ics); it isn't offered for a request, or once a booking is cancelled or done, so your calendar never shows one that isn't confirmed.</li>
 <li><span class="step-title">Next step</span>: if there's something to do before your appointment, the next one is a single button, for example <span class="step-title">Pay your deposit</span>, <span class="step-title">Fill in the intake form</span> or <span class="step-title">Sign the consent form</span>. The form pages open with this appointment already selected. With nothing left to do, there's no button.</li>
 <li><span class="step-title">Before your appointment</span>: anything else still to do. What you've already done is folded under <span class="step-title">Done</span>; open it to check.</li>
 <li><span class="step-title">Your design</span>: your description, style, placement and photos. A long description shows a <span class="step-title">Show more</span> button to read all of it.</li>
@@ -1103,7 +1103,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>On the booking form, when your requested slot is unavailable, click <span class="step-title">Notify me when a slot opens up</span>.</li>
 <li>Confirm your details (pre-filled if signed in) and submit.</li>
-<li>Check <code>/waitlist/mine</code> to see status, or remove yourself at any time.</li>
+<li>Check <code>/waitlist/mine</code> to see status, or remove yourself at any time. Its dates (the days you asked for, and the day of any slot you're offered) are the studio's days in its time zone, so they match the email even if you're somewhere else.</li>
 <li>When a slot frees up you get an email naming it. <span class="step-title">Book this slot</span> opens a page showing the slot in the studio's time, then the booking form with the artist and time already filled in; add the rest and send the request as usual. Signed in, the same button is next to the entry on My Waitlist.</li>
 <li>The offer lasts 24 hours from the email. After that the entry shows Expired and the slot is offered to the next person in line; you can join again from the studio's page.</li>
 <li>If someone books the slot first, the page says so and lets you book another time. Booking from the offer, at that time or another, marks your entry Booked.</li>
@@ -3281,7 +3281,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Waitlist — client, artist, preferred window, status, joined-date columns</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Go to Waitlist and optionally filter by status: Waiting, Notified, Booked, Expired, Cancelled.</li>
+<li>Go to Waitlist and optionally filter by status: Waiting, Notified, Booked, Expired, Cancelled. Each preferred window is in your studio's time zone; the joined date is in your own.</li>
 <li>As an artist, you only see entries matching you (or "any artist"); owners see the full studio-wide list.</li>
 </ol>
 <div class="callout callout-tip"><strong>Note:</strong> notification is fully automatic — there's no manual "notify" action on this page.</div>

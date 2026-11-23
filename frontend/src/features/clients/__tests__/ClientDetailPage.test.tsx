@@ -29,6 +29,12 @@ import { AppointmentStatus, DepositStatus } from "@/features/appointments/appoin
 import { ClientDetailPage } from "@/features/clients/components/ClientDetailPage";
 import { Role } from "@/shared/types/roles";
 
+// S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
+// computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
+// runs from UTC-11 to UTC+14, a 25-hour span, and no instant keeps one calendar date across all of it.
+const viewerDay = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
 const CLIENT_ID = "client-001";
@@ -443,9 +449,9 @@ describe("ClientDetailPage", () => {
     await screen.findByText("Ana Ferreira");
     await user.click(screen.getByRole("tab", { name: /^forms$/i }));
     await screen.findByText("Intake Forms");
-    const intakeLink = screen.getByRole("link", { name: /5 jan(uary)? 2026/i });
+    const intakeLink = screen.getByRole("link", { name: new RegExp(viewerDay("2026-01-05T00:00:00.000Z")) });
     expect(intakeLink).toHaveAttribute("href", `/forms/intake/${INTAKE_FORM.id}`);
-    const consentLink = screen.getByRole("link", { name: /6 jan(uary)? 2026/i });
+    const consentLink = screen.getByRole("link", { name: new RegExp(viewerDay("2026-01-06T00:00:00.000Z")) });
     expect(consentLink).toHaveAttribute("href", `/forms/consent/${CONSENT_FORM.id}`);
   });
 
@@ -616,7 +622,7 @@ describe("ClientDetailPage", () => {
     renderPage(Role.Owner);
     await screen.findByText("Ana Ferreira");
 
-    expect(await screen.findByText(/data erasure requested on 1 sep(t|tember)? 2026/i)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`data erasure requested on ${viewerDay("2026-09-01T00:00:00.000Z")}`, "i"))).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /erase client data/i })).not.toBeInTheDocument();
   });
 

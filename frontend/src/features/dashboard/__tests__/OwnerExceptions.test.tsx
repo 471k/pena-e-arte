@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
@@ -20,6 +20,7 @@ import {
   type OwnerExceptionsResponse,
 } from "@/features/dashboard/dashboard.types";
 import type { PaymentResponse } from "@/features/payments/payment.types";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 // E05a (O01): the "Needs you" panel. Every group in loading / error / empty / populated, the empty
 // panel as a designed state, the real counts, and the §6 disclosure rules.
@@ -288,5 +289,26 @@ describe("OwnerExceptions", () => {
     const name = await screen.findByText(long);
     expect(name.closest("p")).toHaveClass("break-words");
     expect(name.closest("p")).not.toHaveClass("truncate");
+  });
+});
+
+/** S01: hold GET /studios/me back so the window before the studio's zone arrives can be looked at directly. */
+function holdStudio() {
+  server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+    await delay(400);
+    return HttpResponse.json({ id: "stud-0001", timezone: "Europe/Tirane", currency: "EUR", countryCode: "PT" });
+  }));
+}
+
+describe("OwnerExceptions — first paint (S01)", () => {
+  it("shows an item's time as pending until the studio's zone loads, never in the viewer's zone", async () => {
+    holdStudio();
+    body = response([group("AwaitingConfirmation", [item()])]);
+    renderPanel();
+
+    const g = await screen.findByTestId("exception-group-AwaitingConfirmation");
+    expect(within(g).queryByText(/1[34]:00/)).not.toBeInTheDocument();
+    expect(within(g).getAllByText(STUDIO_TIME_PENDING).length).toBeGreaterThan(0);
+    expect(await within(g).findByText(/14:00/)).toBeInTheDocument();
   });
 });

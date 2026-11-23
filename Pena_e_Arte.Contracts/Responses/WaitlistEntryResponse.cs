@@ -3,6 +3,10 @@ namespace Pena_e_Arte.Contracts.Responses;
 public record WaitlistEntryResponse(
     Guid Id,
     Guid StudioId,
+    // S01. The studio's IANA zone, so the client's own list shows an offered slot on the studio's calendar
+    // rather than the viewer's (MyWaitlistPage had no zone at all). Null only if the studio row is missing,
+    // which the page shows as "Time unavailable" rather than guessing a zone.
+    string? StudioTimezone,
     Guid? ArtistId,
     string? ArtistName,
     Guid? ClientId,

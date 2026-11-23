@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Waitlists.Commands;
 using Pena_e_Arte.Contracts.Responses;
@@ -33,14 +34,23 @@ public class GetWaitlistHandler(IAppDbContext db, ICurrentUser currentUser)
             q = q.Where(w => w.ArtistId == query.ArtistId.Value);
         }
 
-        return await q
+        List<Domain.Entities.Waitlist> rows = await q
             .Include(w => w.Artist)
             .Include(w => w.Client)
             .OrderBy(w => w.CreatedAt)
+            .ToListAsync(ct);
+
+        // S01: the tenant filter makes this one studio in practice; keyed by the row's own studio regardless.
+        Dictionary<Guid, string?> zones = [];
+        foreach (Guid studioId in rows.Select(w => w.StudioId).Distinct())
+            zones[studioId] = await db.StudioTimezoneAsync(studioId, ct);
+
+        return rows
             .Select(w => JoinWaitlistHandler.Map(
                 w,
+                zones[w.StudioId],
                 w.Artist != null ? w.Artist.FirstName + " " + w.Artist.LastName : null,
                 w.Client != null ? w.Client.FirstName + " " + w.Client.LastName : null))
-            .ToListAsync(ct);
+            .ToList();
     }
 }
