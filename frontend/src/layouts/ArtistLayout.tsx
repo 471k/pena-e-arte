@@ -77,7 +77,7 @@ export function ArtistLayout() {
           onFeedback={() => setFeedbackOpen(true)}
           showMessages
           help={{ onBeforeTourStep, onTourEnd }}
-          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} compact={headerFolded} />}
         />
       </header>
 

@@ -7952,3 +7952,20 @@ extension.**
 **Why not built:** Phase 7 verifies, it doesn't build. It's a one-line refusal of the same kind Phi already decided
 twice, so it should be a short decision, not a design question. **Rollback cost of leaving it:** an admin can
 extend a `NoSubscription` studio, see a success toast, and the studio stays locked out.
+
+## The header also folds when its content overflows (S05 follow-up, slice 9's pass) — 2026-11-23
+
+Slice 9's 200% pass found #441's fold calibrated on the phone layout only. From 640px up the header adds the
+Owner/Artist switch, the studio's name, wider gaps and the account chip's name, so at 200% text an owner's header
+overflowed by 446px at 768, 214 at 1024 and 138 at 1100 (artist: 92 at 768). Not a regression (those widths
+overflowed before #441 too), but Phase 2's "zero sideways scroll" held only below 640.
+
+- **`useHeaderFold` now also folds on measured overflow.** Unfolded, if the header's content is wider than the
+  header, it folds and remembers how wide the inline layout needed to be; it unfolds only once the header is that
+  wide. The remembered width only grows, so it can't flip back and forth. The rem threshold stays as the floor, so
+  the phone behaviour #441 measured is unchanged. Children are observed too: content that arrives later widens
+  them, not the header.
+- **Folded means phone-like at any width:** the header's Owner/Artist switch goes (the drawer carries it) and the
+  account chip shows only the avatar.
+- **The tour's switch step opens the drawer when folded**, from the same `folded` value, not only below 640 by media
+  query; otherwise it would time out looking for the header copy (#430's failure).

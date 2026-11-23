@@ -132,6 +132,20 @@ test("owner at 390px: a slow GET /artists/me doesn't make the tour skip the Owne
   await expectTourReachesTheDrawerSwitch(page, 15_000);
 });
 
+// S05 follow-up: from 640px up the header normally shows its own Owner/Artist switch, but at 200% text it doesn't fit
+// and the header folds, which hides that copy as on a phone. The tour's switch step must then open the drawer and
+// spotlight the drawer copy, decided from the fold itself, not time out looking for the header copy.
+test("owner at 768px and 200% text: the header folds and the tour's Owner/Artist step spotlights the drawer switch", async ({ page }) => {
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.fontSize = "200%"; });
+  });
+  await signInAsDualRoleOwner(page, { tour: true });
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/dashboard");
+  await expect(page.locator("header").first().getByRole("button", { name: /^More/ })).toBeVisible();
+  await expectTourReachesTheDrawerSwitch(page);
+});
+
 for (const width of [390, 320]) {
   test(`owner: the Dashboard header fits ${width}px with nothing colliding`, async ({ page }) => {
     await signInAsDualRoleOwner(page);
