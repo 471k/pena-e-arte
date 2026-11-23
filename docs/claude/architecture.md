@@ -7886,3 +7886,27 @@ been marked Present in slice 3; it is **Partial** until this lands.
   twin sits after the footer, so the footer clears the bar at any text size.
 - An internal-consistency fix (the same journey had the control on one page and not the other), not a benchmark
   finding: no published statement that the category mandates a sticky CTA was found.
+## The phone header folds into "More" at large text (S05's last tail) — 2026-11-23
+
+Measured 23 Nov in real Chromium at 390px: 200% text overflowed the header by 280px (owner, artist), 208 (client)
+and 119 (admin). Phi's decision: feedback, help and messages fold into one "More" menu; the notification bell and
+the account menu stay, because they are what people reach for under pressure and the bell carries unread state.
+
+- **The fold is decided by the header's own width in rem** (`useHeaderFold`, a ResizeObserver on the header plus a
+  1rem probe, since a text-size change leaves the px width unchanged). Thresholds are each layout's measured inline
+  width at 100% text: owner and artist 24rem, client 22rem, admin 22.5rem. A px media query is what put the studio
+  name under the Owner/Artist switch in #415. **Not a CSS container query**, deliberately: one value must decide
+  both what renders and what the tour points at (#430/#438), and script can't read a container query's state.
+- **Folding alone doesn't fit**: at 200% each icon button is 64px and the account menu 120px, so folded the owner
+  still needs 320px of 326. The wordmark (and admin's "Platform Admin" title) hides when folded; that is what makes
+  it fit. Replaces the old `max-[359px]:hidden`, a px rule that never responded to text size.
+- **Unread state survives the fold**: the More trigger carries the unread-message count and its menu item names it.
+- **HelpMenu stays mounted** (it owns the sheet and runs the tours); folded it hides its own trigger and More's
+  "Help" opens it. Every role's tour ends on the Help button; folded, that step points at More
+  (`foldHelpStep`), decided from the same `folded` value, never polled for.
+- **The studio-invite bell stays outside**, a departure from Phi's list: it renders only while invites are pending
+  and carries that count, the same reason the notification bell stays. When it shows, an owner at 200% text on a
+  390px phone overflows again by its width; rare, and recorded rather than hidden.
+- **Admin never shows More**: Help is its only foldable control, and a one-item menu saves nothing.
+- This is a WCAG 1.4.10 reflow fix driven by our own measurement, not a benchmark finding: the category's published
+  guidance is mobile-first with large targets, and no published practice for collapsing a crowded header was found.
