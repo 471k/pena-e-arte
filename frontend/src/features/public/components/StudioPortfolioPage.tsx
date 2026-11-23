@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Button }            from "@/shared/components/ui/button";
+import { QuickBookBar }      from "./QuickBookBar";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Skeleton }          from "@/shared/components/ui/skeleton";
 import {
@@ -578,6 +579,10 @@ export function StudioPortfolioPage() {
           Powered by TattooOS
         </a>
       </footer>
+
+      {/* Below page-lg the aside's Book button stacks after the portfolio, so it was off screen at every width under
+          1100. The same bar as the artist page, gated and linked the same way as the aside's button. */}
+      {studio.showBookingCta && <QuickBookBar to={ctaUrl} label="Book an Appointment" />}
 
       {canFileReport && (
         <ConductReportDialog

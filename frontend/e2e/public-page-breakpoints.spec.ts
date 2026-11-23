@@ -70,9 +70,14 @@ test("artist page: the side column, the quick-book bar and its padding switch to
     expect(await layout.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length), `two columns at ${width}`).toBe(beside ? 2 : 1);
     const bar = page.getByLabel("Quick book bar");
     if (beside) await expect(bar).toBeHidden(); else await expect(bar).toBeVisible();
-    // The padding clears the bar exactly while the bar shows (pb-20 = 80px, page-lg:pb-8 = 32px).
-    const pad = await page.locator("div.pb-20").first().evaluate((el) => getComputedStyle(el).paddingBottom);
-    expect(pad, `padding at ${width}`).toBe(beside ? "32px" : "80px");
+    // The bar's spacer ends the page and is exactly the bar's height while the bar shows, gone when it doesn't
+    // (QuickBookBar; it replaced the content's pb-20, which padded the content rather than the footer).
+    const spacer = page.getByTestId("quick-book-spacer");
+    expect(await spacer.evaluate((el) => getComputedStyle(el).display), `spacer at ${width}`).toBe(beside ? "none" : "block");
+    if (!beside) {
+      const height = (sel: string) => page.locator(sel).evaluate((el) => el.getBoundingClientRect().height);
+      expect(await height('[data-testid="quick-book-spacer"]')).toBe(await height('[aria-label="Quick book bar"]'));
+    }
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   }
 });
@@ -121,4 +126,59 @@ test("public product pages: no sideways scroll at ten widths", async ({ page }) 
     }
   }
   expect(errors, "page errors").toEqual([]);
+});
+
+// 6e's tail: the studio page had no booking button on screen below 1100 (its Book button sits in the aside, which
+// stacks after the portfolio); the artist page did. Both now use one QuickBookBar. Scrolled to the very bottom, the
+// footer must sit above the bar, not under it, at both text sizes.
+const QUICK_BOOK_PAGES = [
+  { name: "artist", path: "/artist/maria-silva", label: "Book with Maria" },
+  { name: "studio", path: "/s/tinta-alma", label: "Book an Appointment" },
+] as const;
+
+for (const p of QUICK_BOOK_PAGES) {
+  for (const [width, present] of [[1099, true], [1100, false]] as const) {
+    test(`${p.name} page at ${width}px: the quick-book bar is ${present ? "shown" : "not shown"}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await mocks(page);
+      await page.goto(p.path);
+      const bar = page.getByLabel("Quick book bar");
+      if (present) {
+        await expect(bar).toBeVisible();
+        await expect(bar.getByRole("link", { name: p.label })).toBeVisible();
+      } else {
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(bar).toBeHidden();
+      }
+    });
+  }
+
+  for (const textSize of ["100%", "200%"] as const) {
+    test(`${p.name} page at 390px, ${textSize} text: scrolled to the bottom, the footer sits above the bar`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 800 });
+      await page.addInitScript((size) => {
+        document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.fontSize = size; });
+      }, textSize);
+      await mocks(page);
+      await page.goto(p.path);
+      const bar = page.getByLabel("Quick book bar");
+      await expect(bar).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.waitForTimeout(200);
+      const { footerBottom, barTop } = await page.evaluate(() => ({
+        footerBottom: document.querySelector("footer")!.getBoundingClientRect().bottom,
+        barTop: document.querySelector('[aria-label="Quick book bar"]')!.getBoundingClientRect().top,
+      }));
+      expect(footerBottom, "the footer ends under the bar").toBeLessThanOrEqual(barTop + 0.5);
+    });
+  }
+}
+
+test("studio page: no quick-book bar when the studio has the booking button turned off", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await mocks(page);
+  await page.route("**/api/v1/public/studios/tinta-alma", (r) => r.fulfill(json({ ...STUDIO, showBookingCta: false })));
+  await page.goto("/s/tinta-alma");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByLabel("Quick book bar")).toHaveCount(0);
 });
