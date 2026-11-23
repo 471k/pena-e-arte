@@ -9,6 +9,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { Button }   from "@/shared/components/ui/button";
+import { QuickBookBar } from "./QuickBookBar";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   Dialog,
@@ -547,7 +548,7 @@ export function ArtistPortfolioPage() {
 
       <PublicPageHeader />
 
-      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6 pb-20 page-lg:pb-8">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-6">
         {/* Back link */}
         <button
           type="button"
@@ -816,22 +817,9 @@ export function ArtistPortfolioPage() {
         </a>
       </footer>
 
-      {artist.showBookingCta && (
-        <div
-          className="fixed bottom-0 inset-x-0 z-[90] page-lg:hidden
-                     border-t bg-background/95 backdrop-blur-sm px-4 py-3
-                     safe-area-inset-bottom"
-          aria-label="Quick book bar"
-        >
-          <Button
-            className="w-full bg-violet-600 hover:bg-violet-700
-                       text-white border-0 min-h-[44px] text-sm font-semibold"
-            asChild
-          >
-            <Link to={ctaUrl}>Book with {artist.name.split(" ")[0]}</Link>
-          </Button>
-        </div>
-      )}
+      {/* Below page-lg the page's own Book button sits after the portfolio; this keeps one on screen. Its spacer
+          ends the page, so the footer is never under it (the old pb-20 padded the content, not the footer). */}
+      {artist.showBookingCta && <QuickBookBar to={ctaUrl} label={`Book with ${artist.name.split(" ")[0]}`} />}
     </div>
   );
 }

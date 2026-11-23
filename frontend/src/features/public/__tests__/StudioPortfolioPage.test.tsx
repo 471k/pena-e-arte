@@ -157,23 +157,30 @@ describe("StudioPortfolioPage", () => {
     expect(screen.getByText("Studio not found.")).toBeInTheDocument();
   });
 
-  it("renders 'Book an Appointment' CTA when showBookingCta is true", () => {
+  // Two Book links: the sidebar's, and the quick-book bar's for screens below 1100 (jsdom has no media queries, so
+  // both render here; which one shows at which width is e2e/public-page-breakpoints.spec.ts). They go to one place.
+  it("renders 'Book an Appointment' CTA when showBookingCta is true, in the sidebar and the quick-book bar", () => {
     renderPage();
-    expect(screen.getByRole("link", { name: "Book an Appointment" })).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: "Book an Appointment" });
+    expect(links).toHaveLength(2);
+    expect(new Set(links.map((l) => l.getAttribute("href"))).size).toBe(1);
+    expect(screen.getByLabelText("Quick book bar")).toContainElement(links[1]);
   });
 
   it("Book an Appointment links directly to /book when unauthenticated (guest checkout)", () => {
     renderPage(null);
-    const link = screen.getByRole("link", { name: "Book an Appointment" });
-    expect(link.getAttribute("href")).toMatch(/^\/book\?studio=/);
-    expect(link.getAttribute("href")).not.toMatch(/\/login/);
+    for (const link of screen.getAllByRole("link", { name: "Book an Appointment" })) {
+      expect(link.getAttribute("href")).toMatch(/^\/book\?studio=/);
+      expect(link.getAttribute("href")).not.toMatch(/\/login/);
+    }
   });
 
   it("Book an Appointment links directly to /book when authenticated", () => {
     renderPage("fake-token");
-    const link = screen.getByRole("link", { name: "Book an Appointment" });
-    expect(link.getAttribute("href")).toMatch(/\/book/);
-    expect(link.getAttribute("href")).not.toMatch(/\/login/);
+    for (const link of screen.getAllByRole("link", { name: "Book an Appointment" })) {
+      expect(link.getAttribute("href")).toMatch(/\/book/);
+      expect(link.getAttribute("href")).not.toMatch(/\/login/);
+    }
   });
 
   it("sets og:title meta tag with studio name", () => {

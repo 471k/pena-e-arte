@@ -7873,3 +7873,16 @@ been marked Present in slice 3; it is **Partial** until this lands.
   instant keeps one calendar date across it.
 - This is conformance to S01's own requirement (a booking time in the venue's zone is also the category norm), not a
   benchmark discovery.
+
+## One quick-book bar for the artist and studio pages (6e's tail) — 2026-11-23
+
+- **The studio page had no booking button on screen below 1100**, at every width, not only 6c's new band: its
+  Book button sits in the aside, which stacks after the portfolio. The artist page had a fixed bar. Both now render
+  `QuickBookBar`, gated on `showBookingCta` and linked to the same `ctaUrl` as the page's own button, so the
+  conversion control can't drift between two copies.
+- **The bar ends the page with an invisible, inert twin of itself**, built from the same `Button`, so the space it
+  takes always equals the bar's height. The artist page's `pb-20 page-lg:pb-8` padded the *content*, above the
+  footer: measured 23 Nov at 390px, scrolled to the bottom, the footer sat under the bar at 100% and 200% text. The
+  twin sits after the footer, so the footer clears the bar at any text size.
+- An internal-consistency fix (the same journey had the control on one page and not the other), not a benchmark
+  finding: no published statement that the category mandates a sticky CTA was found.
