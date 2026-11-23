@@ -19,6 +19,7 @@ import { ContactSupportPanel } from "./ContactSupportPanel";
 import type { HelpArticle, FaqItem, HelpRole, HelpSearchResult } from "../help.types";
 import type { Role } from "@/shared/types/roles";
 import type { TourStep } from "@/shared/components/OnboardingTour";
+import type { OwnerTourFacts } from "../tours/ownerTour";
 
 const SEARCH_LOG_DEBOUNCE_MS = 800;
 
@@ -28,13 +29,13 @@ interface HelpMenuProps {
   onTourEnd?: () => void;
   /** Client only: include the tour's "Payment Methods" step (shown only while saved cards are on, C-9). */
   showPaymentMethodsTourStep?: boolean;
-  /** Owner only: whether the owner has their own artist profile, `undefined` while still loading. The owner
-   * tour waits for it and shows exactly one of "Also work as an artist?" and the Owner/Artist switch. */
-  ownerHasArtistProfile?: boolean;
+  /** Owner only: whether each conditional owner step's target will render, `undefined` while still loading.
+   * The owner tour waits for it and leaves out the steps whose targets won't render. */
+  ownerTourFacts?: OwnerTourFacts;
 }
 
 export function HelpMenu({
-  onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep = false, ownerHasArtistProfile,
+  onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep = false, ownerTourFacts,
 }: HelpMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -45,7 +46,7 @@ export function HelpMenu({
   const [logHelpSearch] = useLogHelpSearchMutation();
   const loggedQueriesRef = useRef<Set<string>>(new Set());
   const { tourElement, restartTour } = useOnboardingTour(
-    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep, ownerHasArtistProfile,
+    role as Role | null, onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep, ownerTourFacts,
   );
 
   const scopedArticles = useMemo(() => {

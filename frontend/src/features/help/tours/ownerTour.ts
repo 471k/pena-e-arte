@@ -5,14 +5,30 @@ import type { TourStep } from "@/shared/components/OnboardingTour";
 // for an owner without their own artist profile, and the Owner/Artist switch only for an owner with one.
 const BECOME_ARTIST_CTA = '[data-tour="owner-become-artist-cta"]';
 const ARTIST_MODE_SWITCH = '[data-tour="owner-artist-mode-switch"]';
+const SOLO_PUBLISH_BANNER = '[data-tour="owner-solo-publish-banner"]';
+const JOIN_INVITE_BELL = '[data-tour="owner-join-invite-bell"]';
 
-/** The owner tour for what is known about this owner. Both targets depend on GET /artists/me, so the tour
- * leaves out the step that can't apply instead of polling for it. OnboardingTour's poll-then-skip can't tell
- * "not rendered yet" from "never will be", and with a slow /artists/me it silently skipped the switch step
- * (owner-phone-navigation e2e, flaky since #415; reproduced 22 Nov by delaying /artists/me 5 s). */
-export function getOwnerTourSteps(hasArtistProfile: boolean): TourStep[] {
-  const notApplicable = hasArtistProfile ? BECOME_ARTIST_CTA : ARTIST_MODE_SWITCH;
-  return ownerTourSteps.filter((step) => step.targetSelector !== notApplicable);
+/** What OwnerLayout knows about whether each conditional step's target will render. Every field is decided by
+ * the same value that renders the target, so the tour and its targets can't disagree. */
+export type OwnerTourFacts = {
+  /** GET /artists/me found the owner's own artist profile: the Owner/Artist switch renders, the CTA doesn't. */
+  hasArtistProfile: boolean;
+  /** SoloStudioPublishBanner renders: a solo studio, not yet published, banner not dismissed this session. */
+  showsPublishBanner: boolean;
+  /** StudioJoinInviteBell renders: a solo studio's owner with at least one pending join invite. */
+  hasJoinInvite: boolean;
+};
+
+/** The owner tour for what is known about this owner. Each conditional target depends on an async query, so
+ * the tour leaves out a step that can't apply instead of polling for it. OnboardingTour's poll-then-skip can't
+ * tell "not rendered yet" from "never will be": with a slow /artists/me it silently skipped the switch step
+ * (owner-phone-navigation e2e, flaky since #415; reproduced 22 Nov by delaying /artists/me 5 s), and for the
+ * common owner (not solo, no invite) the banner and bell steps each cost a 1 s wait before being skipped. */
+export function getOwnerTourSteps(facts: OwnerTourFacts): TourStep[] {
+  const notApplicable = new Set<string>([facts.hasArtistProfile ? BECOME_ARTIST_CTA : ARTIST_MODE_SWITCH]);
+  if (!facts.showsPublishBanner) notApplicable.add(SOLO_PUBLISH_BANNER);
+  if (!facts.hasJoinInvite) notApplicable.add(JOIN_INVITE_BELL);
+  return ownerTourSteps.filter((step) => !notApplicable.has(step.targetSelector));
 }
 
 /** Every owner step, both artist-profile variants included. Use getOwnerTourSteps to show a tour. */
@@ -46,13 +62,13 @@ export const ownerTourSteps: TourStep[] = [
     inNavDrawerBelowSm: true,
   },
   {
-    targetSelector: '[data-tour="owner-solo-publish-banner"]',
+    targetSelector: SOLO_PUBLISH_BANNER,
     title: "Get discoverable",
     body: "Add a real city and location in Studio Settings to appear on the Studio Map and in Discover. Only shown for a solo studio that hasn't published yet.",
     route: "/artists",
   },
   {
-    targetSelector: '[data-tour="owner-join-invite-bell"]',
+    targetSelector: JOIN_INVITE_BELL,
     title: "Studio join invites",
     body: "If another studio invites you to join them as an artist, it shows up here. Only appears when you have a pending invite.",
   },

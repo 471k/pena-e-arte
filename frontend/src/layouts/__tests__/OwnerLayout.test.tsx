@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import authReducer from "@/features/auth/authSlice";
@@ -591,5 +591,68 @@ describe("OwnerLayout", () => {
     await screen.findByTestId("outlet");
     await expandGroup(user, /^manage studio$/i);
     expect(screen.getByRole("link", { name: /^billing$/i })).toBeInTheDocument();
+  });
+});
+
+// The owner tour is told which conditional steps apply by the same values that render their targets (the
+// Owner/Artist switch, the solo publish banner, the join-invite bell). These read the tour's own "1 / N"
+// counter, so a fact computed differently from its target shows up as a wrong N. 19 steps in all; an owner
+// without an artist profile never gets the switch step.
+describe("OwnerLayout: the onboarding tour's conditional steps", () => {
+  const SOLO_UNPUBLISHED: StudioResponse = { ...ACTIVE_STUDIO, isSolo: true, isPublished: false };
+  const INVITE = { id: "inv-1", studioId: "stud-9", studioName: "Other", studioSlug: "other", studioCity: "Tirana", expiresAt: "2099-01-01T00:00:00Z" };
+
+  function tourPending(studio: StudioResponse, invites: unknown[] = []) {
+    server.use(
+      http.get("http://localhost/api/v1/onboarding/tour-status", () => HttpResponse.json({ hasCompletedTour: false })),
+      http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json(studio)),
+      http.get("http://localhost/api/v1/auth/join-invites", () => HttpResponse.json(invites)),
+    );
+  }
+
+  it("the ordinary owner (not solo, no invite) gets neither the banner step nor the bell step: 16", async () => {
+    tourPending(ACTIVE_STUDIO);
+    renderLayout();
+    expect(await screen.findByText("1 / 16", {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it("a solo, unpublished studio's owner gets the banner step: 17", async () => {
+    tourPending(SOLO_UNPUBLISHED);
+    renderLayout();
+    expect(await screen.findByText("1 / 17", {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  // Without the wait, the tour would start on 16 steps while the studio is still loading (banner not known),
+  // then change length under the owner's feet when it arrives.
+  it("waits for the studio before starting, instead of starting on a guess", async () => {
+    tourPending(SOLO_UNPUBLISHED);
+    server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+      await delay(600);
+      return HttpResponse.json(SOLO_UNPUBLISHED);
+    }));
+    renderLayout();
+
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByText("1 / 17", {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it("waits for the join invites too: the second query in the chain, only asked once the studio is solo", async () => {
+    tourPending(SOLO_UNPUBLISHED);
+    server.use(http.get("http://localhost/api/v1/auth/join-invites", async () => {
+      await delay(600);
+      return HttpResponse.json([INVITE]);
+    }));
+    renderLayout();
+
+    await new Promise((r) => setTimeout(r, 300));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByText("1 / 18", {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
+  it("with a pending join invite, the bell step too: 18", async () => {
+    tourPending(SOLO_UNPUBLISHED, [INVITE]);
+    renderLayout();
+    expect(await screen.findByText("1 / 18", {}, { timeout: 3000 })).toBeInTheDocument();
   });
 });

@@ -11,6 +11,7 @@ import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { SoloStudioPublishBanner } from "@/shared/components/SoloStudioPublishBanner";
+import { soloPublishBannerApplies } from "@/shared/components/soloPublishBanner";
 import { ArtistModeSwitcher } from "@/shared/components/ArtistModeSwitcher";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { Button } from "@/shared/components/ui/button";
@@ -32,6 +33,8 @@ import { NotificationBell } from "@/features/notifications";
 import { StudioJoinInviteBell } from "@/features/auth/components/StudioJoinInviteBell";
 import { FeedbackDialog } from "@/features/feedback";
 import { HelpMenu } from "@/features/help";
+import type { OwnerTourFacts } from "@/features/help/tours/ownerTour";
+import { useGetMyJoinInvitesQuery } from "@/features/auth/authApi";
 import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { MessagesNavBadge, useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
@@ -134,7 +137,7 @@ export function OwnerLayout() {
   const { navOpen, setNavOpen, revealTourId, onBeforeTourStep, onTourEnd, navModal } = useNavShell();
   // Primes RTK Query caches so subscription + suspension state is known before child forms render.
   useGetSubscriptionQuery();
-  const { data: studio } = useGetMyStudioQuery();
+  const { data: studio, isLoading: studioLoading } = useGetMyStudioQuery();
   const moneyStudio = studio ? { countryCode: studio.countryCode, currency: studio.currency } : null;
   // Fires unconditionally for every owner (most won't have a profile yet — a normal 404 each
   // load, exactly like ArtistLayout already does for every artist). RTK Query dedupes this
@@ -147,6 +150,18 @@ export function OwnerLayout() {
   // pre-delete artist rather than clearing it. Must check isError explicitly, not just `data`,
   // or "My Portfolio" keeps showing a just-deleted profile until a hard reload.
   const hasArtistProfile = !myArtistError && !!myArtist;
+  // The same query, with the same arguments and skip, that StudioJoinInviteBell renders from: RTK Query shares
+  // one cache entry, so this adds no request. It lets the tour know whether the bell will render.
+  const { data: joinInvites, isLoading: joinInvitesLoading } = useGetMyJoinInvitesQuery(undefined, { skip: !studio?.isSolo });
+  // Whether each conditional owner-tour step's target renders, decided by the same values that render them.
+  // `undefined` until every query they depend on has answered, so the tour waits instead of timing steps out.
+  const ownerTourFacts: OwnerTourFacts | undefined = myArtistLoading || studioLoading || joinInvitesLoading
+    ? undefined
+    : {
+      hasArtistProfile,
+      showsPublishBanner: soloPublishBannerApplies(studio),
+      hasJoinInvite: !!studio?.isSolo && (joinInvites?.length ?? 0) > 0,
+    };
 
   // Guided first step for a solo artist's owner account with no artist profile of their own
   // yet: route them straight into the existing "Enable my artist profile" form instead of
@@ -278,11 +293,12 @@ export function OwnerLayout() {
           >
             <MessageSquareMore className="h-4 w-4" />
           </Button>
-          {/* The value that renders both ArtistModeSwitcher copies, so the tour and its targets can't disagree. */}
+          {/* The values that render ArtistModeSwitcher, SoloStudioPublishBanner and StudioJoinInviteBell, so
+              the tour and its targets can't disagree. */}
           <HelpMenu
             onBeforeTourStep={onBeforeTourStep}
             onTourEnd={onTourEnd}
-            ownerHasArtistProfile={myArtistLoading ? undefined : hasArtistProfile}
+            ownerTourFacts={ownerTourFacts}
           />
           <MessagesNavBadge />
           <StudioJoinInviteBell enabled={!!studio?.isSolo} />
