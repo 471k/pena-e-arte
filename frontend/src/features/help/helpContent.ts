@@ -22,7 +22,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Can't find a page? Open the category it most likely belongs to — related pages are always kept together.",
       "Ctrl+B does nothing while you're typing in a text box, so it never gets in the way of writing.",
       "Owners who also have their own artist profile see a separate artist menu when they switch to \"Artist\" at the top of the page.",
-      "On a phone the top bar shows just your initial next to the account menu (tap it for change password, change email and log out) and, on very narrow screens, hides the TattooOS name — so everything fits without the page scrolling sideways.",
+      "On a phone the top bar shows just your initial next to the account menu (tap it for change password, change email and log out). When the bar is too narrow for everything, for example with a large text size, Help, Messages and Send feedback move into one \"More\" button (three dots), which shows your unread message count, and the TattooOS name is hidden. The bell and your account menu always stay in the bar. So the page never scrolls sideways.",
       "The top bar names the studio you're working in, next to the TattooOS name. On a phone or small tablet there's no room for it there, so open the menu (three lines): its top line names the studio and your role. The same line is at the top of your account menu (your initial or name, top right) at any screen size or text size. If you belong to more than one studio, that's how to check which one you're in before you change anything.",
       "A button you can't use right now says why. Hover over it, or move to it with the Tab key, and the reason appears just under it (a screen reader reads it too). For example, while a studio's subscription is inactive, Save on some pages explains that changes can't be saved instead of just looking faded.",
     ],
@@ -2331,7 +2331,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["feedback", "bug report", "feature request", "report a bug", "attachment", "screenshot", "video"],
     summary: "Report a bug, request a feature, or share general feedback with the team, with an optional screenshot or short video attached.",
     steps: [
-      "Click the feedback icon to open \"Send Feedback\".",
+      "Click the feedback icon to open \"Send Feedback\". If the top bar is narrow (a phone with a large text size), it's under \"More\" (three dots) as \"Send feedback\".",
       "Choose a Type (Bug Report, Feature Request, or General), add a Title and Description.",
       "Optionally attach up to 3 screenshots or short video clips under \"Attachments\" — click the box to pick files.",
       "Click \"Send Feedback\".",

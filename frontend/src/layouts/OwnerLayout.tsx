@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, MessageSquareMore, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
+  Receipt, Settings, PenLine, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
   ListOrdered, ListChecks, Banknote, Gift, Package as PackageIcon,
   Megaphone, Tag, DollarSign, FileText,
 } from "lucide-react";
@@ -14,7 +14,8 @@ import { SoloStudioPublishBanner } from "@/shared/components/SoloStudioPublishBa
 import { soloPublishBannerApplies } from "@/shared/components/soloPublishBanner";
 import { ArtistModeSwitcher } from "@/shared/components/ArtistModeSwitcher";
 import { UserMenu } from "@/shared/components/UserMenu";
-import { Button } from "@/shared/components/ui/button";
+import { HeaderActions } from "@/shared/components/HeaderActions";
+import { HEADER_FOLD_BELOW_REM, useHeaderFold } from "@/shared/hooks/useHeaderFold";
 import { NavDrawer } from "@/shared/components/NavDrawer";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { SidebarToggle } from "@/shared/components/SidebarToggle";
@@ -29,14 +30,12 @@ import { useGetSubscriptionQuery } from "@/features/billing/billingApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
-import { NotificationBell } from "@/features/notifications";
 import { StudioJoinInviteBell } from "@/features/auth/components/StudioJoinInviteBell";
 import { FeedbackDialog } from "@/features/feedback";
-import { HelpMenu } from "@/features/help";
 import type { OwnerTourFacts } from "@/features/help/tours/ownerTour";
 import { useGetMyJoinInvitesQuery } from "@/features/auth/authApi";
 import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
-import { MessagesNavBadge, useChatHub } from "@/features/messaging";
+import { useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
 
@@ -249,16 +248,18 @@ export function OwnerLayout() {
     navigate("/login", { replace: true });
   }
 
+  const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.owner);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
       <SuspensionBanner studio={studio} />
       <ReadOnlyBanner />
       <PlanLimitBanner />
       <SoloStudioPublishBanner studio={studio} />
-      <header className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header ref={headerRef} className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
-        <Wordmark className="max-[359px]:hidden" />
+        {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone). */}
+        {!headerFolded && <Wordmark />}
         <StudioContextLabel variant="header" />
 
         {hasArtistProfile && myArtist && (
@@ -282,29 +283,17 @@ export function OwnerLayout() {
             : undefined}
         />
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setFeedbackOpen(true)}
-            title="Send feedback"
-            aria-label="Send feedback"
-          >
-            <MessageSquareMore className="h-4 w-4" />
-          </Button>
-          {/* The values that render ArtistModeSwitcher, SoloStudioPublishBanner and StudioJoinInviteBell, so
-              the tour and its targets can't disagree. */}
-          <HelpMenu
-            onBeforeTourStep={onBeforeTourStep}
-            onTourEnd={onTourEnd}
-            ownerTourFacts={ownerTourFacts}
-          />
-          <MessagesNavBadge />
-          <StudioJoinInviteBell enabled={!!studio?.isSolo} />
-          <NotificationBell />
-          <UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />
-        </div>
+        {/* ownerTourFacts: the values that render ArtistModeSwitcher, SoloStudioPublishBanner and
+            StudioJoinInviteBell, so the tour and its targets can't disagree. The invite bell stays outside the fold:
+            it renders only while invites are pending and carries that count, like the notification bell. */}
+        <HeaderActions
+          folded={headerFolded}
+          onFeedback={() => setFeedbackOpen(true)}
+          showMessages
+          help={{ onBeforeTourStep, onTourEnd, ownerTourFacts }}
+          pinned={<StudioJoinInviteBell enabled={!!studio?.isSolo} />}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />}
+        />
       </header>
 
       <div className="flex flex-1 min-h-0">
