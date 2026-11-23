@@ -21,10 +21,23 @@ public static class AuditActions
     /// table by action + target type, and a backfill must never be mistaken for one.</summary>
     public const string SubscriptionBilledAmountsBackfilled = "Platform.BilledAmountsBackfilled";
     public const string RevenueLedgerBackfilled = "Platform.RevenueLedgerBackfilled";
+    public const string PlanCreated = "Plan.Created";
     public const string PlanUpdated = "Plan.Updated";
+    /// <summary>Metadata carries the deleted plan's name, since the row is gone afterwards.</summary>
+    public const string PlanDeleted = "Plan.Deleted";
     public const string ReferralCodeDeactivated = "ReferralCode.Deactivated";
     public const string ReferralCodeReactivated = "ReferralCode.Reactivated";
     public const string ReferralCodeDeleted = "ReferralCode.Deleted";
+    /// <summary>An admin generated a code for a studio (which also deactivates its active codes). Never the code itself.</summary>
+    public const string ReferralCodeGeneratedByAdmin = "ReferralCode.GeneratedByAdmin";
+
+    /// <summary>An admin queued the industry report now (target Platform, empty TargetId).</summary>
+    public const string IndustryReportTriggered = "Platform.IndustryReportTriggered";
+
+    /// <summary>An admin changed a feedback report's status or internal note. Metadata says WHETHER the
+    /// note changed, never its text: that note is the field behind the AdminNote leak (#371), and its words
+    /// must not be copied into a second, longer-lived place.</summary>
+    public const string FeedbackStatusUpdated = "Feedback.StatusUpdated";
     public const string AppointmentCancelled = "Appointment.Cancelled";
     public const string AppointmentRescheduled = "Appointment.Rescheduled";
     public const string AppointmentArtistAssigned = "Appointment.ArtistAssigned";
@@ -95,6 +108,7 @@ public static class AuditTargetTypes
     public const string Campaign = "Campaign";
     public const string ImpersonationSession = "ImpersonationSession";
     public const string Artist = "Artist";
+    public const string FeedbackReport = "FeedbackReport";
 
     /// <summary>Actions with no single studio/entity target — TargetId is Guid.Empty.</summary>
     public const string Platform = "Platform";
