@@ -93,7 +93,7 @@ export function AdminLayout() {
         <HeaderActions
           folded={headerFolded}
           help={{ onBeforeTourStep, onTourEnd }}
-          userMenu={<UserMenu onLogout={handleLogout} />}
+          userMenu={<UserMenu onLogout={handleLogout} compact={headerFolded} />}
         />
       </header>
 

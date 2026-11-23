@@ -122,7 +122,7 @@ export function ClientLayout() {
           folded={headerFolded}
           showMessages
           help={{ onBeforeTourStep, onTourEnd, showPaymentMethodsTourStep: savedCardsAvailable }}
-          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} compact={headerFolded} />}
         />
       </header>
 

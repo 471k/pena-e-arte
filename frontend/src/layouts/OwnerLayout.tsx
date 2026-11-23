@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { TourStep } from "@/shared/components/OnboardingTour";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
@@ -249,6 +250,13 @@ export function OwnerLayout() {
   }
 
   const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.owner);
+  // Folded, the header's Owner/Artist switch is gone and the drawer carries it, as below sm. So the tour's switch
+  // step opens the drawer whenever the header is folded too, decided from the value that hides the header copy
+  // (#430's rule), not left to time out looking for it.
+  const onBeforeOwnerTourStep = useCallback((step: TourStep) => {
+    onBeforeTourStep(step);
+    if (headerFolded && step.inNavDrawerBelowSm) setNavOpen(true);
+  }, [onBeforeTourStep, headerFolded, setNavOpen]);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
       <SuspensionBanner studio={studio} />
@@ -262,7 +270,8 @@ export function OwnerLayout() {
         {!headerFolded && <Wordmark />}
         <StudioContextLabel variant="header" />
 
-        {hasArtistProfile && myArtist && (
+        {/* Folded, the header switch goes and the drawer's copy (below) carries it, as on a phone. */}
+        {hasArtistProfile && myArtist && !headerFolded && (
           <div className="hidden sm:flex ml-2 shrink-0">
             <ArtistModeSwitcher artistId={myArtist.id} />
           </div>
@@ -290,9 +299,9 @@ export function OwnerLayout() {
           folded={headerFolded}
           onFeedback={() => setFeedbackOpen(true)}
           showMessages
-          help={{ onBeforeTourStep, onTourEnd, ownerTourFacts }}
+          help={{ onBeforeTourStep: onBeforeOwnerTourStep, onTourEnd, ownerTourFacts }}
           pinned={<StudioJoinInviteBell enabled={!!studio?.isSolo} />}
-          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} compact={headerFolded} />}
         />
       </header>
 
