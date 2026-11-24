@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { useSuspensionAwareError } from "@/shared/hooks/useSuspensionAwareError";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
@@ -34,6 +34,8 @@ import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedF
 import { useGetClientsQuery, useArchiveClientMutation, useRestoreClientMutation } from "../clientsApi";
 import type { ClientResponse } from "../clientsApi";
 import { useGetArtistsQuery } from "@/features/artists/artistsApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { SUPPORT_VIEW_READ_ONLY_REASON, useSupportView } from "@/shared/hooks/useSupportView";
 
 function ClientRowSkeleton() {
   return (
@@ -53,6 +55,8 @@ function ClientRowSkeleton() {
 }
 
 export function ClientListPage() {
+  const supportView = useSupportView();
+  const supportReasonId = useId();
   useDocumentMeta({ title: "Clients — TattooOS", canonical: "/clients" });
 
   const navigate  = useNavigate();
@@ -163,10 +167,10 @@ export function ClientListPage() {
             </Button>
           )}
           {canCreate && (isLoading || hasAnyClients || isFiltered) && (
-            <Button size="sm" onClick={() => navigate("/clients/new")} className="gap-1.5">
+            <SubscriptionGatedButton size="sm" onClick={() => navigate("/clients/new")} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               New Client
-            </Button>
+            </SubscriptionGatedButton>
           )}
         </div>
       </header>
@@ -233,14 +237,14 @@ export function ClientListPage() {
               Add your first client to get started.
             </p>
             {canCreate && (
-              <Button
+              <SubscriptionGatedButton
                 size="sm"
                 onClick={() => navigate("/clients/new")}
                 className="gap-1.5 mt-1"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New Client
-              </Button>
+              </SubscriptionGatedButton>
             )}
           </div>
         )}
@@ -303,9 +307,17 @@ export function ClientListPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {/* D05 4b: a menu item can't carry the Button's reason, so it is disabled and the menu says why. */}
+                          {supportView && (
+                            <p id={supportReasonId} className="max-w-56 px-2 py-1.5 text-xs text-muted-foreground">
+                              {SUPPORT_VIEW_READ_ONLY_REASON}
+                            </p>
+                          )}
                           {c.archivedAt ? (
                             <DropdownMenuItem
                               onClick={() => setRestoreTarget(c)}
+                              disabled={supportView}
+                              aria-describedby={supportView ? supportReasonId : undefined}
                               className="flex items-center gap-2"
                             >
                               <ArchiveRestore className="h-4 w-4" aria-hidden />
@@ -314,6 +326,8 @@ export function ClientListPage() {
                           ) : (
                             <DropdownMenuItem
                               onClick={() => setArchiveTarget(c)}
+                              disabled={supportView}
+                              aria-describedby={supportView ? supportReasonId : undefined}
                               className="flex items-center gap-2"
                             >
                               <Archive className="h-4 w-4" aria-hidden />

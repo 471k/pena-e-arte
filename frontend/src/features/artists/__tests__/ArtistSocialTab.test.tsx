@@ -13,6 +13,8 @@ import type { InstagramConnectionStatus } from "@/features/artists/artistsApi";
 import { socialApi } from "@/features/social/socialApi";
 import type { SocialLinkStatus } from "@/features/social/socialApi";
 import { ArtistSocialTab } from "@/features/artists/components/ArtistSocialTab";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -41,6 +43,10 @@ const server = setupServer(
   http.get(`${BASE}/instagram/status`, () => HttpResponse.json(DISCONNECTED)),
   http.get(`${BASE}/instagram/posts`, () => HttpResponse.json([])),
   http.get(`${BASE}/social`, () => HttpResponse.json(makeLinks())),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", isActive: true, timezone: "Europe/Tirane", currency: "EUR" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -50,12 +56,13 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer,
       auth: authReducer,
       ui: uiReducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
       [socialApi.reducerPath]: socialApi.reducer,
     },
-    middleware: (gd) => gd().concat(artistsApi.middleware, socialApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, artistsApi.middleware, socialApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },

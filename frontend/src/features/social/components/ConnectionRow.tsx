@@ -1,11 +1,11 @@
 import { useId, type ReactNode } from "react";
 import { ExternalLink, Unlink } from "lucide-react";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { VerifiedSocialBadge } from "@/shared/components/VerifiedSocialBadge";
 import type { SocialIcon } from "@/shared/utils/socialPlatforms";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 /** What the row's single primary action does. Only one button per row, never two. */
 export type ConnectionRowAction =
@@ -126,7 +126,7 @@ export function ConnectionRow({
           </div>
 
           {action?.kind === "connect" && (
-            <Button
+            <SubscriptionGatedButton
               size="sm"
               className="min-h-10 w-full sm:w-auto gap-1.5"
               onClick={action.onClick}
@@ -136,10 +136,10 @@ export function ConnectionRow({
             >
               Connect
               <ExternalLink className="h-3 w-3" aria-hidden="true" />
-            </Button>
+            </SubscriptionGatedButton>
           )}
           {action?.kind === "get-code" && (
-            <Button
+            <SubscriptionGatedButton
               size="sm"
               variant="outline"
               className="min-h-10 w-full sm:w-auto"
@@ -149,10 +149,10 @@ export function ConnectionRow({
               aria-label={`Get ${label} verification code`}
             >
               Get verification code
-            </Button>
+            </SubscriptionGatedButton>
           )}
           {action?.kind === "disconnect" && (
-            <Button
+            <SubscriptionGatedButton
               size="sm"
               variant="ghost"
               className="min-h-10 w-full sm:w-auto gap-1.5 text-destructive-text hover:text-destructive-text"
@@ -161,7 +161,7 @@ export function ConnectionRow({
             >
               <Unlink className="h-3.5 w-3.5" aria-hidden="true" />
               Disconnect
-            </Button>
+            </SubscriptionGatedButton>
           )}
         </CardContent>
       </Card>

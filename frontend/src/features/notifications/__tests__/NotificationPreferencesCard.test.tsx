@@ -11,6 +11,8 @@ import authReducer from "@/features/auth/authSlice";
 import { notificationsApi } from "@/features/notifications/notificationsApi";
 import { NotificationPreferencesCard } from "@/features/notifications/components/NotificationPreferencesCard";
 import type { NotificationPreferenceItem } from "@/features/notifications/notification.types";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 let saved: NotificationPreferenceItem[] | null = null;
 
@@ -21,6 +23,10 @@ const server = setupServer(
     saved = ((await request.json()) as { preferences: NotificationPreferenceItem[] }).preferences;
     return new HttpResponse(null, { status: 204 });
   }),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", isActive: true, timezone: "Europe/Tirane", currency: "EUR" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -29,8 +35,9 @@ afterAll(() => server.close());
 
 function renderCard() {
   const store = configureStore({
-    reducer: { auth: authReducer, [notificationsApi.reducerPath]: notificationsApi.reducer },
-    middleware: (gd) => gd().concat(notificationsApi.middleware),
+    reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer, auth: authReducer, [notificationsApi.reducerPath]: notificationsApi.reducer },
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, notificationsApi.middleware),
   });
   render(
     <Provider store={store}>

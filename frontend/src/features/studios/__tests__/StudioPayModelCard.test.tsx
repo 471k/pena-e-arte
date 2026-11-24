@@ -11,6 +11,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { studiosApi, type StudioPayModel, type UpdateStudioPayModelRequest } from "@/features/studios/studiosApi";
 import { StudioPayModelCard } from "@/features/studios/components/StudioPayModelCard";
 import { parseRate } from "@/features/studios/payModel";
+import { billingApi } from "@/features/billing/billingApi";
 
 // S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
 // computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
@@ -39,6 +40,8 @@ const server = setupServer(
     body = { ...saved, reviewedAt: "2026-11-11T10:00:00Z", currency: "ALL" };
     return HttpResponse.json(body);
   }),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -47,8 +50,9 @@ afterAll(() => server.close());
 
 function renderCard() {
   const store = configureStore({
-    reducer: { auth: authReducer, ui: uiReducer, [studiosApi.reducerPath]: studiosApi.reducer },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, auth: authReducer, ui: uiReducer, [studiosApi.reducerPath]: studiosApi.reducer },
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@ink.test" }, token: "t", tenantId: "stud-0001", role: "owner", pendingReferralCode: null, impersonation: null } as any,

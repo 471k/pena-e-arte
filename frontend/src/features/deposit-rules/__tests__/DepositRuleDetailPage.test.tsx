@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { vi, describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -15,6 +15,16 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { DepositRuleDetailPage } from "@/features/deposit-rules/components/DepositRuleDetailPage";
 import type { DepositRuleResponse } from "@/features/deposit-rules/depositRule.types";
 import { Role } from "@/shared/types/roles";
+import { billingApi } from "@/features/billing/billingApi";
+
+// D05 phase 4b: whether an admin's support session is active, switched per test. The module's real constant (the
+// reason sentence) is kept; only the one-line hook is replaced.
+let supportSession = false;
+vi.mock("@/shared/hooks/useSupportView", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/hooks/useSupportView")>()),
+  useSupportView: () => supportSession,
+}));
+
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -52,6 +62,8 @@ const server = setupServer(
   http.get(`http://localhost/api/v1/deposit-rules/${RULE_ID}`, () => HttpResponse.json(RULE)),
   http.put("http://localhost/api/v1/deposit-rules/:id", () => HttpResponse.json(UPDATED_RULE)),
   http.delete("http://localhost/api/v1/deposit-rules/:id", () => new HttpResponse(null, { status: 204 })),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -63,12 +75,13 @@ afterAll(() => server.close());
 function makeStore(role: Role = Role.Owner) {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth:                          authReducer,
       ui:                            uiReducer,
       [depositRulesApi.reducerPath]: depositRulesApi.reducer,
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(depositRulesApi.middleware, studiosApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, depositRulesApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@test.com" }, token: "fake-token", tenantId: "s-001", role, pendingReferralCode: null, impersonation: null } as any,
@@ -281,5 +294,27 @@ describe("DepositRuleDetailPage", () => {
     await screen.findByText("Standard Deposit");
     await user.click(screen.getByRole("button", { name: /deposit rules/i }));
     expect(screen.getByTestId("list-page")).toBeInTheDocument();
+  });
+});
+
+describe("D05 phase 4b: write controls during a support session", () => {
+  afterEach(() => { supportSession = false; });
+
+  it("a write control is shown but turned off, saying why, during a support session, and on outside one", async () => {
+    supportSession = true;
+    const first = renderPage();
+    await Promise.resolve();
+    const gated = await screen.findByRole("button", { name: /^edit$/i }, { timeout: 5000 });
+    expect(gated).toHaveAttribute("aria-disabled", "true");
+    expect(gated).toHaveAccessibleDescription(
+      "This is a read-only support session: changes are turned off. End the session to make changes as yourself.");
+    void first;
+    cleanup();
+
+    supportSession = false;
+    renderPage();
+    await Promise.resolve();
+    const open = await screen.findByRole("button", { name: /^edit$/i }, { timeout: 5000 });
+    expect(open).not.toHaveAttribute("aria-disabled", "true");
   });
 });

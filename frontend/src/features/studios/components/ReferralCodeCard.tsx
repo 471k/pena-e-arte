@@ -9,6 +9,7 @@ import {
   useGetReferralCodeQuery,
   useGetReferralStatsQuery,
 } from "../studiosApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 export function ReferralCodeCard() {
   const { data: studio } = useGetMyStudioQuery();
@@ -69,7 +70,7 @@ export function ReferralCodeCard() {
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Code: <span className="font-mono font-medium text-foreground">{referralCode.code}</span></span>
-              <Button
+              <SubscriptionGatedButton
                 variant="ghost"
                 size="sm"
                 className="h-6 gap-1 text-xs px-2"
@@ -80,11 +81,11 @@ export function ReferralCodeCard() {
                   ? <Loader2 className="h-3 w-3 animate-spin" />
                   : <RefreshCw className="h-3 w-3" />}
                 New code
-              </Button>
+              </SubscriptionGatedButton>
             </div>
           </div>
         ) : (
-          <Button
+          <SubscriptionGatedButton
             variant="outline"
             size="sm"
             onClick={handleGenerate}
@@ -93,7 +94,7 @@ export function ReferralCodeCard() {
           >
             {generating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Generate referral code
-          </Button>
+          </SubscriptionGatedButton>
         )}
 
         {stats && (stats.redemptionCount > 0 || referralCode) && (

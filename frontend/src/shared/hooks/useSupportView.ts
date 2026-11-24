@@ -17,5 +17,6 @@ export const SUPPORT_VIEW_HOME = "/schedule";
  * controls that would fail.
  */
 export function useSupportView(): boolean {
-  return useAppSelector((s) => s.auth.impersonation !== null);
+  // Loose on purpose: a state with no impersonation value at all is not a session (only one that names one is).
+  return useAppSelector((s) => s.auth.impersonation != null);
 }
