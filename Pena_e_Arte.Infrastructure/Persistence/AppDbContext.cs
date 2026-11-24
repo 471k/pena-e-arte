@@ -18,6 +18,8 @@ public class AppDbContext(
     // --- Tenant-scoped ---
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
+    public DbSet<BookingDraft> BookingDrafts => Set<BookingDraft>();
+    public DbSet<BookingDraftAttachment> BookingDraftAttachments => Set<BookingDraftAttachment>();
     public DbSet<DepositRule> DepositRules => Set<DepositRule>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<PromoCode> PromoCodes => Set<PromoCode>();
@@ -202,6 +204,8 @@ public class AppDbContext(
 
         builder.Entity<Appointment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<AppointmentAttachment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
+        builder.Entity<BookingDraft>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
+        builder.Entity<BookingDraftAttachment>().HasQueryFilter(a => a.StudioId == tenant.StudioId && a.DeletedAt == null);
         builder.Entity<DepositRule>().HasQueryFilter(d => d.StudioId == tenant.StudioId && d.DeletedAt == null);
         builder.Entity<Service>().HasQueryFilter(s => s.StudioId == tenant.StudioId && s.DeletedAt == null);
         builder.Entity<PromoCode>().HasQueryFilter(p => p.StudioId == tenant.StudioId && p.DeletedAt == null);

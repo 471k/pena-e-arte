@@ -59,6 +59,24 @@ internal static class ClientDataErasure
         foreach (Client c in allClients)
             c.ErasureRequestedAt = now;
 
+        // Saved booking drafts are deleted at once, not after the grace window (Phi's decision). A draft is an
+        // unsent request that may hold photos and placement, and nobody needs it to undo an erasure. Every studio,
+        // like the fan-out above.
+        // IgnoreQueryFilters approved: usage #57, erasure fan-out across studios for one login. See architecture.md.
+        if (client.UserId is Guid draftOwner)
+        {
+            List<BookingDraft> drafts = await db.BookingDrafts
+                .IgnoreQueryFilters()
+                .Include(d => d.Attachments)
+                .Where(d => d.UserId == draftOwner)
+                .ToListAsync(ct);
+            foreach (BookingDraft draft in drafts)
+            {
+                db.BookingDraftAttachments.RemoveRange(draft.Attachments);
+                db.BookingDrafts.Remove(draft);
+            }
+        }
+
         await db.SaveChangesAsync(ct);
 
         // Disable login immediately — the user asked to delete their account and must not keep

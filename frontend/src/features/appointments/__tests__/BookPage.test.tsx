@@ -186,6 +186,13 @@ const server = setupServer(
   http.get("http://localhost/api/v1/packages/purchases/mine", () => HttpResponse.json([])),
   http.post("http://localhost/api/v1/appointments",           () => HttpResponse.json(CREATED_APPT, { status: 201 })),
   http.get("http://localhost/api/v1/clients/me/referrals/rewards", () => HttpResponse.json([])),
+  // Saved booking drafts (S04): none by default.
+  http.get("http://localhost/api/v1/booking-drafts/mine", () => new HttpResponse(null, { status: 204 })),
+  http.put("http://localhost/api/v1/booking-drafts/mine", async ({ request }) => {
+    const body = (await request.json()) as { payload: string; images: unknown[] };
+    return HttpResponse.json({ payload: body.payload, images: body.images, savedAt: new Date().toISOString(), expiresAt: new Date().toISOString() });
+  }),
+  http.delete("http://localhost/api/v1/booking-drafts/mine", () => new HttpResponse(null, { status: 204 })),
   http.post("http://localhost/api/v1/clients/me/referrals/code", () => HttpResponse.json({
     id: "ref-code-001", code: "TESTREF1", shareUrl: "https://tattooos.co/book?studio=test-studio&referral=TESTREF1",
     rewardPercent: 10, redemptionCount: 0,
@@ -1831,5 +1838,91 @@ describe("BookAppointmentForm — C04: a service, not a duration", () => {
     const picker = await screen.findByRole("combobox", { name: /service/i });
     expect(picker).toHaveTextContent("Something else (choose a session length)");
     expect(screen.getByRole("combobox", { name: /session length/i })).toBeInTheDocument();
+  });
+});
+
+describe("Saved booking drafts (S04): everything but the safety notes", () => {
+  const SAVED = {
+    payload: JSON.stringify({
+      form: { artistId: null, bookAnyArtist: true, scheduledAt: "", durationMinutes: 120, serviceId: null, promoCode: "SPRING", notes: "Bring the sketch" },
+      intake: { tattooDescription: "A rose on the forearm", style: "", referralSource: "", referralSourceOther: "" },
+      desiredPlacement: [],
+      referralCode: "",
+    }),
+    images: [],
+    savedAt: "2026-11-20T10:00:00Z",
+    expiresAt: "2026-11-27T10:00:00Z",
+  };
+
+  /** True when `key` appears as an object key anywhere in the JSON. */
+  function holdsKey(json: string, key: string): boolean {
+    const walk = (v: unknown): boolean =>
+      Array.isArray(v) ? v.some(walk)
+        : v && typeof v === "object" ? Object.entries(v).some(([k, x]) => k.toLowerCase() === key.toLowerCase() || walk(x))
+          : false;
+    return walk(JSON.parse(json));
+  }
+
+  it("offers a saved draft, says which answer wasn't kept and why, and Resume restores the rest", async () => {
+    server.use(http.get("http://localhost/api/v1/booking-drafts/mine", () => HttpResponse.json(SAVED)));
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+
+    const notice = await screen.findByRole("region", { name: /unfinished booking request/i });
+    expect(notice).toHaveTextContent(/except your answer to "anything else i should know\?", because it can hold health details/i);
+    await user.click(within(notice).getByRole("button", { name: /resume it/i }));
+
+    expect(await screen.findByDisplayValue("A rose on the forearm")).toBeInTheDocument();
+    expect(screen.getByLabelText("Notes")).toHaveValue("Bring the sketch");
+    expect(screen.getByLabelText("Anything else I should know?")).toHaveValue("");
+    expect(screen.queryByRole("region", { name: /unfinished booking request/i })).not.toBeInTheDocument();
+  });
+
+  it("saves what's typed as a draft, but never the safety notes, not even the key", async () => {
+    let saved: string | null = null;
+    server.use(http.put("http://localhost/api/v1/booking-drafts/mine", async ({ request }) => {
+      saved = ((await request.json()) as { payload: string }).payload;
+      return HttpResponse.json({ payload: saved, images: [], savedAt: new Date().toISOString(), expiresAt: new Date().toISOString() });
+    }));
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+    await waitFor(() => expect(screen.queryByText(/checking for a booking you started earlier/i)).not.toBeInTheDocument());
+
+    await user.type(await screen.findByLabelText(/what are you looking to get done/i), "A peony");
+    await user.type(screen.getByLabelText("Anything else I should know?"), "Allergic to latex");
+
+    await waitFor(() => expect(saved).toContain("A peony"), { timeout: 5000 });
+    expect(holdsKey(saved!, "safetyNotes")).toBe(false);
+    expect(saved!).not.toContain("latex");
+  });
+
+  it("Start over discards the draft", async () => {
+    let deleted = 0;
+    server.use(
+      http.get("http://localhost/api/v1/booking-drafts/mine", () => HttpResponse.json(SAVED)),
+      http.delete("http://localhost/api/v1/booking-drafts/mine", () => { deleted += 1; return new HttpResponse(null, { status: 204 }); }),
+    );
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+    await user.click(await screen.findByRole("button", { name: /start over/i }));
+    await waitFor(() => expect(deleted).toBe(1));
+    expect(screen.queryByDisplayValue("A rose on the forearm")).not.toBeInTheDocument();
+  });
+
+  it("if the draft can't be checked, says so, offers Try again, and the form still works", async () => {
+    server.use(http.get("http://localhost/api/v1/booking-drafts/mine", () => HttpResponse.json({ message: "boom" }, { status: 500 })));
+    renderForm(Role.Client);
+    const alert = (await screen.findByText(/couldn't check for a booking you started earlier/i)).closest("[role='alert']");
+    expect(alert).toHaveTextContent(/you can still book from scratch/i);
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/what are you looking to get done/i)).toBeEnabled();
+  });
+
+  it("staff booking forms keep no drafts", async () => {
+    let asked = 0;
+    server.use(http.get("http://localhost/api/v1/booking-drafts/mine", () => { asked += 1; return new HttpResponse(null, { status: 204 }); }));
+    renderForm(Role.Owner);
+    await screen.findByLabelText(/what are you looking to get done/i);
+    expect(asked).toBe(0);
   });
 });

@@ -1218,7 +1218,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 52 | `StartImpersonationHandler`, `EndImpersonationSessionHandler`, `GetImpersonationSessionsHandler` | AdminOnly cross-tenant `Studio`/`ImpersonationSession` lookups — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing sessions (they are not impersonating yet, or ever, for these three commands themselves), so the normal tenant filter would match nothing | AdminOnly |
 | 53 | `GetNotificationsQuery` (admin branch) | Cross-tenant `NotificationLog` read — the admin's own `tenant_id` claim would otherwise silently scope this to one arbitrary studio instead of returning every `RecipientType.Admin` row platform-wide | AdminOnly |
 | 54 | `StudioCurrencyLock.IsLockedAsync` (`Payment`, `GiftCard`, `PackagePurchase`, `BoothRentCharge`) | The tenant filter also hides soft-deleted rows, but a soft-deleted payment/gift-card/package-purchase/booth-rent-charge still means money moved in this currency — the lock must see those rows too. Mitigation: explicit `StudioId == tenant.StudioId` predicate on every one of the four queries; read-only `AnyAsync`; no data returned. Used by `UpdateStudioCurrencyCommand` (rejects a change once locked) and every `StudioResponse`/`GET /studios/me` builder (`CurrencyLocked` field) | OwnerOnly (the change) / whoever can already read the StudioResponse (the read) |
-| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
+| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`, and since 24 Nov `BookingDraftAttachment`, source 12) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
+| 56 | `BookingDraftExpiryJob.RunAsync` (`BookingDraft`, `BookingDraftAttachment`) | Cross-tenant delete of booking drafts past their seven days (S04, Phi's decision) by a Hangfire job with no tenant: under the filter it would find nothing and drafts would outlive their promised life. Mitigation: one predicate (`ExpiresAt <= now`), deletes only, returns a count; never reaches an endpoint | Hangfire job (no caller) |
+| 57 | `ClientDataErasure.ExecuteAsync` (`BookingDraft`, `BookingDraftAttachment`) | Erasure deletes the person's saved booking drafts at once in **every** studio, the same fan-out as the consent forms and profiles above it (Phi's decision: erasure deletes drafts immediately). Mitigation: scoped by the erased login's `UserId`, deletes only; reached only through the two existing erasure commands (OwnerOnly for a studio's client, ClientOnly for one's own) | OwnerOnly / ClientOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -8034,3 +8036,26 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
 - **Proven by the count, measured the same way before and after** (Playwright Chromium, owner `/clients` at 1280,
   first Tab from the top of the document): `main` reached the first page control on **Tab 24 (23 stops before
   it)**. With the link it is **Tab, Enter, Tab (1 stop before it)**.
+
+## Saved booking drafts keep everything but the safety notes (Phi, 24 Nov) — 2026-11-24
+
+- **Phi's answer on the decision form: exclude the safety field.** "Anything else I should know?" (`safetyNotes`)
+  invites medical details, so a draft never holds the key at all, not even empty. Everything else is kept. Phi chose
+  exclusion over an opt-in, so there is no consent control. Legal permits drafts with health answers excluded.
+- **Server-side, by Phi's choice on 24 Nov** (S04: keep health answers and body photos out of general browser storage).
+  `BookingDraft` holds the form JSON and `BookingDraftAttachment.ImageUrl` the photos. They are owned by the login
+  (`UserId`) at one studio, under the tenant filter, one per person per studio, and ClientOnly
+  (`/api/v1/booking-drafts/mine`).
+  - **Lifetime:** seven days from the last save (Phi's earlier decision). Expired drafts read as none, and
+    `BookingDraftExpiryJob` deletes them daily (IQF #56).
+  - **Deleted** on send, on "Start over", and at once on erasure in every studio (`ClientDataErasure`, IQF #57).
+- **The exclusion is enforced three times:**
+  1. The form builds the payload field by field, never by spreading the intake.
+  2. The validator refuses a payload carrying `safetyNotes` at any depth and in any case.
+  3. The handler checks again, rather than trusting the pipeline with the one rule that keeps health data out.
+- **Photos have their own column so the orphan sweep counts them** (source 12 of `StoredObjectReferenceReader`). A draft
+  lives exactly as long as the sweep's minimum age, so without this a live draft's photos could be moved.
+- **The exit guard still counts the safety field**, although the draft doesn't keep it. Leaving loses that answer
+  for good, so the warning is right.
+- **Guests: not built.** The options are in `docs/claude/spec-guest-booking-draft-open-question-2026-11-24.md`. No
+  decision has been taken.

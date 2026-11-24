@@ -9,6 +9,8 @@ public sealed class FakeDbContext(DbContextOptions<FakeDbContext> options)
 {
     public DbSet<Appointment> Appointments => Set<Appointment>();
     public DbSet<AppointmentAttachment> AppointmentAttachments => Set<AppointmentAttachment>();
+    public DbSet<BookingDraft> BookingDrafts => Set<BookingDraft>();
+    public DbSet<BookingDraftAttachment> BookingDraftAttachments => Set<BookingDraftAttachment>();
     public DbSet<DepositRule> DepositRules => Set<DepositRule>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<PromoCode> PromoCodes => Set<PromoCode>();

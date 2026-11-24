@@ -1,4 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
+import type { BookingDraftResponse, SaveBookingDraftRequest } from "./bookingDraft";
 import { baseQuery } from "@/shared/api/baseQuery";
 // paymentsApi imports this slice too; the cycle is safe because each side only uses the other
 // inside callbacks that run after both modules have loaded.
@@ -26,7 +27,7 @@ import type { OwnerExceptionsResponse } from "@/features/dashboard/dashboard.typ
 export const appointmentsApi = createApi({
   reducerPath: "appointmentsApi",
   baseQuery,
-  tagTypes: ["Appointment"],
+  tagTypes: ["Appointment", "BookingDraft"],
   endpoints: (builder) => ({
     getAppointments: builder.query<AppointmentResponse[], GetAppointmentsParams>({
       query: ({ from, to, artistId, assignedToMe } = {}) => ({
@@ -198,6 +199,19 @@ export const appointmentsApi = createApi({
       }),
       invalidatesTags: ["Appointment"],
     }),
+    // Saved booking drafts (S04): the signed-in client's own draft at this studio. 204 reads as null.
+    getMyBookingDraft: builder.query<BookingDraftResponse | null, void>({
+      query: () => "booking-drafts/mine",
+      providesTags: ["BookingDraft"],
+    }),
+    saveMyBookingDraft: builder.mutation<BookingDraftResponse, SaveBookingDraftRequest>({
+      query: (body) => ({ url: "booking-drafts/mine", method: "PUT", body }),
+      // No invalidation: the form already holds what it saved, and a refetch mid-typing would offer a restore.
+    }),
+    deleteMyBookingDraft: builder.mutation<void, void>({
+      query: () => ({ url: "booking-drafts/mine", method: "DELETE" }),
+      invalidatesTags: ["BookingDraft"],
+    }),
   }),
 });
 
@@ -222,4 +236,7 @@ export const {
   useGetAvailableSlotsQuery,
   useGetReschedulePreviewQuery,
   useAssignAppointmentArtistMutation,
+  useGetMyBookingDraftQuery,
+  useSaveMyBookingDraftMutation,
+  useDeleteMyBookingDraftMutation,
 } = appointmentsApi;

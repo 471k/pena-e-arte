@@ -89,6 +89,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
     relatedArticleIds: ["client-book-appointment"],
   },
   {
+    id: "client-booking-draft",
+    roles: [Client],
+    title: "Come back to a booking request you started",
+    route: "/book",
+    keywords: ["draft", "saved booking", "unfinished booking", "resume booking", "continue later", "start over", "lost my booking", "came back", "health", "safety notes"],
+    summary: "When you're signed in, a booking request you start is saved as you go, for seven days. Everything is kept except your answer to \"Anything else I should know?\".",
+    steps: [
+      "Start a booking request while you're signed in. What you enter is saved automatically a moment after each change, at that studio.",
+      "Come back to the booking page at the same studio within seven days. A note says when you started it and offers \"Resume it\" or \"Start over\".",
+      "Click \"Resume it\" to get your service, artist, date and time, description, placement, photos and codes back. Click \"Start over\" to delete the saved request.",
+      "Fill in \"Anything else I should know?\" again before you send it: it's never saved, because it can hold health details like allergies or medication.",
+    ],
+    tips: [
+      "Sending the request deletes its saved copy. So does \"Start over\", and so does asking for your data to be deleted.",
+      "Saved requests are for signed-in clients only. If you book without an account, nothing is saved, and leaving the page asks you first.",
+      "A saved request is deleted seven days after your last change.",
+    ],
+    relatedArticleIds: ["client-book-appointment"],
+  },
+  {
     id: "client-my-bookings",
     roles: [Client],
     title: "My bookings: your home page",

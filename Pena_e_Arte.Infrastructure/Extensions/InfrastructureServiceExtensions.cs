@@ -172,6 +172,7 @@ public static class InfrastructureServiceExtensions
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
         services.AddTransient<GuestPendingUploadCleanupJob>();
+        services.AddTransient<BookingDraftExpiryJob>();
         services.AddTransient<StoredObjectReferenceReader>();
         services.Configure<OrphanedObjectSweepOptions>(configuration.GetSection(OrphanedObjectSweepOptions.Section));
         services.AddTransient<OrphanedObjectSweepJob>();
