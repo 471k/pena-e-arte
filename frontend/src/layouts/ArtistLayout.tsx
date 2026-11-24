@@ -25,6 +25,7 @@ import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports"
 import { useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
 export function ArtistLayout() {
   const dispatch = useAppDispatch();
@@ -60,6 +61,7 @@ export function ArtistLayout() {
   const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.artist);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
+      <SkipToContent />
       <SuspensionBanner role="artist" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
@@ -83,7 +85,7 @@ export function ArtistLayout() {
 
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
-        <div className="flex-1 min-w-0">
+        <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
           {/* Staff screens show lek next to euro for Albanian EUR studios (spec Q3, 2026-10-26). */}
           <MoneyStudioContext.Provider value={moneyStudio}>
             <Outlet />

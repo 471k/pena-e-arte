@@ -8,7 +8,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "navigation-sidebar",
     roles: [Client, Artist, Owner, Admin],
     title: "Find your way around: the sidebar",
-    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find", "which studio", "studio name", "current studio", "greyed out", "disabled button", "why can't i click"],
+    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "keyboard", "skip to content", "tab key", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find", "which studio", "studio name", "current studio", "greyed out", "disabled button", "why can't i click"],
     summary: "Every screen is reached from the vertical menu on the left. Related pages are grouped into categories that expand and collapse, and the whole menu scrolls if it's long.",
     steps: [
       "On a computer, the menu sits on the left side of every page. On a phone or small tablet, tap the menu button (three lines) at the top left to slide it open.",
@@ -19,6 +19,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Want more room? Click the panel button at the top left of the page, next to the TattooOS name (or press Ctrl+B, or Cmd+B on a Mac), to shrink the menu to a strip of icons. Hover over an icon to see its name; click a category icon to open the full menu at that category. Click the same button, or press Ctrl+B again, to bring the labels back. The menu remembers your choice on this device.",
     ],
     tips: [
+      "Using the keyboard? The first time you press Tab on a page, a \"Skip to content\" link appears at the top left. Press Enter and the next Tab goes straight to the page itself, instead of through the top bar and every menu entry first.",
       "Can't find a page? Open the category it most likely belongs to — related pages are always kept together.",
       "Ctrl+B does nothing while you're typing in a text box, so it never gets in the way of writing.",
       "Owners who also have their own artist profile see a separate artist menu when they switch to \"Artist\" at the top of the page.",
