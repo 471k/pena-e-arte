@@ -8077,3 +8077,28 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
   old sentence as the fallback. `describeLoadError` is for failed reads, so it isn't used for actions. Typed input
   survives a failure. **The feedback receipt never includes the internal note's text** (the same field as the #371
   leak).
+
+## The visit pickers carry their studio's zone; booth rent's dates are left alone (S01's tail) — 2026-11-24
+
+- **The two "which visit" pickers now name the studio's day.** `ReviewableAppointmentResponse` and
+  `ReportableAppointmentResponse` gained `StudioTimezone`, read per row from the appointment's own studio (a
+  correlated subquery: `Studio` has no query filter, so no `IgnoreQueryFilters` was added). The review form and the
+  conduct-report dialog format through `shared/utils/visitDate.ts`, which calls `formatStudioTime`; a null zone
+  reads "Time unavailable", never the viewer's zone. A client in another zone could otherwise be shown the wrong day
+  and pick the wrong visit. Pinned by a MySQL integration test (`VisitPickerStudioZoneIntegrationTests`) because the
+  in-memory double would accept a projection MySQL could not translate.
+- **Booth rent: the question asked was whether anything reconciles, groups or reports booth-rent charges by a
+  studio-calendar period. The answer is no.** Read at `e98f433c`: `BoothRentChargeJob` writes the row,
+  `GetBoothRentChargesHandler` only sorts by `ChargedDate`, `MarkBoothRentChargeSettledCommand` finds a charge by id,
+  and `StudioCurrencyLock` only asks whether any charge exists. No export, ledger, earnings figure or report reads
+  booth-rent charges. So the money clause of the rule does not apply, and **`BoothRentManagementPage.tsx` and
+  `MyBoothRentSection.tsx` were not changed**. S01 stays Partial on that one row.
+- **What the reading found instead: these dates are date-only.** The owner sets the first charge with a
+  `type="date"` input, sent as `new Date("YYYY-MM-DD").toISOString()`, which is UTC midnight. Both commands copy it
+  unchanged, and the job advances it by whole days (`AddDays(7)`) or months (`AddMonths(1)`), so every
+  `NextChargeDate` and `ChargedDate` the UI can produce is UTC midnight of a date the owner picked. That is the rule's
+  third kind, and the matching formatter is `formatDateOnly`. **The studio zone would have been wrong too:** in any
+  studio west of UTC, UTC midnight falls on the previous evening, so it would print the day before for weekly rent,
+  which is exactly the sharp case. Not applied here because the instruction gated any change on the reconciliation
+  answer; it waits for a ruling. One caveat for that ruling: the API does not truncate the value, so a caller other
+  than this form could store a time of day.

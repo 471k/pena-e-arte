@@ -25,6 +25,9 @@ internal static class ReportableAppointmentsQueryHelper
             .Where(x => x.ClientUserId == reporterUserId)
             .OrderByDescending(x => x.Appointment.Date)
             .Select(x => new ReportableAppointmentResponse(
-                x.Appointment.Id, x.Appointment.Date, x.Appointment.DurationMinutes, x.Appointment.Status.ToString()))
+                x.Appointment.Id, x.Appointment.Date, x.Appointment.DurationMinutes, x.Appointment.Status.ToString(),
+                // S01: the zone of the appointment's own studio. Studio carries no query filter, so this read
+                // needs no IgnoreQueryFilters.
+                db.Studios.Where(s => s.Id == x.Appointment.StudioId).Select(s => s.Timezone).FirstOrDefault()))
             .ToListAsync(ct);
 }

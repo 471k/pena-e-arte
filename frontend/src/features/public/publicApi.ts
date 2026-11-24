@@ -203,6 +203,9 @@ export interface ReviewableAppointmentResponse {
   id:              string;
   date:            string;
   durationMinutes: number;
+  /** S01: the appointment's studio's IANA zone, so the picker names the visit's day on the studio's calendar.
+   *  Null only if the studio row is missing; the picker then shows "Time unavailable", never the viewer's zone. */
+  studioTimezone:  string | null;
 }
 
 export interface ArtistInstagramPostResponse {
