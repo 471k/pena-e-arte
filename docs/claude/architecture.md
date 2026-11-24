@@ -7969,3 +7969,18 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
   account chip shows only the avatar.
 - **The tour's switch step opens the drawer when folded**, from the same `folded` value, not only below 640 by media
   query; otherwise it would time out looking for the header copy (#430's failure).
+
+## Extend trial refuses a studio with no subscription row (NoSubscription) — 2026-11-24
+
+- **The defect:** `ExtendTrialHandler` moved `Studio.TrialExpiresAt` when the studio had no `Subscription` row and
+  reported success. Access never reads that column: `SubscriptionAccessService` reads only the `Subscription` row and
+  treats a missing one as data corruption, and `TenantMiddleware` answers 402 on every request. So the extension
+  granted nothing.
+- **The fix:** the handler refuses `NoSubscription` the way it already refuses PastDue and Cancelled: a 422 whose
+  message names what does restore access. The frontend's `TRIAL_EXTENDABLE` drops it, so none of the four entry
+  points offers it. The dashboard's at-risk row lists only GracePeriod and PastDue, so it could never show one.
+- **Kept on purpose:** `NoSubscription` stays in `CASH_ACTIVATABLE`, because `ActivateSubscriptionManuallyHandler`
+  creates the missing row, and that is the actual fix for such a studio. Removing it from both sets would leave
+  the admin with no way forward.
+- **Not part of this change:** whether the admin dashboard's stats count a studio with no row as a trial studio. That
+  is Desktop's §C, verified separately against the source and a real row. It is a reporting question, not this refusal.

@@ -333,6 +333,18 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.getByRole("button", { name: /activate subscription for closed studio/i })).toBeInTheDocument();
   });
 
+  it("a studio with no subscription row is not offered Extend trial, and keeps Activate (24 Nov)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[1], studioId: "n1", studioName: "Rowless Studio", subscriptionId: null, status: "NoSubscription", planName: null }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Rowless Studio");
+    expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /activate subscription for rowless studio/i })).toBeInTheDocument();
+  });
+
   it("shows aria-label with studio name on Extend Trial button", async () => {
     renderPage();
     await screen.findByText("Trialing Studio");
