@@ -32,6 +32,11 @@ public class ExtendTrialHandler(IAppDbContext db)
         + "Access comes back only with an active subscription again, for example when you record a cash payment "
         + "with Activate on the studio's page.";
 
+    public const string NoSubscriptionMessage =
+        "This studio has no subscription record, so a trial extension wouldn't restore access: the platform "
+        + "blocks a studio without one on every request. Recording a cash payment with Activate on the studio's "
+        + "page creates the record and restores access.";
+
     public async Task Handle(ExtendTrialCommand command, CancellationToken ct)
     {
         // IgnoreQueryFilters approved: usage #5 — trial extension cross-tenant, AdminOnly. See architecture.md.
@@ -41,7 +46,15 @@ public class ExtendTrialHandler(IAppDbContext db)
             .FirstOrDefaultAsync(s => s.Id == command.StudioId, ct)
             ?? throw new NotFoundException(nameof(Studio), command.StudioId);
 
-        if (studio.Subscription?.Status == SubscriptionStatus.Active)
+        // NoSubscription (24 Nov, Desktop's instruction B): the extension used to move only Studio.TrialExpiresAt,
+        // which access never reads. SubscriptionAccessService reads the Subscription row alone and treats a missing
+        // row as data corruption, so TenantMiddleware answers 402 on every request whatever the trial date: the
+        // extension reported success and granted nothing. Refused like PastDue and Cancelled. Cash activation is the
+        // path that works, because ActivateSubscriptionManuallyHandler creates the row.
+        Subscription subscription = studio.Subscription
+            ?? throw new BusinessRuleViolationException(NoSubscriptionMessage);
+
+        if (subscription.Status == SubscriptionStatus.Active)
             throw new BusinessRuleViolationException(
                 "Trial extension is not applicable to studios with an active subscription.");
 
@@ -50,28 +63,25 @@ public class ExtendTrialHandler(IAppDbContext db)
         // GracePeriodEndJob skips anything not in GracePeriod. The message names the two moves that do
         // restore access. Exclude From Dunning is deliberately not offered as one: it only stops the
         // reminder emails (PastDueReminderJob), the studio stays blocked.
-        if (studio.Subscription?.Status == SubscriptionStatus.PastDue)
+        if (subscription.Status == SubscriptionStatus.PastDue)
             throw new BusinessRuleViolationException(PastDueMessage);
 
         // Phi's decision (20 Nov), Desktop's recommendation: Cancelled gets the same treatment. The handler would move
         // the date and leave the status Cancelled, and TenantMiddleware blocks Cancelled whatever the trial date.
-        if (studio.Subscription?.Status == SubscriptionStatus.Cancelled)
+        if (subscription.Status == SubscriptionStatus.Cancelled)
             throw new BusinessRuleViolationException(CancelledMessage);
 
         int days = command.Request.AdditionalDays;
 
         studio.TrialExpiresAt = Extend(studio.TrialExpiresAt, days);
 
-        if (studio.Subscription is not null)
-        {
-            DateTime extendedTrialExpiry = Extend(studio.Subscription.TrialExpiresAt ?? DateTime.UtcNow, days);
-            studio.Subscription.TrialExpiresAt = extendedTrialExpiry;
-            studio.Subscription.GracePeriodEnd = extendedTrialExpiry.AddDays(7);
+        DateTime extendedTrialExpiry = Extend(subscription.TrialExpiresAt ?? DateTime.UtcNow, days);
+        subscription.TrialExpiresAt = extendedTrialExpiry;
+        subscription.GracePeriodEnd = extendedTrialExpiry.AddDays(7);
 
-            // A grace-period studio whose trial is extended goes back to trialing
-            if (studio.Subscription.Status == SubscriptionStatus.GracePeriod)
-                studio.Subscription.Status = SubscriptionStatus.Trialing;
-        }
+        // A grace-period studio whose trial is extended goes back to trialing
+        if (subscription.Status == SubscriptionStatus.GracePeriod)
+            subscription.Status = SubscriptionStatus.Trialing;
 
         await db.SaveChangesAsync(ct);
     }

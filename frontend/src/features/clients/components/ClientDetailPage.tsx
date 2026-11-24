@@ -49,6 +49,9 @@ import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import { useGetPortableProfileQuery } from "../clientsApi";
 import { EraseClientDataSection } from "./EraseClientDataSection";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 const profileSchema = z.object({
   dateOfBirth:  z.string().optional(),
@@ -73,6 +76,8 @@ export function ClientDetailPage() {
   const navigate = useNavigate();
   const canEdit = usePermission(Role.Artist);
   const isOwner = usePermission(Role.Owner);
+  // Appointment dates are on the studio's calendar (S01): pending until the zone loads, never the browser's.
+  const { zone } = useStudioZone();
 
   const {
     data: client,
@@ -525,9 +530,7 @@ export function ClientDetailPage() {
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{record.bodyLocation}</p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(record.completedAt).toLocaleDateString("en-GB", {
-                              day: "numeric", month: "short", year: "numeric",
-                            })}
+                            {formatDateOnly(record.completedAt, { day: "numeric", month: "short", year: "numeric" })}
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -617,7 +620,7 @@ export function ClientDetailPage() {
                   <Card className="hover:bg-muted/40 transition-colors">
                     <CardContent className="p-3 flex items-center justify-between gap-3">
                       <div className="space-y-1 min-w-0">
-                        <p className="text-sm font-medium">{formatDate(appt.date)}</p>
+                        <p className="text-sm font-medium">{formatStudioTime(appt.date, { day: "numeric", month: "short", year: "numeric" }, zone)}</p>
                         <p className="text-xs text-muted-foreground">
                           {appt.durationMinutes} min
                         </p>
