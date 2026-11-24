@@ -6,6 +6,7 @@ import { Separator } from "@/shared/components/ui/separator";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { cn } from "@/shared/utils/cn";
 import { useGetIntakeFormByIdQuery } from "../intakeFormsApi";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-GB", {
@@ -15,9 +16,8 @@ function formatDateTime(dateStr: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+  // A date with no time of day, stored as UTC midnight: printed in UTC (see formatDateOnly).
+  return formatDateOnly(dateStr, { day: "numeric", month: "long", year: "numeric" });
 }
 
 // ── structured medical history ──────────────────────────────────────────────
