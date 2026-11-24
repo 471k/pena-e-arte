@@ -7988,3 +7988,18 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
 - Reads are untouched: tabs, filters, the schedule's dates, Export CSV, Add to Calendar, copy buttons.
 - Side effect, intended: the same controls are now also gated for an owner whose studio is read-only for
   subscription reasons (GracePeriod), which the server already refuses.
+
+## Which zone a date is shown in: studio, reader, or none (S01's rule) — 2026-11-24
+
+- **The rule:** a date that locates something in the studio's operating day follows the **studio's** zone. A date
+  that records when something happened follows the **reader's**. It is written above `formatStudioTime` in
+  `shared/utils/formatInStudioTimezone.ts`, where the next person writing a date will see it.
+- **Money placed in a studio period counts as the first kind.** MyEarnings' "Paid" and the payment list's paid date
+  look like record timestamps but are studio-zone, because they are reconciled, or filtered (`GetPaymentsQuery`'s
+  From/To on PaidAt), by the studio's day. The test is what the date is used for, not whether it is a timestamp.
+- **Date-only values follow neither zone.** A date of birth, a closure day or a tattoo record's date is stored as
+  UTC midnight, so it is printed with `formatDateOnly` (pinned to UTC). The viewer's zone would show the day
+  before anywhere west of UTC. CI runs in UTC, where this is invisible, so such tests pin the viewer's zone with
+  `src/test/viewerZone.ts`.
+- **The audit behind it** is `docs/claude/s01-zone-audit-2026-11-24.md`: 61 files, each with a verdict, the safe
+  ones included.

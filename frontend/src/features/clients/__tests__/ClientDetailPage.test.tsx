@@ -29,6 +29,7 @@ import { AppointmentStatus, DepositStatus } from "@/features/appointments/appoin
 import { ClientDetailPage } from "@/features/clients/components/ClientDetailPage";
 import { Role } from "@/shared/types/roles";
 import { billingApi } from "@/features/billing/billingApi";
+import { withViewerZone } from "@/test/viewerZone";
 
 // D05 phase 4b: whether an admin's support session is active, switched per test. The module's real constant (the
 // reason sentence) is kept; only the one-line hook is replaced.
@@ -492,6 +493,38 @@ describe("ClientDetailPage", () => {
     expect(link).toHaveAttribute("href", `/appointments/${APPOINTMENT.id}`);
     expect(within(link).getByText("Confirmed")).toBeInTheDocument();
     expect(within(link).getByText("120 min")).toBeInTheDocument();
+  });
+
+  it("an appointment's date is on the studio's calendar, not the viewer's (S01)", async () => {
+    // 12:00 UTC on 24 Nov is 02:00 on 25 Nov in Kiritimati (UTC+14). The browser's zone (UTC in CI, Paris here)
+    // would say 24 Nov.
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Pacific/Kiritimati", currency: "EUR", countryCode: "AL" })),
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([{ ...APPOINTMENT, date: "2026-11-24T12:00:00.000Z", endDate: "2026-11-24T14:00:00.000Z" }])),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Ferreira");
+    await user.click(screen.getByRole("tab", { name: /appointments/i }));
+    const link = await screen.findByRole("link", { name: /confirmed/i });
+    expect(await within(link).findByText("25 Nov 2026")).toBeInTheDocument();
+  });
+
+  it("a shared tattoo record's date is a date, not an instant: west of UTC it is not the day before", async () => {
+    // Stored as UTC midnight on 1 Nov 2024. Printed in Pago Pago's zone (UTC-11) it would read 31 Oct.
+    await withViewerZone("Pacific/Pago_Pago", async () => {
+      server.use(
+        http.get("http://localhost/api/v1/clients/:userId/portable-profile", () => HttpResponse.json(PORTABLE_PROFILE)),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+      await user.click(await screen.findByRole("tab", { name: /cross-studio/i }));
+      expect(await screen.findByText("1 Nov 2024")).toBeInTheDocument();
+      expect(screen.queryByText("31 Oct 2024")).not.toBeInTheDocument();
+    });
   });
 
   it("Appointments tab filters out appointments belonging to other clients", async () => {
