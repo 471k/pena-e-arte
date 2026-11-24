@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { ChevronDown, Lock, LogOut, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
-import { UserChip } from "./UserChip";
+import { UserChip, useUserChipText } from "./UserChip";
 import { useClickOutside } from "@/shared/hooks/useClickOutside";
 import { useEscapeKey }    from "@/shared/hooks/useEscapeKey";
 
@@ -13,6 +13,10 @@ export function UserMenu({ onLogout, context, compact = false }: { onLogout: () 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
+  // WCAG 2.5.3: the chip shows the name and role, so the name says them first, in that order, then what the button
+  // opens. "User menu" alone left out every word on the button. While the user loads there is no visible text.
+  const chipText = useUserChipText();
+  const accessibleName = chipText ? `${chipText.displayName}, ${chipText.roleLabel}, user menu` : "User menu";
 
   useClickOutside(ref, open, close);
   useEscapeKey(open, close);
@@ -21,7 +25,7 @@ export function UserMenu({ onLogout, context, compact = false }: { onLogout: () 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="User menu"
+        aria-label={accessibleName}
         aria-expanded={open}
         aria-haspopup="true"
         className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

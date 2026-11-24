@@ -23,6 +23,7 @@ import { useCategorizedImageUpload, ACCEPTED_IMAGE_TYPES } from "@/shared/hooks/
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import { cn }              from "@/shared/utils/cn";
 import { Money }           from "@/shared/components/Money";
+import { InitialsGlyph }   from "@/shared/components/InitialsGlyph";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { generateUuid }    from "@/shared/utils/uuid";
@@ -161,13 +162,11 @@ function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   }
 
   return (
-    <span
-      aria-hidden="true"
+    <InitialsGlyph
+      initials={initials}
       className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-800 dark:text-violet-300
                  text-[9px] font-semibold flex items-center justify-center shrink-0"
-    >
-      {initials}
-    </span>
+    />
   );
 }
 

@@ -146,7 +146,7 @@ export function ConnectionRow({
               onClick={action.onClick}
               disabled={action.disabled || action.busy}
               aria-busy={action.busy}
-              aria-label={`Get ${label} verification code`}
+              aria-label={`Get verification code for ${label}`}
             >
               Get verification code
             </SubscriptionGatedButton>
