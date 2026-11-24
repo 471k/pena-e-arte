@@ -1,3 +1,7 @@
+// src is type-checked as browser code (tsconfig.app.json has no Node types), but tests run in Node, where `process`
+// exists. Declared here for this helper only, rather than adding Node types to the whole app.
+declare const process: { env: Record<string, string | undefined> };
+
 /**
  * Runs `fn` with the process's own zone set to `timeZone`, the zone a browser's Date and Intl default to, and
  * restores it afterwards (deleting TZ if it was unset, since assigning undefined would set the string "undefined").
