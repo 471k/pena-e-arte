@@ -17,6 +17,7 @@ import type {
 } from "@/features/appointments/appointment.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 // E04b (A04): the deposit consequence is shown before the no-show is committed, from the server's own
 // decision; confirm waits for it; the safe action has focus; the result shown afterwards is the
@@ -99,6 +100,18 @@ describe("NoShowConfirmDialog — before committing", () => {
     expect(screen.getByText("Mark Mira Hoxha as a no-show?")).toBeInTheDocument();
     expect(await screen.findByText("Wed 4 Nov, 14:00 – 16:00")).toBeInTheDocument();
     expect(keepButton()).toHaveFocus();
+  });
+
+  it("first paint: while the studio's zone loads, the session reads as pending, never the browser's time", async () => {
+    server.use(http.get("http://localhost/api/v1/studios/me", async () => {
+      await new Promise((r) => setTimeout(r, 60_000));
+      return HttpResponse.json(STUDIO);
+    }));
+    renderDialog();
+    expect(screen.getByText("Mark Mira Hoxha as a no-show?")).toBeInTheDocument();
+    expect(screen.getByText(STUDIO_TIME_PENDING)).toBeInTheDocument();
+    // 13:00 UTC on 4 Nov: a browser-zone span would start "Wed 4 Nov".
+    expect(screen.queryByText(/Wed 4 Nov/)).not.toBeInTheDocument();
   });
 
   it("while the preview loads: says so, and confirm is disabled", () => {

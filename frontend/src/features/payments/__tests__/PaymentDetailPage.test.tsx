@@ -204,6 +204,31 @@ describe("PaymentDetailPage", () => {
 
   // ── Detail rendering ────────────────────────────────────────────────────────
 
+  it("first paint: while the studio's zone loads, its dates read as pending, never the browser's time", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", async () => {
+        await new Promise((r) => setTimeout(r, 60_000));
+        return HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" });
+      }),
+    );
+    renderPage("appt-002");
+    expect(await screen.findByRole("heading", { name: /100/ })).toBeInTheDocument();
+    // 15:00 UTC on 15 Jun. Any browser-zone rendering of it would contain "15 Jun 2026".
+    expect(screen.queryByText(/15 Jun 2026/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/…/).length).toBeGreaterThan(0);
+  });
+
+  it("'Paid at' and the booking are on the studio's calendar", async () => {
+    // 15:00 UTC on 15 Jun is 05:00 on 16 Jun in Kiritimati (UTC+14).
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Pacific/Kiritimati", currency: "EUR" })),
+    );
+    renderPage("appt-002");
+    expect(await screen.findByText(/16 Jun 2026, 05:00/)).toBeInTheDocument();
+    expect(screen.getByText(/Maria Silva · Tue, 16 Jun 2026, 04:00/)).toBeInTheDocument();
+  });
+
   it("renders the payment amount", async () => {
     renderPage("appt-001");
     expect(await screen.findByRole("heading", { name: /100/ })).toBeInTheDocument();
