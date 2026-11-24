@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { vi, describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -28,6 +28,17 @@ import type { IntakeFormResponse, ConsentFormResponse } from "@/features/forms/f
 import { AppointmentStatus, DepositStatus } from "@/features/appointments/appointment.types";
 import { ClientDetailPage } from "@/features/clients/components/ClientDetailPage";
 import { Role } from "@/shared/types/roles";
+import { billingApi } from "@/features/billing/billingApi";
+import { withViewerZone } from "@/test/viewerZone";
+
+// D05 phase 4b: whether an admin's support session is active, switched per test. The module's real constant (the
+// reason sentence) is kept; only the one-line hook is replaced.
+let supportSession = false;
+vi.mock("@/shared/hooks/useSupportView", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/hooks/useSupportView")>()),
+  useSupportView: () => supportSession,
+}));
+
 
 // S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
 // computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
@@ -186,6 +197,8 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 })),
   http.post("http://localhost/api/v1/clients/:id/cancel-erasure", () =>
     new HttpResponse(null, { status: 204 })),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -197,6 +210,7 @@ afterAll(() => server.close());
 function makeStore(role: Role) {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth: authReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
@@ -207,7 +221,7 @@ function makeStore(role: Role) {
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
     middleware: (gd) =>
-      gd().concat(
+      gd().concat(billingApi.middleware, 
         clientsApi.middleware,
         artistsApi.middleware,
         appointmentsApi.middleware,
@@ -481,6 +495,38 @@ describe("ClientDetailPage", () => {
     expect(within(link).getByText("120 min")).toBeInTheDocument();
   });
 
+  it("an appointment's date is on the studio's calendar, not the viewer's (S01)", async () => {
+    // 12:00 UTC on 24 Nov is 02:00 on 25 Nov in Kiritimati (UTC+14). The browser's zone (UTC in CI, Paris here)
+    // would say 24 Nov.
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Pacific/Kiritimati", currency: "EUR", countryCode: "AL" })),
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([{ ...APPOINTMENT, date: "2026-11-24T12:00:00.000Z", endDate: "2026-11-24T14:00:00.000Z" }])),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ana Ferreira");
+    await user.click(screen.getByRole("tab", { name: /appointments/i }));
+    const link = await screen.findByRole("link", { name: /confirmed/i });
+    expect(await within(link).findByText("25 Nov 2026")).toBeInTheDocument();
+  });
+
+  it("a shared tattoo record's date is a date, not an instant: west of UTC it is not the day before", async () => {
+    // Stored as UTC midnight on 1 Nov 2024. Printed in Pago Pago's zone (UTC-11) it would read 31 Oct.
+    await withViewerZone("Pacific/Pago_Pago", async () => {
+      server.use(
+        http.get("http://localhost/api/v1/clients/:userId/portable-profile", () => HttpResponse.json(PORTABLE_PROFILE)),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText("Ana Ferreira");
+      await user.click(await screen.findByRole("tab", { name: /cross-studio/i }));
+      expect(await screen.findByText("1 Nov 2024")).toBeInTheDocument();
+      expect(screen.queryByText("31 Oct 2024")).not.toBeInTheDocument();
+    });
+  });
+
   it("Appointments tab filters out appointments belonging to other clients", async () => {
     server.use(
       http.get("http://localhost/api/v1/appointments", () =>
@@ -684,5 +730,27 @@ describe("ClientDetailPage", () => {
     await user.click(within(dialog).getByRole("button", { name: /^restore$/i }));
 
     expect(await screen.findByText("Client restored.")).toBeInTheDocument();
+  });
+});
+
+describe("D05 phase 4b: write controls during a support session", () => {
+  afterEach(() => { supportSession = false; });
+
+  it("a write control is shown but turned off, saying why, during a support session, and on outside one", async () => {
+    supportSession = true;
+    const first = renderPage();
+    await Promise.resolve();
+    const gated = await screen.findByRole("button", { name: /send reminder/i }, { timeout: 5000 });
+    expect(gated).toHaveAttribute("aria-disabled", "true");
+    expect(gated).toHaveAccessibleDescription(
+      "This is a read-only support session: changes are turned off. End the session to make changes as yourself.");
+    void first;
+    cleanup();
+
+    supportSession = false;
+    renderPage();
+    await Promise.resolve();
+    const open = await screen.findByRole("button", { name: /send reminder/i }, { timeout: 5000 });
+    expect(open).not.toHaveAttribute("aria-disabled", "true");
   });
 });

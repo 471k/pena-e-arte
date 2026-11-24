@@ -48,6 +48,10 @@ import { TattooHistorySection } from "./TattooHistorySection";
 import { ReminderDialog } from "@/features/reminders/components/ReminderDialog";
 import { useGetPortableProfileQuery } from "../clientsApi";
 import { EraseClientDataSection } from "./EraseClientDataSection";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 const profileSchema = z.object({
   dateOfBirth:  z.string().optional(),
@@ -72,6 +76,8 @@ export function ClientDetailPage() {
   const navigate = useNavigate();
   const canEdit = usePermission(Role.Artist);
   const isOwner = usePermission(Role.Owner);
+  // Appointment dates are on the studio's calendar (S01): pending until the zone loads, never the browser's.
+  const { zone } = useStudioZone();
 
   const {
     data: client,
@@ -251,7 +257,7 @@ export function ClientDetailPage() {
 
         {canEdit && !isEditing && (
           <div className="flex items-center gap-2">
-            <Button
+            <SubscriptionGatedButton
               variant="outline"
               size="sm"
               onClick={() => setReminderDialogOpen(true)}
@@ -259,11 +265,11 @@ export function ClientDetailPage() {
             >
               <Send className="h-3.5 w-3.5" />
               Send Reminder
-            </Button>
-            <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
+            </SubscriptionGatedButton>
+            <SubscriptionGatedButton variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
               <Pencil className="h-3.5 w-3.5" />
               {profileNotFound ? "Add Profile" : "Edit Profile"}
-            </Button>
+            </SubscriptionGatedButton>
           </div>
         )}
 
@@ -384,7 +390,7 @@ export function ClientDetailPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSaving}>
+            <SubscriptionGatedButton type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -393,7 +399,7 @@ export function ClientDetailPage() {
               ) : (
                 "Save Profile"
               )}
-            </Button>
+            </SubscriptionGatedButton>
           </form>
         ) : (
           <Tabs defaultValue="profile">
@@ -451,7 +457,7 @@ export function ClientDetailPage() {
                         <h2 className="text-sm font-medium">Body Map</h2>
                       </div>
                       {canEdit && bodyMapMode === "view" && (
-                        <Button
+                        <SubscriptionGatedButton
                           variant="ghost"
                           size="sm"
                           onClick={startBodyMapEdit}
@@ -460,7 +466,7 @@ export function ClientDetailPage() {
                         >
                           <Pencil className="h-3 w-3" />
                           Edit
-                        </Button>
+                        </SubscriptionGatedButton>
                       )}
                       {bodyMapMode === "edit" && (
                         <div className="flex items-center gap-1.5">
@@ -473,7 +479,7 @@ export function ClientDetailPage() {
                           >
                             Cancel
                           </Button>
-                          <Button
+                          <SubscriptionGatedButton
                             size="sm"
                             onClick={saveBodyMap}
                             disabled={isSavingMap}
@@ -484,7 +490,7 @@ export function ClientDetailPage() {
                             ) : (
                               "Save"
                             )}
-                          </Button>
+                          </SubscriptionGatedButton>
                         </div>
                       )}
                     </div>
@@ -524,9 +530,7 @@ export function ClientDetailPage() {
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">{record.bodyLocation}</p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(record.completedAt).toLocaleDateString("en-GB", {
-                              day: "numeric", month: "short", year: "numeric",
-                            })}
+                            {formatDateOnly(record.completedAt, { day: "numeric", month: "short", year: "numeric" })}
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -616,7 +620,7 @@ export function ClientDetailPage() {
                   <Card className="hover:bg-muted/40 transition-colors">
                     <CardContent className="p-3 flex items-center justify-between gap-3">
                       <div className="space-y-1 min-w-0">
-                        <p className="text-sm font-medium">{formatDate(appt.date)}</p>
+                        <p className="text-sm font-medium">{formatStudioTime(appt.date, { day: "numeric", month: "short", year: "numeric" }, zone)}</p>
                         <p className="text-xs text-muted-foreground">
                           {appt.durationMinutes} min
                         </p>
@@ -647,7 +651,7 @@ export function ClientDetailPage() {
                 </p>
               </div>
               {client.archivedAt ? (
-                <Button
+                <SubscriptionGatedButton
                   variant="secondary"
                   size="sm"
                   className="gap-1.5 shrink-0"
@@ -655,9 +659,9 @@ export function ClientDetailPage() {
                 >
                   <ArchiveRestore className="h-3.5 w-3.5" />
                   Restore
-                </Button>
+                </SubscriptionGatedButton>
               ) : (
-                <Button
+                <SubscriptionGatedButton
                   variant="secondary"
                   size="sm"
                   className="gap-1.5 shrink-0"
@@ -665,7 +669,7 @@ export function ClientDetailPage() {
                 >
                   <Archive className="h-3.5 w-3.5" />
                   Archive
-                </Button>
+                </SubscriptionGatedButton>
               )}
             </CardContent>
           </Card>

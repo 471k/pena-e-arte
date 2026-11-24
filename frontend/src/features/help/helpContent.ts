@@ -8,7 +8,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "navigation-sidebar",
     roles: [Client, Artist, Owner, Admin],
     title: "Find your way around: the sidebar",
-    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find", "which studio", "studio name", "current studio", "greyed out", "disabled button", "why can't i click"],
+    keywords: ["navigation", "menu", "sidebar", "side menu", "left menu", "nav", "keyboard", "skip to content", "tab key", "collapse", "expand", "categories", "groups", "sections", "icon rail", "hamburger", "mobile menu", "ctrl b", "where is", "can't find", "which studio", "studio name", "current studio", "greyed out", "disabled button", "why can't i click"],
     summary: "Every screen is reached from the vertical menu on the left. Related pages are grouped into categories that expand and collapse, and the whole menu scrolls if it's long.",
     steps: [
       "On a computer, the menu sits on the left side of every page. On a phone or small tablet, tap the menu button (three lines) at the top left to slide it open.",
@@ -19,6 +19,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Want more room? Click the panel button at the top left of the page, next to the TattooOS name (or press Ctrl+B, or Cmd+B on a Mac), to shrink the menu to a strip of icons. Hover over an icon to see its name; click a category icon to open the full menu at that category. Click the same button, or press Ctrl+B again, to bring the labels back. The menu remembers your choice on this device.",
     ],
     tips: [
+      "Using the keyboard? The first time you press Tab on a page, a \"Skip to content\" link appears at the top left. Press Enter and the next Tab goes straight to the page itself, instead of through the top bar and every menu entry first.",
       "Can't find a page? Open the category it most likely belongs to — related pages are always kept together.",
       "Ctrl+B does nothing while you're typing in a text box, so it never gets in the way of writing.",
       "Owners who also have their own artist profile see a separate artist menu when they switch to \"Artist\" at the top of the page.",
@@ -2061,6 +2062,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter a short reason for the session (required — e.g. \"Investigating ticket #123\") and click \"Start impersonating\".",
       "You start on the studio's schedule and can look at its appointments, artists, clients and settings. A purple banner stays pinned to the top of every page for the whole session: \"Viewing as {studio}\", a \"Read-only\" label, the reason you gave, and the time left.",
       "Pages whose only job is to change something (new artist, new client, new design, new service, new deposit rule, booking, the intake form builder) show a short note that the session is read-only instead of the form.",
+      "On the pages you can open, buttons that would change something (confirm, cancel or reschedule an appointment, edit or archive a client, edit or delete an artist or a deposit rule, every Save in Studio Settings) stay visible but turned off. Hover over one, or move to it with the Tab key, and it says why: it's a read-only support session. Reading still works: tabs, filters and the schedule's dates.",
       "Click \"End session\" in the banner when you're done, or just let it run out — sessions hard-expire after 45 minutes either way.",
     ],
     tips: [
@@ -2160,7 +2162,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tips: [
       "Days can't be taken back: there's no way to shorten a trial from here.",
       "If extending fails, the review stays open with your number of days and says why.",
-      "Extend trial isn't offered for an active, past-due or cancelled studio, because a new trial date wouldn't give a past-due or cancelled studio access back. A past-due studio gets access back when its overdue payment is paid; either one when you record a cash payment with Activate. If a studio's status changed after you opened the page, TattooOS refuses the extension and says so.",
+      "Extend trial isn't offered for an active, past-due or cancelled studio, or for a studio with no subscription, because a new trial date wouldn't give any of them access back. A past-due studio gets access back when its overdue payment is paid; any of them when you record a cash payment with Activate, which also creates the missing subscription for a studio that has none. If a studio's status changed after you opened the page, TattooOS refuses the extension and says so.",
     ],
   },
   {

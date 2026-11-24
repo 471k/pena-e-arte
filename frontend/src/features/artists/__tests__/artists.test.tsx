@@ -162,6 +162,8 @@ const server = setupServer(
       trialExpiresAt: "2099-01-01T00:00:00Z", createdAt: "2024-01-01T00:00:00Z", isActive: true,
       currency: "EUR" }),
   ),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -728,5 +730,23 @@ describe("Artist profile page chrome, tabs and title", () => {
       await user.click(screen.getByRole("button", { name: /more actions/i }));
       expect(await screen.findByRole("menuitem", { name: /stop working as an artist/i })).toBeInTheDocument();
     });
+  });
+});
+
+describe("ArtistDetailPage bookings (S01)", () => {
+  it("a booking's date is on the studio's calendar, not the viewer's", async () => {
+    // 12:00 UTC on 24 Nov is 02:00 on 25 Nov in Kiritimati (UTC+14). The browser's zone (UTC in CI) would say 24 Nov.
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "stud-0001", name: "Ink Soul", slug: "ink-soul", timezone: "Pacific/Kiritimati",
+          isActive: true, currency: "EUR", trialExpiresAt: "2099-01-01T00:00:00Z", createdAt: "2024-01-01T00:00:00Z" })),
+      http.get("http://localhost/api/v1/appointments", () =>
+        HttpResponse.json([{ id: "appt-z1", studioId: "stud-0001", artistId: ELENA.id, clientId: "c-1",
+          date: "2026-11-24T12:00:00.000Z", endDate: "2026-11-24T14:00:00.000Z", durationMinutes: 120,
+          status: "Confirmed" }])),
+    );
+    renderDetail(ELENA.id, Role.Owner, "?tab=bookings");
+    expect(await screen.findByText("25 Nov 2026")).toBeInTheDocument();
+    expect(screen.queryByText("24 Nov 2026")).not.toBeInTheDocument();
   });
 });

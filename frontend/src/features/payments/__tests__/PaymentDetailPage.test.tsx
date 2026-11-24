@@ -18,8 +18,10 @@ import { Role } from "@/shared/types/roles";
 // S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
 // computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
 // runs from UTC-11 to UTC+14, a 25-hour span, and no instant keeps one calendar date across all of it.
-const viewerPaidAt = (iso: string): string => new Date(iso).toLocaleDateString("en-GB", {
-  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+// "Paid at" is on the studio's calendar (the zone rule in formatInStudioTimezone.ts, 24 Nov): it used to be the
+// viewer's, which is why this helper existed. The default mock studio is in Europe/Tirane.
+const studioPaidAt = (iso: string): string => new Date(iso).toLocaleString("en-GB", {
+  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Tirane",
 });
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
@@ -204,6 +206,31 @@ describe("PaymentDetailPage", () => {
 
   // ── Detail rendering ────────────────────────────────────────────────────────
 
+  it("first paint: while the studio's zone loads, its dates read as pending, never the browser's time", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", async () => {
+        await new Promise((r) => setTimeout(r, 60_000));
+        return HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" });
+      }),
+    );
+    renderPage("appt-002");
+    expect(await screen.findByRole("heading", { name: /100/ })).toBeInTheDocument();
+    // 15:00 UTC on 15 Jun. Any browser-zone rendering of it would contain "15 Jun 2026".
+    expect(screen.queryByText(/15 Jun 2026/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/…/).length).toBeGreaterThan(0);
+  });
+
+  it("'Paid at' and the booking are on the studio's calendar", async () => {
+    // 15:00 UTC on 15 Jun is 05:00 on 16 Jun in Kiritimati (UTC+14).
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Pacific/Kiritimati", currency: "EUR" })),
+    );
+    renderPage("appt-002");
+    expect(await screen.findByText(/16 Jun 2026, 05:00/)).toBeInTheDocument();
+    expect(screen.getByText(/Maria Silva · Tue, 16 Jun 2026, 04:00/)).toBeInTheDocument();
+  });
+
   it("renders the payment amount", async () => {
     renderPage("appt-001");
     expect(await screen.findByRole("heading", { name: /100/ })).toBeInTheDocument();
@@ -258,7 +285,7 @@ describe("PaymentDetailPage", () => {
   it("renders paidAt date when present", async () => {
     renderPage("appt-002");
     await screen.findByRole("heading", { name: /100/ });
-    expect(screen.getByText("Paid at").parentElement).toHaveTextContent(viewerPaidAt("2026-06-15T15:00:00Z"));
+    expect(screen.getByText("Paid at").parentElement).toHaveTextContent(studioPaidAt("2026-06-15T15:00:00Z"));
   });
 
   // ── Owner actions — card captured ────────────────────────────────────────────

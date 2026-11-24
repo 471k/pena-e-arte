@@ -4,6 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { AtSign } from "lucide-react";
 import { ConnectionRow, type ConnectionRowProps } from "@/features/social/components/ConnectionRow";
 
+// The row's write buttons are SubscriptionGatedButtons (D05 phase 4b); this test renders without a store, and the
+// gate's own behaviour is covered by its tests, so it reads as "nothing gated" here.
+vi.mock("@/features/billing/useSubscriptionGuard", () => ({
+  useSubscriptionGuard: () => ({ isReadOnly: false, isSuspended: false, cause: null, status: undefined }),
+}));
+
 afterEach(cleanup);
 
 type Overrides = Partial<ConnectionRowProps>;

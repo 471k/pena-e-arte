@@ -1,6 +1,5 @@
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { ToggleSwitch } from "@/shared/components/ui/toggle-switch";
 import { useEditBuffer } from "@/shared/hooks/useEditBuffer";
@@ -9,6 +8,7 @@ import {
   useUpdateNotificationPreferencesMutation,
 } from "../notificationsApi";
 import type { NotificationChannel, NotificationPreferenceItem, NotificationType } from "../notification.types";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 const CHANNELS: NotificationChannel[] = ["Email", "Sms"];
 
@@ -156,7 +156,7 @@ export function NotificationPreferencesCard() {
         )}
 
         <div className="sticky bottom-0 pt-2 pb-1 bg-card border-t -mx-6 px-6 mt-2">
-          <Button
+          <SubscriptionGatedButton
             size="sm"
             className="w-full gap-2"
             onClick={handleSave}
@@ -164,7 +164,7 @@ export function NotificationPreferencesCard() {
           >
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             Save notification settings
-          </Button>
+          </SubscriptionGatedButton>
         </div>
       </CardContent>
     </Card>

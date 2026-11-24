@@ -11,6 +11,7 @@ import {
 } from "@/shared/components/ui/alert-dialog";
 import { currencyDisplayName } from "@/shared/utils/currencies";
 import { useGetMyStudioQuery, useUpdateMyStudioCurrencyMutation } from "../studiosApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 /**
  * Studio Settings' Currency card. Separate from the main "Studio details" form/card because it
@@ -116,7 +117,7 @@ export function CurrencySettingsCard() {
             <p className="text-xs text-muted-foreground">
               Prices, deposits and payments in your studio use this currency.
             </p>
-            <Button
+            <SubscriptionGatedButton
               type="button"
               size="sm"
               disabled={saving || !selected || selected === studio.currency}
@@ -125,7 +126,7 @@ export function CurrencySettingsCard() {
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save
-            </Button>
+            </SubscriptionGatedButton>
           </>
         )}
       </CardContent>

@@ -581,6 +581,14 @@ describe("AdminStudioDetailPage", () => {
       expect(await screen.findByRole("button", { name: /^activate$/i })).toBeInTheDocument();
     });
 
+    it("a known NoSubscription offers Activate but not Extend trial (24 Nov)", async () => {
+      server.use(http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([SUB_NONE])));
+      renderPage();
+      expect(await screen.findByRole("button", { name: /^activate$/i })).toBeInTheDocument();
+      // ExtendTrialHandler refuses it: access reads only the subscription row, and cash activation creates it.
+      expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+    });
+
     it("while the subscription is still loading, no subscription action is offered", async () => {
       server.use(http.get("http://localhost/api/v1/platform/subscriptions", async () => {
         await new Promise((r) => setTimeout(r, 60_000));

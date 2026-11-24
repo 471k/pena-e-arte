@@ -12,6 +12,7 @@ import {
 } from "@/features/payments/paymentsApi";
 import { CardUnavailableReasons } from "@/features/payments/payment.types";
 import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 /**
  * ADR-0001: every studio brings its own POK merchant account — there is no platform-level key.
@@ -88,9 +89,9 @@ export function PokSettingsCard() {
               <CheckCircle2 className="h-4 w-4" /> Connected
             </p>
             <p className="text-xs text-muted-foreground font-mono">Merchant ID: {status.merchantId}</p>
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <SubscriptionGatedButton variant="outline" size="sm" onClick={() => setEditing(true)}>
               Reconnect / change account
-            </Button>
+            </SubscriptionGatedButton>
           </div>
         )}
 
@@ -113,7 +114,7 @@ export function PokSettingsCard() {
             </div>
             {error && <p className="text-xs text-destructive-text">{error}</p>}
             <div className="flex gap-2">
-              <Button
+              <SubscriptionGatedButton
                 size="sm"
                 onClick={() => void handleConnect()}
                 disabled={isConnecting || !keyId.trim() || !keySecret.trim() || !merchantId.trim()}
@@ -121,7 +122,7 @@ export function PokSettingsCard() {
                 {isConnecting
                   ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Checking with POK…</>
                   : "Connect"}
-              </Button>
+              </SubscriptionGatedButton>
               {status?.connected && (
                 <Button variant="outline" size="sm" onClick={() => setEditing(false)} disabled={isConnecting}>
                   Cancel

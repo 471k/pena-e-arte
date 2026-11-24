@@ -11,6 +11,8 @@ import { paymentsApi } from "@/features/payments/paymentsApi";
 import { PokSettingsCard } from "@/features/studios/components/PokSettingsCard";
 import { ownerTourSteps } from "@/features/help/tours/ownerTour";
 import type { PaymentCapabilitiesResponse, PokConnectionStatusResponse } from "@/features/payments/payment.types";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 const NOT_CONNECTED: PokConnectionStatusResponse = { connected: false, merchantId: null };
 const CONNECTED: PokConnectionStatusResponse = { connected: true, merchantId: "merchant-abc" };
@@ -27,6 +29,8 @@ const server = setupServer(
   http.get("http://localhost/api/v1/payments/pok/connection", () => HttpResponse.json(NOT_CONNECTED)),
   http.post("http://localhost/api/v1/payments/pok/connect", () => new HttpResponse(null, { status: 200 })),
   http.get("http://localhost/api/v1/payments/capabilities", () => HttpResponse.json(CAPS_NOT_CONNECTED)),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -36,10 +40,11 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer,
       auth:                      authReducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
     },
-    middleware: (gd) => gd().concat(paymentsApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, paymentsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "owner@test.com" }, token: "fake", tenantId: "t1", role: "Owner" } as any,

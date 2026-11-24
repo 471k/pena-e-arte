@@ -25,6 +25,7 @@ import {
   useGetWebhookDeliveriesQuery,
 } from "../studiosApi";
 import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", {
@@ -136,22 +137,22 @@ export function WebhookSettingsCard() {
                 </p>
 
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={startEditing}>
+                  <SubscriptionGatedButton variant="outline" size="sm" className="gap-1.5" onClick={startEditing}>
                     Edit
-                  </Button>
-                  <Button
+                  </SubscriptionGatedButton>
+                  <SubscriptionGatedButton
                     variant="outline" size="sm" className="gap-1.5"
                     onClick={() => void handleSendTest()} disabled={isSendingTest || !status.isActive}
                   >
                     {isSendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                     Send test event
-                  </Button>
-                  <Button
+                  </SubscriptionGatedButton>
+                  <SubscriptionGatedButton
                     variant="outline" size="sm" className="gap-1.5 text-destructive-text"
                     onClick={() => setConfirmRemoveOpen(true)} disabled={isDeleting}
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Remove
-                  </Button>
+                  </SubscriptionGatedButton>
                 </div>
               </>
             ) : (
@@ -163,9 +164,9 @@ export function WebhookSettingsCard() {
                 />
                 {error && <p className="text-xs text-destructive-text">{error}</p>}
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => void handleSave()} disabled={isSaving || !urlInput.trim()}>
+                  <SubscriptionGatedButton size="sm" onClick={() => void handleSave()} disabled={isSaving || !urlInput.trim()}>
                     {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
-                  </Button>
+                  </SubscriptionGatedButton>
                   {editing && (
                     <Button variant="outline" size="sm" onClick={() => setEditing(false)} disabled={isSaving}>
                       Cancel

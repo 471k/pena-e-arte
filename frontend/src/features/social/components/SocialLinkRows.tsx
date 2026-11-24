@@ -27,6 +27,7 @@ import {
   type ConnectionRowHandleInput,
 } from "./ConnectionRow";
 import { ConfirmDisconnectDialog } from "./ConfirmDisconnectDialog";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 interface SocialLinkRowsProps {
   subjectType: SocialSubjectType;
@@ -256,12 +257,12 @@ export function SocialLinkRows({
 
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCodeDialog(null)}>Close</Button>
-            <Button
+            <SubscriptionGatedButton
               disabled={isVerifying}
               onClick={() => codeDialog && void handleVerify(codeDialog.platform)}
             >
               {isVerifying ? "Checking…" : "I've added it — Verify"}
-            </Button>
+            </SubscriptionGatedButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
