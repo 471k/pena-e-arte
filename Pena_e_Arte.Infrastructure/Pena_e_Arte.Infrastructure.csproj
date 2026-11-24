@@ -21,7 +21,7 @@
     <PackageReference Include="Resend" Version="0.27.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.15" />
     <PackageReference Include="StackExchange.Redis" Version="3.4.35" />
-    <PackageReference Include="Stripe.net" Version="52.4.2" />
+    <PackageReference Include="Stripe.net" Version="53.2.0" />
     <PackageReference Include="Twilio" Version="8.2.0" />
     <PackageReference Include="UAParser.Core" Version="4.0.7" />
     <PackageReference Include="VaultSharp" Version="1.17.5.1" />
