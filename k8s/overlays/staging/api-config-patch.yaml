@@ -36,8 +36,8 @@ data:
   # Saved cards (backlog C-9): on; only takes effect while card deposits are on.
   Payments__SavedCardsEnabled: "true"
   # Orphaned-object sweep Phase 3 (docs/infra/orphan-quarantine-runbook.md): staging only. Moves unreferenced
-  # objects to _quarantine/ and never hard-deletes. The 30-day lock rule on pena-e-arte-staging's
-  # _quarantine/ prefix was set and read back on 23 Nov BEFORE this line existed (lock first, then switch).
+  # objects to _quarantine/ and never hard-deletes. pena-e-arte-staging's _quarantine/ prefix carries a 14-day
+  # lock and a 15-day lifecycle expiry (since 24 Nov; the first lock, 30 days, was set before this line existed).
   # Production stays report-only: it needs Phi's go on its own lock rule and its own switch.
   # 24 Nov: back to ReportOnly for the restore rehearsal (runbook "Restore", step 1). The first quarantine run
   # moved the 75-byte backup-test PNG at 05:30 UTC; it is copied back by hand, and the next run must report it
