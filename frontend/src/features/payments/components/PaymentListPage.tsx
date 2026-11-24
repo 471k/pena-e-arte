@@ -25,6 +25,8 @@ import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedFile";
 import type { GetPaymentsParams } from "../payment.types";
 import { UnsettledPaymentsSection } from "./UnsettledPaymentsSection";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -44,11 +46,9 @@ function exportPath(filters: Filters): string {
   return `reports/revenue/export.csv${qs ? `?${qs}` : ""}`;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
+// The appointment date and the paid date are both on the studio's calendar: the From/To filter is studio-local days on
+// PaidAt (GetPaymentsQuery), so a payment filtered into a day must print as that day (formatInStudioTimezone.ts).
+const LIST_DATE_FORMAT: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   [PaymentStatus.Pending]:     "border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
@@ -104,6 +104,7 @@ export function PaymentListPage() {
 
   const navigate = useNavigate();
   const { token, tenantId } = useAppSelector((s) => s.auth);
+  const { zone } = useStudioZone();
 
   // Every filter is applied by the server (E05b-1, O05): filtering the loaded page in the browser only ever
   // searched the 20 oldest payments.
@@ -334,7 +335,7 @@ export function PaymentListPage() {
                 cell: (p) =>
                   p.appointmentDate ? (
                     <span className="text-sm text-muted-foreground">
-                      {formatDate(p.appointmentDate)}
+                      {formatStudioTime(p.appointmentDate, LIST_DATE_FORMAT, zone)}
                     </span>
                   ) : (
                     "—"
@@ -356,7 +357,7 @@ export function PaymentListPage() {
               },
               {
                 header: "Date Paid",
-                cell: (p) => (p.paidAt ? formatDate(p.paidAt) : "—"),
+                cell: (p) => (p.paidAt ? formatStudioTime(p.paidAt, LIST_DATE_FORMAT, zone) : "—"),
               },
             ]}
             data={allPayments}
@@ -373,12 +374,12 @@ export function PaymentListPage() {
                 </div>
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="text-muted-foreground">
-                    {p.appointmentDate ? formatDate(p.appointmentDate) : "—"}
+                    {p.appointmentDate ? formatStudioTime(p.appointmentDate, LIST_DATE_FORMAT, zone) : "—"}
                   </span>
                   <Money amount={p.amount} currency={p.currency} frozen={p} className="font-semibold" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {p.method}{p.paidAt ? ` · Paid ${formatDate(p.paidAt)}` : ""}
+                  {p.method}{p.paidAt ? ` · Paid ${formatStudioTime(p.paidAt, LIST_DATE_FORMAT, zone)}` : ""}
                 </p>
               </div>
             )}

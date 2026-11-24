@@ -12,6 +12,7 @@ import { useAppSelector } from "@/app/hooks";
 import { Role } from "@/shared/types/roles";
 import { useGetIntakeFormsQuery } from "../intakeFormsApi";
 import type { IntakeFormResponse } from "../form.types";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", {
@@ -20,9 +21,8 @@ function formatDate(dateStr: string): string {
 }
 
 function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  // A date with no time of day, stored as UTC midnight: printed in UTC (see formatDateOnly).
+  return formatDateOnly(dateStr, { day: "numeric", month: "short", year: "numeric" });
 }
 
 function parseFormData(raw: string): { name: string | null; dob: string | null } {
