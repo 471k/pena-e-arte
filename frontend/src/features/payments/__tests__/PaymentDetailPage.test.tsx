@@ -18,8 +18,10 @@ import { Role } from "@/shared/types/roles";
 // S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
 // computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
 // runs from UTC-11 to UTC+14, a 25-hour span, and no instant keeps one calendar date across all of it.
-const viewerPaidAt = (iso: string): string => new Date(iso).toLocaleDateString("en-GB", {
-  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+// "Paid at" is on the studio's calendar (the zone rule in formatInStudioTimezone.ts, 24 Nov): it used to be the
+// viewer's, which is why this helper existed. The default mock studio is in Europe/Tirane.
+const studioPaidAt = (iso: string): string => new Date(iso).toLocaleString("en-GB", {
+  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Tirane",
 });
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
@@ -283,7 +285,7 @@ describe("PaymentDetailPage", () => {
   it("renders paidAt date when present", async () => {
     renderPage("appt-002");
     await screen.findByRole("heading", { name: /100/ });
-    expect(screen.getByText("Paid at").parentElement).toHaveTextContent(viewerPaidAt("2026-06-15T15:00:00Z"));
+    expect(screen.getByText("Paid at").parentElement).toHaveTextContent(studioPaidAt("2026-06-15T15:00:00Z"));
   });
 
   // ── Owner actions — card captured ────────────────────────────────────────────
