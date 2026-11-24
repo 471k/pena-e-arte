@@ -138,6 +138,21 @@ What #440 changed (merged `38a4de76`, live 23 Nov 19:33 UTC):
 - `ClientDetailPage.tsx:619` formats an appointment date with the plain viewer-zone formatter. It is outside the
   `withStudioTimeZone` list, as the waitlist was, so a full audit of plain `toLocale*` calls on appointment-type
   instants is the remaining S01 step.
+
+**Update 24 Nov: the audit is done, and S01's verdict is Partial** (`docs/claude/s01-zone-audit-2026-11-24.md`,
+PR #451). The verdict is written with the audit, not when the fixes land. Of the 61 non-test files with plain
+`toLocale*` calls: 30 are viewer-zone and correct, 14 are safe for another reason, 8 have a studio-zone defect,
+6 have a date-only defect, 2 are undecided and 1 is not a date. A third class turned up: **date-only values**
+(date of birth, closure days, tattoo record dates), which are stored as UTC midnight and so read as the day before
+west of UTC.
+
+- Fixed by #451: ArtistDetailPage bookings, ClientDetailPage appointments (`:620`), and all the date-only sites.
+- Fixed by #452 (the money pages): PaymentDetailPage, PaymentListPage, UnsettledPaymentsSection, MyEarningsPage
+  and NoShowConfirmDialog.
+- The ruling MyEarnings needed is made: "Paid" is studio-zone, because money placed in a studio period counts as
+  studio-day. The rule is written above `formatStudioTime`.
+- Still open: the review and conduct-report visit pickers (their responses carry no zone, so they need a backend
+  field), and booth rent's "Charged" date (undecided). **S01 becomes Present when those close.**
 - The audit's S01 group B (eight calendar-date values, "needs one check in a negative-offset zone"): the -11 sweep leg
   now runs the whole frontend suite in Pacific/Pago_Pago nightly. After #440 it fails nothing, so every group-B value
   with a test is covered. A value with no test is not, so this is evidence, not proof.
