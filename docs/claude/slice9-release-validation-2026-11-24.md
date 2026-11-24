@@ -1,5 +1,11 @@
 # Slice 9 / E07: validation and release evidence — 2026-11-24
 
+> **Verdict: the release gate is NOT met.** Seven of the `docs/08` rows below need a physical device or a screen
+> reader. **Slice 9 cannot be completed from an agent session:** no amount of further autonomous work closes
+> them. That takes a person with an iPhone, an Android phone, a tablet, a Mac, and NVDA, VoiceOver and TalkBack.
+> Three other rows are open for reasons a session can fix. Firefox needs Playwright's Firefox build. C10 and the
+> four role journeys need mocked end-to-end chains. They are marked as such, not as device-blocked.
+
 - **From:** Claude Code, run 23–24 Nov 2026 (Europe/Paris). **Held for Desktop's review.**
 - **What this is:** evidence, not a build. **A row with no evidence is a fail, not a blank** (Desktop's rule). Most
   of the `docs/08` matrix needs real devices and screen readers that this machine does not have, so most rows fail
@@ -15,14 +21,14 @@
 |---|---|---|---|
 | **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`) | See §2–§3 | **Pass for what was run** (listed per row in §2/§3); dialogs, downloads and 400% reflow at 1280 covered only by the 320px column (1280 at 400% = 320 CSS px) |
 | **Windows Edge** | §3 keyboard probes (S03 record opening, form error focus) | Both pass, same as Chromium | **Partial**: keyboard probes only; no 200% pass, no downloads |
-| **Firefox desktop** | Not run: Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
-| **macOS Safari** | Not run: no Mac | — | **Fail (no evidence)** |
-| **iPhone Safari** | Not run: no device. Emulated widths 320/375/390 in Chromium are in §2 and are not iPhone evidence (docs/08: emulation doesn't prove real keyboard, file, calendar or screen-reader behaviour) | — | **Fail (no evidence)** |
-| **Android Chrome** | Not run: no device | — | **Fail (no evidence)** |
+| **Firefox desktop** | **Blocked — needs Playwright's Firefox build** (a download, not a device): Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
+| **macOS Safari** | **Blocked — needs a physical device** (a Mac) | — | **Fail (no evidence)** |
+| **iPhone Safari** | **Blocked — needs a physical device** (an iPhone). Emulated widths 320/375/390 in Chromium are in §2 and are not iPhone evidence (docs/08: emulation doesn't prove real keyboard, file, calendar or screen-reader behaviour) | — | **Fail (no evidence)** |
+| **Android Chrome** | **Blocked — needs a physical device** (an Android phone) | — | **Fail (no evidence)** |
 | **Tablet Safari/Chromium** | 768/800/1024/1100 widths in Chromium only (§2) | See §2 | **Fail (no device evidence)**; layout widths covered in Chromium |
-| **NVDA + Windows browser** | Not run: NVDA isn't installed | — | **Fail (no evidence)** |
-| **VoiceOver + Safari** | Not run: no Mac or iPhone | — | **Fail (no evidence)** |
-| **TalkBack + Chrome** | Not run: no Android device | — | **Fail (no evidence)** |
+| **NVDA + Windows browser** | **Blocked — needs a screen reader** (NVDA, not installed; installing it is Phi's call) | — | **Fail (no evidence)** |
+| **VoiceOver + Safari** | **Blocked — needs a screen reader** (VoiceOver, on a Mac or iPhone) | — | **Fail (no evidence)** |
+| **TalkBack + Chrome** | **Blocked — needs a screen reader** (TalkBack, on an Android phone) | — | **Fail (no evidence)** |
 
 **What closes the fails:** one session on a real iPhone and an Android phone (the usability pilot tasks in docs/08
 are the natural script), NVDA on this machine (free; installing it is Phi's call), and a Mac with VoiceOver. The
@@ -91,15 +97,15 @@ Real Chromium and Edge, keyboard only after sign-in.
 | **S03**, a record opens from the keyboard (owner, Clients) | **Pass** in Chromium and Edge | 29 Tab stops from the page top to "João Silva"; **every stop shows a visible focus ring**; Enter opens `/clients/client-0001` |
 | **Forms**: submitting `/clients/new` empty moves focus to the first problem (the audit's open react-hook-form question) | **Pass** in Chromium and Edge | Focus lands on the first invalid input, with a visible ring, not on the body |
 | **No skip link** | **Finding** | The first 23 Tab stops are the header and the sidebar on every staff page (trail recorded: collapse, Owner/Artist, feedback, help, messages, bell, account, then 16 nav entries). WCAG 2.4.1 (A) can be met by landmarks, which a screen reader can jump between, but a keyboard user without one cannot. A "Skip to content" link is the usual fix: one component in the four layouts. Not built (this slice ships a document) |
-| **C10**, body placement without a mouse | **Not run → fail (no evidence)** | Needs a client, a profile and the body map's edit mode mocked end to end; not done tonight |
-| **The four role journeys end to end** (book, confirm, pay, cancel) | **Not run → fail (no evidence)** | Each needs a chain of mocked writes and state; the checks above cover their entry points (records open, forms report errors to focus) but not the journeys |
+| **C10**, body placement without a mouse | **Not run, doable here → fail (no evidence)** | Needs a client, a profile and the body map's edit mode mocked end to end; not done tonight |
+| **The four role journeys end to end** (book, confirm, pay, cancel) | **Not run, doable here → fail (no evidence)** | Each needs a chain of mocked writes and state; the checks above cover their entry points (records open, forms report errors to focus) but not the journeys |
 
 ## 4. The audit's unverified rows (`e01-e03-coverage-audit-2026-11-15.md` §7)
 
 | Row | Was | Verdict now | Evidence |
 |---|---|---|---|
 | **S03** focus behaviour (opening a record from the keyboard) | unverified | **Present** | §3: 29 Tab stops, all with visible focus, Enter opens the record; Chromium and Edge |
-| **C10** focus behaviour (body placement without a mouse) | unverified | **Unverified → fail (no evidence)** | Not run (§3) |
+| **C10** focus behaviour (body placement without a mouse) | unverified | **Unverified → fail (no evidence)** | Not run, doable here (§3) |
 | **S05** at phone width on the two uncovered surfaces | unverified | **Partial** | §2 at 390/420: the header passes for every role; page content fails on Payments, Schedule, Dashboard and Messages |
 | **S06** announcements | unverified | **Unverified → fail (no evidence)** | Needs a screen reader; none on this machine (§1) |
 | **AP12** | unverified | **Present**, per the audit's 22 Nov addendum (slice 6) | Not re-run in this pass; the addendum's own evidence stands |
