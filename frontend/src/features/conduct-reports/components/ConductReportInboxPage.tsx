@@ -13,6 +13,9 @@ import { REPORT_STATUS, REPORT_CATEGORY, REPORT_CATEGORY_LABEL } from "../conduc
 import type { ConductReportResponse, ReportStatus } from "../conductReports.types";
 import { STATUS_BADGE, fmt } from "./conductReportFormat";
 import { ReportsList } from "./conductReportShared";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { ActionReceiptArea } from "@/features/platform/components/ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, useReportReceipt } from "@/features/platform/components/receipts";
 
 const STATUS_FILTERS = ["all", ...Object.values(REPORT_STATUS)] as const;
 const CATEGORY_FILTERS = ["all", ...Object.values(REPORT_CATEGORY)] as const;
@@ -22,14 +25,16 @@ function ReportCard({ report }: { report: ConductReportResponse }) {
   const [expanded, setExpanded] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<ReportStatus | null>(null);
   const [updateStatus, { isLoading }] = useUpdateConductReportStatusMutation();
+  // D04: the receipt goes to the page; a report can leave the filtered list once its status changes.
+  const reportReceipt = useReportReceipt();
 
   async function handleStatusClick(status: ReportStatus) {
     setPendingStatus(status);
     try {
       await updateStatus({ id: report.id, status }).unwrap();
-      toast.success("Updated.");
-    } catch {
-      toast.error("Failed to update.");
+      reportReceipt(makeReceipt(`The conduct report filed at ${report.studioName} is now ${status}.`, AUDIT_ACTIONS.conductReportStatusUpdated, report.studioId));
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to update."));
     } finally {
       setPendingStatus(null);
     }
@@ -148,6 +153,7 @@ export function ConductReportInboxPage() {
           </div>
         </div>
 
+        <ActionReceiptArea>
         <ReportsList
           reports={reports}
           isLoading={isLoading}
@@ -157,6 +163,7 @@ export function ConductReportInboxPage() {
           skeletonCount={5}
           renderCard={(report) => <ReportCard key={report.id} report={report} />}
         />
+        </ActionReceiptArea>
       </main>
     </div>
   );

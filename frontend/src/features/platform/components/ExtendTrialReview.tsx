@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { toast } from "sonner";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { useExtendTrialMutation } from "@/features/platform/platformApi";
 import { ConsequenceReview, ReviewAlert } from "./ConsequenceReview";
+import { AUDIT_ACTIONS, makeReceipt, type ActionReceipt } from "./receipts";
 import { DAY_MS, extendedTrialEnd, formatUtc } from "./subscriptionConsequences";
 
 /** A 422 is ExtendTrialHandler's business rule refusing (days are checked before sending, so not the validator). */
@@ -20,7 +20,8 @@ interface ExtendTrialReviewProps {
   status:          string;
   /** The trial end the page shows: the subscription's, else the studio's. */
   currentTrialEnd: string | null;
-  onDone:          () => void;
+  /** Called once the server confirmed the extension, with its receipt (D04). */
+  onDone:          (receipt: ActionReceipt) => void;
   onBack:          () => void;
 }
 
@@ -43,8 +44,10 @@ export function ExtendTrialReview({
     if (!valid) return;
     try {
       await extendTrial({ studioId, additionalDays: parsed }).unwrap();
-      toast.success(`Trial extended by ${parsed} day${parsed === 1 ? "" : "s"} for ${studioName}`);
-      onDone();
+      onDone(makeReceipt(
+        `Trial extended by ${parsed} day${parsed === 1 ? "" : "s"} for ${studioName}${newEnd ? `: it now ends ${formatUtc(newEnd)}` : ""}.`,
+        AUDIT_ACTIONS.trialExtended, studioId,
+      ));
     } catch (err) {
       setFailure((prev) => ({
         message: extractErrorMessage(err, "The trial wasn't extended."),

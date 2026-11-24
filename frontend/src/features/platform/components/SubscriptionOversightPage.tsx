@@ -27,6 +27,9 @@ import {
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import { DataMaintenanceCard } from "./DataMaintenanceCard";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { ActionReceiptArea } from "./ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, useReportReceipt } from "./receipts";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
 import { ExtendTrialReview } from "./ExtendTrialReview";
 import { CASH_ACTIVATABLE, TRIAL_EXTENDABLE } from "./subscriptionKnowledge";
@@ -135,15 +138,20 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
   })();
 
   const [setDunningExclusion, { isLoading: settingExclusion }] = useSetDunningExclusionMutation();
+  // D04: the receipt goes to the page, because the row can leave a filtered list after the action.
+  const reportReceipt = useReportReceipt();
 
   async function handleToggleDunningExclusion() {
     try {
       await setDunningExclusion({ studioId: sub.studioId, excluded: !sub.dunningExcludedManually }).unwrap();
-      toast.success(sub.dunningExcludedManually
-        ? "Dunning reminders re-enabled for this studio"
-        : "Dunning reminders excluded for this studio");
-    } catch {
-      toast.error("Failed to update dunning exclusion");
+      reportReceipt(makeReceipt(
+        sub.dunningExcludedManually
+          ? `Dunning reminders are on again for ${sub.studioName}.`
+          : `${sub.studioName} is excluded from dunning reminders. Its access is unchanged.`,
+        AUDIT_ACTIONS.dunningExclusionChanged, sub.studioId,
+      ));
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to update dunning exclusion"));
     }
   }
 
@@ -277,7 +285,7 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
             idSuffix={sub.studioId}
             status={sub.status}
             currentTrialEnd={sub.trialExpiresAt ?? null}
-            onDone={() => setExtending(false)}
+            onDone={(r) => { setExtending(false); reportReceipt(r); }}
             onBack={() => setExtending(false)}
           />
         )}
@@ -303,7 +311,7 @@ function SubscriptionRow({ sub, checking, onRecheck }: SubscriptionRowProps) {
             studioId={sub.studioId}
             studioName={sub.studioName}
             idSuffix={sub.studioId}
-            onDone={() => setConfirming(false)}
+            onDone={(r) => { setConfirming(false); reportReceipt(r); }}
             onBack={() => setConfirming(false)}
           />
         )}
@@ -505,9 +513,11 @@ export function SubscriptionOversightPage() {
           </div>
         )}
 
-        {!isLoading && !isError && pageSubs.map((sub) => (
-          <SubscriptionRow key={sub.studioId} sub={sub} checking={isFetching} onRecheck={() => void refetch()} />
-        ))}
+        <ActionReceiptArea>
+          {!isLoading && !isError && pageSubs.map((sub) => (
+            <SubscriptionRow key={sub.studioId} sub={sub} checking={isFetching} onRecheck={() => void refetch()} />
+          ))}
+        </ActionReceiptArea>
 
         {!isLoading && !isError && totalPages > 1 && (
           <div className="flex items-center justify-between pt-2">

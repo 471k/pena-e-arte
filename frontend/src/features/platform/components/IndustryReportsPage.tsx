@@ -12,6 +12,9 @@ import {
 } from "@/features/platform/platformApi";
 import type { IndustryReportSummary, StudioPlanUsageRow } from "@/features/platform/platform.types";
 import { cn } from "@/shared/utils/cn";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { ActionReceiptNotice } from "./ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, useActionReceipt, type ActionReceipt } from "./receipts";
 
 function formatPeriod(period: string): string {
   const parts = period.split("-");
@@ -111,10 +114,11 @@ function ReportRow({ report }: ReportRowProps) {
   );
 }
 
-function GenerateTriggerButton() {
+function GenerateTriggerButton({ onQueued }: { onQueued: (receipt: ActionReceipt) => void }) {
   const [queued,     setQueued]     = useState(false);
   const [cooldown,   setCooldown]   = useState(0);
-  const [error,      setError]      = useState(false);
+  // The server's reason when queuing fails (D04), not a generic "failed".
+  const [error,      setError]      = useState<string | null>(null);
   const [trigger, { isLoading }] = useTriggerIndustryReportMutation();
 
   // Count down cooldown seconds — approved useEffect: timer-based browser side-effect.
@@ -125,17 +129,18 @@ function GenerateTriggerButton() {
   }, [cooldown]);
 
   async function handleTrigger() {
-    setError(false);
+    setError(null);
     try {
       await trigger().unwrap();
       setQueued(true);
       setCooldown(60);
-      toast.success("Report generation queued");
+      onQueued(makeReceipt("An industry report is queued. It appears in this list when it's ready.", AUDIT_ACTIONS.industryReportTriggered));
       setTimeout(() => setQueued(false), 4000);
-    } catch {
-      setError(true);
-      toast.error("Failed to queue report generation");
-      setTimeout(() => setError(false), 4000);
+    } catch (err) {
+      const message = extractErrorMessage(err, "Failed to queue report generation");
+      setError(message);
+      toast.error(message);
+      setTimeout(() => setError(null), 4000);
     }
   }
 
@@ -151,7 +156,7 @@ function GenerateTriggerButton() {
   if (error) {
     return (
       <div className="flex items-center gap-1.5 text-xs text-destructive-text">
-        Failed to queue — try again
+        {error} Try again.
       </div>
     );
   }
@@ -249,6 +254,8 @@ function PlanUsageReportSection() {
 }
 
 export function IndustryReportsPage() {
+  // D04: queuing a report leaves a receipt with a link to its audit entry.
+  const receipt = useActionReceipt();
   useDocumentMeta({ title: "Industry Reports — Platform Admin", canonical: "/platform/reports" });
 
   const { data: reports, isLoading, isError } = useGetIndustryReportsQuery();
@@ -267,11 +274,12 @@ export function IndustryReportsPage() {
           </span>
         )}
         <div className="ml-auto">
-          <GenerateTriggerButton />
+          <GenerateTriggerButton onQueued={receipt.put} />
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+        {receipt.receipt && <ActionReceiptNotice receipt={receipt.receipt} onDismiss={receipt.dismiss} />}
 
         {/* ── Helper text ─────────────────────────────────────────── */}
         <p className="text-xs text-muted-foreground">

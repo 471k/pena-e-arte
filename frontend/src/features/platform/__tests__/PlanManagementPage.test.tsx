@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -451,5 +451,33 @@ describe("PlanManagementPage", () => {
     expect(headerLink).toBeTruthy();
     expect(headerLink?.className).toMatch(/bg-primary|bg-\[hsl/);
     expect(headerLink?.className).not.toMatch(/border-input/);
+  });
+});
+
+describe("D04: plan receipts", () => {
+  it("deleting a plan leaves a receipt linking the audit log", async () => {
+    server.use(http.delete("http://localhost/api/v1/billing/plans/plan-1", () => new HttpResponse(null, { status: 204 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Starter");
+    await user.click(screen.getByRole("button", { name: /delete starter plan/i }));
+    await user.click(screen.getByRole("button", { name: /yes, delete/i }));
+    const receipt = (await screen.findByText('Plan "Starter" is deleted.')).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?action=Plan.Deleted");
+  });
+
+  it("a plan saved on the edit page arrives here with its receipt", async () => {
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter initialEntries={[{ pathname: "/platform/plans", state: { receipt: {
+          summary: 'Plan "Studio Pro" is created.', action: "Plan.Created", studioId: null, at: "2026-11-24T18:00:00Z" } } }]}>
+          <PlanManagementPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+    const receipt = (await screen.findByText('Plan "Studio Pro" is created.')).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?action=Plan.Created");
   });
 });

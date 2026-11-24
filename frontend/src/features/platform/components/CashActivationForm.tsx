@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { CheckCircle2, X } from "lucide-react";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
 import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
@@ -9,6 +7,8 @@ import type { PlanResponse } from "@/features/billing/billing.types";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { CASH_ACTIVATABLE, type SubscriptionKnowledge } from "./subscriptionKnowledge";
 import { ConsequenceReview, ReviewAlert } from "./ConsequenceReview";
+import { ActionReceiptNotice } from "./ActionReceipt";
+import { AUDIT_ACTIONS } from "./receipts";
 import { formatUtc } from "./subscriptionConsequences";
 
 /** MrrRules.PlatformCurrency: a cash activation is recorded in the platform currency. */
@@ -22,27 +22,18 @@ export interface ActivationReceipt {
   at:         string;
 }
 
-/**
- * A durable result for a successful activation (D04): what happened, to which studio, the resulting state, when,
- * and the audit log filtered to that studio and action. It stays until dismissed; it is not a toast.
- */
+/** Cash activation's receipt: the shared ActionReceiptNotice (D04), so every admin action has one implementation. */
 export function ActivationReceiptNotice({ receipt, onDismiss }: { receipt: ActivationReceipt; onDismiss: () => void }) {
-  const auditLink = `/platform/audit-log?studioId=${encodeURIComponent(receipt.studioId)}&action=Subscription.ActivatedManually`;
   return (
-    <div role="status" className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 px-3 py-2 text-xs">
-      <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700 dark:text-green-400" aria-hidden="true" />
-      <div className="flex-1 space-y-0.5">
-        <p className="font-medium">
-          Subscription activated for {receipt.studioName}: now {receipt.status} on {receipt.planName}.
-        </p>
-        <p className="text-muted-foreground">
-          {formatUtc(receipt.at)} · <Link to={auditLink} className="underline">View in the audit log</Link>
-        </p>
-      </div>
-      <button type="button" onClick={onDismiss} className="rounded p-0.5 hover:bg-muted" aria-label="Dismiss this receipt">
-        <X className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-    </div>
+    <ActionReceiptNotice
+      receipt={{
+        summary:  `Subscription activated for ${receipt.studioName}: now ${receipt.status} on ${receipt.planName}.`,
+        action:   AUDIT_ACTIONS.subscriptionActivated,
+        studioId: receipt.studioId,
+        at:       receipt.at,
+      }}
+      onDismiss={onDismiss}
+    />
   );
 }
 

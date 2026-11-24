@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -12,6 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { platformApi } from "@/features/platform/platformApi";
 import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner";
 import { expiryAnnouncement } from "@/shared/utils/supportSessionTime";
+import { toast } from "sonner";
 
 const IMPERSONATION = {
   sessionId:  "sess-1",
@@ -140,5 +141,49 @@ describe("ImpersonationBanner", () => {
     const seconds = Array.from({ length: 12 * 60 }, (_, i) => expiryAnnouncement((12 * 60 - i) * 1000));
     const changes = seconds.filter((t, i) => i > 0 && t !== seconds[i - 1]).length;
     expect(changes).toBe(3);
+  });
+});
+
+describe("D04: ending a session", () => {
+  function renderWithStudioRoute() {
+    const store = makeStore(IMPERSONATION, null);
+    function StudioPage() {
+      const location = useLocation();
+      const state = location.state as { receipt?: { summary: string; action: string } } | null;
+      return <p data-testid="studio-page">{state?.receipt ? `${state.receipt.summary} | ${state.receipt.action}` : "no receipt"}</p>;
+    }
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={["/dashboard"]}>
+          <ImpersonationBanner />
+          <Routes>
+            <Route path="/dashboard" element={<p>owner dashboard</p>} />
+            <Route path="/platform/studios/:studioId" element={<StudioPage />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+    return store;
+  }
+
+  it("lands on the studio's page with a receipt for the ended session", async () => {
+    const user = userEvent.setup();
+    renderWithStudioRoute();
+    await user.click(screen.getByRole("button", { name: /end session/i }));
+    expect(await screen.findByTestId("studio-page"))
+      .toHaveTextContent("The support session in Ink & Iron has ended. | ImpersonationSession.Ended");
+  });
+
+  it("if the server can't record the end, says why, still hands the admin back, and claims no receipt", async () => {
+    const error = vi.spyOn(toast, "error");
+    server.use(http.post("http://localhost/api/v1/platform/impersonation-sessions/:sessionId/end", () =>
+      HttpResponse.json({ message: "This session has already ended." }, { status: 409 })));
+    const user = userEvent.setup();
+    const store = renderWithStudioRoute();
+    await user.click(screen.getByRole("button", { name: /end session/i }));
+    await waitFor(() => expect(store.getState().auth.impersonation).toBeNull());
+    expect(error).toHaveBeenCalledWith("This session has already ended.");
+    expect(await screen.findByTestId("studio-page")).toHaveTextContent("no receipt");
+    error.mockRestore();
   });
 });
