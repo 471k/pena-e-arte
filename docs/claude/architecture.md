@@ -7295,7 +7295,10 @@ docs/03's rule that ornamental lettering is for the wordmark only. Spec:
   propagate. In Tailwind v4 it reaches only the bare `rounded` utility (42 uses) and the toasts. The ~320
   `rounded-sm/-md/-lg/-xl` uses read `--radius-*`, so those are set to 3px too. `rounded-xs` stays 2px for
   nested corners, and `rounded-full` is unchanged.
-  **This is our mapping and a known divergence from the prototype.** It is not "radius 3px per docs/03".
+  ~~**This is our mapping and a known divergence from the prototype.** It is not "radius 3px per docs/03".~~
+  **Corrected 24 Nov: the app conforms, and this is not a divergence.** `docs/03`'s only radius line is
+  "Radius baseline: 3px", and the package calls its visual sample a reference, not a specification. The
+  prototype reading below is kept as the record of why it was once framed otherwise; don't reintroduce it.
   The four-role CSS uses `border-radius` exactly twice, both `var(--ah-radius)`: on buttons and on
   inputs/selects/textareas. Panels (cards), badges, dialogs, notices, receipts and message bubbles have
   **no radius at all**, so the prototype is square-cornered with 3px on two control types. We chose 3px

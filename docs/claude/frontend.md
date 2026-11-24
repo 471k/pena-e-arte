@@ -377,9 +377,11 @@ gone entirely.
   `font-src` exception.
 - `index.html` preloads only `dm-sans-400.woff2`.
 
-**Radius.** Every corner is **3px**: this is **our mapping and a known divergence from the prototype**,
-not the package's rule as written. The four-role CSS gives 3px only to buttons and inputs, and leaves
-panels, badges, dialogs and notices square. See the slice 5 entry in `architecture.md` for why. In
+**Radius.** Every corner is **3px**, and **the app conforms to the design package** (corrected 24 Nov).
+`docs/03`'s only radius line is "Radius baseline: 3px". The four-role prototype CSS, which gives 3px only
+to buttons and inputs and leaves panels square, is the package's visual reference, not its specification,
+so its square panels are not a requirement and 3px everywhere is not a divergence. Phi left the scale as is
+on 24 Nov; don't reopen `--radius*` without a new decision. In
 Tailwind v4, `--radius` only reaches the bare `rounded` utility and the toast variable.
 `rounded-sm/-md/-lg/-xl` read Tailwind's own `--radius-*` scale, so those are set to 3px as well.
 `rounded-xs` stays 2px, as the inner corner of a control nested in a 3px box. `rounded-full` is a shape
