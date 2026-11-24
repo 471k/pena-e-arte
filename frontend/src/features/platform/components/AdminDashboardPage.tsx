@@ -26,6 +26,8 @@ import { MrrMovementsChart } from "./MrrMovementsChart";
 import { KpiCard, KpiSkeleton } from "./KpiCard";
 import { ExtendTrialReview } from "./ExtendTrialReview";
 import { TRIAL_EXTENDABLE } from "./subscriptionKnowledge";
+import { ActionReceiptArea } from "./ActionReceipt";
+import { useReportReceipt } from "./receipts";
 import { FailedRefundsCard } from "./RefundInvestigation";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 
@@ -93,6 +95,7 @@ function ExpiryLabel({ dateStr, status }: { dateStr: string; status: string }) {
 
 function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
   const [extending,  setExtending]  = useState(false);
+  const reportReceipt = useReportReceipt();
 
   return (
     <div className="py-2 border-b last:border-0 space-y-1.5">
@@ -156,7 +159,7 @@ function AtRiskRow({ sub, hasDuplicate }: AtRiskRowProps) {
           idSuffix={`atrisk-${sub.studioId}`}
           status={sub.status}
           currentTrialEnd={sub.trialExpiresAt ?? null}
-          onDone={() => setExtending(false)}
+          onDone={(r) => { setExtending(false); reportReceipt(r); }}
           onBack={() => setExtending(false)}
         />
       )}
@@ -389,6 +392,8 @@ export function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
+            {/* D04: an extended studio leaves the at-risk list, so its receipt is kept here, above the rows. */}
+            <ActionReceiptArea>
             {atRisk.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">No at-risk studios.</p>
             ) : (
@@ -400,6 +405,7 @@ export function AdminDashboardPage() {
                 />
               ))
             )}
+            </ActionReceiptArea>
           </CardContent>
         </Card>
 

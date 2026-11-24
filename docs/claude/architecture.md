@@ -8034,3 +8034,27 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
 - **Proven by the count, measured the same way before and after** (Playwright Chromium, owner `/clients` at 1280,
   first Tab from the top of the document): `main` reached the first page control on **Tab 24 (23 stops before
   it)**. With the link it is **Tab, Enter, Tab (1 stop before it)**.
+
+## D04 in full: every admin action leaves a receipt and shows the server's reason (Phi, 24 Nov) — 2026-11-24
+
+- **Phi's answer on the decision form: build it in full.** That means bound errors *and* receipts for the 19 admin
+  actions beyond cash activation, rather than the cheaper middle option.
+- **One implementation.** `platform/components/ActionReceipt.tsx` (the `ActionReceiptNotice` and `ActionReceiptArea`
+  components) and `receipts.ts` (types, `auditLogHref`, `makeReceipt`, the hooks, and `AUDIT_ACTIONS`). Cash activation's
+  notice now renders through it too. A receipt names the entity and its resulting state, gives the UTC time, and
+  links `/platform/audit-log?studioId=…&action=…`. It stays until dismissed.
+- **`AUDIT_ACTIONS` is pinned to `AuditActions.cs`** by a test that reads the C# file. A drifted name would link to
+  an empty audit log, which reads as "nothing was recorded".
+- **Where the receipt lives depends on whether its row can disappear.**
+  - Page-level (`ActionReceiptArea` and `useReportReceipt`) where a row can leave the list: an at-risk studio that
+    goes back to Trialing, a filtered row, a deleted code.
+  - Router state where the page navigates away: a saved plan lands on the plan list, and an ended support session
+    lands on the studio's page.
+  - Outside an area, the hook falls back to a toast rather than dropping the receipt.
+- **Starting a support session has no receipt.** It navigates into the support view, where the persistent banner
+  (studio, reason, time left) is the durable record. Ending one has a receipt. When the server can't record the end,
+  the admin still gets their own session back and is told why, and no receipt claims it ended.
+- **Errors:** each formerly bare `catch {` now passes the server's message through `extractErrorMessage`, with the
+  old sentence as the fallback. `describeLoadError` is for failed reads, so it isn't used for actions. Typed input
+  survives a failure. **The feedback receipt never includes the internal note's text** (the same field as the #371
+  leak).

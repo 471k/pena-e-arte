@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -8,6 +7,7 @@ import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { useCancelSubscriptionMutation, useGetCancellationQuoteQuery } from "@/features/platform/platformApi";
 import type { AdminCancellationQuoteResponse, CancelRefundChoice } from "@/features/platform/platform.types";
 import { ConsequenceReview, ReviewAlert } from "./ConsequenceReview";
+import { AUDIT_ACTIONS, makeReceipt, type ActionReceipt } from "./receipts";
 import { refundFor } from "./subscriptionConsequences";
 
 function isQuoteChanged(error: unknown): boolean {
@@ -34,7 +34,8 @@ interface CancelSubscriptionReviewProps {
   studioName: string;
   /** Element ids stay unique per row: e.g. "detail" or the studio id. */
   idSuffix:   string;
-  onDone:     () => void;
+  /** Called once the server confirmed the cancellation, with its receipt (D04). */
+  onDone:     (receipt: ActionReceipt) => void;
   onBack:     () => void;
 }
 
@@ -64,8 +65,7 @@ export function CancelSubscriptionReview({ studioId, studioName, idSuffix, onDon
         reason:    overrideRule ? reason.trim() : undefined,
         confirmed: { status: quote.status, invoiceId: quote.invoiceId, refundAmount: refundFor(quote, choice) },
       }).unwrap();
-      toast.success(`Subscription cancelled for ${studioName}`);
-      onDone();
+      onDone(makeReceipt(`${studioName}'s subscription is cancelled.`, AUDIT_ACTIONS.subscriptionCancelled, studioId));
     } catch (err) {
       const changed = isQuoteChanged(err);
       setFailure((prev) => ({

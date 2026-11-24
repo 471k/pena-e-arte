@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { CreditCard, Edit2, Loader2, Plus, Trash2, Users } from "lucide-react";
@@ -9,6 +9,9 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetAdminPlansQuery, useDeletePlanMutation } from "@/features/billing/billingApi";
 import { priceFor, type PlanResponse } from "@/features/billing/billing.types";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { ActionReceiptArea } from "./ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, receiptFromState, useReportReceipt } from "./receipts";
 
 // null = unlimited on the plan
 function formatLimit(value: number | null, unit: string): string {
@@ -39,6 +42,7 @@ function PlanCardSkeleton() {
 function PlanCard({ plan }: { plan: PlanResponse }) {
   const [deleting, setDeleting] = useState(false);
   const [deletePlan, { isLoading: removing }] = useDeletePlanMutation();
+  const reportReceipt = useReportReceipt();
 
   const monthly = priceFor(plan, "Monthly");
   const yearly  = priceFor(plan, "Yearly");
@@ -46,12 +50,9 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
   async function handleDelete() {
     try {
       await deletePlan(plan.id).unwrap();
-      toast.success("Plan deleted");
+      reportReceipt(makeReceipt(`Plan "${plan.name}" is deleted.`, AUDIT_ACTIONS.planDeleted));
     } catch (err: unknown) {
-      const message =
-        (err as { data?: { message?: string } } | undefined)?.data?.message
-        ?? "Failed to delete plan.";
-      toast.error(message);
+      toast.error(extractErrorMessage(err, "Failed to delete plan."));
     }
   }
 
@@ -198,6 +199,7 @@ function PlanCard({ plan }: { plan: PlanResponse }) {
 }
 
 export function PlanManagementPage() {
+  const location = useLocation();
   useDocumentMeta({ title: "Plans — Platform Admin", canonical: "/platform/plans" });
 
   const { data: plans, isLoading, isError } = useGetAdminPlansQuery();
@@ -218,6 +220,8 @@ export function PlanManagementPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
+        {/* D04: a delete reports here, and a create or update arrives with its receipt in router state. */}
+        <ActionReceiptArea initial={receiptFromState(location.state)}>
         {isLoading && (
           <div className="grid grid-cols-1 page-md:grid-cols-2 page-lg:grid-cols-3 gap-4">
             <PlanCardSkeleton />
@@ -263,6 +267,7 @@ export function PlanManagementPage() {
             </Link>
           </div>
         )}
+        </ActionReceiptArea>
       </main>
     </div>
   );
