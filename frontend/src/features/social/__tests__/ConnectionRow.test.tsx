@@ -76,8 +76,13 @@ describe("ConnectionRow", () => {
   it("WCAG 2.5.3: every action's visible text is inside its accessible name, unbroken", () => {
     // The old "Get TikTok verification code" split the visible words with the platform, so a voice-control user
     // saying "Get verification code" matched nothing.
-    for (const kind of ["connect", "get-code", "disconnect"] as const) {
-      const { unmount } = renderRow({ action: { kind, onClick: vi.fn() } });
+    const actions: NonNullable<ConnectionRowProps["action"]>[] = [
+      { kind: "connect", onClick: vi.fn() },
+      { kind: "get-code", onClick: vi.fn(), disabled: false },
+      { kind: "disconnect", onClick: vi.fn() },
+    ];
+    for (const action of actions) {
+      const { unmount } = renderRow({ action });
       const button = screen.getByRole("button");
       const visible = (button.textContent ?? "").replace(/\s+/g, " ").trim().toLowerCase();
       expect(button.getAttribute("aria-label")?.toLowerCase()).toContain(visible);
