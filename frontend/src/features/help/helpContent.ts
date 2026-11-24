@@ -2422,14 +2422,14 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-trial-length",
     roles: [Owner],
     question: "How long is the free trial, and what happens when it ends?",
-    answer: "New studios get a 14-day full-featured trial with no credit card required. After the trial ends, you get a 7-day read-only grace period, and if you still haven't subscribed after that, your studio is suspended until you do.",
+    answer: "New studios get a 14-day full-featured trial with no credit card required. After the trial ends, you get a 7-day read-only grace period, and if you still haven't subscribed after that, your subscription is cancelled and access stops until you subscribe. That isn't a suspension: only a platform admin suspends a studio, and they do it by hand.",
     relatedArticleIds: ["owner-billing", "owner-subscribe"],
   },
   {
     id: "faq-grace-period",
     roles: [Owner],
     question: "What is the 7-day grace period, and what can I do during it?",
-    answer: "The 7-day grace period starts right after your trial ends. During it, you can still view everything in the app, but you can't make changes (no new bookings, no edits) until you subscribe. A banner reminds you the whole time.",
+    answer: "The 7-day grace period starts right after your trial ends. During it, you can still view everything in the app, but you can't make changes (no new bookings, no edits) until you subscribe. A banner reminds you the whole time. When the grace period ends, the subscription is cancelled and access stops until you subscribe.",
     relatedArticleIds: ["owner-billing"],
   },
   {
