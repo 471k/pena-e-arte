@@ -12,9 +12,11 @@ import {
   useDeleteStudioClosureMutation,
 } from "../studiosApi";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  // A date with no time of day, stored as UTC midnight: printed in UTC (see formatDateOnly).
+  return formatDateOnly(value, { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function StudioClosuresCard() {

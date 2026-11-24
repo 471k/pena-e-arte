@@ -92,6 +92,15 @@ export function formatWallDate(date: WallDate, options: Intl.DateTimeFormatOptio
     .toLocaleDateString("en-GB", { ...options, timeZone: "UTC" });
 }
 
+/**
+ * Formats a date that has no time of day (a date of birth, a closure day, a tattoo record's date). The API stores
+ * these as UTC midnight, so they are printed in UTC. The viewer's zone would move them to the day before anywhere
+ * west of UTC. See the zone rule in formatInStudioTimezone.ts.
+ */
+export function formatDateOnly(iso: string, options: Intl.DateTimeFormatOptions): string {
+  return new Date(iso).toLocaleDateString("en-GB", { ...options, timeZone: "UTC" });
+}
+
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 /** `instant` as a `datetime-local` value ("YYYY-MM-DDTHH:mm") on the studio's wall clock. */

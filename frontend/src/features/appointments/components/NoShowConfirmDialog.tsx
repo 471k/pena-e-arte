@@ -7,7 +7,8 @@ import {
 } from "@/shared/components/ui/alert-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { formatSessionSpan } from "@/shared/utils/studioDay";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { STUDIO_TIME_PENDING, STUDIO_TIME_UNAVAILABLE } from "@/shared/utils/formatInStudioTimezone";
 import { useGetNoShowPreviewQuery, useMarkNoShowMutation } from "../appointmentsApi";
 import { NoShowOutcome } from "../appointment.types";
 import type { AppointmentResponse, NoShowResultResponse } from "../appointment.types";
@@ -36,7 +37,8 @@ interface NoShowConfirmDialogProps {
 
 export function NoShowConfirmDialog({ appointment, open, onOpenChange }: NoShowConfirmDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const { data: studio } = useGetMyStudioQuery();
+  // The session's span is on the studio's calendar: pending until the zone loads, never the browser's zone.
+  const { zone } = useStudioZone();
   const preview = useGetNoShowPreviewQuery(appointment.id, { skip: !open, refetchOnMountOrArgChange: true });
   const [markNoShow, { isLoading: committing }] = useMarkNoShowMutation();
   const [result, setResult] = useState<NoShowResultResponse | null>(null);
@@ -112,7 +114,9 @@ export function NoShowConfirmDialog({ appointment, open, onOpenChange }: NoShowC
         <AlertDialogHeader>
           <AlertDialogTitle>Mark {who} as a no-show?</AlertDialogTitle>
           <AlertDialogDescription>
-            {formatSessionSpan(appointment.date, appointment.endDate, studio?.timezone)}
+            {zone.status === "ready"
+              ? formatSessionSpan(appointment.date, appointment.endDate, zone.timeZone)
+              : zone.status === "loading" ? STUDIO_TIME_PENDING : STUDIO_TIME_UNAVAILABLE}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

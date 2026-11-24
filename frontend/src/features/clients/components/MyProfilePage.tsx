@@ -18,15 +18,15 @@ import { BodyMap } from "./BodyMap";
 import { ContactDetailsCard } from "./ContactDetailsCard";
 import { PortableProfileToggle } from "./PortableProfileToggle";
 import { DeleteAccountSection } from "./DeleteAccountSection";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  // A date with no time of day, stored as UTC midnight: printed in UTC (see formatDateOnly).
+  return formatDateOnly(iso, { day: "numeric", month: "short", year: "numeric" });
 }
 
 export function MyProfilePage() {

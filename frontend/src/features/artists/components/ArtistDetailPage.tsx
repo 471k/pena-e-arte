@@ -80,6 +80,8 @@ import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
 import { ArtistSocialTab } from "./ArtistSocialTab";
 import { SITE_URL } from "@/shared/constants/legalEntity";
 import { Money } from "@/shared/components/Money";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -218,6 +220,8 @@ export function ArtistDetailPage() {
   const supportView = useSupportView();
   const isArtistRole = usePermission(Role.Artist);
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
+  // Appointment dates are on the studio's calendar (S01): pending until the zone loads, never the browser's.
+  const { zone } = useStudioZone();
 
   const { data: artist, isLoading, isError } = useGetArtistByIdQuery(id!);
   const { currency: studioCurrency } = useStudioCurrency();
@@ -892,7 +896,7 @@ export function ArtistDetailPage() {
                         <CardContent className="p-3 flex items-center justify-between gap-3">
                           <div className="space-y-1 min-w-0">
                             <p className="text-sm font-medium">
-                              {formatDate(appt.date)}
+                              {formatStudioTime(appt.date, { day: "numeric", month: "short", year: "numeric" }, zone)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {appt.durationMinutes} min
