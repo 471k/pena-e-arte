@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { PenLine, MessageSquareMore } from "lucide-react";
+import { PenLine } from "lucide-react";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
 import { UserMenu } from "@/shared/components/UserMenu";
-import { Button } from "@/shared/components/ui/button";
+import { HeaderActions } from "@/shared/components/HeaderActions";
+import { HEADER_FOLD_BELOW_REM, useHeaderFold } from "@/shared/hooks/useHeaderFold";
 import { NavDrawer } from "@/shared/components/NavDrawer";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { SidebarToggle } from "@/shared/components/SidebarToggle";
@@ -15,15 +16,13 @@ import type { NavSection } from "@/shared/types/navItem";
 import { buildArtistSections } from "@/layouts/artistNavSections";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
-import { NotificationBell } from "@/features/notifications";
 import { FeedbackDialog } from "@/features/feedback";
-import { HelpMenu } from "@/features/help";
 import { useSignalR } from "@/shared/hooks/useSignalR";
 import { useGetMyArtistQuery } from "@/features/artists/artistsApi";
 import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
-import { MessagesNavBadge, useChatHub } from "@/features/messaging";
+import { useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
 
@@ -58,35 +57,28 @@ export function ArtistLayout() {
     navigate("/login", { replace: true });
   }
 
+  const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.artist);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
       <SuspensionBanner role="artist" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
-      <header className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header ref={headerRef} className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
-        <Wordmark className="max-[359px]:hidden" />
+        {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone). */}
+        {!headerFolded && <Wordmark />}
         <StudioContextLabel variant="header" />
 
         <NavDrawer sections={navSections} title="TattooOS" context={<StudioContextLabel variant="drawer" />} open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setFeedbackOpen(true)}
-            title="Send feedback"
-            aria-label="Send feedback"
-          >
-            <MessageSquareMore className="h-4 w-4" />
-          </Button>
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
-          <MessagesNavBadge />
-          <NotificationBell />
-          <UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />
-        </div>
+        <HeaderActions
+          folded={headerFolded}
+          onFeedback={() => setFeedbackOpen(true)}
+          showMessages
+          help={{ onBeforeTourStep, onTourEnd }}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} compact={headerFolded} />}
+        />
       </header>
 
       <div className="flex flex-1 min-h-0">

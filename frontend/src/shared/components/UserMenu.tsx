@@ -8,7 +8,8 @@ import { useEscapeKey }    from "@/shared/hooks/useEscapeKey";
 
 /** `context`: which studio and role (S08), passed by the studio layouts. The menu exists at every width and text
  *  size, so it is where that line is always reachable; the header's copy only shows when there's room. */
-export function UserMenu({ onLogout, context }: { onLogout: () => void; context?: ReactNode }) {
+/** `compact`: the folded header (useHeaderFold) shows the avatar alone, as a phone does. */
+export function UserMenu({ onLogout, context, compact = false }: { onLogout: () => void; context?: ReactNode; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -25,7 +26,7 @@ export function UserMenu({ onLogout, context }: { onLogout: () => void; context?
         aria-haspopup="true"
         className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
-        <UserChip />
+        <UserChip compact={compact} />
         <ChevronDown className="h-3 w-3 text-muted-foreground/70" />
       </button>
 

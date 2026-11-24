@@ -6,6 +6,7 @@ import { getClientTourSteps } from "./tours/clientTour";
 import { artistTourSteps } from "./tours/artistTour";
 import { getOwnerTourSteps, type OwnerTourFacts } from "./tours/ownerTour";
 import { adminTourSteps } from "./tours/adminTour";
+import { foldHelpStep } from "./tours/headerFold";
 import { Role } from "@/shared/types/roles";
 
 function getStepsForRole(
@@ -27,7 +28,7 @@ function getStepsForRole(
  * isn't known yet. OwnerLayout passes the same values that render those targets, for the same reason. */
 export function useOnboardingTour(
   role: Role | null, onBeforeStep?: (step: TourStep) => void, onTourEnd?: () => void,
-  showPaymentMethods = false, ownerTourFacts?: OwnerTourFacts,
+  showPaymentMethods = false, ownerTourFacts?: OwnerTourFacts, headerFolded = false,
 ) {
   const [forceActive, setForceActive] = useState(false);
   // Hides the tour immediately on skip/complete without waiting for the
@@ -60,8 +61,10 @@ export function useOnboardingTour(
     setForceActive(true);
   }
 
+  // The header's fold is the same value that renders the Help button or "More", so the last step points at
+  // whichever is there (headerFold.ts).
   const steps = role
-    ? getStepsForRole(role, (studios?.length ?? 0) > 1, showPaymentMethods, ownerTourFacts)
+    ? foldHelpStep(getStepsForRole(role, (studios?.length ?? 0) > 1, showPaymentMethods, ownerTourFacts), headerFolded)
     : [];
 
   const tourElement = shouldShow && role

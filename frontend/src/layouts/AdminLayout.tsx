@@ -1,6 +1,8 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { Activity, BarChart3, Building2, CreditCard, HelpCircle, LayoutDashboard, MessageSquare, PenLine, Receipt, ScrollText, Share2, ShieldAlert, Landmark } from "lucide-react";
 import { UserMenu } from "@/shared/components/UserMenu";
+import { HeaderActions } from "@/shared/components/HeaderActions";
+import { HEADER_FOLD_BELOW_REM, useHeaderFold } from "@/shared/hooks/useHeaderFold";
 import { NavDrawer } from "@/shared/components/NavDrawer";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { SidebarToggle } from "@/shared/components/SidebarToggle";
@@ -9,10 +11,8 @@ import { withNavBadges } from "@/shared/utils/navSections";
 import type { NavSection } from "@/shared/types/navItem";
 import { useAppDispatch } from "@/app/hooks";
 import { logout } from "@/features/auth/authSlice";
-import { NotificationBell } from "@/features/notifications";
 import { useGetFeedbackReportsQuery } from "@/features/feedback";
 import { useGetPlatformConductReportsQuery } from "@/features/conduct-reports";
-import { HelpMenu } from "@/features/help";
 import { useAdminNotificationHub } from "@/shared/hooks/useAdminNotificationHub";
 
 const ICON = "h-4 w-4";
@@ -78,20 +78,23 @@ export function AdminLayout() {
     navigate("/login", { replace: true });
   }
 
+  const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.admin);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
-      <header className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header ref={headerRef} className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
-        <span className="font-semibold tracking-tight">Platform Admin</span>
+        {/* Folded, the title gives its room to the controls (S05: 200% text on a phone); the drawer still names it. */}
+        {!headerFolded && <span className="font-semibold tracking-tight">Platform Admin</span>}
 
         <NavDrawer sections={navSections} title="Platform Admin" open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-3">
-          <HelpMenu onBeforeTourStep={onBeforeTourStep} onTourEnd={onTourEnd} />
-          <NotificationBell />
-          <UserMenu onLogout={handleLogout} />
-        </div>
+        {/* Help is the admin's only foldable control, so it stays inline: a one-item menu would save nothing. */}
+        <HeaderActions
+          folded={headerFolded}
+          help={{ onBeforeTourStep, onTourEnd }}
+          userMenu={<UserMenu onLogout={handleLogout} compact={headerFolded} />}
+        />
       </header>
 
       <div className="flex flex-1 min-h-0">

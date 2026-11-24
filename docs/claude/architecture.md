@@ -7874,6 +7874,102 @@ been marked Present in slice 3; it is **Partial** until this lands.
 - This is conformance to S01's own requirement (a booking time in the venue's zone is also the category norm), not a
   benchmark discovery.
 
+## One quick-book bar for the artist and studio pages (6e's tail) — 2026-11-23
+
+- **The studio page had no booking button on screen below 1100**, at every width, not only 6c's new band: its
+  Book button sits in the aside, which stacks after the portfolio. The artist page had a fixed bar. Both now render
+  `QuickBookBar`, gated on `showBookingCta` and linked to the same `ctaUrl` as the page's own button, so the
+  conversion control can't drift between two copies.
+- **The bar ends the page with an invisible, inert twin of itself**, built from the same `Button`, so the space it
+  takes always equals the bar's height. The artist page's `pb-20 page-lg:pb-8` padded the *content*, above the
+  footer: measured 23 Nov at 390px, scrolled to the bottom, the footer sat under the bar at 100% and 200% text. The
+  twin sits after the footer, so the footer clears the bar at any text size.
+- An internal-consistency fix (the same journey had the control on one page and not the other), not a benchmark
+  finding: no published statement that the category mandates a sticky CTA was found.
+## The phone header folds into "More" at large text (S05's last tail) — 2026-11-23
+
+Measured 23 Nov in real Chromium at 390px: 200% text overflowed the header by 280px (owner, artist), 208 (client)
+and 119 (admin). Phi's decision: feedback, help and messages fold into one "More" menu; the notification bell and
+the account menu stay, because they are what people reach for under pressure and the bell carries unread state.
+
+- **The fold is decided by the header's own width in rem** (`useHeaderFold`, a ResizeObserver on the header plus a
+  1rem probe, since a text-size change leaves the px width unchanged). Thresholds are each layout's measured inline
+  width at 100% text: owner and artist 24rem, client 22rem, admin 22.5rem. A px media query is what put the studio
+  name under the Owner/Artist switch in #415. **Not a CSS container query**, deliberately: one value must decide
+  both what renders and what the tour points at (#430/#438), and script can't read a container query's state.
+- **Folding alone doesn't fit**: at 200% each icon button is 64px and the account menu 120px, so folded the owner
+  still needs 320px of 326. The wordmark (and admin's "Platform Admin" title) hides when folded; that is what makes
+  it fit. Replaces the old `max-[359px]:hidden`, a px rule that never responded to text size.
+- **Unread state survives the fold**: the More trigger carries the unread-message count and its menu item names it.
+- **HelpMenu stays mounted** (it owns the sheet and runs the tours); folded it hides its own trigger and More's
+  "Help" opens it. Every role's tour ends on the Help button; folded, that step points at More
+  (`foldHelpStep`), decided from the same `folded` value, never polled for.
+- **The studio-invite bell stays outside**, a departure from Phi's list: it renders only while invites are pending
+  and carries that count, the same reason the notification bell stays. When it shows, an owner at 200% text on a
+  390px phone overflows again by its width; rare, and recorded rather than hidden.
+- **Admin never shows More**: Help is its only foldable control, and a one-item menu saves nothing.
+- This is a WCAG 1.4.10 reflow fix driven by our own measurement, not a benchmark finding: the category's published
+  guidance is mobile-first with large targets, and no published practice for collapsing a crowded header was found.
+## D03 closed, and what `NoSubscription` actually does (slice 8 follow-up) — 2026-11-23
+
+**D03 is delivered.** Extending a Cancelled studio's trial is refused, as Phi decided on 20 Nov:
+`ExtendTrialCommand.cs:30-33` (`CancelledMessage`) and `:57-58` (the refusal), with `subscriptionKnowledge.ts` leaving
+`Cancelled` out of `TRIAL_EXTENDABLE`. The "raised with Phi, not decided" note in the table above is out of date.
+
+**`NoSubscription` — verified from source and with a real run. It is right for cash activation and wrong for trial
+extension.**
+
+- `TenantMiddleware.EnforceAsync` reads only `SubscriptionAccessService.GetSnapshotAsync`, which reads the
+  `Subscription` row. **It never reads `Studio.TrialExpiresAt`.** With no row the snapshot is null and every tenant
+  request gets a 402, `/studios/me` included (`if (snapshot is null) throw new SubscriptionRequiredException`), pinned
+  by `TenantMiddlewareTests.InvokeAsync_NoSubscriptionRecord_Throws`. (`SubscriptionAccessService` exists:
+  `Pena_e_Arte.Infrastructure/Services/SubscriptionAccessService.cs`, since #35. Its comment calls a missing row
+  "data corruption".)
+- **Cash activation** on a studio with no row *creates* an Active `Subscription`
+  (`ActivateSubscriptionManuallyCommand.cs`, the `studio.Subscription is null` branch), so access returns.
+  `NoSubscription` in `CASH_ACTIVATABLE` is **correct**.
+- **Trial extension** on a studio with no row only moves `Studio.TrialExpiresAt` (`ExtendTrialCommand.cs:63`; the
+  `Subscription` branch at `:65` is skipped). The middleware never reads that field, so **the extension reports success
+  and grants nothing.** That is the same defect as PastDue and Cancelled, which Phi chose to refuse.
+- **The real run** (23 Nov, local MySQL, a throwaway integration probe, not committed): a studio with an expired
+  trial and no `Subscription` row, then the real `ExtendTrialHandler` (+14 days), then the real
+  `SubscriptionAccessService`. Result: `Studio.TrialExpiresAt` moved from 20 Nov to 7 Dec, **no row was created, and
+  the snapshot was null**. That is the input that 402s.
+
+### Spec (not built): refuse trial extension for `NoSubscription`
+
+1. `ExtendTrialHandler`: when `studio.Subscription is null`, throw `BusinessRuleViolationException(NoSubscriptionMessage)`,
+   in the same shape as `PastDueMessage`/`CancelledMessage`. Suggested text: *"This studio has no subscription record,
+   so a trial extension wouldn't restore access. Record a cash payment with Activate on the studio's page, which
+   creates one."* It names the move that works (cash activation creates the row), so it isn't a dead end.
+2. `subscriptionKnowledge.ts`: remove `NoSubscription` from `TRIAL_EXTENDABLE`. Keep it in `CASH_ACTIVATABLE`.
+3. `AdminStudioDetailPage.tsx:149` shows the trial date for `NoSubscription`. That is `Studio.TrialExpiresAt`, which
+   nothing enforces, so either drop `NoSubscription` from that condition or label the date as not in effect.
+4. Tests: the handler refuses with the message; the admin list and detail don't offer Extend for `NoSubscription`;
+   cash activation still does. Mutation: put `NoSubscription` back into `TRIAL_EXTENDABLE`.
+5. Help: `admin-studio-detail` / the manual say Extend isn't offered for a studio with no subscription record, and why.
+
+**Why not built:** Phase 7 verifies, it doesn't build. It's a one-line refusal of the same kind Phi already decided
+twice, so it should be a short decision, not a design question. **Rollback cost of leaving it:** an admin can
+extend a `NoSubscription` studio, see a success toast, and the studio stays locked out.
+
+## The header also folds when its content overflows (S05 follow-up, slice 9's pass) — 2026-11-23
+
+Slice 9's 200% pass found #441's fold calibrated on the phone layout only. From 640px up the header adds the
+Owner/Artist switch, the studio's name, wider gaps and the account chip's name, so at 200% text an owner's header
+overflowed by 446px at 768, 214 at 1024 and 138 at 1100 (artist: 92 at 768). Not a regression (those widths
+overflowed before #441 too), but Phase 2's "zero sideways scroll" held only below 640.
+
+- **`useHeaderFold` now also folds on measured overflow.** Unfolded, if the header's content is wider than the
+  header, it folds and remembers how wide the inline layout needed to be; it unfolds only once the header is that
+  wide. The remembered width only grows, so it can't flip back and forth. The rem threshold stays as the floor, so
+  the phone behaviour #441 measured is unchanged. Children are observed too: content that arrives later widens
+  them, not the header.
+- **Folded means phone-like at any width:** the header's Owner/Artist switch goes (the drawer carries it) and the
+  account chip shows only the avatar.
+- **The tour's switch step opens the drawer when folded**, from the same `folded` value, not only below 640 by media
+  query; otherwise it would time out looking for the header copy (#430's failure).
+
 ## Write controls say why they are off during a support view (D05 phase 4b) — 2026-11-23
 
 - **One default, not forty marks.** `useSubscriptionGuard` gains the cause `"support"` (an admin's support session,

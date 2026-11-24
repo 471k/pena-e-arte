@@ -23,9 +23,9 @@ namespace Pena_e_Arte.Infrastructure.Jobs;
 /// _quarantine/ is TOP-LEVEL on purpose: the presign route lets a caller choose any folder under
 /// {studioId}/, so {studioId}/_quarantine/ would be a quarantine users can write into. It is skipped at the
 /// list call (IR2Service.ListAllExceptAsync), so the next run never sees, re-condemns or pays memory for it.
-/// On prod a bucket lock rule on that prefix keeps quarantined objects for 30 days. The lock is a Cloudflare
-/// account setting, not something this job sets or checks: OUR code can't delete from quarantine; someone
-/// with lock permission can.
+/// A bucket lock rule on that prefix keeps quarantined objects for 14 days, and a lifecycle rule deletes them at
+/// 15 (the lifecycle must exceed the lock, or the expiry is refused). Both are Cloudflare bucket settings, not
+/// something this job sets or checks, and no person is needed to empty the quarantine (Phi, 23 Nov).
 ///
 /// A sweep, not a delete at each remove site, because objects are shared between rows (the catalog
 /// design is one object in three rows) and a sweep also recovers what is already orphaned. Same shape as
