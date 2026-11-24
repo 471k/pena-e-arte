@@ -14,6 +14,7 @@ import { logout } from "@/features/auth/authSlice";
 import { useGetFeedbackReportsQuery } from "@/features/feedback";
 import { useGetPlatformConductReportsQuery } from "@/features/conduct-reports";
 import { useAdminNotificationHub } from "@/shared/hooks/useAdminNotificationHub";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
 const ICON = "h-4 w-4";
 
@@ -81,6 +82,7 @@ export function AdminLayout() {
   const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.admin);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
+      <SkipToContent />
       <header ref={headerRef} className="flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
@@ -99,7 +101,7 @@ export function AdminLayout() {
 
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
-        <div className="flex-1 min-w-0">
+        <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
           <Outlet />
         </div>
       </div>
