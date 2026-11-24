@@ -1202,7 +1202,8 @@ export function BookAppointmentForm() {
       {/* C02: optional promotion and referral fields behind a disclosure. Kept as separately labelled fields
           ("Promo code", "Referral code") rather than one ambiguous "discount code", since a booking can carry
           both. */}
-      <OptionalCodes defaultOpen={!!watchedPromoCode || referralCode !== ""}>
+      {/* key: a resumed draft remounts it, so a restored code opens the disclosure (defaultOpen is read at mount). */}
+      <OptionalCodes key={draftChoice} defaultOpen={!!watchedPromoCode || referralCode !== ""}>
         <div className="space-y-1.5">
           <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
           <Input

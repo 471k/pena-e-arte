@@ -1896,6 +1896,18 @@ describe("Saved booking drafts (S04): everything but the safety notes", () => {
     expect(saved!).not.toContain("latex");
   });
 
+  // Owed since 23 Nov (slice 7 phase D): a restored code must open the codes disclosure, at form level.
+  it("a resumed draft with a promo code opens the codes disclosure", async () => {
+    server.use(http.get("http://localhost/api/v1/booking-drafts/mine", () => HttpResponse.json(SAVED)));
+    const user = userEvent.setup();
+    renderForm(Role.Client);
+    const disclosure = screen.getByText("Promo or referral code (optional)").closest("details") as HTMLDetailsElement;
+    expect(disclosure.open).toBe(false);
+    await user.click(await screen.findByRole("button", { name: /resume it/i }));
+    await waitFor(() => expect((screen.getByText("Promo or referral code (optional)").closest("details") as HTMLDetailsElement).open).toBe(true));
+    expect(screen.getByDisplayValue("SPRING")).toBeInTheDocument();
+  });
+
   it("Start over discards the draft", async () => {
     let deleted = 0;
     server.use(
