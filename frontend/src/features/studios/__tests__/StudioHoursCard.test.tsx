@@ -10,6 +10,16 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { studiosApi, type StudioHoursEntry } from "@/features/studios/studiosApi";
 import { StudioHoursCard } from "@/features/studios/components/StudioHoursCard";
+import { billingApi } from "@/features/billing/billingApi";
+
+// D05 phase 4b: whether an admin's support session is active, switched per test. The module's real constant (the
+// reason sentence) is kept; only the one-line hook is replaced.
+let supportSession = false;
+vi.mock("@/shared/hooks/useSupportView", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/hooks/useSupportView")>()),
+  useSupportView: () => supportSession,
+}));
+
 
 const STUDIO_ID = "studio-001";
 
@@ -26,6 +36,8 @@ const server = setupServer(
   http.get(`http://localhost/api/v1/studios/${STUDIO_ID}/hours`, () =>
     HttpResponse.json(EMPTY_HOURS),
   ),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -35,10 +47,11 @@ afterAll(() => server.close());
 function makeStore() {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth:                     authReducer,
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
   });
 }
 
@@ -127,5 +140,27 @@ describe("StudioHoursCard", () => {
     await new Promise((r) => setTimeout(r, 50));
 
     expect(screen.getByRole("switch", { name: /monday open/i })).toHaveAttribute("aria-checked", "true");
+  });
+});
+
+describe("D05 phase 4b: write controls during a support session", () => {
+  afterEach(() => { supportSession = false; });
+
+  it("a write control is shown but turned off, saying why, during a support session, and on outside one", async () => {
+    supportSession = true;
+    const first = renderCard();
+    await Promise.resolve();
+    const gated = await screen.findByRole("button", { name: /save studio hours/i }, { timeout: 5000 });
+    expect(gated).toHaveAttribute("aria-disabled", "true");
+    expect(gated).toHaveAccessibleDescription(
+      "This is a read-only support session: changes are turned off. End the session to make changes as yourself.");
+    void first;
+    cleanup();
+
+    supportSession = false;
+    renderCard();
+    await Promise.resolve();
+    const open = await screen.findByRole("button", { name: /save studio hours/i }, { timeout: 5000 });
+    expect(open).not.toHaveAttribute("aria-disabled", "true");
   });
 });

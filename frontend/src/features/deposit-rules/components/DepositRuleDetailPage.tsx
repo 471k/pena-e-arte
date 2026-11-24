@@ -34,6 +34,7 @@ import {
 import type { UpdateDepositRuleRequest } from "../depositRule.types";
 import { Money } from "@/shared/components/Money";
 import type { ReactNode } from "react";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 const editSchema = z
   .object({
@@ -186,11 +187,11 @@ export function DepositRuleDetailPage() {
 
         {canManage && mode === "view" && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
+            <SubscriptionGatedButton variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
               <Pencil className="h-3.5 w-3.5" />
               Edit
-            </Button>
-            <Button
+            </SubscriptionGatedButton>
+            <SubscriptionGatedButton
               variant="outline"
               size="sm"
               onClick={() => setMode("confirm-delete")}
@@ -198,7 +199,7 @@ export function DepositRuleDetailPage() {
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
-            </Button>
+            </SubscriptionGatedButton>
           </div>
         )}
 
@@ -380,7 +381,7 @@ export function DepositRuleDetailPage() {
               <span className="text-sm">Active</span>
             </label>
 
-            <Button type="submit" className="w-full" disabled={isSaving}>
+            <SubscriptionGatedButton type="submit" className="w-full" disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -389,7 +390,7 @@ export function DepositRuleDetailPage() {
               ) : (
                 "Save Changes"
               )}
-            </Button>
+            </SubscriptionGatedButton>
           </form>
         )}
 
@@ -399,7 +400,7 @@ export function DepositRuleDetailPage() {
               <p className="text-sm font-medium">Delete "{rule.name}"?</p>
               <p className="text-xs text-muted-foreground">This action cannot be undone.</p>
               <div className="flex gap-2">
-                <Button
+                <SubscriptionGatedButton
                   variant="destructive"
                   size="sm"
                   disabled={isDeleting}
@@ -414,7 +415,7 @@ export function DepositRuleDetailPage() {
                   ) : (
                     "Delete"
                   )}
-                </Button>
+                </SubscriptionGatedButton>
                 <Button
                   variant="outline"
                   size="sm"

@@ -162,6 +162,8 @@ const server = setupServer(
       trialExpiresAt: "2099-01-01T00:00:00Z", createdAt: "2024-01-01T00:00:00Z", isActive: true,
       currency: "EUR" }),
   ),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));

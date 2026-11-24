@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
+import { vi, describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
 import { render, screen, cleanup, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -28,6 +28,16 @@ import type { IntakeFormResponse, ConsentFormResponse } from "@/features/forms/f
 import { AppointmentStatus, DepositStatus } from "@/features/appointments/appointment.types";
 import { ClientDetailPage } from "@/features/clients/components/ClientDetailPage";
 import { Role } from "@/shared/types/roles";
+import { billingApi } from "@/features/billing/billingApi";
+
+// D05 phase 4b: whether an admin's support session is active, switched per test. The module's real constant (the
+// reason sentence) is kept; only the one-line hook is replaced.
+let supportSession = false;
+vi.mock("@/shared/hooks/useSupportView", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/hooks/useSupportView")>()),
+  useSupportView: () => supportSession,
+}));
+
 
 // S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
 // computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
@@ -186,6 +196,8 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 })),
   http.post("http://localhost/api/v1/clients/:id/cancel-erasure", () =>
     new HttpResponse(null, { status: 204 })),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -197,6 +209,7 @@ afterAll(() => server.close());
 function makeStore(role: Role) {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth: authReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
@@ -207,7 +220,7 @@ function makeStore(role: Role) {
       [studiosApi.reducerPath]: studiosApi.reducer,
     },
     middleware: (gd) =>
-      gd().concat(
+      gd().concat(billingApi.middleware, 
         clientsApi.middleware,
         artistsApi.middleware,
         appointmentsApi.middleware,
@@ -684,5 +697,27 @@ describe("ClientDetailPage", () => {
     await user.click(within(dialog).getByRole("button", { name: /^restore$/i }));
 
     expect(await screen.findByText("Client restored.")).toBeInTheDocument();
+  });
+});
+
+describe("D05 phase 4b: write controls during a support session", () => {
+  afterEach(() => { supportSession = false; });
+
+  it("a write control is shown but turned off, saying why, during a support session, and on outside one", async () => {
+    supportSession = true;
+    const first = renderPage();
+    await Promise.resolve();
+    const gated = await screen.findByRole("button", { name: /send reminder/i }, { timeout: 5000 });
+    expect(gated).toHaveAttribute("aria-disabled", "true");
+    expect(gated).toHaveAccessibleDescription(
+      "This is a read-only support session: changes are turned off. End the session to make changes as yourself.");
+    void first;
+    cleanup();
+
+    supportSession = false;
+    renderPage();
+    await Promise.resolve();
+    const open = await screen.findByRole("button", { name: /send reminder/i }, { timeout: 5000 });
+    expect(open).not.toHaveAttribute("aria-disabled", "true");
   });
 });

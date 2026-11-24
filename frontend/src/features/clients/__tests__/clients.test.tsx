@@ -14,6 +14,8 @@ import type { ClientResponse } from "@/features/clients/clientsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import { ClientListPage } from "@/features/clients/components/ClientListPage";
 import { Role } from "@/shared/types/roles";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +77,10 @@ const server = setupServer(
     return HttpResponse.json(list);
   }),
   http.get("http://localhost/api/v1/artists", () => HttpResponse.json([])),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", isActive: true, timezone: "Europe/Tirane", currency: "EUR" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -86,12 +92,13 @@ afterAll(() => server.close());
 function makeStore(role: Role = Role.Owner) {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer,
       auth: authReducer,
       ui:   uiReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(clientsApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, clientsApi.middleware, artistsApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u1", email: "test@ink-soul.test" }, token: "fake", tenantId: "t1", role } as any,

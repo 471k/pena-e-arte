@@ -2061,6 +2061,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Enter a short reason for the session (required — e.g. \"Investigating ticket #123\") and click \"Start impersonating\".",
       "You start on the studio's schedule and can look at its appointments, artists, clients and settings. A purple banner stays pinned to the top of every page for the whole session: \"Viewing as {studio}\", a \"Read-only\" label, the reason you gave, and the time left.",
       "Pages whose only job is to change something (new artist, new client, new design, new service, new deposit rule, booking, the intake form builder) show a short note that the session is read-only instead of the form.",
+      "On the pages you can open, buttons that would change something (confirm, cancel or reschedule an appointment, edit or archive a client, edit or delete an artist or a deposit rule, every Save in Studio Settings) stay visible but turned off. Hover over one, or move to it with the Tab key, and it says why: it's a read-only support session. Reading still works: tabs, filters and the schedule's dates.",
       "Click \"End session\" in the banner when you're done, or just let it run out — sessions hard-expire after 45 minutes either way.",
     ],
     tips: [

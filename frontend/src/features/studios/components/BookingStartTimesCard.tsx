@@ -12,6 +12,7 @@ import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import {
   useGetMyBookingSettingsQuery, useUpdateMyBookingSettingsMutation, type BookingSettingsResponse,
 } from "../studiosApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 const SESSION_LENGTH = "session-length";
 
@@ -82,10 +83,10 @@ export function BookingStartTimesCard() {
               3-hour session is offered 3 hours apart; every 30 minutes lets it start at 11:00 or 11:30 too, whenever
               your hours, the artist&apos;s hours and other bookings allow. Clients can still type any time.
             </p>
-            <Button type="button" size="sm" disabled={!changed || saving} onClick={() => void handleSave()}>
+            <SubscriptionGatedButton type="button" size="sm" disabled={!changed || saving} onClick={() => void handleSave()}>
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
               Save start times
-            </Button>
+            </SubscriptionGatedButton>
           </>
         )}
       </CardContent>

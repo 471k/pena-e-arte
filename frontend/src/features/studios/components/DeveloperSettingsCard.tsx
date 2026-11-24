@@ -17,6 +17,7 @@ import {
   useGenerateApiKeyMutation,
   useRevokeApiKeyMutation,
 } from "../studiosApi";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -96,27 +97,27 @@ export function DeveloperSettingsCard() {
                     : <> · Never used</>}
                 </p>
                 <div className="flex gap-2 pt-1">
-                  <Button
+                  <SubscriptionGatedButton
                     variant="outline" size="sm" className="gap-1.5"
                     onClick={() => setConfirmRegenerateOpen(true)} disabled={isGenerating}
                   >
                     <RefreshCw className="h-3.5 w-3.5" /> Regenerate
-                  </Button>
-                  <Button
+                  </SubscriptionGatedButton>
+                  <SubscriptionGatedButton
                     variant="outline" size="sm" className="gap-1.5 text-destructive-text"
                     onClick={() => setConfirmRevokeOpen(true)} disabled={isRevoking}
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Revoke
-                  </Button>
+                  </SubscriptionGatedButton>
                 </div>
               </>
             ) : (
-              <Button size="sm" className="gap-1.5" onClick={() => void handleGenerate()} disabled={isGenerating}>
+              <SubscriptionGatedButton size="sm" className="gap-1.5" onClick={() => void handleGenerate()} disabled={isGenerating}>
                 {isGenerating
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <Key className="h-3.5 w-3.5" />}
                 Generate API key
-              </Button>
+              </SubscriptionGatedButton>
             )}
           </div>
         )}
