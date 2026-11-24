@@ -3,8 +3,8 @@
 > **Verdict: the release gate is NOT met.** Seven of the `docs/08` rows below need a physical device or a screen
 > reader. **Slice 9 cannot be completed from an agent session:** no amount of further autonomous work closes
 > them. That takes a person with an iPhone, an Android phone, a tablet, a Mac, and NVDA, VoiceOver and TalkBack.
-> Three other rows are open for reasons a session can fix. Firefox needs Playwright's Firefox build. C10 and the
-> four role journeys need mocked end-to-end chains. They are marked as such, not as device-blocked.
+> Firefox needs Playwright's Firefox build. **The four rows a session could run were run on 24-25 Nov (§3b):
+> C10 and the four keyboard journeys pass; 400% reflow and forced-colors mode FAIL**, each with a named cause.
 
 - **From:** Claude Code, run 23–24 Nov 2026 (Europe/Paris). **Held for Desktop's review.**
 - **What this is:** evidence, not a build. **A row with no evidence is a fail, not a blank** (Desktop's rule). Most
@@ -19,7 +19,7 @@
 
 | Environment | What was run | What was seen | Verdict |
 |---|---|---|---|
-| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`) | See §2–§3 | **Pass for what was run** (listed per row in §2/§3); dialogs, downloads and 400% reflow at 1280 covered only by the 320px column (1280 at 400% = 320 CSS px) |
+| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run, except 400% reflow and forced colors (§3b, both Fail)**; dialogs and downloads not covered |
 | **Windows Edge** | §3 keyboard probes (S03 record opening, form error focus) | Both pass, same as Chromium | **Partial**: keyboard probes only; no 200% pass, no downloads |
 | **Firefox desktop** | **Blocked — needs Playwright's Firefox build** (a download, not a device): Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
 | **macOS Safari** | **Blocked — needs a physical device** (a Mac) | — | **Fail (no evidence)** |
@@ -97,15 +97,80 @@ Real Chromium and Edge, keyboard only after sign-in.
 | **S03**, a record opens from the keyboard (owner, Clients) | **Pass** in Chromium and Edge | 29 Tab stops from the page top to "João Silva"; **every stop shows a visible focus ring**; Enter opens `/clients/client-0001` |
 | **Forms**: submitting `/clients/new` empty moves focus to the first problem (the audit's open react-hook-form question) | **Pass** in Chromium and Edge | Focus lands on the first invalid input, with a visible ring, not on the body |
 | **No skip link** | **Finding** | The first 23 Tab stops are the header and the sidebar on every staff page (trail recorded: collapse, Owner/Artist, feedback, help, messages, bell, account, then 16 nav entries). WCAG 2.4.1 (A) can be met by landmarks, which a screen reader can jump between, but a keyboard user without one cannot. A "Skip to content" link is the usual fix: one component in the four layouts. Not built (this slice ships a document) |
-| **C10**, body placement without a mouse | **Not run, doable here → fail (no evidence)** | Needs a client, a profile and the body map's edit mode mocked end to end; not done tonight |
-| **The four role journeys end to end** (book, confirm, pay, cancel) | **Not run, doable here → fail (no evidence)** | Each needs a chain of mocked writes and state; the checks above cover their entry points (records open, forms report errors to focus) but not the journeys |
+| **C10**, body placement without a mouse | **Pass** (25 Nov, §3b) | Tab to "Left Forearm, front" in the booking form's placement list, Space checks it, the chip "Left Forearm · front" appears and the request carries `left_forearm` |
+| **The four role journeys end to end** (book, confirm, pay, cancel) | **Pass** (25 Nov, §3b) | All four completed with the keyboard only after sign-in, every Tab stop with a visible focus indicator, light and dark |
+
+## 3b. The four rows a session can run (24-25 Nov)
+
+Run 24 Nov ~23:30 to 25 Nov ~00:30 Paris on branch `feat/the-rest-2026-11-24` (base `e98f433c`), Playwright
+Chromium (headless shell 159.0.8154.6), Vite dev server, API mocked per journey. The probes are not committed; they
+are kept outside the repo in `code-session-scratch-2026-11-24/the-rest/`. **No row is blank.**
+
+### C10 and the four keyboard journeys: **Pass**
+
+Keyboard only after sign-in. At every Tab stop the probe read the focused element's outline and box-shadow. A
+coloured shadow layer with blur or spread, or a real outline, counts; Tailwind's always-present transparent layers
+do not. Run in both colour schemes.
+
+| Journey | Tab stops | Stops with no visible focus | What was done with the keyboard |
+|---|---|---|---|
+| **C10 + J1** client books | 79 | 0 (see note) | Artist picker (Radix Select: Enter, ArrowDown, Enter); date and time typed into the field's segments; session length (Enter, arrows to "2 hours", Enter); description; **placement: Space on "Left Forearm, front", chip shown, sent as `left_forearm`**; Enter on "Request Appointment" |
+| **J2** client pays the deposit | 4 | 0 | "Cash", then "Confirm — I'll pay cash at the studio"; the confirmation shows and the cash declaration is sent. The card path hands off to POK's hosted page, which is not ours and was not driven |
+| **J3** owner confirms a request | 28 | 0 | From the top of the appointment page to "Confirm appointment", Enter; the confirm request is sent |
+| **J4** client cancels | 21 | 0 | "Need to change or cancel?", then "Cancel appointment"; **focus opens on "Keep appointment"** (the safe choice); Shift+Tab to "Yes, cancel", Enter; the cancellation is sent |
+
+Note: the probe's instant reading flagged the Date & Time field (`datetime-local`) once per run. Read again once it
+settles, the same field carries the 4px ring (`rgb(100, 48, 168) 0 0 0 4px`), and a screenshot shows the ring and
+the browser's highlighted day segment. Counted as visible, and recorded so nobody re-finds it.
+
+### 400% reflow (WCAG 1.4.10), 1280x1024: **Fail**
+
+400% of 1280x1024 is a 320x256 CSS px viewport at 100% text. 26 pages: the public and auth pages and every role's
+pages from §2, with the public studio and artist pages on real fixtures. Under the empty fallback mock those two
+crash, which first read as 814px of sideways scroll: a probe artefact, not a finding.
+
+- **Two-dimensional scrolling: none.** Sideways scroll is **0px on all 26 pages**. The artist page's tabs and
+  Discover's filter chips scroll inside their own strips, which is a component scroll, not the page's.
+- **Navigation is reachable** on every signed-in page ("Open navigation menu").
+- **Fail 1, WCAG 2.4.11 Focus Not Obscured (AA in 2.2), public pages.** With the page scrolled, Tab put focus on
+  controls that were **entirely hidden behind sticky or fixed chrome**. On `/discover`: "All", "Fresh Tattoos",
+  "Healed Tattoos" and the style filters, under a sticky header **234 of the 256px** tall (measured: "All" focused
+  at y 110-146, the header covering 0-234). On `/s/{slug}`: the in-page "Book an Appointment" link. On
+  `/artist/{slug}`: the studio link and "Powered by TattooOS". The last two are under the 73px header and the 69px
+  quick-book bar. Usual fix: `scroll-padding-top` and `scroll-padding-bottom` equal to the pinned chrome, and a
+  Discover header that is not sticky, or much shorter, below the 420 breakpoint.
+- **Fail 2, function, `/discover`:** with 234 of 256px pinned, the results are read through a 22px slit.
+- **Watch, not a fail:** the signed-in Schedule's own sticky header wraps to 137px, so with the 56px app header
+  193 of 256px stay pinned (63px for the week). Under the mock nothing focusable sits below it, so 2.4.11 could not
+  be tested there.
+- **The cookie banner** covers 137 of 256px until it is dismissed, and "Got it" is 8 to 14 Tab presses from the top
+  (public 14, owner 12, client 9, artist and admin 8). It can be dismissed, so it is not a reflow fail; recorded
+  because at 400% it hides half the screen until then.
+
+### Forced-colors mode (Windows contrast themes): **Fail**
+
+Chromium with `forced-colors: active` emulated (confirmed with `matchMedia`). Sign-in, the client booking page, and
+the owner dashboard and schedule.
+
+- **Fail: focus is not visible on the shared primitives.** `Button`, `Input` and `ToggleSwitch` draw focus as
+  `focus-visible:outline-none` plus a `ring`, which is a box-shadow, and forced-colors mode removes box-shadows.
+  Measured: no outline and a computed `box-shadow: none` on **4 of 11** stops on sign-in (the email field, "Show
+  password", "Sign in", the logo link), **10 of 25** on the booking page (including "Skip to content", the artist
+  picker and the switch), and **7 of 25** on the dashboard and on the schedule. Screenshots of "Sign in" focused and
+  not focused are identical. Elements with a native or bordered indicator (links, the user menu) pass. Usual fix,
+  one pattern in the primitives: `focus-visible:outline-hidden` instead of `outline-none` (a transparent outline,
+  which forced-colors mode draws), and the same for the select trigger and any link that sets `outline-none`.
+- **Disappears:** filled buttons lose their shape (the background goes and there is no border), so "Sign in" reads
+  as plain text; the switch's thumb vanishes.
+- **Colour alone: none found on the surfaces seen.** The switch's on state still shows its check icon (off is an
+  empty pill), and statuses are text. Charts and calendar events were empty under the mock, so they were not seen.
 
 ## 4. The audit's unverified rows (`e01-e03-coverage-audit-2026-11-15.md` §7)
 
 | Row | Was | Verdict now | Evidence |
 |---|---|---|---|
 | **S03** focus behaviour (opening a record from the keyboard) | unverified | **Present** | §3: 29 Tab stops, all with visible focus, Enter opens the record; Chromium and Edge |
-| **C10** focus behaviour (body placement without a mouse) | unverified | **Unverified → fail (no evidence)** | Not run, doable here (§3) |
+| **C10** focus behaviour (body placement without a mouse) | unverified | **Present** | §3b: the placement list is reached, checked and confirmed from the keyboard (25 Nov) |
 | **S05** at phone width on the two uncovered surfaces | unverified | **Partial** | §2 at 390/420: the header passes for every role; page content fails on Payments, Schedule, Dashboard and Messages |
 | **S06** announcements | unverified | **Unverified → fail (no evidence)** | Needs a screen reader; none on this machine (§1) |
 | **AP12** | unverified | **Present**, per the audit's 22 Nov addendum (slice 6) | Not re-run in this pass; the addendum's own evidence stands |
