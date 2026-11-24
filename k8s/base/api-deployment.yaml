@@ -18,6 +18,16 @@ spec:
       labels:
         app: tattooos-api
     spec:
+      # AppArmor: Unconfined (24 Nov 2026). On kernel 7.0.0-43 the containerd default profile
+      # (cri-containerd.apparmor.d) denies a process signalling its own threads. The .NET runtime suspends a
+      # running thread for a GC by sending it SIGRTMIN, and treats a refused send as fatal (PROCAbort), so the
+      # process dies with exit 139 - every exit-139 crash since 21 Nov, 16 of 16 matched in the kernel log
+      # (claude-shared handoffs/code-tracked-exit139-crashes-2026-11-22.md section 0k). The container still runs
+      # as the non-root appuser with no effective capabilities. Revisit when Ubuntu ships a kernel that no longer
+      # denies same-process signals, or replace with a Localhost profile that allows them.
+      securityContext:
+        appArmorProfile:
+          type: Unconfined
       # The preStop pause (10 s) plus .NET's own graceful shutdown must fit inside this.
       terminationGracePeriodSeconds: 45
       containers:

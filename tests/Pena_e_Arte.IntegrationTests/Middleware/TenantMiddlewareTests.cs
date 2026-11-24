@@ -159,6 +159,9 @@ public class TenantMiddlewareTests
         await act.Should().NotThrowAsync();
     }
 
+    // Regression guard (24 Nov): this IS the grace-period write gate, and it is correct. GracePeriod is the never-paid
+    // window after a trial (TrialExpiryJob), writes are refused here, and ExceptionMiddleware maps this to 402.
+    // SubscriptionAccessService.IsPassThrough only decides caching. See architecture.md, "Grace period: the write gate".
     [Fact]
     public async Task InvokeAsync_GracePeriod_PostRequest_ThrowsSubscriptionRequiredException()
     {

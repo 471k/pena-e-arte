@@ -8035,6 +8035,25 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
   first Tab from the top of the document): `main` reached the first page control on **Tab 24 (23 stops before
   it)**. With the link it is **Tab, Enter, Tab (1 stop before it)**.
 
+## Grace period: the write gate is TenantMiddleware, and it is already right (a premise corrected three times) — 2026-11-24
+
+- **GracePeriod** is reached only from `TrialExpiryJob`, guarded on `Trialing`. It is the read-only window after a
+  trial for a studio that has **never paid**. A failed payment produces `PastDue`, from the Stripe webhook handlers.
+- **The write gate is `TenantMiddleware.EnforceAsync`.** In GracePeriod it refuses `WriteMethods` with a
+  `SubscriptionRequiredException`, which `ExceptionMiddleware` maps to 402. `TenantMiddlewareTests`'s grace-period
+  POST/PUT/DELETE tests are the regression guard.
+- **`SubscriptionAccessService.IsPassThrough` is a caching predicate, not the gate.** Leave GracePeriod in it:
+  removing it would stop caching a pass-through state and cost a database read per request for every studio in grace.
+- **Phi's answer (24 Nov decision form): keep the lock.** Server, UI (#444's `READ_ONLY_STATUSES`), the dashboard
+  banner and Help agree. No code changed. The only correction was Help's trial FAQ, which said the studio is
+  "suspended" afterwards: `GracePeriodEndJob` sets `Cancelled` and never touches `Studio.IsActive`. Suspension is a
+  separate state that only an admin sets, by hand.
+
+## Corner radius: the flat 3px scale stays (Phi, 24 Nov) — 2026-11-24
+
+- Phi's answer on the decision form: leave it. The 3px mapping from slice 5 stands as recorded there. Do not reopen
+  `--radius*` in `index.css` without a new decision.
+
 ## D04 in full: every admin action leaves a receipt and shows the server's reason (Phi, 24 Nov) — 2026-11-24
 
 - **Phi's answer on the decision form: build it in full.** That means bound errors *and* receipts for the 19 admin
