@@ -20,6 +20,7 @@ import { artistsApi } from "@/features/artists/artistsApi";
 import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 import { messagingApi } from "@/features/messaging/messagingApi";
 import { OwnerLayout } from "@/layouts/OwnerLayout";
+import { MAIN_CONTENT_ID } from "@/shared/components/SkipToContent";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,18 @@ async function expandGroup(user: ReturnType<typeof userEvent.setup>, name: RegEx
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("OwnerLayout", () => {
+  it("the first Tab stop is Skip to content, and Enter moves focus to the page (WCAG 2.4.1)", async () => {
+    const user = userEvent.setup();
+    renderLayout();
+    await screen.findByTestId("outlet");
+    await user.tab();
+    const skip = screen.getByRole("link", { name: "Skip to content" });
+    expect(skip).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(document.getElementById(MAIN_CONTENT_ID)).toHaveFocus();
+    expect(document.getElementById(MAIN_CONTENT_ID)).toContainElement(screen.getByTestId("outlet"));
+  });
+
   it("scopes the After Hours palette to its root element (DEC01)", () => {
     renderLayout();
     const themed = document.querySelectorAll<HTMLElement>("[data-theme=\"after-hours\"]");

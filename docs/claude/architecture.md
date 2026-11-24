@@ -8018,3 +8018,19 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
   `src/test/viewerZone.ts`.
 - **The audit behind it** is `docs/claude/s01-zone-audit-2026-11-24.md`: 61 files, each with a verdict, the safe
   ones included.
+
+## Skip to content on every signed-in layout (WCAG 2.4.1 Bypass Blocks) — 2026-11-24
+
+- **The failure:** on every staff page a keyboard user crossed 23 Tab stops (the header's controls and every sidebar
+  entry) before reaching the page. Landmarks satisfy 2.4.1 for screen-reader users, but not for a sighted keyboard
+  user. Slice 9 recorded it as a finding. It is fixed rather than documented, because a release document listing a
+  defect that could have been fixed in the same run is the worse outcome.
+- **The fix:** one shared `SkipToContent` (`shared/components/SkipToContent.tsx`) is the first element of all four
+  role layouts. It is visually hidden until focused, then shown top-left. Its target is each layout's content
+  wrapper (`id="main-content"`, `tabIndex={-1}`), a `div` rather than a `main`, because pages render their own
+  `<main>` and a second one would nest.
+- **It focuses the target itself instead of following `#main-content`.** Following the hash would add a history entry
+  inside the SPA.
+- **Proven by the count, measured the same way before and after** (Playwright Chromium, owner `/clients` at 1280,
+  first Tab from the top of the document): `main` reached the first page control on **Tab 24 (23 stops before
+  it)**. With the link it is **Tab, Enter, Tab (1 stop before it)**.

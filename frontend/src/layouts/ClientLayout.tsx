@@ -21,6 +21,7 @@ import { useChatHub } from "@/features/messaging";
 import { useGetPaymentCapabilitiesQuery } from "@/features/payments/paymentsApi";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
 const ICON = "h-4 w-4";
 
@@ -106,6 +107,7 @@ export function ClientLayout() {
   const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.client);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
+      <SkipToContent />
       <SuspensionBanner role="client" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
@@ -128,7 +130,7 @@ export function ClientLayout() {
 
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={sections} revealTourId={revealTourId} />
-        <div className="flex-1 min-w-0">
+        <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
           <Outlet />
         </div>
       </div>

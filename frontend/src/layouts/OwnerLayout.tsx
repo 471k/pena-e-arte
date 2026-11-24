@@ -39,6 +39,7 @@ import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery 
 import { useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
 
@@ -259,6 +260,7 @@ export function OwnerLayout() {
   }, [onBeforeTourStep, headerFolded, setNavOpen]);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
+      <SkipToContent />
       <SuspensionBanner studio={studio} />
       <ReadOnlyBanner />
       <PlanLimitBanner />
@@ -294,7 +296,11 @@ export function OwnerLayout() {
 
         {/* ownerTourFacts: the values that render ArtistModeSwitcher, SoloStudioPublishBanner and
             StudioJoinInviteBell, so the tour and its targets can't disagree. The invite bell stays outside the fold:
-            it renders only while invites are pending and carries that count, like the notification bell. */}
+            it renders only while invites are pending and carries that count, like the notification bell.
+            Phi's list of what stays in the bar named four items, and this bell is not
+            on it. But the list's reason was that anything carrying unread state stays visible, and the invite bell
+            meets that reason. Following the reason over the letter is right when the letter was shorthand for it,
+            so don't move this into the More menu to match the list. */}
         <HeaderActions
           folded={headerFolded}
           onFeedback={() => setFeedbackOpen(true)}
@@ -307,7 +313,7 @@ export function OwnerLayout() {
 
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
-        <div className="flex-1 min-w-0">
+        <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
           {/* Staff screens show lek next to euro for Albanian EUR studios (spec Q3, 2026-10-26). */}
           <MoneyStudioContext.Provider value={moneyStudio}>
             <Outlet />
