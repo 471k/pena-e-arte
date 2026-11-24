@@ -60,8 +60,10 @@ public class ExtendTrialHandlerTests
     }
 
     [Fact]
-    public async Task Handle_StudioWithoutSubscription_ExtendsStudioTrial()
+    public async Task Handle_StudioWithoutSubscription_RefusesAndChangesNothing()
     {
+        // Access reads only the Subscription row (a missing one is a 402 on every request), so moving the studio's
+        // own trial date granted nothing. Refused, and the message names cash activation, which creates the row.
         Guid studioId = Guid.NewGuid();
         DateTime original = DateTime.UtcNow.AddDays(5);
         _db.Studios.Add(new Studio
@@ -74,11 +76,16 @@ public class ExtendTrialHandlerTests
         await _db.SaveChangesAsync();
         _db.ChangeTracker.Clear();
 
-        await CreateSut().Handle(
+        Func<Task> act = () => CreateSut().Handle(
             new ExtendTrialCommand(studioId, new ExtendTrialRequest(7)), default);
 
+        (await act.Should().ThrowAsync<BusinessRuleViolationException>())
+            .Which.Message.Should().Be(ExtendTrialHandler.NoSubscriptionMessage)
+            .And.Contain("Activate");
+
         _db.Studios.Single(s => s.Id == studioId)
-            .TrialExpiresAt.Should().BeCloseTo(original.AddDays(7), TimeSpan.FromSeconds(1));
+            .TrialExpiresAt.Should().BeCloseTo(original, TimeSpan.FromSeconds(1));
+        _db.Subscriptions.Any(s => s.StudioId == studioId).Should().BeFalse();
     }
 
     [Fact]
