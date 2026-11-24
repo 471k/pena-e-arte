@@ -2,7 +2,8 @@ import { useCallback, useRef, useState } from "react";
 import { ChevronDown, Lock, LogOut, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
-import { UserChip, useUserChipText } from "./UserChip";
+import { UserChip } from "./UserChip";
+import { useUserChipText } from "./useUserChipText";
 import { useClickOutside } from "@/shared/hooks/useClickOutside";
 import { useEscapeKey }    from "@/shared/hooks/useEscapeKey";
 
