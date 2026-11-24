@@ -17,8 +17,8 @@ import { Label } from "@/shared/components/ui/label";
 import { cn } from "@/shared/utils/cn";
 import { formatCurrency, currencyLabel } from "@/shared/utils/formatCurrency";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { usePermission } from "@/shared/hooks/usePermission";
 import { Role } from "@/shared/types/roles";
 import {
@@ -34,18 +34,15 @@ import { SessionSplitsEditor } from "./SessionSplitsEditor";
 import { Money } from "@/shared/components/Money";
 import { formatAtFrozenRate, type FrozenReference } from "@/shared/hooks/useEurAllRate";
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
-// The booking's wall-clock time at the studio, e.g. "Wed, 4 Nov 2026, 11:00".
-function formatAppointmentDate(iso: string, studioTimezone: string | undefined): string {
-  return new Date(iso).toLocaleString("en-GB", withStudioTimeZone({
-    weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  }, studioTimezone));
-}
+// Both dates on this page are on the studio's calendar (the zone rule in formatInStudioTimezone.ts): the booking's
+// wall-clock time, e.g. "Wed, 4 Nov 2026, 11:00", and when it was paid, which the payment list's filters and the
+// exports place in a studio-local day. Pending until the studio's zone loads, never the browser's zone.
+const APPOINTMENT_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+};
+const PAID_AT_FORMAT: Intl.DateTimeFormatOptions = {
+  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+};
 
 function StatusBadge({ kind, label }: { kind: DepositOutcomeKind; label: string }) {
   return (
@@ -170,7 +167,7 @@ export function PaymentDetailPage() {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate          = useNavigate();
   const canOwner          = usePermission(Role.Owner);
-  const { data: studio }  = useGetMyStudioQuery();
+  const { zone }          = useStudioZone();
 
   const { data: payment, isLoading, isError } =
     useGetPaymentByAppointmentQuery(appointmentId!);
@@ -415,13 +412,13 @@ export function PaymentDetailPage() {
                   className="text-link underline-offset-4 hover:underline"
                 >
                   {payment.appointmentDate
-                    ? `${payment.clientName} · ${formatAppointmentDate(payment.appointmentDate, studio?.timezone)}`
+                    ? `${payment.clientName} · ${formatStudioTime(payment.appointmentDate, APPOINTMENT_FORMAT, zone)}`
                     : payment.clientName}
                 </Link>
               }
             />
             {payment.paidAt && (
-              <Row label="Paid at" value={formatDate(payment.paidAt)} />
+              <Row label="Paid at" value={formatStudioTime(payment.paidAt, PAID_AT_FORMAT, zone)} />
             )}
             {payment.cashNote && (
               <Row label="Note" value={payment.cashNote} />

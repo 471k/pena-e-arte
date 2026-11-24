@@ -12,6 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { PaymentListPage } from "@/features/payments/components/PaymentListPage";
 import type { PaymentResponse } from "@/features/payments/payment.types";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,8 @@ const PAGE_OF_20: PaymentResponse[] = Array.from({ length: 20 }, (_, i) => ({
 // ── MSW server ─────────────────────────────────────────────────────────────────
 
 const server = setupServer(
+  // The studio's zone: every date on these pages is on the studio's calendar (formatInStudioTimezone.ts).
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" })),
   http.get("http://localhost/api/v1/payments", () =>
     HttpResponse.json([]),
   ),
@@ -87,8 +90,9 @@ function makeStore() {
       auth:                      authReducer,
       ui:                        uiReducer,
       [paymentsApi.reducerPath]: paymentsApi.reducer,
+      [studiosApi.reducerPath]: studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(paymentsApi.middleware),
+    middleware: (gd) => gd().concat(paymentsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null, impersonation: null } as any,
@@ -506,6 +510,19 @@ describe("PaymentListPage", () => {
   });
 
   // ── mobileCard ─────────────────────────────────────────────────────────────────
+
+  it("the paid date is on the studio's calendar, the same days the From/To filter uses", async () => {
+    // 12:00 UTC on 24 Nov is 02:00 on 25 Nov in Kiritimati (UTC+14).
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Pacific/Kiritimati", currency: "EUR" })),
+      http.get("http://localhost/api/v1/payments", () =>
+        HttpResponse.json([{ ...PAYMENT_CARD, paidAt: "2026-11-24T12:00:00Z", appointmentDate: "2026-11-24T12:00:00Z" }])),
+    );
+    renderPage();
+    expect((await screen.findAllByText(/25 Nov 2026/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/24 Nov 2026/)).not.toBeInTheDocument();
+  });
 
   it("renders a mobileCard combining method and paid date on one line when paidAt is set", async () => {
     server.use(
