@@ -2,12 +2,13 @@
 export const CASH_ACTIVATABLE: ReadonlySet<string> = new Set(["NoSubscription", "PastDue", "GracePeriod", "Cancelled"]);
 
 /**
- * Statuses Extend trial is offered for. ExtendTrialHandler refuses Active (nothing to extend), PastDue (Phi, 19 Nov)
- * and Cancelled (Phi, 20 Nov): a new trial date can't restore either one's access, so the server refuses with a 422
- * naming what does. Shared by all four entry points: studio list, studio detail, oversight and
- * the dashboard's at-risk row.
+ * Statuses Extend trial is offered for. ExtendTrialHandler refuses Active (nothing to extend), PastDue (Phi, 19 Nov),
+ * Cancelled (Phi, 20 Nov) and NoSubscription (24 Nov): a new trial date can't restore any of their access, so the
+ * server refuses with a 422 naming what does. NoSubscription stays in CASH_ACTIVATABLE on purpose: access reads only
+ * the subscription row, and recording a cash payment is what creates it. Shared by all four entry points: studio
+ * list, studio detail, oversight and the dashboard's at-risk row.
  */
-export const TRIAL_EXTENDABLE: ReadonlySet<string> = new Set(["NoSubscription", "Trialing", "GracePeriod"]);
+export const TRIAL_EXTENDABLE: ReadonlySet<string> = new Set(["Trialing", "GracePeriod"]);
 
 /**
  * What the page knows about a studio's subscription (D02). "unknown" covers both still-loading and failed:

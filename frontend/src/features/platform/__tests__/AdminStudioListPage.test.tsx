@@ -348,7 +348,7 @@ describe("AdminStudioListPage", () => {
   it("shows Extend trial button for non-active studios", async () => {
     renderPage();
     await screen.findByText("Ink Soul");
-    // Suspended and Trialing studios both have canExtendTrial=true
+    // Only the Trialing studio: Suspended Studio has no subscription row, and NoSubscription is refused (24 Nov)
     const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
     expect(extendBtns.length).toBeGreaterThan(0);
   });
@@ -371,7 +371,9 @@ describe("AdminStudioListPage", () => {
   it("calls PATCH subscriptions/:id/trial when confirming trial extension", async () => {
     const extendSpy = vi.fn();
     server.use(
-      http.patch("http://localhost/api/v1/platform/subscriptions/s2/trial", async ({ request }) => {
+      // s3 (Trialing). Until 24 Nov this targeted s2, which has no subscription row: the test exercised an
+      // extension that reported success and granted nothing, which ExtendTrialHandler now refuses.
+      http.patch("http://localhost/api/v1/platform/subscriptions/s3/trial", async ({ request }) => {
         const body = await request.json();
         extendSpy(body);
         return new HttpResponse(null, { status: 204 });
@@ -380,10 +382,10 @@ describe("AdminStudioListPage", () => {
 
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText("Suspended Studio");
+    await screen.findByText("Trialing Studio");
 
-    const extendBtns = screen.getAllByRole("button", { name: /extend trial|grant extension/i });
-    await user.click(extendBtns[0]);
+    // The only studio still offered Extend trial is the Trialing one.
+    await user.click(screen.getByRole("button", { name: /extend trial|grant extension/i }));
 
     const review = screen.getByRole("region", { name: /extend trial|grant trial extension/i });
     await user.click(within(review).getByRole("button", { name: /^extend trial$/i }));
@@ -665,6 +667,18 @@ describe("AdminStudioListPage", () => {
     const activateBtn = screen.getByRole("button", { name: /activate/i });
     expect(activateBtn.className).toMatch(/border/);
     expect(activateBtn.className).not.toMatch(/bg-primary/);
+  });
+
+  it("a studio with no subscription row is not offered Extend trial, and keeps Activate (24 Nov)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios", () => HttpResponse.json([STUDIO_ACTIVE])),
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([])),
+    );
+    renderPage();
+    await screen.findByText("Ink Soul");
+    // ExtendTrialHandler refuses NoSubscription: access reads only the subscription row, and cash activation creates it.
+    expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /activate/i })).toBeInTheDocument();
   });
 
   it("Reactivate button for a Suspended studio is a filled (default) button", async () => {

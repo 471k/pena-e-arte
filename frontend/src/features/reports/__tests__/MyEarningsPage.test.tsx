@@ -15,6 +15,7 @@ import { boothRentApi } from "@/features/booth-rent/boothRentApi";
 import { MyEarningsPage } from "@/features/reports/components/MyEarningsPage";
 import type { ArtistEarningsResponse } from "@/features/reports/report.types";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,19 @@ describe("MyEarningsPage", () => {
   it("renders the 'My Earnings' heading", () => {
     renderPage();
     expect(screen.getByText("My Earnings")).toBeInTheDocument();
+  });
+
+  it("first paint: while the studio's zone loads, the dates read as pending, never the browser's date", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", async () => {
+        await new Promise((r) => setTimeout(r, 60_000));
+        return HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" });
+      }),
+    );
+    renderPage();
+    expect(await screen.findAllByText(STUDIO_TIME_PENDING)).not.toHaveLength(0);
+    // 09:00 UTC on 20 Jun: any browser-zone rendering says "20 Jun 2026".
+    expect(screen.queryByText("20 Jun 2026")).not.toBeInTheDocument();
   });
 
   it("renders the payment line dates in the studio's timezone, not the test environment's local timezone", async () => {

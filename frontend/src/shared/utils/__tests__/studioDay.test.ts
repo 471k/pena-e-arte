@@ -5,6 +5,8 @@ import {
   checkStudioTime, studioTimeProblem, studioWallInstant, studioZoneFrom,
 } from "../studioDay";
 import { STUDIO_TIME_PENDING, STUDIO_TIME_UNAVAILABLE } from "../formatInStudioTimezone";
+import { formatDateOnly } from "../studioDay";
+import { withViewerZone } from "@/test/viewerZone";
 
 describe("studioDayBounds", () => {
   it("gives the studio's midnight-to-midnight, not the runner's", () => {
@@ -194,5 +196,18 @@ describe("formatStudioSessionSpan (S01: a zone that may not have loaded)", () =>
   it("is formatSessionSpan in the studio's zone once it has loaded", () => {
     expect(formatStudioSessionSpan(start, end, { status: "ready", timeZone: "Europe/Tirane" }))
       .toBe("Wed 4 Nov, 14:00 – 16:00");
+  });
+});
+
+describe("formatDateOnly", () => {
+  it("prints a date stored as UTC midnight as that date in any viewer zone", async () => {
+    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+    for (const tz of ["Pacific/Pago_Pago", "America/New_York", "UTC", "Europe/Tirane", "Pacific/Kiritimati"]) {
+      await withViewerZone(tz, () => {
+        expect(formatDateOnly("2026-12-24T00:00:00.000Z", opts)).toBe("24 Dec 2026");
+        // A date of birth arrives as a bare date, which Date also reads as UTC midnight.
+        expect(formatDateOnly("1990-05-01", opts)).toBe("1 May 1990");
+      });
+    }
   });
 });
