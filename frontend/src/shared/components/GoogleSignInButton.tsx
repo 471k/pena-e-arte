@@ -5,7 +5,10 @@ interface GoogleSignInButtonProps {
   disabled?: boolean;
 }
 
+/** How long Google gets to size its button before we call it failed. */
 const RENDER_CHECK_DELAY_MS = 2500;
+/** How often we look for the sized button while waiting. Production renders in ~300 ms. */
+const RENDER_POLL_MS = 100;
 
 /**
  * Renders Google's own "Sign in with Google" button.
@@ -16,9 +19,15 @@ const RENDER_CHECK_DELAY_MS = 2500;
  *
  * renderButton() has no success/failure callback — if the button iframe fails
  * (e.g. a misconfigured or not-yet-propagated OAuth client origin), it leaves
- * the container empty with no visible sign that anything went wrong. We check
- * for a rendered iframe shortly after and surface a fallback message instead
- * of silently showing nothing.
+ * the container empty with no visible sign that anything went wrong. We poll
+ * for a rendered iframe and surface a fallback message if none appears in time.
+ *
+ * Until Google has sized its iframe, our container is `inert` and invisible, so it
+ * holds no Tab stop (release gate, 25 Nov). In Google's refusal state the iframe is
+ * 0x0 but still tabbable; before this, keyboard users met an invisible stop for up
+ * to 2.5 s. `invisible` (not `hidden`) keeps the layout, so the width we pass to
+ * renderButton() is real and the page doesn't jump when the button appears. We
+ * only change our own container; Google's injected markup is never touched.
  */
 export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSignInButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,13 +66,23 @@ export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSig
       width,
     });
 
-    const checkTimer = window.setTimeout(() => {
+    const isRendered = (): boolean => {
       const iframe = container.querySelector("iframe");
-      const rendered = iframe !== null && iframe.clientWidth > 0 && iframe.clientHeight > 0;
-      setStatus(rendered ? "ready" : "failed");
-    }, RENDER_CHECK_DELAY_MS);
+      return iframe !== null && iframe.clientWidth > 0 && iframe.clientHeight > 0;
+    };
 
-    return () => window.clearTimeout(checkTimer);
+    const startedAt = Date.now();
+    const pollTimer = window.setInterval(() => {
+      if (isRendered()) {
+        window.clearInterval(pollTimer);
+        setStatus("ready");
+      } else if (Date.now() - startedAt >= RENDER_CHECK_DELAY_MS) {
+        window.clearInterval(pollTimer);
+        setStatus("failed");
+      }
+    }, RENDER_POLL_MS);
+
+    return () => window.clearInterval(pollTimer);
   }, []);
 
   return (
@@ -71,9 +90,12 @@ export function GoogleSignInButton({ onCredential, disabled = false }: GoogleSig
       <div
         ref={containerRef}
         data-testid="google-signin-button"
+        data-status={status}
+        inert={status !== "ready"}
         className={[
           "flex w-full justify-center",
           disabled ? "pointer-events-none opacity-50" : "",
+          status === "loading" ? "invisible" : "",
           status === "failed" ? "hidden" : "",
         ].filter(Boolean).join(" ")}
       />
