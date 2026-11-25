@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 const POLICY_LINKS: ReadonlyArray<{ to: string; label: string }> = [
   { to: "/privacy", label: "Privacy Policy" },
   { to: "/terms", label: "Terms of Service" },
+  { to: "/client-terms", label: "Client Terms" },
   { to: "/refund-policy", label: "Refund Policy" },
   { to: "/contact", label: "Contact" },
 ];

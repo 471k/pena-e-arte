@@ -28,6 +28,24 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "A button you can't use right now says why. Hover over it, or move to it with the Tab key, and the reason appears just under it (a screen reader reads it too). For example, while a studio's subscription is inactive, Save on some pages explains that changes can't be saved instead of just looking faded.",
     ],
   },
+  {
+    id: "legal-documents",
+    roles: [Client, Artist, Owner, Admin],
+    title: "Terms, Privacy Policy and Refund Policy: where to read them",
+    keywords: ["terms", "terms of service", "client terms", "privacy", "privacy policy", "refund policy", "legal", "contract", "gdpr", "data protection", "who controls my data", "controller", "processor", "withdrawal", "14 day", "cooling off", "cancellation", "deposit refund", "health data", "data request", "erase my data", "delete my data", "subscription refund", "yearly refund"],
+    summary: "TattooOS has four legal documents, linked in the footer of every public page. Each shows its version and the date it was last updated.",
+    steps: [
+      "Scroll to the footer of any public page. You'll find Privacy Policy, Terms of Service, Client Terms and Refund Policy.",
+      "Terms of Service are the Platform Terms for Studios: the contract between TattooOS and a studio, covering the trial, plans, renewal, yearly refunds, data processing and liability.",
+      "Client Terms are for people booking a tattoo through a studio. Your agreement for the tattoo is with the studio, and TattooOS is the platform.",
+      "The Privacy Policy explains what data we hold and why, who sees it, how long we keep it and how to exercise your rights. A studio controls its clients' booking, consent-form and health data, and TattooOS processes it for the studio. For a request about a studio's records, contact the studio first.",
+      "The Refund Policy explains deposits and cancellations. By default a deposit is refunded in full if you cancel at least 48 hours before, and a studio can set a different window. A booking is for a fixed date, so the 14-day right to withdraw from a distance contract does not apply.",
+    ],
+    tips: [
+      "For privacy or data requests, write to support@tattooos.co or use the Contact page.",
+      "Studios: a yearly plan cancelled early is refunded the amount paid minus the months started at the monthly price. The exact amount is shown before you confirm.",
+    ],
+  },
   // ── Client ──────────────────────────────────────────────────────────────
   {
     id: "client-book-appointment",

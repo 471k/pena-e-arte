@@ -1,5 +1,7 @@
 import { PublicContentLayout } from "./PublicContentLayout";
 import { ROUTE_META } from "@/shared/seo/siteRoutes";
+import { LegalVersionLine } from "../legal/LegalClauses";
+import { LEGAL_VERSION, LEGAL_LAST_UPDATED } from "../legal/legalMeta";
 
 function Section({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
@@ -30,6 +32,7 @@ export function RefundPolicyPage() {
       canonicalPath="/refund-policy"
     >
       <h1 className="text-2xl font-semibold tracking-tight">Refund Policy</h1>
+      <LegalVersionLine lastUpdated={LEGAL_LAST_UPDATED} version={LEGAL_VERSION} />
       <p className="mt-2 text-sm text-muted-foreground">
         Deposit and cancellation terms are set by each studio. This page explains how the
         platform applies them. Your booking confirmation shows the exact figures for your
@@ -47,6 +50,14 @@ export function RefundPolicyPage() {
         <p>
           A card deposit is charged in full when you pay it, not held until your
           appointment. It is paid to the studio.
+        </p>
+      </Section>
+
+      <Section heading="Your right to withdraw">
+        <p>
+          A booking is for a specific date. The 14-day right to withdraw from a distance contract
+          therefore does not apply. The cancellation rules below apply instead, and they do not limit
+          any mandatory consumer right you have.
         </p>
       </Section>
 
@@ -98,7 +109,22 @@ export function RefundPolicyPage() {
       <Section heading="How refunds reach you">
         <p>
           A card refund goes back to the card you paid with and is sent as soon as the
-          appointment is cancelled. Your bank may take a few days to show it.
+          appointment is cancelled. Your bank may take a few days to show it. If you have not seen it
+          after 14 days, contact the studio, and then us through the Contact page.
+        </p>
+      </Section>
+
+      <Section heading="No surcharge">
+        <p>
+          You pay exactly the deposit shown. TattooOS adds no card surcharge and takes no commission.
+        </p>
+      </Section>
+
+      <Section heading="Studios: subscription refunds">
+        <p>
+          Cancelling a yearly TattooOS plan refunds the amount paid minus the months started at the
+          monthly price, as set out in clause 8 of the Platform Terms for Studios. Monthly plans are
+          not refunded for the month already paid.
         </p>
       </Section>
     </PublicContentLayout>
