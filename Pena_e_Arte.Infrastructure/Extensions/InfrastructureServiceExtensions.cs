@@ -19,6 +19,7 @@ using Pena_e_Arte.Infrastructure.Services.MailKit;
 using Pena_e_Arte.Infrastructure.Services.Pok;
 using Pena_e_Arte.Infrastructure.Services.Marketing;
 using Pena_e_Arte.Infrastructure.Services.Social;
+using Pena_e_Arte.Infrastructure.Services.BookingDrafts;
 using Pena_e_Arte.Infrastructure.Services.Waitlists;
 using Resend;
 using StackExchange.Redis;
@@ -172,6 +173,7 @@ public static class InfrastructureServiceExtensions
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.Section));
         services.AddTransient<RetentionPurgeJob>();
         services.AddTransient<GuestPendingUploadCleanupJob>();
+        services.AddTransient<BookingDraftExpiryJob>();
         services.AddTransient<StoredObjectReferenceReader>();
         services.Configure<OrphanedObjectSweepOptions>(configuration.GetSection(OrphanedObjectSweepOptions.Section));
         services.AddTransient<OrphanedObjectSweepJob>();
@@ -249,6 +251,8 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<IMarketingOptOutSigner, MarketingOptOutSigner>();
         // Over the shared Data Protection key ring (AddSharedDataProtection); no key of its own.
         services.AddSingleton<IWaitlistClaimTokens, WaitlistClaimTokens>();
+        // C05: the same pattern and the same shared ring, under its own purpose.
+        services.AddSingleton<IBookingDraftResumeTokens, BookingDraftResumeTokens>();
         services.AddTransient<StorageReconciliationJob>();
         services.AddTransient<VaultHealthCheckJob>();
         // Polled every 5 minutes — no framework request logging, or it would log a line each run.

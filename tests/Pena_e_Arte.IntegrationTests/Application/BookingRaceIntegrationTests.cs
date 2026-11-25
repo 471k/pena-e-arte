@@ -275,6 +275,9 @@ public class BookingRaceIntegrationTests(DatabaseFixture fixture)
         CreateGuestAppointmentHandler handler = new(
             db, tenant, identity, locker, _jobs, _realtime, _sender, _planLimits,
             renderer, Substitute.For<INotificationService>(), settings,
+            new Pena_e_Arte.Infrastructure.Services.BookingDrafts.BookingDraftResumeTokens(
+                new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider()),
+            TimeProvider.System,
             NullLogger<CreateGuestAppointmentHandler>.Instance);
         await handler.Handle(new CreateGuestAppointmentCommand(slug, request), default);
     }
