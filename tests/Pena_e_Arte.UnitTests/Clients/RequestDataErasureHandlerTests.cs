@@ -56,6 +56,27 @@ public class RequestDataErasureHandlerTests
     }
 
     [Fact]
+    public async Task Handle_DeletesTheLoginsBookingDraftsInEveryStudio_AtOnce_AndNobodyElses()
+    {
+        // Phi's decision: erasure deletes saved booking drafts immediately, not after the grace window.
+        Guid userId = Guid.NewGuid();
+        Guid studioB = Guid.NewGuid();
+        (Guid clientAId, _) = await SeedClientWithData(userId, Guid.NewGuid());
+        await SeedClientWithData(userId, studioB);
+        BookingDraft mineHere = new() { StudioId = Guid.NewGuid(), UserId = userId, ExpiresAt = DateTime.UtcNow.AddDays(5) };
+        mineHere.Attachments.Add(new BookingDraftAttachment { StudioId = mineHere.StudioId, DraftId = mineHere.Id, ImageUrl = "https://media.tattooos.co/a.jpg" });
+        BookingDraft mineThere = new() { StudioId = studioB, UserId = userId, ExpiresAt = DateTime.UtcNow.AddDays(5) };
+        BookingDraft someoneElses = new() { StudioId = studioB, UserId = Guid.NewGuid(), ExpiresAt = DateTime.UtcNow.AddDays(5) };
+        _db.BookingDrafts.AddRange(mineHere, mineThere, someoneElses);
+        await _db.SaveChangesAsync();
+
+        await CreateSut().Handle(new RequestDataErasureCommand(clientAId), default);
+
+        _db.BookingDrafts.Select(d => d.Id).Should().Equal(someoneElses.Id);
+        _db.BookingDraftAttachments.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_ClientWithNoLogin_SkipsDisableLogin()
     {
         (Guid clientId, _) = await SeedClientWithData(userId: null);

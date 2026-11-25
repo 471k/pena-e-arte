@@ -60,6 +60,9 @@ import { useEnsureActiveStudio }                  from "@/features/auth/useEnsur
 import { PaymentMethodSelector }                  from "@/features/payments/components/PaymentMethodSelector";
 import { NotifyMeDialog }                         from "@/features/waitlist/components/NotifyMeDialog";
 import { WaitlistClaimNotice }                    from "@/features/waitlist/components/WaitlistClaimNotice";
+import { DraftRestoreNotice, type DraftNoticeState } from "./DraftRestoreNotice";
+import { draftPayload, readDraft, type BookingDraftImage, type BookingDraftResponse } from "../bookingDraft";
+import { useDeleteMyBookingDraftMutation, useGetMyBookingDraftQuery, useSaveMyBookingDraftMutation } from "../appointmentsApi";
 import { readWaitlistClaimHandoff, claimHandoffDefaults, claimHandoffScheduledAt } from "@/features/waitlist/waitlistClaim";
 import { useGetMyPackagePurchasesQuery }          from "@/features/session-packages/packagesApi";
 import { useGetMyReferralRewardsQuery }           from "@/features/client-referrals/clientReferralsApi";
@@ -546,9 +549,90 @@ export function BookAppointmentForm() {
     ...extraErrorItem("tattooDescription", "What you're looking to get done", tattooDescriptionError),
     ...extraErrorItem("referralSourceOther", "Where you heard about us", referralSourceOtherError),
   ];
+  // safetyNotes counts here on purpose, although a saved draft never keeps it (S04): someone whose only entry is
+  // that answer still gets the leave-the-page warning, because leaving loses it and the draft can't bring it back.
+  // Don't "fix" this to match the draft.
   const hasEntered = isDirty || intake.tattooDescription !== "" || intake.style !== "" || intake.referralSource !== ""
     || intake.safetyNotes !== "" || desiredPlacement.length > 0 || referralCode !== ""
     || areaPhotos.images.length > 0 || referenceImages.images.length > 0;
+
+  // ── Saved booking draft (S04) ───────────────────────────────────────────────────────────────────────────────
+  // A signed-in client's plain booking only: a waitlist claim or a flash design opens this form with its own
+  // prefilled context, which a draft must not overwrite. Everything is kept except the safety notes.
+  const draftsEnabled = isClientRole && !waitlistClaim && !flashDesign?.flashDesignId;
+  // After the active studio is settled (?studio=<slug>), like the client lookup: a draft belongs to one studio.
+  const draftQuery = useGetMyBookingDraftQuery(undefined, { skip: !draftsEnabled || !studioReady });
+  const [saveDraft] = useSaveMyBookingDraftMutation();
+  const [deleteDraft, { isLoading: discardingDraft }] = useDeleteMyBookingDraftMutation();
+  // "pending" until the person chooses, when a draft exists. Nothing is saved over an existing draft before then.
+  const [draftChoice, setDraftChoice] = useState<"pending" | "resumed" | "discarded">("pending");
+  const allValues = useWatch({ control });
+  const draftBody = draftPayload(
+    {
+      artistId:        allValues.artistId ?? null,
+      bookAnyArtist:   allValues.bookAnyArtist ?? false,
+      scheduledAt:     allValues.scheduledAt ?? "",
+      durationMinutes: allValues.durationMinutes ?? 60,
+      serviceId:       allValues.serviceId ?? null,
+      promoCode:       allValues.promoCode ?? "",
+      notes:           allValues.notes ?? "",
+    },
+    intake,
+    desiredPlacement,
+    referralCode,
+  );
+  const draftImages: BookingDraftImage[] = [
+    ...areaPhotos.doneUrls().map((url) => ({ url, category: "AreaPhoto" as const })),
+    ...referenceImages.doneUrls().map((url) => ({ url, category: "Reference" as const })),
+  ];
+  const draftImagesKey = JSON.stringify(draftImages);
+  const existingDraft: BookingDraftResponse | null = draftQuery.data ?? null;
+  const autosaveOn = draftsEnabled && draftQuery.isSuccess && !booked && hasEntered
+    && (existingDraft === null || draftChoice !== "pending");
+
+  // Approved useEffect: a debounced write-behind of what the person has typed. It sends; it never fetches.
+  useEffect(() => {
+    if (!autosaveOn) return;
+    const id = setTimeout(() => {
+      void saveDraft({ payload: draftBody, images: JSON.parse(draftImagesKey) as BookingDraftImage[] });
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [autosaveOn, draftBody, draftImagesKey, saveDraft]);
+
+  function resumeDraft() {
+    if (!existingDraft) return;
+    const content = readDraft(existingDraft.payload);
+    setDraftChoice("resumed");
+    if (!content) return;
+    resetForm({ ...content.form, clientId: myClient?.id ?? user?.id ?? "" });
+    setIntake({ ...content.intake, safetyNotes: "" });
+    setDesiredPlacement(content.desiredPlacement);
+    setReferralCode(content.referralCode);
+    areaPhotos.seed(existingDraft.images.filter((i) => i.category === "AreaPhoto").map((i) => i.url));
+    referenceImages.seed(existingDraft.images.filter((i) => i.category === "Reference").map((i) => i.url));
+  }
+
+  function discardDraft() {
+    setDraftChoice("discarded");
+    void deleteDraft();
+  }
+
+  // When the draft was saved is a record, so it is shown in the reader's own zone (the rule in formatInStudioTimezone.ts).
+  const draftNotice: DraftNoticeState | null = !draftsEnabled || booked
+    ? null
+    : draftQuery.isLoading
+      ? { kind: "loading" }
+      : draftQuery.isError
+        ? { kind: "error", onRetry: () => void draftQuery.refetch() }
+        : existingDraft && draftChoice === "pending"
+          ? {
+              kind: "offer",
+              savedAtLabel: new Date(existingDraft.savedAt).toLocaleString("en-GB", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }),
+              onResume: resumeDraft,
+              onDiscard: discardDraft,
+              busy: discardingDraft,
+            }
+          : null;
 
   // The checks kept outside the form library; run on every submit attempt, including one the form library already
   // refused, so the error summary lists everything at once (S04).
@@ -603,6 +687,8 @@ export function BookAppointmentForm() {
       : await createAppointment(body);
     if ("data" in result) {
       toast.success("Appointment requested.");
+      // The request is sent, so its draft is done with (S04).
+      if (draftsEnabled) { setDraftChoice("discarded"); void deleteDraft(); }
       setBooked(result.data ?? null);
       setPromoCodeNotRecognized(!!values.promoCode && !result.data?.promoCodeApplied);
       resetForm({
@@ -792,6 +878,7 @@ export function BookAppointmentForm() {
       <p className="text-xs text-muted-foreground">* Required</p>
 
       {waitlistClaim && <WaitlistClaimNotice handoff={waitlistClaim} />}
+      {draftNotice && <DraftRestoreNotice state={draftNotice} />}
 
       {flashDesign?.flashDesignId && (
         <div className="flex items-center gap-3 rounded-md border border-border/40 bg-muted/20 p-2">
@@ -1114,7 +1201,8 @@ export function BookAppointmentForm() {
       {/* C02: optional promotion and referral fields behind a disclosure. Kept as separately labelled fields
           ("Promo code", "Referral code") rather than one ambiguous "discount code", since a booking can carry
           both. */}
-      <OptionalCodes defaultOpen={!!watchedPromoCode || referralCode !== ""}>
+      {/* key: a resumed draft remounts it, so a restored code opens the disclosure (defaultOpen is read at mount). */}
+      <OptionalCodes key={draftChoice} defaultOpen={!!watchedPromoCode || referralCode !== ""}>
         <div className="space-y-1.5">
           <FieldLabel htmlFor="promoCode">Promo code</FieldLabel>
           <Input

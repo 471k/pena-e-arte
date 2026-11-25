@@ -159,6 +159,12 @@ try
             j => j.RunAsync(CancellationToken.None),
             Cron.Daily(hour: 5)); // staggered after retention-purge (4am)
 
+        // Saved booking drafts live seven days from their last save (S04, Phi's decision).
+        recurringJobs.AddOrUpdate<BookingDraftExpiryJob>(
+            "booking-draft-expiry",
+            j => j.RunAsync(CancellationToken.None),
+            Cron.Daily(hour: 4, minute: 30)); // before the orphan sweep, so an expired draft's photos free up a day sooner
+
         // Report-only by default; OrphanedObjectSweep:Mode=Quarantine moves unreferenced objects to _quarantine/
         // and never hard-deletes (Phase 3, docs/infra/orphan-quarantine-runbook.md). Set it only after the lock rule.
         // After guest-pending-upload-cleanup (5am), which acts first on its own prefix.
@@ -322,6 +328,7 @@ try
     app.MapConductReportEndpoints();
     app.MapMessagingEndpoints();
     app.MapWaitlistEndpoints();
+    app.MapBookingDraftEndpoints();
     app.MapBoothRentEndpoints();
     app.MapGiftCardEndpoints();
     app.MapPackageEndpoints();

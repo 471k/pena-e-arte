@@ -6,7 +6,7 @@ import { RegisterStudioPage, StudioProfilePage } from "@/features/studios";
 import { BillingPage, SubscribePage } from "@/features/billing";
 import { DashboardPage } from "@/features/dashboard";
 import { StudioMapPage } from "@/features/map";
-import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage, MyBookingsPage } from "@/features/appointments";
+import { SchedulePage, BookPage, AppointmentDetailPage, ClientAppointmentDetailPage, MyBookingsPage, BookingDraftResumePage } from "@/features/appointments";
 import { TodayPage } from "@/features/today";
 import { ArtistListPage, ArtistDetailPage, CreateArtistPage, AvailabilityPage } from "@/features/artists";
 import { ClientListPage, CreateClientPage, ClientDetailPage, MyProfilePage, TattooRecordDetailPage } from "@/features/clients";
@@ -221,6 +221,9 @@ export const routes = [
           // C09: the waitlist email's link. Public like /book (a guest has no account); the claim token
           // is in the URL fragment, never the path, so no server ever logs it.
           { path: "waitlist/claim", element: <ErrorBoundary><WaitlistClaimPage /></ErrorBoundary> },
+          // C05: the "booking attempt" email's link. Public so a signed-out visitor sees why to sign in; the
+          // resume token is in the URL fragment (never sent to a server) and the claim itself needs a client sign-in.
+          { path: "booking-drafts/resume", element: <ErrorBoundary><BookingDraftResumePage /></ErrorBoundary> },
         ],
       },
       {

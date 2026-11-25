@@ -114,9 +114,16 @@ export function useCategorizedImageUpload({ maxImages, upload }: UseCategorizedI
     setError(null);
   }
 
+  /** Shows photos that are already uploaded, e.g. a restored booking draft's (S04). Replaces what is there. */
+  function seed(urls: string[]) {
+    filesRef.current.clear();
+    setImages(urls.slice(0, maxImages).map((url) => ({ id: generateUuid(), previewUrl: url, status: "done" as const, publicUrl: url })));
+    setError(null);
+  }
+
   const uploading = images.some((img) => img.status === "uploading");
   const doneUrls = () => images.filter((img) => img.status === "done" && img.publicUrl)
     .map((img) => img.publicUrl as string);
 
-  return { images, error, pick, retry, remove, clear, uploading, doneUrls };
+  return { images, error, pick, retry, remove, clear, seed, uploading, doneUrls };
 }

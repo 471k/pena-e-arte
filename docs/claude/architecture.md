@@ -1218,7 +1218,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 52 | `StartImpersonationHandler`, `EndImpersonationSessionHandler`, `GetImpersonationSessionsHandler` | AdminOnly cross-tenant `Studio`/`ImpersonationSession` lookups — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing sessions (they are not impersonating yet, or ever, for these three commands themselves), so the normal tenant filter would match nothing | AdminOnly |
 | 53 | `GetNotificationsQuery` (admin branch) | Cross-tenant `NotificationLog` read — the admin's own `tenant_id` claim would otherwise silently scope this to one arbitrary studio instead of returning every `RecipientType.Admin` row platform-wide | AdminOnly |
 | 54 | `StudioCurrencyLock.IsLockedAsync` (`Payment`, `GiftCard`, `PackagePurchase`, `BoothRentCharge`) | The tenant filter also hides soft-deleted rows, but a soft-deleted payment/gift-card/package-purchase/booth-rent-charge still means money moved in this currency — the lock must see those rows too. Mitigation: explicit `StudioId == tenant.StudioId` predicate on every one of the four queries; read-only `AnyAsync`; no data returned. Used by `UpdateStudioCurrencyCommand` (rejects a change once locked) and every `StudioResponse`/`GET /studios/me` builder (`CurrencyLocked` field) | OwnerOnly (the change) / whoever can already read the StudioResponse (the read) |
-| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
+| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`, and since 24 Nov `BookingDraftAttachment`, source 12) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
+| 56 | `BookingDraftExpiryJob.RunAsync` (`BookingDraft`, `BookingDraftAttachment`) | Cross-tenant delete of booking drafts past their seven days (S04, Phi's decision) by a Hangfire job with no tenant: under the filter it would find nothing and drafts would outlive their promised life. Mitigation: one predicate (`ExpiresAt <= now`), deletes only, returns a count; never reaches an endpoint | Hangfire job (no caller) |
+| 57 | `ClientDataErasure.ExecuteAsync` (`BookingDraft`, `BookingDraftAttachment`) | Erasure deletes the person's saved booking drafts at once in **every** studio, the same fan-out as the consent forms and profiles above it (Phi's decision: erasure deletes drafts immediately). Mitigation: scoped by the erased login's `UserId`, deletes only; reached only through the two existing erasure commands (OwnerOnly for a studio's client, ClientOnly for one's own) | OwnerOnly / ClientOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -8156,3 +8158,92 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
   the probe does see generated content when it is exposed. What hides it is `aria-hidden` on the host: accessible-name
   computation skips hidden nodes, generated content included. **Firefox and WebKit were not checked** (neither is
   installed on the probe machine). Keep `aria-hidden="true"` on the host; removing it would expose the letters.
+
+## Saved booking drafts keep everything but the safety notes (Phi, 24 Nov) — 2026-11-24
+
+- **Phi's answer on the decision form: exclude the safety field.** "Anything else I should know?" (`safetyNotes`)
+  invites medical details, so a draft never holds the key at all, not even empty. Everything else is kept. Phi chose
+  exclusion over an opt-in, so there is no consent control. Legal permits drafts with health answers excluded.
+- **Server-side, by Phi's choice on 24 Nov** (S04: keep health answers and body photos out of general browser storage).
+  `BookingDraft` holds the form JSON and `BookingDraftAttachment.ImageUrl` the photos. They are owned by the login
+  (`UserId`) at one studio, under the tenant filter, one per person per studio, and ClientOnly
+  (`/api/v1/booking-drafts/mine`).
+  - **Lifetime:** seven days from the last save (Phi's earlier decision). Expired drafts read as none, and
+    `BookingDraftExpiryJob` deletes them daily (IQF #56).
+  - **Deleted** on send, on "Start over", and at once on erasure in every studio (`ClientDataErasure`, IQF #57).
+- **The exclusion is enforced three times:**
+  1. The form builds the payload field by field, never by spreading the intake.
+  2. The validator refuses a payload carrying `safetyNotes` at any depth and in any case.
+  3. The handler checks again, rather than trusting the pipeline with the one rule that keeps health data out.
+- **Photos have their own column so the orphan sweep counts them** (source 12 of `StoredObjectReferenceReader`). A draft
+  lives exactly as long as the sweep's minimum age, so without this a live draft's photos could be moved.
+- **The exit guard still counts the safety field**, although the draft doesn't keep it. Leaving loses that answer
+  for good, so the warning is right.
+- **Guests: not built.** The options are in `docs/claude/spec-guest-booking-draft-open-question-2026-11-24.md`. No
+  decision has been taken.
+
+## C05: a guest booking whose email already has an account is kept as an UNCLAIMED draft, resumed by token plus sign-in (Phi, option B) — 2026-11-25
+
+- **What C05 is:** the collision path, not a guest abandoning a form. `CreateGuestAppointmentCommand`'s
+  `existingUserId is not null` branch refuses the booking and returns the same `Ack` as a real booking, so the
+  endpoint cannot be used to test which emails have accounts (Decision #3). The person in this flow always has an
+  account, so nothing here uses browser storage for content.
+- **The draft is stored at collision time, and the token governs VISIBILITY, not storage.** What was typed has
+  nowhere else to live between the attempt and the click. `BookingDraft.ClaimedAt` is null for these rows, and
+  `GetMyBookingDraftQuery` reads `ClaimedAt != null`, so an unclaimed draft is invisible to its owner. Decision #3's
+  rule is about ATTACHING ("never silently attach a booking to an account the caller hasn't proven control of"), and
+  a row the owner cannot see is not attached. `ResumeBookingDraftCommand` attaches it only with BOTH proofs: the
+  token (the mailbox) and a client sign-in to that studio (the account). That one predicate is what makes the design
+  safe; it has a test of its own and a mutation check.
+- **The timing side-channel narrows rather than widens.** `:82-87` accepts that the collision path is faster than the
+  real-booking path. The draft write (a role lookup, a draft lookup, one insert) moves the collision path TOWARD the
+  real path. No artificial delay was added. The response itself is unchanged and a MySQL test proves the two
+  branches serialise to the same bytes.
+- **Accepted residual (Phi, in choosing B):** a stranger's text is stored for up to seven days even if the link is
+  never followed. It is what was typed minus the safety notes (`GuestBookingDraftPayload` never names them, and
+  `BookingDraftRules` checks the result: the same exclusion as every draft). `BookingDraftExpiryJob` removes it.
+- **Rulings (Desktop, spec §5):** a stranger's attempt never overwrites a CLAIMED draft (no token, the original
+  notice); an UNCLAIMED one is replaced by a new row, so an older link stops matching. The migration backfills
+  existing drafts as claimed (`ClaimedAt = CreatedAt`), proven against real MySQL by migrating up from #460.
+- **Token:** `BookingDraftResumeTokens` copies `WaitlistClaimTokens` (Data Protection over the shared ring, purpose
+  `BookingDraft.Resume.v1`, payload `draftId|studioId|CreatedAt ticks`, base64url, 2,048-character cap, not
+  time-limited). CreatedAt is written in whole seconds so the ticks survive the database. The link is
+  `/booking-drafts/resume?studio=<slug>#t=<token>`: the token in the fragment (no server logs it), the slug in the
+  query because the page must switch to that studio before the tenant-filtered claim can see the draft.
+- **Departures from the spec, for the record:**
+  1. **Expired is told apart from the token alone.** The spec asked both for one not-found shape covering an expired
+     draft (§6) and for expired to get its own message (§7). The token carries its CreatedAt, so "expired" is
+     decided before any row is read and says nothing about the row, the account or the caller, only the link's age.
+     Every row-dependent failure (gone, past its time, someone else's, another studio) is one identical 404.
+  2. **ClientOnly, not ClientAndAbove,** like the rest of `/api/v1/booking-drafts` and like switch-studio, which the
+     page calls first: only a client can see a draft, so only a client may claim one. For the same reason the
+     collision branch writes a draft only for an account with the client role.
+  3. **Signing in drops the fragment,** so while signed out the page keeps the token in `sessionStorage` (one tab)
+     and removes it once the server has answered. It is the token, not the content.
+- **Not changed:** the collision response, `IWaitlistClaimTokens`, #460's exclusion, life and deletion rules, and
+  `StoredObjectReferenceReader` source 12, which reads `BookingDraftAttachment.ImageUrl` regardless of claim state,
+  so an unclaimed draft's photos are protected from the orphan sweep already. The race-path collision (two
+  simultaneous first bookings with one new email) still sends the original notice with no link.
+- **Recorded at review (Desktop approved #467, 25 Nov), so the next reader doesn't re-derive these:**
+  1. **The C05 spec's §6 and §7 are superseded by the code.** §6 asked for one not-found shape covering an expired
+     draft, and §7 asked for a separate expired message. Both can't hold. The code decides expiry from the token
+     alone, before any row is read (`ResumeBookingDraftCommand`, `BookingDraftResumeRef.ExpiresAt`). A token is
+     only sent to the address that already owns the account, so the one thing "expired" can tell its holder is the
+     age of their own link. Every row-dependent failure (gone, past its time, someone else's, another studio)
+     stays one identical 404. **The case the spec missed:** after seven days the row may already have been deleted
+     by `BookingDraftExpiryJob`. That is exactly when an "expired" message is still owed, and a design that read
+     the row first could only answer "not found". Don't reconcile the code back to the spec.
+  2. **An account without the client role (an owner or artist login) that collides gets the plain notice, with
+     no link and no draft.** This is intended, not a bug. Drafts and the resume route are `ClientOnly`, so a staff
+     account could never claim the draft. Saving one would keep a stranger's text for seven days with no possible
+     use (`CreateGuestAppointmentCommand.SaveUnclaimedDraftAsync` checks the role before writing anything). The
+     response is still the same `Ack` in every branch.
+  3. **`BookingDraftResumeTokens.Mint` throws unless `CreatedAt` is in whole seconds.** This guard is not
+     arbitrary, and it must not be relaxed into a silent truncation. The token carries `CreatedAt` as .NET ticks
+     (100 ns), and `Matches` compares them exactly with the row as read back. The column is `datetime(6)`, so the
+     seventh digit doesn't survive the database (MySQL rounds it, or truncates it, depending on the driver and the
+     `sql_mode`). A token minted from a sub-second value would therefore never match its own row: the link would
+     404 for its whole life. The caller truncates before saving, so the tracked value, the stored value and every
+     later read agree. `Mint` throws to catch a caller that forgot. Truncating inside `Mint` would only hide the
+     mismatch. The same rule, for the same reason, applies to `Waitlist.NotifiedAt` and the waitlist claim
+     token. The reason is also in `Mint`'s doc comment.
