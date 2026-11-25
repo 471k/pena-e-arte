@@ -282,6 +282,18 @@ Google has rendered into it, proved by a probe that counts Tab stops with Google
 
 **`tabindex="-1"` on Google's iframe was not tried and is not proposed.** Nothing found here needs it.
 
+**A separate functional defect, found 25 Nov in #468's post-deploy check (not a conformance fail):** on production,
+Google sign-in was **unavailable in 4 of 5 fresh loads**. Google's script is `async`, the component mounted 17-25 ms
+before `window.google` existed, and the old "SDK missing at mount" check then turned the button off for good. It
+existed before #468 (that line is older), and the 13:30 production check above happened to land on a winning load.
+It isn't an accessibility fail: in that state there is no Tab stop and the fallback message is shown. But it
+means the production check above described the button **when it renders**, which was not most of the time.
+**Fixed in #469** (wait for the script; the container stays inert while waiting). Re-checked on production after
+#469's deploy (25 Nov ~17:20 Paris, read-only, Chromium): **ready in 5 of 5 fresh loads**, including 3 where
+the component mounted before `window.google` existed (each of which would have failed before). In 4 further loads,
+with and without `forced-colors: active`, the container stayed `inert` and hidden while the iframe was absent and
+then 0x0, revealed at 418x44 after about 1.1-1.2 s, and the button was the Tab stop after "Sign in".
+
 Chromium with `forced-colors: active` emulated (confirmed with `matchMedia`). Sign-in, the client booking page, and
 the owner dashboard and schedule.
 
