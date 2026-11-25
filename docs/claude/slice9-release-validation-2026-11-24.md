@@ -1,9 +1,11 @@
 # Slice 9 / E07: validation and release evidence — 2026-11-24
 
 > **Verdict (25 Nov, Desktop's ruling): NOT MET.** The device and screen-reader pass reported on 24 November
-> predates the current build. No build was named, and main has since taken #449, #455, #457–#461 and #463–#469 —
-> including #464 (focus styling at 69 sites in 48 files), #465 (the switch in forced colors) and #468/#469 (the
-> sign-in page's loading), which are precisely the surfaces that pass exercises. The remaining condition is **one
+> predates the current build. No build was named, and main has since taken fourteen pull requests — #449, #453,
+> #455, #457–#461, #463–#465 and #467–#469 — including **#453 (the skip link, which merged 28 minutes after the
+> report and changed the first Tab stop on every staff page from 23 to 1)**, #464 (focus styling at 69 sites in 48
+> files), #465 (the switch in forced colors) and #468/#469 (the sign-in page's loading), which are precisely the
+> surfaces that pass exercises. (Docs-only merges in the same window, #454, #466 and #470, are not counted.) The remaining condition is **one
 > pass on the release-candidate build, with the build named**, after the last change lands. The four caveats
 > stand as recorded.
 >
