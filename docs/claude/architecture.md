@@ -8224,3 +8224,26 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
   `StoredObjectReferenceReader` source 12, which reads `BookingDraftAttachment.ImageUrl` regardless of claim state,
   so an unclaimed draft's photos are protected from the orphan sweep already. The race-path collision (two
   simultaneous first bookings with one new email) still sends the original notice with no link.
+- **Recorded at review (Desktop approved #467, 25 Nov), so the next reader doesn't re-derive these:**
+  1. **The C05 spec's §6 and §7 are superseded by the code.** §6 asked for one not-found shape covering an expired
+     draft, and §7 asked for a separate expired message. Both can't hold. The code decides expiry from the token
+     alone, before any row is read (`ResumeBookingDraftCommand`, `BookingDraftResumeRef.ExpiresAt`). A token is
+     only sent to the address that already owns the account, so the one thing "expired" can tell its holder is the
+     age of their own link. Every row-dependent failure (gone, past its time, someone else's, another studio)
+     stays one identical 404. **The case the spec missed:** after seven days the row may already have been deleted
+     by `BookingDraftExpiryJob`. That is exactly when an "expired" message is still owed, and a design that read
+     the row first could only answer "not found". Don't reconcile the code back to the spec.
+  2. **An account without the client role (an owner or artist login) that collides gets the plain notice, with
+     no link and no draft.** This is intended, not a bug. Drafts and the resume route are `ClientOnly`, so a staff
+     account could never claim the draft. Saving one would keep a stranger's text for seven days with no possible
+     use (`CreateGuestAppointmentCommand.SaveUnclaimedDraftAsync` checks the role before writing anything). The
+     response is still the same `Ack` in every branch.
+  3. **`BookingDraftResumeTokens.Mint` throws unless `CreatedAt` is in whole seconds.** This guard is not
+     arbitrary, and it must not be relaxed into a silent truncation. The token carries `CreatedAt` as .NET ticks
+     (100 ns), and `Matches` compares them exactly with the row as read back. The column is `datetime(6)`, so the
+     seventh digit doesn't survive the database (MySQL rounds it, or truncates it, depending on the driver and the
+     `sql_mode`). A token minted from a sub-second value would therefore never match its own row: the link would
+     404 for its whole life. The caller truncates before saving, so the tracked value, the stored value and every
+     later read agree. `Mint` throws to catch a caller that forgot. Truncating inside `Mint` would only hide the
+     mismatch. The same rule, for the same reason, applies to `Waitlist.NotifiedAt` and the waitlist claim
+     token. The reason is also in `Mint`'s doc comment.

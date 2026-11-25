@@ -25,6 +25,19 @@ public sealed class BookingDraftResumeTokens(IDataProtectionProvider provider) :
 
     private readonly IDataProtector _protector = provider.CreateProtector(Purpose);
 
+    /// <summary>
+    /// Mints the resume token for a draft whose CreatedAt is already whole seconds.
+    /// </summary>
+    /// <remarks>
+    /// Why it throws rather than truncating: the token carries CreatedAt as .NET ticks (100 ns), and
+    /// <see cref="BookingDraftResumeRef.Matches"/> compares those ticks exactly with the row as read back from the
+    /// database. The column is datetime(6), so the seventh digit does not survive the round trip (rounded or
+    /// truncated depending on the driver and sql_mode). A token minted from a sub-second value would never match its
+    /// own row, and the link would 404 for its whole life. The caller truncates BEFORE saving
+    /// (CreateGuestAppointmentCommand), so the tracked entity, the stored row and every later read agree. This guard
+    /// catches a caller that forgot. Truncating here instead would produce a token for a value that was never
+    /// stored. Do not relax it. Same rule as Waitlist.NotifiedAt and the waitlist claim token.
+    /// </remarks>
     public string Mint(BookingDraft draft)
     {
         if (draft.CreatedAt.Ticks % TimeSpan.TicksPerSecond != 0)
