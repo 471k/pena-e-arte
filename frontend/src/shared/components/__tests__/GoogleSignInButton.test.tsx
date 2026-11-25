@@ -15,20 +15,61 @@ describe("GoogleSignInButton", () => {
     vi.useRealTimers();
   });
 
-  it("shows a fallback message when the Google SDK isn't loaded", () => {
+  it("shows a fallback message when the Google SDK never loads", async () => {
     delete window.google;
 
     render(<GoogleSignInButton onCredential={vi.fn()} />);
+    // It waits for the async script first, without a message and without a Tab stop.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("google-signin-button")).toHaveAttribute("inert");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8000);
+    });
 
     expect(screen.getByRole("alert")).toHaveTextContent(/unavailable right now/i);
   });
 
-  it("hides the button container when the SDK isn't loaded", () => {
+  it("hides the button container when the SDK never loads", async () => {
     delete window.google;
 
     render(<GoogleSignInButton onCredential={vi.fn()} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8000);
+    });
 
     expect(screen.getByTestId("google-signin-button")).toHaveClass("hidden");
+  });
+
+  // Production, 25 Nov: in 4 of 5 loads this component mounted 17-25 ms before Google's async script defined
+  // window.google, and the old check turned Google sign-in off for good.
+  it("renders the button when Google's script arrives after the component has mounted", async () => {
+    delete window.google;
+    const renderButton = vi.fn((container: HTMLElement) => {
+      const iframe = document.createElement("iframe");
+      Object.defineProperty(iframe, "clientWidth",  { value: 300, configurable: true });
+      Object.defineProperty(iframe, "clientHeight", { value: 44,  configurable: true });
+      container.appendChild(iframe);
+    });
+
+    render(<GoogleSignInButton onCredential={vi.fn()} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    window.google = {
+      accounts: {
+        id: { initialize: vi.fn(), renderButton, prompt: vi.fn(), disableAutoSelect: vi.fn(), cancel: vi.fn() },
+      },
+    };
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(renderButton).toHaveBeenCalledTimes(1);
+    const container = screen.getByTestId("google-signin-button");
+    expect(container).not.toHaveAttribute("inert");
+    expect(container).not.toHaveClass("hidden");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   describe("when the SDK is loaded", () => {

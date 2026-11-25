@@ -89,6 +89,45 @@ test.describe("Google sign-in container: no Tab stop until Google has rendered",
     expect(stops, `Tab stops inside the container (of ${samples.length} samples)`).toEqual([]);
   });
 
+  // Production, 25 Nov: Google's script is `async`, and in 4 of 5 loads the component mounted before it arrived;
+  // the old code then gave up for good. Here the script is HELD until the test releases it, after the component has
+  // mounted, so the order is fixed by the test, not by how fast the dev server happens to be.
+  test("late script: the button still renders, with no Tab stop while waiting", async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __gsiMode: string }).__gsiMode = "rendered";
+      localStorage.setItem("cookie-consent", "accepted");
+    });
+    await mockApiFallback(page);
+    let release: () => void = () => undefined;
+    const released = new Promise<void>((resolve) => { release = resolve; });
+    await page.route("https://accounts.google.com/gsi/client**", async (route) => {
+      await released;
+      await route.fulfill({ status: 200, contentType: "application/javascript", body: STUB });
+    });
+
+    // "commit", not the default "load": the load event waits for async scripts, so it would wait on the held one.
+    await page.goto("/login", { waitUntil: "commit" });
+    const signIn = page.getByRole("button", { name: /^sign in$/i });
+    await signIn.waitFor();
+    const container = page.getByTestId("google-signin-button");
+
+    // While the script is held back: mounted, waiting, and no stop.
+    expect(await page.evaluate(() => typeof (window as unknown as { google?: unknown }).google)).toBe("undefined");
+    await signIn.focus();
+    await page.keyboard.press("Tab");
+    expect(await container.evaluate((c) => c.contains(document.activeElement))).toBe(false);
+    await expect(container).toHaveAttribute("data-status", "loading");
+
+    // Release the script: it now certainly arrives after mount.
+    release();
+
+    // After it arrives: rendered, revealed and reachable.
+    await expect(container).toHaveAttribute("data-status", "ready", { timeout: 5000 });
+    await signIn.focus();
+    await page.keyboard.press("Tab");
+    expect(await container.evaluate((c) => c.contains(document.activeElement))).toBe(true);
+  });
+
   test("rendered (control): once Google sizes its button, it is an ordinary Tab stop", async ({ page }) => {
     const samples = await sampleTabStops(page, "rendered");
 
