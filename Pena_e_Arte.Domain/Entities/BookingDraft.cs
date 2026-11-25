@@ -25,5 +25,11 @@ public class BookingDraft : TenantEntity
 
     public DateTime ExpiresAt { get; set; }
 
+    /// <summary>Null until the person proves control of the mailbox by following the resume link (C05).
+    /// An unclaimed draft is invisible to its owner: it was written by an anonymous caller who typed their
+    /// email, and attaching it before that proof is what Decision #3 forbids. A draft the person saves
+    /// themselves (SaveMyBookingDraftCommand) is claimed when it is saved.</summary>
+    public DateTime? ClaimedAt { get; set; }
+
     public List<BookingDraftAttachment> Attachments { get; set; } = [];
 }

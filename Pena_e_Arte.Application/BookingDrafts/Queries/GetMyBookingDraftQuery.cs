@@ -17,11 +17,13 @@ public class GetMyBookingDraftHandler(IAppDbContext db, ICurrentUser currentUser
     {
         DateTime now = time.GetUtcNow().UtcDateTime;
         // Tenant-scoped by the global query filter; the author check is UserId. An expired draft reads as none
-        // even before BookingDraftExpiryJob removes it.
+        // even before BookingDraftExpiryJob removes it. ClaimedAt != null is what makes C05 safe: an unclaimed draft
+        // was written by an anonymous caller who typed this person's email, and it stays invisible until the
+        // resume link AND a sign-in prove it is theirs (ResumeBookingDraftCommand). Do not drop this predicate.
         BookingDraft? draft = await db.BookingDrafts
             .AsNoTracking()
             .Include(d => d.Attachments)
-            .FirstOrDefaultAsync(d => d.UserId == currentUser.UserId && d.ExpiresAt > now, ct);
+            .FirstOrDefaultAsync(d => d.UserId == currentUser.UserId && d.ExpiresAt > now && d.ClaimedAt != null, ct);
 
         return draft is null ? null : Map(draft);
     }

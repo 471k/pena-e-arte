@@ -39,6 +39,9 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
     private readonly IEmailRenderer _emailRenderer = Substitute.For<IEmailRenderer>();
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
+    private readonly IBookingDraftResumeTokens _resumeTokens =
+        new Pena_e_Arte.Infrastructure.Services.BookingDrafts.BookingDraftResumeTokens(
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
 
     private static ISlotLocker CreateAvailableLocker()
     {
@@ -116,7 +119,7 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(tenant);
         CreateGuestAppointmentHandler handler = new(
             db, tenant, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
-            _emailRenderer, _notifications, _appSettings,
+            _emailRenderer, _notifications, _appSettings, _resumeTokens, TimeProvider.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
         GuestBookingAckResponse result = await handler.Handle(
@@ -177,7 +180,7 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
 
         CreateGuestAppointmentHandler handler = new(
             db, tenant, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
-            _emailRenderer, _notifications, _appSettings,
+            _emailRenderer, _notifications, _appSettings, _resumeTokens, TimeProvider.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
         CreateGuestAppointmentRequest request = new(
@@ -205,7 +208,7 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
         string email = $"existing-{Guid.NewGuid():N}@example.test";
 
         _identity.GetUserIdByEmailAsync(email, Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
-        _emailRenderer.RenderGuestBookingEmailCollision(Arg.Any<string>()).Returns("<html></html>");
+        _emailRenderer.RenderGuestBookingEmailCollision(Arg.Any<string>(), Arg.Any<string?>()).Returns("<html></html>");
 
         CreateGuestAppointmentRequest request = new(
             "Jamie", "Guest", email, "+351912345678", MarketingOptIn: false,
@@ -215,7 +218,7 @@ public class GuestCheckoutBookingIntegrationTests(DatabaseFixture fixture)
         await using AppDbContext db = fixture.CreateDbContext(tenant);
         CreateGuestAppointmentHandler handler = new(
             db, tenant, _identity, _locker, _jobs, _realtime, _sender, _planLimits,
-            _emailRenderer, _notifications, _appSettings,
+            _emailRenderer, _notifications, _appSettings, _resumeTokens, TimeProvider.System,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateGuestAppointmentHandler>.Instance);
 
         GuestBookingAckResponse result = await handler.Handle(

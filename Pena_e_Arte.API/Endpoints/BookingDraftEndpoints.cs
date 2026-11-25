@@ -20,6 +20,9 @@ public static class BookingDraftEndpoints
         group.MapGet("/mine", GetMine);
         group.MapPut("/mine", SaveMine);
         group.MapDelete("/mine", DeleteMine);
+        // C05: the "booking attempt" email's resume link. ClientOnly like the rest of this group (and like
+        // switch-studio, which the page calls first): only a client can see a draft, so only a client may claim one.
+        group.MapPost("/resume", Resume);
     }
 
     private static async Task<IResult> GetMine(ISender mediator, CancellationToken ct)
@@ -30,6 +33,9 @@ public static class BookingDraftEndpoints
 
     private static async Task<IResult> SaveMine(SaveBookingDraftRequest request, ISender mediator, CancellationToken ct)
         => Results.Ok(await mediator.Send(new SaveMyBookingDraftCommand(request), ct));
+
+    private static async Task<IResult> Resume(ResumeBookingDraftRequest request, ISender mediator, CancellationToken ct)
+        => Results.Ok(await mediator.Send(new ResumeBookingDraftCommand(request.Token), ct));
 
     private static async Task<IResult> DeleteMine(ISender mediator, CancellationToken ct)
     {

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Pena_e_Arte.Application.Public.Commands;
@@ -7,6 +8,7 @@ using Pena_e_Arte.Contracts.Responses.Public;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Exceptions;
 using Pena_e_Arte.Domain.Interfaces;
+using Pena_e_Arte.Infrastructure.Services.BookingDrafts;
 using Pena_e_Arte.UnitTests.Helpers;
 
 namespace Pena_e_Arte.UnitTests.Public;
@@ -25,10 +27,12 @@ public class CreateGuestAppointmentHandlerTests
     private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly IAppSettings _appSettings = Substitute.For<IAppSettings>();
     private readonly ILogger<CreateGuestAppointmentHandler> _logger = Substitute.For<ILogger<CreateGuestAppointmentHandler>>();
+    private readonly BookingDraftResumeTokens _resumeTokens = new(new EphemeralDataProtectionProvider());
+    private readonly MutableTimeProvider _time = new(new DateTimeOffset(2026, 11, 25, 12, 0, 0, 500, TimeSpan.Zero));
 
     private CreateGuestAppointmentHandler CreateSut() => new(
         _db, _tenant, _identity, _slotLocker, _jobs, _realtime, _sender, _planLimits,
-        _emailRenderer, _notifications, _appSettings, _logger);
+        _emailRenderer, _notifications, _appSettings, _resumeTokens, _time, _logger);
 
     public CreateGuestAppointmentHandlerTests()
     {
@@ -37,8 +41,11 @@ public class CreateGuestAppointmentHandlerTests
         _appSettings.BaseUrl.Returns("https://tattooos.co");
         _emailRenderer.RenderGuestBookingWelcome(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
                       .Returns("<html></html>");
-        _emailRenderer.RenderGuestBookingEmailCollision(Arg.Any<string>())
+        _emailRenderer.RenderGuestBookingEmailCollision(Arg.Any<string>(), Arg.Any<string?>())
                       .Returns("<html></html>");
+        // Accounts are clients unless a test says otherwise (C05: only a client account gets a draft).
+        _identity.GetUserRolesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                 .Returns(new List<string> { "client" });
     }
 
     private Studio SeedStudioWithAvailableArtist()
@@ -267,7 +274,7 @@ public class CreateGuestAppointmentHandlerTests
         await CreateSut().Handle(
             new CreateGuestAppointmentCommand(studio.Slug, ValidRequest(studio, email)), default);
 
-        _emailRenderer.Received(1).RenderGuestBookingEmailCollision(studio.Name);
+        _emailRenderer.Received(1).RenderGuestBookingEmailCollision(studio.Name, Arg.Any<string?>());
         _emailRenderer.DidNotReceive().RenderGuestBookingWelcome(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         await _notifications.Received(1).SendEmailAsync(

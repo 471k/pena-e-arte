@@ -52,6 +52,10 @@ public class SaveMyBookingDraftHandler(IAppDbContext db, ICurrentUser currentUse
         draft.PayloadJson = command.Request.Payload;
         draft.UpdatedAt = now;
         draft.ExpiresAt = now + BookingDraft.Lifetime;
+        // C05: a draft the signed-in person saves themselves is theirs from the first save. If the row was an
+        // UNCLAIMED one written by the guest-booking collision path, this save replaces its content entirely
+        // (payload and photos above), so nothing a stranger typed becomes visible by being claimed here.
+        draft.ClaimedAt ??= now;
         foreach (BookingDraftImageRequest image in command.Request.Images ?? [])
         {
             draft.Attachments.Add(new BookingDraftAttachment
