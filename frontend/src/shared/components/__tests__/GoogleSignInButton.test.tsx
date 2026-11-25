@@ -81,6 +81,61 @@ describe("GoogleSignInButton", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/unavailable right now/i);
     });
 
+    // Release gate, 25 Nov: in Google's refusal state the iframe is 0x0 but tabbable. Until it is
+    // sized, our container must be inert (no Tab stop) and invisible, not only after the 2.5 s check.
+    it("keeps the container inert and invisible while Google has not sized its button", async () => {
+      renderButton.mockImplementation((container: HTMLElement) => {
+        container.appendChild(document.createElement("iframe"));
+      });
+
+      render(<GoogleSignInButton onCredential={vi.fn()} />);
+      const container = screen.getByTestId("google-signin-button");
+
+      // Elapsed time after each step: 0, 100, 1000, 2400 ms.
+      let elapsed = 0;
+      for (const step of [0, 100, 900, 1400]) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(step);
+        });
+        elapsed += step;
+        expect(container, `at ${elapsed} ms`).toHaveAttribute("inert");
+        expect(container, `at ${elapsed} ms`).toHaveClass("invisible");
+      }
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(container).toHaveClass("hidden");
+      expect(container).toHaveAttribute("inert");
+    });
+
+    it("reveals the button as soon as Google sizes it, not at the 2.5 s deadline", async () => {
+      let iframe: HTMLIFrameElement | null = null;
+      renderButton.mockImplementation((container: HTMLElement) => {
+        iframe = document.createElement("iframe");
+        container.appendChild(iframe);
+      });
+
+      render(<GoogleSignInButton onCredential={vi.fn()} />);
+      const container = screen.getByTestId("google-signin-button");
+      expect(container).toHaveAttribute("inert");
+
+      // Google sizes its iframe at ~300 ms, as measured on production.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      Object.defineProperty(iframe, "clientWidth",  { value: 300, configurable: true });
+      Object.defineProperty(iframe, "clientHeight", { value: 44,  configurable: true });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+
+      expect(container).not.toHaveAttribute("inert");
+      expect(container).not.toHaveClass("invisible");
+      expect(container).not.toHaveClass("hidden");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
     it("initializes with the credential callback wired to onCredential", () => {
       const onCredential = vi.fn();
       render(<GoogleSignInButton onCredential={onCredential} />);
