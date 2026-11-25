@@ -140,9 +140,16 @@ crash, which first read as 814px of sideways scroll: a probe artefact, not a fin
   quick-book bar. Usual fix: `scroll-padding-top` and `scroll-padding-bottom` equal to the pinned chrome, and a
   Discover header that is not sticky, or much shorter, below the 420 breakpoint.
 - **Fail 2, function, `/discover`:** with 234 of 256px pinned, the results are read through a 22px slit.
-- **Watch, not a fail:** the signed-in Schedule's own sticky header wraps to 137px, so with the 56px app header
-  193 of 256px stay pinned (63px for the week). Under the mock nothing focusable sits below it, so 2.4.11 could not
-  be tested there.
+- **Fail 3, WCAG 2.4.11, the signed-in Schedule (retested 25 Nov with real fixtures).** This row first read "watch,
+  not a fail", because under the empty mock nothing focusable sat below the header. That was the same empty-mock
+  condition that produced the phantom 814px, and it should have read **not run**. Retested at 320x256 with 14
+  appointments, tabbing 45 stops forward and back: of **89 stops, 27 were entirely hidden and 38 partly covered**
+  behind the 56px app header and the Schedule's own header, which wraps to 137px. The hidden ones include Confirm,
+  Decline, Reschedule, Cancel, Mark no-show and Complete on the session cards, the artist filter and the Dashboard
+  link. Same probe, same day, on main: `/discover` 20 hidden of 59, `/artist/{slug}` 3 of 57, `/s/{slug}` 1 of 57.
+- **Fix proposed in #464 (held for Desktop's review), not on main.** On that branch the same probe reads 0 hidden
+  and 0 partly covered on all four pages (262 stops), and the forced-colors probe reads 0 stops without an indicator
+  (86 stops). This document's verdicts stay **Fail** until #464 merges and the probes are re-run on main.
 - **The cookie banner** covers 137 of 256px until it is dismissed, and "Got it" is 8 to 14 Tab presses from the top
   (public 14, owner 12, client 9, artist and admin 8). It can be dismissed, so it is not a reflow fail; recorded
   because at 400% it hides half the screen until then.
