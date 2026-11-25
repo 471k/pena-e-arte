@@ -31,20 +31,25 @@ export function ToggleSwitch({
         "border-2 border-transparent transition-colors focus-visible:outline-hidden",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:opacity-50",
-        checked ? "bg-primary" : "bg-input",
+        // Forced colors (Windows contrast themes) repaints every background as the page's Canvas and removes the
+        // thumb's shadow, so the thumb vanished into its track. The track's transparent border is already forced
+        // to the text colour, so its outline survives; the thumb and the on state are drawn in system colours,
+        // which forced colors keeps: off = a CanvasText thumb in an outlined track, on = a Highlight track with
+        // a HighlightText thumb and a Highlight check, the contrast themes' own convention for a selected control.
+        checked ? "bg-primary forced-colors:bg-[Highlight]" : "bg-input",
       )}
     >
       <span
         className={cn(
           "pointer-events-none relative flex h-4 w-4 items-center justify-center",
           "rounded-full bg-background shadow-lg ring-0 transition-transform",
-          checked ? "translate-x-4" : "translate-x-0",
+          checked ? "translate-x-4 forced-colors:bg-[HighlightText]" : "translate-x-0 forced-colors:bg-[CanvasText]",
         )}
       >
         {checked && (
           <svg
             viewBox="0 0 8 8"
-            className="h-2 w-2 text-link"
+            className="h-2 w-2 text-link forced-colors:text-[Highlight]"
             aria-hidden="true"
           >
             <path
