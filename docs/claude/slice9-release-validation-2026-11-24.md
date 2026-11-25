@@ -1,13 +1,19 @@
 # Slice 9 / E07: validation and release evidence — 2026-11-24
 
-> **Verdict (25 Nov): NOT MET until Desktop rules on it. Every `docs/08` row now has evidence, and none is a
-> captured fail.** What is still open:
+> **Verdict (25 Nov, Desktop's ruling): NOT MET.** The device and screen-reader pass reported on 24 November
+> predates the current build. No build was named, and main has since taken #449, #455, #457–#461 and #463–#469 —
+> including #464 (focus styling at 69 sites in 48 files), #465 (the switch in forced colors) and #468/#469 (the
+> sign-in page's loading), which are precisely the surfaces that pass exercises. The remaining condition is **one
+> pass on the release-candidate build, with the build named**, after the last change lands. The four caveats
+> stand as recorded.
+>
+> Every `docs/08` row has evidence, and none is a captured fail. What is still open:
 > 1. **The device and assistive-technology rows are a REPORTED pass, not a captured one** (Phi, 24 Nov 17:10,
->    §1). It has four caveats, carried unchanged: three versions inferred or unconfirmed, versions headed "latest
->    version" rather than read off each device, no build named, and no per-row screen-reader observations.
->    Whether that grade of evidence meets the gate is Desktop's ruling, not this document's.
-> 2. **The Google Sign-In residual** (§3b), our own 2.5 s Tab stop in Google's refusal state: fix in
->    #468.
+>    §1), and it predates the current build (above). It has four caveats, carried unchanged: three versions
+>    inferred or unconfirmed, versions headed "latest version" rather than read off each device, no build named,
+>    and no per-row screen-reader observations.
+> 2. **The Google Sign-In residual** (§3b), our own 2.5 s Tab stop in Google's refusal state: fixed in #468
+>    (merged `12dcf8bb`, 25 Nov), after the reported pass.
 > 3. **The usability pilot**, a post-launch obligation by Phi's decision of 23 Nov, so it is not a launch row.
 >
 > As first written on 24 Nov (kept): seven of the rows needed a physical device or a screen reader, which no
