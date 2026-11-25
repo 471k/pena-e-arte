@@ -8247,3 +8247,26 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
      later read agree. `Mint` throws to catch a caller that forgot. Truncating inside `Mint` would only hide the
      mismatch. The same rule, for the same reason, applies to `Waitlist.NotifiedAt` and the waitlist claim
      token. The reason is also in `Mint`'s doc comment.
+
+## D08's paging trigger, measured: the admin studio list passes 1 s at about 20 studios, and the cause is a per-row query — 2026-11-25
+
+- **What changed:** documentation only. D08's backlog row (slice 8's end-of-slice report) said "~300 studios, or the
+  list endpoint's p95 over 1 s". Neither half had been measured: the list has never been opened in production.
+  Measured on staging on 25 Nov (studios seeded with subscriptions and no images, the staging bucket listed before
+  and after and identical, everything removed afterwards): `GET /api/v1/studios` takes about **51 ms per studio,
+  linearly, so it passes 1 s at about 20 studios** and takes about 25.6 s at 500.
+- **Why it is slow:** `GetStudiosHandler` runs `StudioCurrencyLock.IsLockedAsync` for every row, four `EXISTS`
+  queries each, so about 2,001 round trips at 500 studios. None of the three pages that call this endpoint reads
+  the `CurrencyLocked` field it computes. Server paging would hide the cost (10 rows a page), but the cost is
+  the per-row query, not the list size, so the paging row's premise ("pages in the browser until scale demands")
+  is not what limits this endpoint. **Not fixed in this change.** The fix (drop the per-row check from the list
+  response, or compute it in one grouped query per table) is a code change for a later decision.
+- **What is fine:** `GET /api/v1/platform/subscriptions` (one query with includes) stays under 200 ms
+  server-side at 500 studios. Both admin lists page 10 rows in the browser; at 500 the search box and Next page
+  stay responsive, and the subscription oversight page and admin dashboard are ready in 0.8-1.5 s (up to 3.9 s
+  at a 4x CPU throttle). The browser does not hurt first; the backend does.
+- **`admin-list-p95-slow` is dormant, not healthy.** It reads production only and needs at least 3 requests in
+  an hour. With no production traffic on those routes it has no series and evaluates to OK. Nobody should read
+  its silence as a signal before the page is used. Run against staging during the measurement, the same
+  expression returned 10, so it does trip on real traffic. It reports 10 because 10 s is the histogram's top
+  bucket. The alert is not changed.
