@@ -144,7 +144,7 @@ export function BodyMap({
             aria-label={v === "front" ? "Front of the figure" : "Back of the figure"}
             onClick={() => setView(v)}
             className={cn(
-              "px-4 py-1 text-xs rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "px-4 py-1 text-xs rounded-md transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
               view === v
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",

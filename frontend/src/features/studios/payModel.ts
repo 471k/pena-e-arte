@@ -74,7 +74,7 @@ export function describeArtistArrangement(
 /** The native select styling used across forms (a native select keeps keyboard and find-in-page behaviour simple). */
 export const SELECT_CLS = cn(
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background focus-visible:outline-none focus-visible:ring-2",
+  "ring-offset-background focus-visible:outline-hidden focus-visible:ring-2",
   "focus-visible:ring-ring focus-visible:ring-offset-2",
   "disabled:cursor-not-allowed disabled:opacity-50",
 );

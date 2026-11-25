@@ -453,6 +453,51 @@ success) live in the shared primitives, so use them rather than re-creating them
   For a list's result count after a search or filter, use `useResultCountAnnouncement`.
 - Selected state (`aria-pressed`/`aria-selected`) stays the caller's styling: several toggles switch variant on it.
 
+### Focus that stays visible (forced colors, 2.4.11; 2026-11-25)
+
+- **Never `outline-none` on a control; use `outline-hidden`.** Tailwind's `ring-*` is a box-shadow, and forced-colors
+  mode (Windows contrast themes) removes box-shadows. `outline-none` plus a ring therefore shows no focus at all
+  there. `outline-hidden` keeps a transparent 2px outline under `@media (forced-colors: active)`, which the browser
+  paints in the system colour.
+- **Why the swap at 69 sites in 48 files (#464) is safe:** it was checked in Tailwind's own source, not assumed.
+  `tailwindcss/dist/lib.js` (4.3.5) defines `outline-hidden` as the same two declarations as `outline-none`
+  (`--tw-outline-style: none; outline-style: none`) plus, only inside `@media (forced-colors: active)`,
+  `outline: 2px solid transparent; outline-offset: 2px`. Outside forced colors it is exactly `outline-none`, so the
+  change renders identically for everyone else. Re-check that file if
+  Tailwind is upgraded before relying on this. Two deliberate carve-outs:
+  - **Menu and select items** take `outline-none focus:outline-hidden`. A bare `outline-hidden` sets the transparent
+    outline on every item at all times, and forced colors would paint all of them, not only the focused one.
+  - **The four layouts' skip-link targets** (`tabIndex={-1}` content wrappers) keep `outline-none`. They are landing
+    points, not keyboard-operable controls, so 2.4.7 does not reach them, and outlining the whole main region is
+    heavy. Activating "Skip to content" is still visible without a ring there (checked in Chromium, 25 Nov, owner
+    pages at 1280x800 and 320x256): the link closes, the content's top lands just under the shell header (from
+    part-way down the page scrolls back up; from the top it is already there), and the next Tab's ring lands on the
+    page's first control, in view.
+- **A filled control needs `forced-colors:border`** (the filled `Button` variants have it), because forced colors
+  replaces its background with the page's and it would read as loose text.
+- **Pinned chrome and focus:** `PinnedChromeScrollPadding` (mounted in `main.tsx`) measures sticky/fixed chrome pinned
+  to the top or bottom edge and sets `html`'s `scroll-padding`, so the browser scrolls a focused control clear of it
+  (WCAG 2.4.11, technique C43). Do not remove it. Its rules (`pinnedExtents`) ignore narrow side columns, boxes not
+  pinned near an edge (a centred dialog) and boxes taller than 75% of the viewport (overlays, drawers).
+- **The padding has a floor, and it is structural.** On a page with the signed-in shell header (the four layouts'
+  `h-14` header, marked `data-pinned-shell`), `index.css` sets the top padding to `max(measured, 3.5rem)`, so a
+  measurement that finds nothing, finds too little or never runs (the hook threw, nothing laid out yet) cannot drop
+  it to 0. The measurement has already failed silently once: an early version treated any box over half the viewport
+  as an overlay and dropped the 137px Schedule header. **Do not replace this with a flat constant on every page:**
+  a flat 56px floor over-padded the public pages, which have no top chrome at 400%, and pushed a 138px portfolio tile
+  7px under the quick-book bar. A new signed-in layout must mark its shell header `data-pinned-shell`
+  (`pinnedExtents.test.ts` checks the four; `e2e/pinned-chrome-floor.spec.ts` checks the floor in a real browser).
+- **A pinned header that wraps tall unpins on a SHORT viewport, by height** (`sticky short-viewport:relative`; the
+  `short-viewport` variant is `@media (max-height: 30rem)` in `index.css`). At 400% zoom on 1280x1024 the viewport is
+  320x256: Discover's header (234px), the wrapped Schedule header (137px) and the public page header with the
+  quick-book bar (73 + 69px) left too little room for a focused control, whatever the padding. The failure is the
+  viewport's height, so the rule is a height rule: it was first a width rule (`page-sm`), which unpinned a 390x844
+  portrait phone for no benefit. 480px was checked against the measured headers (25 Nov): 400% zoom and landscape
+  phones (390-430px tall) unpin, portrait phones (667px and up) stay pinned, and just above the threshold the
+  tallest header, Discover at 320px wide, is 49% of the height. Use the same variant for any new header that wraps
+  tall. **The quick-book bar is not under this rule** and stays fixed everywhere: it is the booking path.
+  `e2e/public-page-breakpoints.spec.ts` pins the public headers at 256, 390, 479, 481 and 844px of height.
+
 ---
 
 ## Testing "X never appears before Y"

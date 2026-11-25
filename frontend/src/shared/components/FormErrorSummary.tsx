@@ -42,7 +42,7 @@ export function FormErrorSummary({ items, attempt }: { items: FormErrorItem[]; a
       tabIndex={-1}
       role="alert"
       aria-labelledby="form-error-summary-title"
-      className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm outline-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
     >
       <p id="form-error-summary-title" className="flex items-center gap-1.5 font-medium text-destructive-text">
         <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />

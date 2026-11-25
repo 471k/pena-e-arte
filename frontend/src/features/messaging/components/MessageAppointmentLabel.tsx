@@ -38,7 +38,7 @@ export function MessageAppointmentLabel({ label, studioTimezone, asLink, classNa
         to={href}
         className={cn(
           PILL,
-          "hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "hover:text-foreground hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
           className,
         )}
       >

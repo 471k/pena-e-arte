@@ -563,7 +563,7 @@ export function ClientDetailPage() {
                   <Link
                     key={form.id}
                     to={`/forms/intake/${form.id}`}
-                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                    className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                   >
                     <Card className="hover:bg-muted/40 transition-colors">
                       <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -586,7 +586,7 @@ export function ClientDetailPage() {
                   <Link
                     key={form.id}
                     to={`/forms/consent/${form.id}`}
-                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                    className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                   >
                     <Card className="hover:bg-muted/40 transition-colors">
                       <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -615,7 +615,7 @@ export function ClientDetailPage() {
                 <Link
                   key={appt.id}
                   to={`/appointments/${appt.id}`}
-                  className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                  className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                 >
                   <Card className="hover:bg-muted/40 transition-colors">
                     <CardContent className="p-3 flex items-center justify-between gap-3">

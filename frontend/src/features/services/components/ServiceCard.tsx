@@ -15,7 +15,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
   return (
     <Link
       to={`/services/${service.id}`}
-      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+      className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
     >
       <Card className="hover:bg-muted/40 transition-colors">
         <CardContent className="p-4 flex items-center gap-4">

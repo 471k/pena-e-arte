@@ -28,7 +28,7 @@ export function ToggleSwitch({
         // the 2px border, so -1.5/-1 reach 4px/2px past the visible edge. Kept small enough not to reach a
         // neighbouring row's switch in dense lists (Studio hours stacks them).
         "before:absolute before:-inset-x-1 before:-inset-y-1.5 before:content-['']",
-        "border-2 border-transparent transition-colors focus-visible:outline-none",
+        "border-2 border-transparent transition-colors focus-visible:outline-hidden",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "disabled:pointer-events-none disabled:opacity-50",
         checked ? "bg-primary" : "bg-input",

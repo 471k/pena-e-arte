@@ -446,7 +446,7 @@ export function PlatformReferralPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background
                            px-3 text-xs placeholder:text-muted-foreground
-                           focus:outline-none focus:ring-1 focus:ring-ring"
+                           focus:outline-hidden focus:ring-1 focus:ring-ring"
                 aria-label="Search referral codes"
               />
             </div>

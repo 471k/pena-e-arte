@@ -55,7 +55,7 @@ export function AvailabilityPage() {
       <header className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b bg-background sticky top-0 z-10">
         <Link
           to={backTo}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:bg-muted focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Schedule
