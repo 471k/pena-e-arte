@@ -487,6 +487,14 @@ success) live in the shared primitives, so use them rather than re-creating them
   a flat 56px floor over-padded the public pages, which have no top chrome at 400%, and pushed a 138px portfolio tile
   7px under the quick-book bar. A new signed-in layout must mark its shell header `data-pinned-shell`
   (`pinnedExtents.test.ts` checks the four; `e2e/pinned-chrome-floor.spec.ts` checks the floor in a real browser).
+- **The floor rests on `:has()`, and that is inside our baseline.** `:has()` ships in Chrome/Edge 105, Safari 15.4
+  and Firefox 121 (MDN browser-compat-data, `css/selectors/has.json`, read 25 Nov 2026: no flags, no partial
+  implementation). The 25 Nov device pass
+  (`claude-shared/handoffs/device-pass-result-2026-11-24.md`, a reported pass, not a captured one) ran Chrome and
+  Edge 157, Safari 27.2 (marked inferred by the runner) and Firefox 160, so every browser tested is well past
+  support. On a browser without `:has()` the selector is invalid, the whole rule is dropped, and the measured padding
+  from `PinnedChromeScrollPadding` still applies: only the floor is lost. Recheck this line if the supported-browser
+  floor ever drops below those versions.
 - **A pinned header that wraps tall unpins on a SHORT viewport, by height** (`sticky short-viewport:relative`; the
   `short-viewport` variant is `@media (max-height: 30rem)` in `index.css`). At 400% zoom on 1280x1024 the viewport is
   320x256: Discover's header (234px), the wrapped Schedule header (137px) and the public page header with the
