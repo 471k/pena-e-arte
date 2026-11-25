@@ -6,8 +6,9 @@
 > Firefox needs Playwright's Firefox build. **The four rows a session could run were run on 24-25 Nov (§3b):
 > C10 and the four keyboard journeys pass.** 400% reflow and forced-colors focus FAILED on 24-25 Nov, each with a
 > named cause. Both were fixed in #464 and **re-run on main at `5901b4aa` on 25 Nov: 400% reflow now passes and
-> forced-colors focus passes**, with the before-numbers kept beside them. Forced colors keeps **one open item,
-> the switch thumb** (#465), so that row is not yet a pass. **Every §3b probe is Chromium-only.**
+> forced-colors focus passes**, with the before-numbers kept beside them. The switch thumb was fixed in #465 and
+> re-run on main at `62c88f4b`, so **the app's own controls pass in forced colors**. One third-party stop stays
+> open: Google's sign-in button iframe, when their script loads. **Every §3b probe is Chromium-only.**
 
 - **From:** Claude Code, run 23–24 Nov 2026 (Europe/Paris). **Held for Desktop's review.**
 - **What this is:** evidence, not a build. **A row with no evidence is a fail, not a blank** (Desktop's rule). Most
@@ -22,7 +23,7 @@
 
 | Environment | What was run | What was seen | Verdict |
 |---|---|---|---|
-| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); **open: the switch thumb in forced colors** (#465); dialogs and downloads not covered |
+| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); the switch thumb fixed in #465 (re-run on main); **open: one third-party stop (Google's sign-in iframe)**; dialogs and downloads not covered |
 | **Windows Edge** | §3 keyboard probes (S03 record opening, form error focus) | Both pass, same as Chromium | **Partial**: keyboard probes only; no 200% pass, no downloads |
 | **Firefox desktop** | **Blocked — needs Playwright's Firefox build** (a download, not a device): Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
 | **macOS Safari** | **Blocked — needs a physical device** (a Mac) | — | **Fail (no evidence)** |
@@ -174,7 +175,7 @@ crash, which first read as 814px of sideways scroll: a probe artefact, not a fin
   (public 14, owner 12, client 9, artist and admin 8). It can be dismissed, so it is not a reflow fail; recorded
   because at 400% it hides half the screen until then.
 
-### Forced-colors mode (Windows contrast themes): **focus Pass on main since #464; the switch thumb still Fail** (was **Fail**, 24-25 Nov)
+### Forced-colors mode (Windows contrast themes): **Pass on main for the app's own controls since #464 + #465; one third-party stop open** (was **Fail**, 24-25 Nov)
 
 **Coverage: Chromium only**, with `forced-colors: active` emulated. That is a mild limit for this row, because
 Windows contrast themes are used overwhelmingly through Edge and Chrome, both Chromium. It still says nothing about
@@ -193,9 +194,23 @@ requires the outline colour not to be transparent:
 Outlines compute to the forced system colour. "Skip to content" is outlined (screenshot). Filled buttons keep their
 shape (`forced-colors:border`).
 
-**Still open, so the row is not a pass:** the `ToggleSwitch` thumb vanishes in forced colors (measured: a Canvas
-thumb on a Canvas track). The track's outline survives, so the off state reads as an empty pill and the on state
-only by its check. Desktop ruled this **not accepted**, and it gets its own PR: #465.
+**The switch thumb, fixed by #465 and re-run on main at `62c88f4b` (25 Nov ~05:20 Paris).** Before: the thumb
+vanished (a Canvas disc on a Canvas track, its shadow removed). The track's outline survived, so off read as an
+empty pill and on only by its check. Desktop ruled this **not accepted**. After: off = a CanvasText thumb in the
+outlined track, on = a Highlight track with a HighlightText thumb and check. The committed
+`e2e/toggle-switch-forced-colors.spec.ts` passes on main, and screenshots of both states are kept outside the repo
+(`code-session-scratch-2026-11-24/rulings-2026-11-25/switch/`). The focus probe on main still reads 0 of 25 on
+the booking page.
+
+**One third-party stop, recorded and not ours to fix here:** in the `62c88f4b` re-run, Google's "Continue with
+Google" script (GSI, loaded from `accounts.google.com`) had loaded on `/login` and injected an iframe that is 0x0
+and still takes a Tab stop, with no visible indicator: **12 stops, 1 without an indicator, and that one is the
+iframe.** In the `5901b4aa` run the script had not loaded, so that run read 11 stops and 0. It is Google's widget,
+it appears only when their script loads, and none of the app's own controls are affected. It is flagged for a
+decision rather than counted as a pass or silently dropped.
+
+**Verdict: the app's own controls pass in forced colors** (focus visible on 0 failures across the four pages, and
+the switch readable in both states). The GSI iframe stop is open as a third-party item.
 
 The findings below are the **before** state and are kept as the record.
 
