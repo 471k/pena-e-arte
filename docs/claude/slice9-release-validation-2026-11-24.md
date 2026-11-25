@@ -1,9 +1,17 @@
 # Slice 9 / E07: validation and release evidence — 2026-11-24
 
-> **Verdict: the release gate is NOT met.** Seven of the `docs/08` rows below need a physical device or a screen
-> reader. **Slice 9 cannot be completed from an agent session:** no amount of further autonomous work closes
-> them. That takes a person with an iPhone, an Android phone, a tablet, a Mac, and NVDA, VoiceOver and TalkBack.
-> Firefox needs Playwright's Firefox build. **The four rows a session could run were run on 24-25 Nov (§3b):
+> **Verdict (25 Nov): NOT MET until Desktop rules on it. Every `docs/08` row now has evidence, and none is a
+> captured fail.** What is still open:
+> 1. **The device and assistive-technology rows are a REPORTED pass, not a captured one** (Phi, 24 Nov 17:10,
+>    §1). It has four caveats, carried unchanged: three versions inferred or unconfirmed, versions headed "latest
+>    version" rather than read off each device, no build named, and no per-row screen-reader observations.
+>    Whether that grade of evidence meets the gate is Desktop's ruling, not this document's.
+> 2. **The Google Sign-In residual** (§3b), our own 2.5 s Tab stop in Google's refusal state: fix in
+>    #468.
+> 3. **The usability pilot**, a post-launch obligation by Phi's decision of 23 Nov, so it is not a launch row.
+>
+> As first written on 24 Nov (kept): seven of the rows needed a physical device or a screen reader, which no
+> agent session can provide. **The four rows a session could run were run on 24-25 Nov (§3b):
 > C10 and the four keyboard journeys pass.** 400% reflow and forced-colors focus FAILED on 24-25 Nov, each with a
 > named cause. Both were fixed in #464 and **re-run on main at `5901b4aa` on 25 Nov: 400% reflow now passes and
 > forced-colors focus passes**, with the before-numbers kept beside them. The switch thumb was fixed in #465 and
@@ -15,7 +23,8 @@
 - **From:** Claude Code, run 23–24 Nov 2026 (Europe/Paris). **Held for Desktop's review.**
 - **What this is:** evidence, not a build. **A row with no evidence is a fail, not a blank** (Desktop's rule). Most
   of the `docs/08` matrix needs real devices and screen readers that this machine does not have, so most rows fail
-  for lack of evidence. That is the finding, not an omission.
+  for lack of evidence. That is the finding, not an omission. **Since 25 Nov those rows carry Phi's reported
+  device pass of 24 Nov (§1), labelled reported, not captured.**
 - **Machine:** Windows 10 Pro 10.0.19045. **Browsers driven:** Playwright Chromium 153.0.8010.12; Microsoft Edge
   158.0.4370.33 (installed, driven through Playwright's `msedge` channel). The app ran locally (Vite dev server)
   with the API mocked by the e2e harness (`mockApiFallback`, which answers every unmocked read with an empty list).
@@ -25,20 +34,39 @@
 
 | Environment | What was run | What was seen | Verdict |
 |---|---|---|---|
-| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); the switch thumb fixed in #465 (re-run on main); Google's sign-in button measured on the production origin as its own row (§3b); dialogs and downloads not covered |
-| **Windows Edge** | §3 keyboard probes (S03 record opening, form error focus) | Both pass, same as Chromium | **Partial**: keyboard probes only; no 200% pass, no downloads |
-| **Firefox desktop** | **Blocked — needs Playwright's Firefox build** (a download, not a device): Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
-| **macOS Safari** | **Blocked — needs a physical device** (a Mac) | — | **Fail (no evidence)** |
-| **iPhone Safari** | **Blocked — needs a physical device** (an iPhone). Emulated widths 320/375/390 in Chromium are in §2 and are not iPhone evidence (docs/08: emulation doesn't prove real keyboard, file, calendar or screen-reader behaviour) | — | **Fail (no evidence)** |
-| **Android Chrome** | **Blocked — needs a physical device** (an Android phone) | — | **Fail (no evidence)** |
-| **Tablet Safari/Chromium** | 768/800/1024/1100 widths in Chromium only (§2) | See §2 | **Fail (no device evidence)**; layout widths covered in Chromium |
-| **NVDA + Windows browser** | **Blocked — needs a screen reader** (NVDA, not installed; installing it is Phi's call) | — | **Fail (no evidence)** |
-| **VoiceOver + Safari** | **Blocked — needs a screen reader** (VoiceOver, on a Mac or iPhone) | — | **Fail (no evidence)** |
-| **TalkBack + Chrome** | **Blocked — needs a screen reader** (TalkBack, on an Android phone) | — | **Fail (no evidence)** |
+| **Windows Chromium** | **Captured (Code):** §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run). **Reported (Phi, 24 Nov):** "Windows desktop", Windows 11 26H2 (build 26300.9974) · Chrome 157.0.8103.78/.79 | See §2–§3b; Phi: Pass | **Pass for what was run (captured)**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); the switch thumb fixed in #465 (re-run on main); Google's sign-in button verified on the production origin as its own row (§3b); dialogs and downloads not covered by the capture. **Plus Phi's reported pass (reported, not captured; caveats below)** |
+| **Windows Edge** | **Captured (Code):** §3 keyboard probes (S03 record opening, form error focus). **Reported (Phi, 24 Nov):** "Windows desktop", Edge 157.0.4341.60 | Both probes pass, same as Chromium; Phi: Pass | **Captured: Partial** (keyboard probes only; no 200% pass, no downloads). **Reported: Pass (reported, not captured; caveats below)** |
+| **Firefox desktop** | **Captured:** none (Playwright's Firefox build is not installed; not downloaded in an autonomous run). **Reported (Phi, 24 Nov):** Firefox 160.0.1 | Phi: Pass | **Pass (reported, not captured; caveats below)** |
+| **macOS Safari** | **Captured:** none (needs a Mac). **Reported (Phi, 24 Nov):** macOS 27.0.1 "Golden Gate" · Safari **27.2 (inferred)** | Phi: Pass | **Pass (reported, not captured; the Safari version is marked inferred by Phi; caveats below)** |
+| **iPhone Safari** | **Captured:** none (needs an iPhone; the emulated 320/375/390 widths in §2 are not iPhone evidence, since docs/08 says emulation doesn't prove real keyboard, file, calendar or screen-reader behaviour). **Reported (Phi, 24 Nov):** iOS 27.2.1 | Phi: Pass | **Pass (reported, not captured; caveats below)** |
+| **Android Chrome** | **Captured:** none (needs an Android phone). **Reported (Phi, 24 Nov):** Android 17 (QPR2) · Chrome 157 (**build not confirmed**) | Phi: Pass | **Pass (reported, not captured; the Chrome build is marked not confirmed by Phi; caveats below)** |
+| **Tablet Safari/Chromium** | **Captured (Code):** 768/800/1024/1100 widths in Chromium only (§2). **Reported (Phi, 24 Nov):** "Same OS versions as above" | See §2; Phi: Pass | **Pass (reported, not captured; caveats below)**; layout widths also captured in Chromium |
+| **NVDA + Windows browser** | **Captured:** none (NVDA is not installed on this machine). **Reported (Phi, 24 Nov):** NVDA **2026.2 (inferred)** | Phi: Pass | **Pass (reported, not captured; the version is marked inferred by Phi; no per-row observations; caveats below)** |
+| **VoiceOver + Safari** | **Captured:** none (needs a Mac or an iPhone). **Reported (Phi, 24 Nov):** iOS 27.2.1 / macOS 27.0.1 | Phi: Pass | **Pass (reported, not captured; no per-row observations; caveats below)** |
+| **TalkBack + Chrome** | **Captured:** none (needs an Android phone). **Reported (Phi, 24 Nov):** Android Accessibility Suite 17.0.1.926549743 | Phi: Pass | **Pass (reported, not captured; no per-row observations; caveats below)** |
 
-**What closes the fails:** one session on a real iPhone and an Android phone (the usability pilot tasks in docs/08
-are the natural script), NVDA on this machine (free; installing it is Phi's call), and a Mac with VoiceOver. The
-Firefox row needs only Playwright's Firefox build.
+**Phi's device and assistive-technology pass (24 Nov 17:10 Paris) is a reported pass, not a captured one.** The
+source is `claude-shared/handoffs/device-pass-result-2026-11-24.md`, outside the repo. The rows above carry it with
+the labels as written there, and no label is upgraded. The four caveats, as recorded there, unchanged:
+
+1. **Three entries are marked by the runner as inferred or unconfirmed** — Safari on macOS, NVDA, and the
+   Chrome build on Android. Those are the runner's own annotations and are reproduced unchanged.
+2. **The supplied table is headed "Latest version"**, so it records what the current release of each platform
+   was rather than a string read from each device at execution. `docs/08` asks for the latter. Recorded as
+   supplied.
+3. **No build is named.** The pass was reported at 17:10 on 24 November. **`origin/main` moved four times
+   that afternoon** — `40d316ad` (#444, support-view write controls), `38e2135d` (#450, the NoSubscription
+   refusal), `6d613387` (#451, the S01 zone tail) and **`7e0f95a1` (#452, the money-pages zone fix, merged
+   17:01)**. Which of those the pass covers is not recorded.
+4. **No per-row observations for the three screen-reader rows.** Those rows carry specific pass conditions —
+   whether a failed submit is *announced* and navigable, whether the deposit is read as an **estimate**
+   rather than a charge, whether loading is quiet rather than chattering. Which of those were exercised is
+   not recorded.
+
+**The Firefox row and the capture.** Before Phi's pass, the Firefox row needed only Playwright's Firefox build
+and the others needed a person with the devices. The device-pass file names what would turn the report into a
+captured pass: the version strings read off the four devices, and one screenshot of the booking review screen
+from the iPhone. That is not asked for, and it is recorded so the option stays visible.
 
 ## 2. Rendered pass at 200% text
 
@@ -212,7 +240,12 @@ and the switch readable in both states).
 
 The findings further below are the **before** state and are kept as the record.
 
-### Focus visible, third-party Google Sign-In: **Pass on the production origin** (Chromium), with one residual in our own code. Was recorded **Open** on 25 Nov.
+### Focus visible, third-party Google Sign-In: **Pass**, verified **on production** (`app.tattooos.co`), **Chromium only**. One known defect in our own code: a Tab stop of up to 2.5 s in Google's refusal state, fixed in #468. Was recorded **Open** on 25 Nov; Desktop withdrew that ruling the same day, because it rested on a probe artefact.
+
+**Verdict basis, in the row:** on production the button renders at **418x44**, and its focus ring is **visible with
+and without `forced-colors: active`**, checked by **comparing pixels** of the button's box unfocused against
+focused in both modes. There is no conformance failure in normal operation. **Chromium only**: Firefox and WebKit
+were not probed.
 
 **What was first recorded (kept as the record):** in the `62c88f4b` forced-colors re-run, Google's script had
 loaded on `/login` and its iframe was **0x0, took a Tab stop, and had no visible indicator** (12 stops, 1 without,
@@ -240,12 +273,12 @@ the row Open, neither passed nor dropped, pending a look at the render options.
 - **Side observation, not a fail:** in forced colors the unfocused button has no boundary at all. Its text still
   identifies it as a control.
 
-**Residual, ours:** when Google refuses to render the button (wrong origin, or their service failing), the 0x0
-iframe is a Tab stop for up to **2.5 s**, until `GoogleSignInButton`'s render check marks it failed and hides
-the container (`display: none`, which removes the stop; confirmed: the Tab walk at +5 s on the local origin has no
-iframe stop). Closing that window would mean keeping our own container `visibility: hidden` until the iframe
-measures non-zero. It changes only our DOM, not Google's. **Proposed, not built:** it touches the sign-in
-component and only matters while Google's button is already broken.
+**Known defect, ours (the residual):** when Google refuses to render the button (wrong origin, or their service
+failing), the 0x0 iframe is a Tab stop for up to **2.5 s**, until `GoogleSignInButton`'s render check marks it
+failed and hides the container (`display: none`, which removes the stop; confirmed: the Tab walk at +5 s on the
+local origin has no iframe stop). It concerns only our DOM, not Google's. **Follow-up: #468** (Desktop
+approved the fix on 25 Nov: its own PR, merge on green). It keeps our container out of the Tab order until
+Google has rendered into it, proved by a probe that counts Tab stops with Google's script refused.
 
 **`tabindex="-1"` on Google's iframe was not tried and is not proposed.** Nothing found here needs it.
 
@@ -272,7 +305,7 @@ the owner dashboard and schedule.
 | **S03** focus behaviour (opening a record from the keyboard) | unverified | **Present** | §3: 29 Tab stops, all with visible focus, Enter opens the record; Chromium and Edge |
 | **C10** focus behaviour (body placement without a mouse) | unverified | **Present** | §3b: the placement list is reached, checked and confirmed from the keyboard (25 Nov) |
 | **S05** at phone width on the two uncovered surfaces | unverified | **Partial** | §2 at 390/420: the header passes for every role; page content fails on Payments, Schedule, Dashboard and Messages |
-| **S06** announcements | unverified | **Unverified → fail (no evidence)** | Needs a screen reader; none on this machine (§1) |
+| **S06** announcements | unverified | **Unverified → fail (no evidence)** | Needs a screen reader; none on this machine (§1). Phi's reported screen-reader pass (§1) records no per-row observations, so it does not say whether announcements were exercised, and this row is not changed by it |
 | **AP12** | unverified | **Present**, per the audit's 22 Nov addendum (slice 6) | Not re-run in this pass; the addendum's own evidence stands |
 | **S01 group B** (eight calendar dates in a negative-offset zone) | unverified | **Present for every value with a test** | The nightly sweep's UTC-11 leg runs the whole frontend suite in Pacific/Pago_Pago; after #440 it fails nothing. A value with no test is not covered |
 | **react-hook-form** focus on the first invalid field | unverified | **Present** | §3: an empty `/clients/new` submit moves focus to the first invalid input, Chromium and Edge |
