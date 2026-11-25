@@ -39,8 +39,12 @@ public class GuestCollisionDraftTests
     {
         _studio = new Studio
         {
-            Name = "Collision Studio", Slug = "collision-studio", City = "Tirana",
-            Timezone = "Europe/Tirane", IsActive = true, IsPublished = true,
+            Name = "Collision Studio",
+            Slug = "collision-studio",
+            City = "Tirana",
+            Timezone = "Europe/Tirane",
+            IsActive = true,
+            IsPublished = true,
         };
         _db.Studios.Add(_studio);
         _db.SaveChangesAsync().GetAwaiter().GetResult();
@@ -123,8 +127,11 @@ public class GuestCollisionDraftTests
     {
         BookingDraft own = new()
         {
-            StudioId = _studio.Id, UserId = _ownerId, PayloadJson = """{"intake":{"tattooDescription":"mine"}}""",
-            ExpiresAt = DateTime.UtcNow.AddDays(3), ClaimedAt = DateTime.UtcNow.AddDays(-1),
+            StudioId = _studio.Id,
+            UserId = _ownerId,
+            PayloadJson = """{"intake":{"tattooDescription":"mine"}}""",
+            ExpiresAt = DateTime.UtcNow.AddDays(3),
+            ClaimedAt = DateTime.UtcNow.AddDays(-1),
         };
         _db.BookingDrafts.Add(own);
         await _db.SaveChangesAsync();

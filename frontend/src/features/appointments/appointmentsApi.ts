@@ -1,5 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
-import type { BookingDraftResponse, SaveBookingDraftRequest } from "./bookingDraft";
+import type { BookingDraftResponse, ResumeBookingDraftResponse, SaveBookingDraftRequest } from "./bookingDraft";
 import { baseQuery } from "@/shared/api/baseQuery";
 // paymentsApi imports this slice too; the cycle is safe because each side only uses the other
 // inside callbacks that run after both modules have loaded.
@@ -212,6 +212,11 @@ export const appointmentsApi = createApi({
       query: () => ({ url: "booking-drafts/mine", method: "DELETE" }),
       invalidatesTags: ["BookingDraft"],
     }),
+    // C05: the "booking attempt" email's link. The token rides in the body; the link keeps it in the URL fragment.
+    resumeBookingDraft: builder.mutation<ResumeBookingDraftResponse, string>({
+      query: (token) => ({ url: "booking-drafts/resume", method: "POST", body: { token } }),
+      invalidatesTags: ["BookingDraft"],
+    }),
   }),
 });
 
@@ -239,4 +244,5 @@ export const {
   useGetMyBookingDraftQuery,
   useSaveMyBookingDraftMutation,
   useDeleteMyBookingDraftMutation,
+  useResumeBookingDraftMutation,
 } = appointmentsApi;

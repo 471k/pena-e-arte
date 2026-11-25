@@ -8181,3 +8181,46 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
   for good, so the warning is right.
 - **Guests: not built.** The options are in `docs/claude/spec-guest-booking-draft-open-question-2026-11-24.md`. No
   decision has been taken.
+
+## C05: a guest booking whose email already has an account is kept as an UNCLAIMED draft, resumed by token plus sign-in (Phi, option B) — 2026-11-25
+
+- **What C05 is:** the collision path, not a guest abandoning a form. `CreateGuestAppointmentCommand`'s
+  `existingUserId is not null` branch refuses the booking and returns the same `Ack` as a real booking, so the
+  endpoint cannot be used to test which emails have accounts (Decision #3). The person in this flow always has an
+  account, so nothing here uses browser storage for content.
+- **The draft is stored at collision time, and the token governs VISIBILITY, not storage.** What was typed has
+  nowhere else to live between the attempt and the click. `BookingDraft.ClaimedAt` is null for these rows, and
+  `GetMyBookingDraftQuery` reads `ClaimedAt != null`, so an unclaimed draft is invisible to its owner. Decision #3's
+  rule is about ATTACHING ("never silently attach a booking to an account the caller hasn't proven control of"), and
+  a row the owner cannot see is not attached. `ResumeBookingDraftCommand` attaches it only with BOTH proofs: the
+  token (the mailbox) and a client sign-in to that studio (the account). That one predicate is what makes the design
+  safe; it has a test of its own and a mutation check.
+- **The timing side-channel narrows rather than widens.** `:82-87` accepts that the collision path is faster than the
+  real-booking path. The draft write (a role lookup, a draft lookup, one insert) moves the collision path TOWARD the
+  real path. No artificial delay was added. The response itself is unchanged and a MySQL test proves the two
+  branches serialise to the same bytes.
+- **Accepted residual (Phi, in choosing B):** a stranger's text is stored for up to seven days even if the link is
+  never followed. It is what was typed minus the safety notes (`GuestBookingDraftPayload` never names them, and
+  `BookingDraftRules` checks the result: the same exclusion as every draft). `BookingDraftExpiryJob` removes it.
+- **Rulings (Desktop, spec §5):** a stranger's attempt never overwrites a CLAIMED draft (no token, the original
+  notice); an UNCLAIMED one is replaced by a new row, so an older link stops matching. The migration backfills
+  existing drafts as claimed (`ClaimedAt = CreatedAt`), proven against real MySQL by migrating up from #460.
+- **Token:** `BookingDraftResumeTokens` copies `WaitlistClaimTokens` (Data Protection over the shared ring, purpose
+  `BookingDraft.Resume.v1`, payload `draftId|studioId|CreatedAt ticks`, base64url, 2,048-character cap, not
+  time-limited). CreatedAt is written in whole seconds so the ticks survive the database. The link is
+  `/booking-drafts/resume?studio=<slug>#t=<token>`: the token in the fragment (no server logs it), the slug in the
+  query because the page must switch to that studio before the tenant-filtered claim can see the draft.
+- **Departures from the spec, for the record:**
+  1. **Expired is told apart from the token alone.** The spec asked both for one not-found shape covering an expired
+     draft (§6) and for expired to get its own message (§7). The token carries its CreatedAt, so "expired" is
+     decided before any row is read and says nothing about the row, the account or the caller, only the link's age.
+     Every row-dependent failure (gone, past its time, someone else's, another studio) is one identical 404.
+  2. **ClientOnly, not ClientAndAbove,** like the rest of `/api/v1/booking-drafts` and like switch-studio, which the
+     page calls first: only a client can see a draft, so only a client may claim one. For the same reason the
+     collision branch writes a draft only for an account with the client role.
+  3. **Signing in drops the fragment,** so while signed out the page keeps the token in `sessionStorage` (one tab)
+     and removes it once the server has answered. It is the token, not the content.
+- **Not changed:** the collision response, `IWaitlistClaimTokens`, #460's exclusion, life and deletion rules, and
+  `StoredObjectReferenceReader` source 12, which reads `BookingDraftAttachment.ImageUrl` regardless of claim state,
+  so an unclaimed draft's photos are protected from the orphan sweep already. The race-path collision (two
+  simultaneous first bookings with one new email) still sends the original notice with no link.

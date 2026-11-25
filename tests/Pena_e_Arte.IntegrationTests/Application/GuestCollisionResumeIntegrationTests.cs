@@ -253,21 +253,32 @@ public class GuestCollisionResumeIntegrationTests
 
         Artist artist = new()
         {
-            StudioId = studio.Id, FirstName = "Jane", LastName = "Doe",
-            Email = $"artist-{Guid.NewGuid():N}@test.com", IsActive = true, HourlyRate = 100m,
+            StudioId = studio.Id,
+            FirstName = "Jane",
+            LastName = "Doe",
+            Email = $"artist-{Guid.NewGuid():N}@test.com",
+            IsActive = true,
+            HourlyRate = 100m,
         };
         seed.Artists.Add(artist);
         foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
         {
             seed.ArtistSchedules.Add(new ArtistSchedule
             {
-                StudioId = studio.Id, ArtistId = artist.Id, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = new TimeSpan(23, 59, 0), IsAvailable = true,
+                StudioId = studio.Id,
+                ArtistId = artist.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = new TimeSpan(23, 59, 0),
+                IsAvailable = true,
             });
             seed.StudioHours.Add(new StudioHours
             {
-                StudioId = studio.Id, DayOfWeek = day,
-                StartTime = TimeSpan.Zero, EndTime = new TimeSpan(23, 59, 0), IsOpen = true,
+                StudioId = studio.Id,
+                DayOfWeek = day,
+                StartTime = TimeSpan.Zero,
+                EndTime = new TimeSpan(23, 59, 0),
+                IsOpen = true,
             });
         }
         await seed.SaveChangesAsync();

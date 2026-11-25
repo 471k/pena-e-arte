@@ -20,6 +20,22 @@ export interface BookingDraftResponse {
   expiresAt: string;
 }
 
+/**
+ * C05: what following a "booking attempt" email's resume link did. "Expired" carries no draft; every other failure
+ * is one 404 from the server, deliberately the same for a forged link, a draft that is gone, and someone else's.
+ */
+export interface ResumeBookingDraftResponse {
+  outcome: "Resumed" | "AlreadyClaimed" | "Expired";
+  draft:   BookingDraftResponse | null;
+}
+
+/** The resume token from the link's URL fragment (`#t=…`), which browsers never send to a server. */
+export function readResumeTokenFromHash(hash: string): string | null {
+  const params = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+  const token = params.get("t");
+  return token && token.length > 0 ? token : null;
+}
+
 export interface SaveBookingDraftRequest {
   payload: string;
   images:  BookingDraftImage[];
