@@ -74,7 +74,7 @@ export function CategorizedImagesField({
           "flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed",
           "border-input bg-background px-4 py-5 text-xs text-muted-foreground text-center",
           "cursor-pointer hover:border-ring hover:text-foreground transition-colors",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
         )}
       >

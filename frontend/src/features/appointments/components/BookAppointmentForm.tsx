@@ -176,7 +176,7 @@ function ArtistSelectItem({ artist }: { artist: ArtistResponse }) {
     <SelectPrimitive.Item
       value={artist.id}
       className="relative flex w-full cursor-default select-none items-center rounded-sm
-                 py-1.5 pl-8 pr-2 text-sm outline-none
+                 py-1.5 pl-8 pr-2 text-sm outline-none focus:outline-hidden
                  focus:bg-accent focus:text-accent-foreground
                  data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
     >
@@ -876,7 +876,7 @@ export function BookAppointmentForm() {
                       onChange={(e) => setArtistSearch(e.target.value)}
                       className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
                                  text-xs placeholder:text-muted-foreground
-                                 focus:outline-none focus:ring-1 focus:ring-ring"
+                                 focus:outline-hidden focus:ring-1 focus:ring-ring"
                       aria-label="Search artists"
                     />
                   </div>

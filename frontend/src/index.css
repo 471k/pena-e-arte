@@ -276,6 +276,14 @@ body:has([data-theme="after-hours"]) [data-sonner-toaster] {
    DialogContent element itself as a direct child of <body>, so an unlayered `color` here
    would beat any `text-*` utility on that dialog (unlayered styles outrank every layer). */
 @layer base {
+  /* WCAG 2.4.11 Focus Not Obscured: how much of the viewport sticky/fixed chrome covers, so a control the
+     browser scrolls into view on focus lands clear of it (W3C technique C43). The values are measured at
+     runtime by PinnedChromeScrollPadding (shared/hooks/usePinnedChromeScrollPadding.ts); 0 until it runs. */
+  html {
+    scroll-padding-top: var(--pinned-top, 0px);
+    scroll-padding-bottom: var(--pinned-bottom, 0px);
+  }
+
   [data-theme="after-hours"],
   body:has([data-theme="after-hours"]) > :not(#root),
   body:has([data-theme="after-hours"]) [data-sonner-toaster] {

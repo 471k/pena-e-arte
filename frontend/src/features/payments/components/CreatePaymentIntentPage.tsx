@@ -250,7 +250,7 @@ function AppointmentPicker({
             className={cn(
               "w-full text-left rounded-lg border px-4 py-3 transition-colors",
               "hover:bg-muted/60 hover:border-muted-foreground/30",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             )}
           >
             <div className="flex items-center justify-between gap-3">

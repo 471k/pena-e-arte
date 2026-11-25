@@ -324,7 +324,7 @@ function PortfolioTile({ image, isSaved, onOpen, onToggleSave, showBookmark }: T
       {/* Main clickable image */}
       <button
         type="button"
-        className="block w-full text-left focus-visible:outline-none cursor-pointer"
+        className="block w-full text-left focus-visible:outline-hidden cursor-pointer"
         aria-label={`View tattoo by ${image.artistName} at ${image.studioName}`}
         onClick={() => onOpen(image)}
       >

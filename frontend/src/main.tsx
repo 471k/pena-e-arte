@@ -7,6 +7,7 @@ import { ErrorBoundary } from "./shared/components/ErrorBoundary";
 import { CookieConsentBanner } from "./shared/components/CookieConsentBanner";
 import { StagingBanner } from "./shared/components/StagingBanner";
 import { TrafficBeacon } from "./shared/hooks/useTrafficBeacon";
+import { PinnedChromeScrollPadding } from "./shared/hooks/usePinnedChromeScrollPadding";
 import { store } from "./app/store";
 import { router } from "./app/router";
 import "./index.css";
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")!).render(
         <Toaster />
         <CookieConsentBanner />
         <TrafficBeacon />
+        <PinnedChromeScrollPadding />
       </Provider>
     </ErrorBoundary>
   </StrictMode>

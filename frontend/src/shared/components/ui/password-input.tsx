@@ -23,7 +23,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Omit<InputProps,
                      min-h-[44px] min-w-[44px] px-3
                      text-muted-foreground hover:text-foreground transition-colors
                      cursor-pointer
-                     focus-visible:outline-none focus-visible:ring-2
+                     focus-visible:outline-hidden focus-visible:ring-2
                      focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

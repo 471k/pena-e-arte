@@ -56,7 +56,7 @@ function OwnerReplyForm({ reviewId }: { reviewId: string }) {
       <textarea
         aria-label="Write a reply"
         className="w-full min-h-[60px] resize-none rounded-md border bg-background px-3 py-2 text-sm
-                   focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                   focus:outline-hidden focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
         placeholder="Thank the client or address their feedback…"
         maxLength={2000}
         value={text}
@@ -322,7 +322,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
             value={selectedAppointmentId}
             onChange={(e) => setSelectedAppointmentId(e.target.value)}
             className="w-full rounded-md border bg-background px-2.5 py-1.5 text-sm
-                       focus:outline-none focus:ring-1 focus:ring-ring"
+                       focus:outline-hidden focus:ring-1 focus:ring-ring"
           >
             {eligibleAppointments.map((a) => (
               <option key={a.id} value={a.id}>{formatVisitDate(a)}</option>
@@ -340,7 +340,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
         id="review-body"
         aria-label="Write a review"
         className="w-full min-h-[80px] resize-none rounded-md border bg-background px-3 py-2 text-sm
-                   focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                   focus:outline-hidden focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
         placeholder="How was the experience? Quality of the work, cleanliness, communication…"
         maxLength={2000}
         value={body}

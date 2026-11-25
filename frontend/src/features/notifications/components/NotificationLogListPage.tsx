@@ -120,7 +120,7 @@ export function NotificationLogListPage() {
               id="notification-channel-filter"
               value={channel}
               onChange={(e) => setChannel(e.target.value as "Email" | "Sms" | "InApp" | "")}
-              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
             >
               <option value="">All channels</option>
               <option value="Email">Email</option>
@@ -136,7 +136,7 @@ export function NotificationLogListPage() {
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
             />
           </div>
 
@@ -147,7 +147,7 @@ export function NotificationLogListPage() {
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 rounded-md border bg-background px-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
             />
           </div>
 

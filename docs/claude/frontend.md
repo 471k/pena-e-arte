@@ -453,6 +453,25 @@ success) live in the shared primitives, so use them rather than re-creating them
   For a list's result count after a search or filter, use `useResultCountAnnouncement`.
 - Selected state (`aria-pressed`/`aria-selected`) stays the caller's styling: several toggles switch variant on it.
 
+### Focus that stays visible (forced colors, 2.4.11; 2026-11-25)
+
+- **Never `outline-none` on a control; use `outline-hidden`.** Tailwind's `ring-*` is a box-shadow, and forced-colors
+  mode (Windows contrast themes) removes box-shadows. `outline-none` plus a ring therefore shows no focus at all
+  there. `outline-hidden` is identical in normal mode and keeps a transparent 2px outline under
+  `@media (forced-colors: active)`, which the browser paints in the system colour. For a menu or select item, write
+  `outline-none focus:outline-hidden`: a bare `outline-hidden` would outline every item, not only the focused one.
+  The only remaining `outline-none` are the four layouts' skip-link targets (`tabIndex={-1}` containers, not controls).
+- **A filled control needs `forced-colors:border`** (the filled `Button` variants have it), because forced colors
+  replaces its background with the page's and it would read as loose text.
+- **Pinned chrome and focus:** `PinnedChromeScrollPadding` (mounted in `main.tsx`) measures sticky/fixed chrome pinned
+  to the top or bottom edge and sets `html`'s `scroll-padding`, so the browser scrolls a focused control clear of it
+  (WCAG 2.4.11, technique C43). Do not remove it. Its rules (`pinnedExtents`) ignore narrow side columns, boxes not
+  pinned near an edge (a centred dialog) and boxes taller than 75% of the viewport (overlays, drawers).
+- **A pinned header that wraps tall on narrow screens is not sticky below `page-sm`** (`relative page-sm:sticky`).
+  At 400% zoom on 1280x1024 the viewport is 320x256. Discover's header (234px), the wrapped Schedule header (137px)
+  and the public page header with the quick-book bar (73 + 69px) left too little room for a focused control,
+  whatever the padding. Do the same for any new header that wraps past about a quarter of a 256px viewport.
+
 ---
 
 ## Testing "X never appears before Y"

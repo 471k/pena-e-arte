@@ -56,7 +56,7 @@ export function RecordLink({ to, children, stretched = false, className, "aria-l
       aria-label={ariaLabel}
       data-record-link=""
       className={cn(
-        "rounded-sm hover:underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "rounded-sm hover:underline underline-offset-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         // Stretched: the card shows the focus ring (RECORD_CONTAINER), so the text itself doesn't.
         stretched && "after:absolute after:inset-0 after:content-[''] focus-visible:ring-0",
         className,

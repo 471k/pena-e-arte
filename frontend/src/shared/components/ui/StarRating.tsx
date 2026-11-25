@@ -92,7 +92,7 @@ export function InteractiveStarRating({
                 min-w-[44px] min-h-[44px]
                 flex items-center justify-center
                 rounded-sm
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-ring
+                focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring
                 transition-transform duration-75
                 ${isHighlighted ? "scale-110" : "scale-100"}
               `}
