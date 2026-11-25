@@ -39,6 +39,9 @@ import { startImpersonation as beginImpersonationSession } from "@/features/auth
 import { SUPPORT_VIEW_HOME } from "@/shared/hooks/useSupportView";
 import { ReferralCodeRow } from "./PlatformReferralPage";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { ActionReceiptNotice } from "./ActionReceipt";
+import { AUDIT_ACTIONS, receiptFromState, useActionReceipt } from "./receipts";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
 import { ExtendTrialReview } from "./ExtendTrialReview";
 import { RecentRefundsList } from "./RefundInvestigation";
@@ -125,6 +128,9 @@ export function AdminStudioDetailPage() {
   const [activating, setActivating] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [receipt,    setReceipt]    = useState<ActivationReceipt | null>(null);
+  // D04: every other admin action here leaves a receipt too. A support session that just ended lands here with its
+  // receipt in router state (ImpersonationBanner).
+  const actionReceipt = useActionReceipt(receiptFromState(location.state));
 
 
   // Referral code generation
@@ -154,9 +160,11 @@ export function AdminStudioDetailPage() {
     try {
       if (confirmPlatform === "suspend")   await suspend(studioId).unwrap();
       if (confirmPlatform === "unsuspend") await unsuspend(studioId).unwrap();
-      toast.success(confirmPlatform === "suspend" ? "Studio suspended" : "Studio reinstated");
-    } catch {
-      toast.error(confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio");
+      const name = studio?.name ?? "The studio";
+      if (confirmPlatform === "suspend") actionReceipt.show(`${name} is suspended.`, AUDIT_ACTIONS.studioSuspended, studioId);
+      if (confirmPlatform === "unsuspend") actionReceipt.show(`${name} is reinstated.`, AUDIT_ACTIONS.studioUnsuspended, studioId);
+    } catch (err) {
+      toast.error(extractErrorMessage(err, confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio"));
     }
     finally { setConfirmPlatform(null); }
   }
@@ -176,20 +184,25 @@ export function AdminStudioDetailPage() {
       setImpersonating(false);
       setImpersonateReason("");
       navigate(SUPPORT_VIEW_HOME);
-    } catch {
-      toast.error("Failed to start impersonation session");
+    } catch (err) {
+      // The reason stays typed, so a retry doesn't need it again.
+      toast.error(extractErrorMessage(err, "Failed to start impersonation session"));
     }
   }
 
   async function handleGenerateCode() {
     if (!studioId) return;
     try {
-      await generateCode({ studioId, expiresAt: codeExpiresAt || undefined }).unwrap();
-      toast.success("Referral code generated");
+      const created = await generateCode({ studioId, expiresAt: codeExpiresAt || undefined }).unwrap();
+      actionReceipt.show(
+        `Referral code ${created.code} generated for ${studio?.name ?? "the studio"}.`,
+        AUDIT_ACTIONS.referralCodeGenerated, studioId,
+      );
       setGeneratingCode(false);
       setCodeExpiresAt("");
-    } catch {
-      toast.error("Failed to generate referral code");
+    } catch (err) {
+      // The chosen expiry stays as typed (D04).
+      toast.error(extractErrorMessage(err, "Failed to generate referral code"));
     }
   }
 
@@ -502,6 +515,7 @@ export function AdminStudioDetailPage() {
               </CardHeader>
               <CardContent className="pt-0 space-y-3">
                 {receipt && <ActivationReceiptNotice receipt={receipt} onDismiss={() => setReceipt(null)} />}
+                {actionReceipt.receipt && <ActionReceiptNotice receipt={actionReceipt.receipt} onDismiss={actionReceipt.dismiss} />}
                 {subKnowledge.kind === "failed" && (
                   <div role="alert" className="rounded-md border border-dashed px-3 py-2 text-xs space-y-1">
                     <p>This studio's subscription couldn't be loaded, so the subscription actions are hidden until it is.</p>
@@ -605,7 +619,7 @@ export function AdminStudioDetailPage() {
                     idSuffix="detail"
                     status={subStatus}
                     currentTrialEnd={trialDate || null}
-                    onDone={() => setExtending(false)}
+                    onDone={(r) => { setExtending(false); actionReceipt.put(r); }}
                     onBack={() => setExtending(false)}
                   />
                 )}
@@ -667,7 +681,7 @@ export function AdminStudioDetailPage() {
                     studioId={studioId}
                     studioName={studio.name}
                     idSuffix="detail"
-                    onDone={() => setConfirming(false)}
+                    onDone={(r) => { setConfirming(false); actionReceipt.put(r); }}
                     onBack={() => setConfirming(false)}
                   />
                 )}

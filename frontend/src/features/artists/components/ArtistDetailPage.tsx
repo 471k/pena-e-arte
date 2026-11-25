@@ -804,7 +804,7 @@ export function ArtistDetailPage() {
                             type="button"
                             aria-label="Remove image"
                             onClick={() => void removePortfolioImage(imageId)}
-                            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                           >
                             <X className="h-3.5 w-3.5 text-white" />
                           </button>
@@ -890,7 +890,7 @@ export function ArtistDetailPage() {
                     <Link
                       key={appt.id}
                       to={`/appointments/${appt.id}`}
-                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                      className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                     >
                       <Card className="hover:bg-muted/40 transition-colors">
                         <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -932,7 +932,7 @@ export function ArtistDetailPage() {
                     <Card key={design.id} className="hover:bg-muted/40 transition-colors">
                       <Link
                         to={`/designs/${design.id}`}
-                        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t-lg"
+                        className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-t-lg"
                       >
                         <CardContent className="p-3 flex items-center justify-between gap-3">
                           <div className="min-w-0">

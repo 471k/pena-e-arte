@@ -129,9 +129,9 @@ describe("ArtistSocialTab", () => {
 
       expect(screen.getByRole("button", { name: "Connect Instagram" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Connect TikTok" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Get Facebook verification code" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Get X verification code" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Get YouTube verification code" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Get verification code for Facebook" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Get verification code for X" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Get verification code for YouTube" })).toBeInTheDocument();
       expect(screen.getByRole("list", { name: "Connected accounts" })).not.toHaveTextContent("—");
     });
 
@@ -155,7 +155,7 @@ describe("ArtistSocialTab", () => {
       expect(screen.queryByText(/studio owner manages/i)).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Connect Instagram" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Connect TikTok" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Get Facebook verification code" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Get verification code for Facebook" })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Facebook handle" })).toBeInTheDocument();
       expect(screen.getByText(
         "Connect Instagram to automatically show your latest posts on your public portfolio. Needs an Instagram Business or Creator account.",

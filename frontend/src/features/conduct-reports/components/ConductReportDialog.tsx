@@ -23,6 +23,7 @@ import {
 } from "@/shared/components/ui/select";
 import { usePresignedUpload } from "@/shared/hooks/usePresignedUpload";
 import { cn } from "@/shared/utils/cn";
+import { formatVisitDate } from "@/shared/utils/visitDate";
 import { generateUuid } from "@/shared/utils/uuid";
 import {
   useGetReportableArtistAppointmentsQuery,
@@ -87,10 +88,6 @@ const CATEGORY_ORDER: ReportCategory[] = [
   "Scam", "SexualMisconduct", "UnsafeHygienePractices", "Harassment",
   "Discrimination", "PoorServiceQuality", "Other",
 ];
-
-function formatVisitDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 export function ConductReportDialog({ open, onOpenChange, target }: ConductReportDialogProps) {
   const [submitted, setSubmitted] = useState(false);
@@ -327,7 +324,7 @@ export function ConductReportDialog({ open, onOpenChange, target }: ConductRepor
                       <SelectContent>
                         {eligibleAppointments!.map((a) => (
                           <SelectItem key={a.id} value={a.id}>
-                            {formatVisitDate(a.date)} — {a.status}
+                            {formatVisitDate(a)} — {a.status}
                           </SelectItem>
                         ))}
                       </SelectContent>

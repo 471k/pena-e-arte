@@ -268,7 +268,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Go to the studio's page (/s/{slug}) or the artist's page (/artist/{slug}) and scroll to \"Reviews\".",
       "If you have a completed appointment there that you haven't reviewed yet, the \"Write a review\" form appears.",
-      "If you have more than one eligible visit, pick which one you're reviewing from the dropdown.",
+      "If you have more than one eligible visit, pick which one you're reviewing from the dropdown. Each visit is listed by its date on the studio's calendar, so it matches the studio's records even if you're in another time zone.",
       "Pick a star rating and write your review (minimum 10 characters), then click \"Post Review\".",
     ],
     tips: [
@@ -1932,7 +1932,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Track what each artist owes for booth rent — a bookkeeping record only, not an automatic card charge.",
     steps: [
       "Go to Booth Rent and click \"New schedule\" to set a fixed rent amount, weekly or monthly, for an artist.",
-      "Every day, any schedule that's come due gets a new charge row automatically, and the schedule's next charge date advances.",
+      "Every day, any schedule that's come due gets a new charge row automatically, and the schedule's next charge date advances. Charge dates are calendar dates, not times, so they show the same day wherever you or the artist view them from.",
       "Once you've collected the rent from the artist outside the app (cash, bank transfer, etc.), click \"Mark settled\" on that charge.",
       "An artist can see their own schedule and charge history on their My Earnings page.",
     ],
@@ -2005,6 +2005,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Check \"Failed refunds\": every yearly-cancellation refund that failed, across all studios, newest first, with the studio, amount, when it failed, why, the Stripe invoice, and what to do next.",
     ],
     tips: [
+      "Extending a trial from At-Risk Studios leaves a green receipt above the list that stays until you dismiss it, even after the studio leaves the list: what changed, the time (UTC), and a link to its entry in the audit log.",
       "Clicking most KPI cards jumps straight to a pre-filtered Studios or Subscriptions list.",
       "MRR is the monthly subscription revenue from studios on an active paid plan. Yearly plans count as a twelfth of the yearly price. Referral discounts don't reduce it.",
       "Past-due studios aren't in MRR — their revenue shows as \"at risk\" on the Past Due card until they pay or cancel. Studios cancelling at period end still count until their period ends.",
@@ -2030,6 +2031,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"View\" to open a studio's full detail page, or use a row's Extend Trial, Activate, Suspend/Reactivate, or Cancel Subscription buttons directly (the subscription actions show what they'll do before you confirm). The detail page's \"Studios\" link brings you back to the same filters and page, with that studio highlighted.",
     ],
     tips: [
+      "Each action here leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.",
       "Use the copy icon next to a studio's slug to quickly copy it.",
       "The status and plan filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. The search box isn't: what you type can be a person's name, so it never goes in an address and is cleared when you reload.",
     ],
@@ -2049,6 +2051,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Under \"Recent refunds\", a failed refund shows why it failed, when, the Stripe invoice it was for, and what to do next, as text you can read without hovering. Amounts are in the refund's own currency.",
     ],
     tips: [
+      "Each action here leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.",
       "Click \"View public portfolio\" to open the studio's live public page in a new tab.",
       "Every subscription action (Extend Trial, Activate, Cancel Subscription) opens the same review before you confirm, wherever you start it: who it's for, what will happen, and what can't be undone.",
     ],
@@ -2068,7 +2071,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Suspending a studio immediately hides it from Discover and blocks logins for its owner and all its artists — this takes effect right away, though it can be undone anytime with \"Reactivate Studio\".",
       "Suspending also pauses the studio's card billing: no renewal is charged while it's suspended, and the period already paid isn't refunded. Reactivating resumes billing at the next renewal date. To end the subscription for good, use Cancel Subscription.",
     ],
-    tips: ["Suspended studios don't get payment-reminder emails, and their revenue shows as \"paused\" on the dashboard."],
+    tips: [
+      "After you confirm, a green receipt stays on the page until you dismiss it: the studio, its new state, the time (UTC), and a link to the entry in the audit log. If it fails, the message says why.",
+      "Suspended studios don't get payment-reminder emails, and their revenue shows as \"paused\" on the dashboard."],
   },
   {
     id: "admin-impersonation",
@@ -2086,6 +2091,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"End session\" in the banner when you're done, or just let it run out — sessions hard-expire after 45 minutes either way.",
     ],
     tips: [
+      "When you end a session you land on that studio's page with a receipt linking its entry in the audit log. While a session runs, the banner at the top is its record: the studio, the reason you gave and the time left. If the server can't record the end, you still get your own session back, and the message says why.",
       "The session is strictly read-only — every create/edit/delete action is blocked, so you can look around freely without any risk of changing the studio's data.",
       "Client medical/PII (profile, tattoo records, intake and consent forms) and every financial surface (payments, billing, revenue reports) are hidden entirely, even to look at, for the whole session.",
       "If you try something that isn't allowed, you'll see a small dismissible notice under the banner explaining it isn't available while impersonating — that's expected, not a bug.",
@@ -2123,7 +2129,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"New plan\" to create one.",
       "Click the pencil icon to edit a plan, or the trash icon to delete it, then confirm.",
     ],
-    tips: ["Free, Starter, Growth and Premium are reset from code on every deploy. To change one, create a new plan instead of editing it. Retired plans (like Pro) show a Retired badge and can't be bought."],
+    tips: [
+      "Deleting a plan, or saving one on its edit page, leaves a green receipt on this list until you dismiss it, with a link to the entry in the audit log. If it fails, the message gives the server's reason.",
+      "Free, Starter, Growth and Premium are reset from code on every deploy. To change one, create a new plan instead of editing it. Retired plans (like Pro) show a Retired badge and can't be bought."],
     warnings: ["Deleting a plan is permanent and stops new studios from signing up to it — studios already subscribed keep their subscription unaffected."],
   },
   {
@@ -2141,6 +2149,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click Save.",
     ],
     tips: [
+      "After you save, you're back on the plan list with a green receipt linking the change in the audit log. If saving fails, your changes stay in the form and the message says why.",
       "A plan must be either fully free (all prices €0) or fully paid — you can't mix a free interval with a paid one.",
       "Locations isn't enforced yet — multi-location isn't built.",
       "A price that studios are subscribed to can't be changed or deleted until every subscriber on it has been billing-amount-snapshotted (this happens automatically as each one's subscription is created, checked out, or updated). Once snapshotted, the price can be changed — existing subscribers keep their own billed price (grandfathered), and only new sign-ups see the new amount. A linked Stripe price must match the amount and billing interval exactly.",
@@ -2162,6 +2171,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "At the bottom of the page, the \"Data maintenance\" card runs two one-time backfills for subscriptions that existed before those features: Step 1 records what each subscription is actually billed, Step 2 seeds the recorded revenue history behind the dashboard's MRR charts. Run them in that order. Each asks you to confirm, then shows what it did. Step 1 also lists every cash-billed studio it assumed a price for, by studio name and slug with the assumed monthly price, each linking to that studio's page so you can review it. Both are safe to run again — only data that's still missing is filled in.",
     ],
     tips: [
+      "Each action here leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.",
       "Step 1 lists any cash-billed studios it assumed pay their plan's monthly price — check those are right.",
       "Step 2 only seeds subscriptions that are active now, so a month before a since-cancelled subscription can read lower than the old estimate.",
     ],
@@ -2180,6 +2190,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Extend trial\".",
     ],
     tips: [
+      "Once the extension is confirmed, a green receipt names the studio and the new trial end, with the time (UTC) and a link to the entry in the audit log. It stays until you dismiss it.",
       "Days can't be taken back: there's no way to shorten a trial from here.",
       "If extending fails, the review stays open with your number of days and says why.",
       "Extend trial isn't offered for an active, past-due or cancelled studio, or for a studio with no subscription, because a new trial date wouldn't give any of them access back. A past-due studio gets access back when its overdue payment is paid; any of them when you record a cash payment with Activate, which also creates the missing subscription for a studio that has none. If a studio's status changed after you opened the page, TattooOS refuses the extension and says so.",
@@ -2198,6 +2209,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Cancel subscription\".",
     ],
     tips: [
+      "Once the cancellation is confirmed, a green receipt names the studio, with the time (UTC) and a link to the entry in the audit log. It stays until you dismiss it.",
       "What you confirm is what happens. If anything changed while the review was open (for example a new month of a yearly plan started, or the studio's status moved), nothing is cancelled: the review shows the new consequence, keeps your choices, and you confirm again.",
       "The cancellation can't be reversed, and a refund can't be recalled once it's sent to Stripe. To come back, the studio subscribes again.",
       "If a refund then fails, it appears under \"Failed refunds\" on the dashboard and under \"Recent refunds\" on the studio's page.",
@@ -2252,7 +2264,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Generate\".",
       "From the list, copy, deactivate, reactivate, or delete existing codes; search or filter by Active/Inactive.",
     ],
-    tips: ["Each studio can only have one active code at a time — generating a new one automatically deactivates its old one."],
+    tips: [
+      "Generating, deactivating, reactivating or deleting a code leaves a green receipt at the top of the list until you dismiss it (a deleted code's receipt outlives its row), with a link to the entry in the audit log. If it fails, the message says why.",
+      "Each studio can only have one active code at a time — generating a new one automatically deactivates its old one."],
     warnings: ["Deleting a code with zero redemptions cannot be undone. A code that has already been redeemed can't be deleted at all, only deactivated."],
   },
   {
@@ -2268,7 +2282,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Generate Report\" to trigger a new one immediately (60-second cooldown after each trigger).",
       "Scroll down to the \"Plan usage report\" table to see each studio's usage against their plan's limits.",
     ],
-    tips: ["Reports contain no studio names or personal data — they're aggregated platform-wide. New reports also generate automatically on the 1st of every month."],
+    tips: [
+      "Queuing a report leaves a green receipt with a link to its entry in the audit log. If queuing fails, the message gives the server's reason.",
+      "Reports contain no studio names or personal data — they're aggregated platform-wide. New reports also generate automatically on the 1st of every month."],
   },
   {
     id: "admin-feedback",
@@ -2284,6 +2300,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click a feedback card to expand it and read the full message.",
       "Optionally write an internal note (only visible to you, not the sender).",
       "Click a status button to mark it Open, Reviewing, Resolved, or Dismissed.",
+      "Changing a report's status leaves a green receipt at the top of the list, with a link to the audit log. The receipt never shows your internal note. If it fails, your note and choice stay as they were and the message says why.",
     ],
   },
   {
@@ -2331,7 +2348,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click the arrow at the start of a row for its details: the full target, studio and actor ids, and the details recorded with the action. From there, \"Only this actor's actions\" or \"Only this studio\" narrows the log to them.",
       "With more than 50 entries, use \"Older\" and \"Newer\" below the table. Your filters stay as they are.",
     ],
-    tips: ["Times are in UTC. The From and To dates are whole UTC days, both included, so To = 14 Nov covers all of 14 Nov.", "The filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. Only ids, dates and the named choices go in the address, never a name.", "Entries never store names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data. The studio's name and a staff actor's name are looked up when you view the log, so they show the current name: someone renamed since appears under their new name. A client is never named here, only \"Client\" and an id. The name is the first name on the person's account, so \"No name on file\" means the account has none.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled.", "Changing a feedback report's status or internal note is recorded as Feedback.StatusUpdated under that report's studio. The details say whether the internal note changed, never what it says. A deleted plan's entry keeps the plan's name, since the plan itself is gone."],
+    tips: [
+      "The receipts on the admin pages link here, filtered to that action (and to the studio, when there is one).",
+      "Times are in UTC. The From and To dates are whole UTC days, both included, so To = 14 Nov covers all of 14 Nov.", "The filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. Only ids, dates and the named choices go in the address, never a name.", "Entries never store names, emails, or free text — only IDs, roles, and structural values, so this log is safe to reference without exposing personal data. The studio's name and a staff actor's name are looked up when you view the log, so they show the current name: someone renamed since appears under their new name. A client is never named here, only \"Client\" and an id. The name is the first name on the person's account, so \"No name on file\" means the account has none.", "An impersonation session's own actions show as actor role \"admin-impersonating\" — distinguishable from a normal admin action even though the actor id is the same real admin.", "Running a Data maintenance backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target \"Platform\") named Platform.BilledAmountsBackfilled or Platform.RevenueLedgerBackfilled.", "Changing a feedback report's status or internal note is recorded as Feedback.StatusUpdated under that report's studio. The details say whether the internal note changed, never what it says. A deleted plan's entry keeps the plan's name, since the plan itself is gone."],
     relatedArticleIds: ["admin-impersonation"],
   },
   {
@@ -2368,7 +2387,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "File a report about a serious issue with an artist or studio — scam, sexual misconduct, unsafe hygiene practices, harassment, discrimination, or poor service — reviewed by our platform team, not shown publicly.",
     steps: [
       "Go to the studio's page (/s/{slug}) or the artist's page (/artist/{slug}) and scroll below Reviews to \"Report this artist\" / \"Report this studio\".",
-      "Pick a category and the appointment your report relates to.",
+      "Pick a category and the appointment your report relates to. Each appointment is listed by its date on the studio's calendar, so it matches the studio's records even if you're in another time zone.",
       "Describe what happened in your own words (minimum 20 characters), and optionally attach up to 3 screenshots or short video clips as evidence.",
       "Click \"Submit Report\".",
     ],
@@ -2419,6 +2438,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Filter by status and/or category.",
       "Click a report card to expand it and read the full description, including the reporter's identity.",
       "Click a status button to mark it Open, Reviewing, Resolved, or Dismissed — admin status controls are never locked, unlike an owner's on a High-severity report.",
+      "Changing a report's status leaves a green receipt at the top of the list, with a link to its entry in the audit log. If it fails, the message gives the server's reason.",
     ],
   },
 ];
@@ -2442,14 +2462,14 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: "faq-trial-length",
     roles: [Owner],
     question: "How long is the free trial, and what happens when it ends?",
-    answer: "New studios get a 14-day full-featured trial with no credit card required. After the trial ends, you get a 7-day read-only grace period, and if you still haven't subscribed after that, your studio is suspended until you do.",
+    answer: "New studios get a 14-day full-featured trial with no credit card required. After the trial ends, you get a 7-day read-only grace period, and if you still haven't subscribed after that, your subscription is cancelled and access stops until you subscribe. That isn't a suspension: only a platform admin suspends a studio, and they do it by hand.",
     relatedArticleIds: ["owner-billing", "owner-subscribe"],
   },
   {
     id: "faq-grace-period",
     roles: [Owner],
     question: "What is the 7-day grace period, and what can I do during it?",
-    answer: "The 7-day grace period starts right after your trial ends. During it, you can still view everything in the app, but you can't make changes (no new bookings, no edits) until you subscribe. A banner reminds you the whole time.",
+    answer: "The 7-day grace period starts right after your trial ends. During it, you can still view everything in the app, but you can't make changes (no new bookings, no edits) until you subscribe. A banner reminds you the whole time. When the grace period ends, the subscription is cancelled and access stops until you subscribe.",
     relatedArticleIds: ["owner-billing"],
   },
   {

@@ -104,7 +104,7 @@ function ItemRow({ item, kind, generatedAt }: { item: UnsettledPaymentItem; kind
     <li className="px-4 py-2.5">
       <Link
         to={`/payments/${item.appointmentId}`}
-        className="block space-y-0.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="block space-y-0.5 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="unsettled-item"
       >
         <span className="flex flex-wrap items-baseline justify-between gap-x-3">

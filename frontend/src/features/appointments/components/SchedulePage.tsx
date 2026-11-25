@@ -133,8 +133,11 @@ export function SchedulePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Wraps on phones: at 390 px the one-row header pushed "Next week", Today and Export 244 px off-screen. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 py-3 border-b bg-background sticky top-0 z-10">
+      {/* Wraps on phones: at 390 px the one-row header pushed "Next week", Today and Export 244 px off-screen.
+          Not sticky on a short viewport (short-viewport, max-height 30rem; see index.css): wrapped, it is 137px
+          tall, and at 400% zoom (320x256) it plus the layout header left 63px of the viewport, hiding focused
+          session actions under it (WCAG 2.4.11). A portrait phone has the height, so it stays pinned there. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 py-3 border-b bg-background sticky short-viewport:relative top-0 z-10">
         <div className="flex items-center gap-2">
           <PenLine className="h-5 w-5" />
           <span className="font-semibold tracking-tight">Schedule</span>

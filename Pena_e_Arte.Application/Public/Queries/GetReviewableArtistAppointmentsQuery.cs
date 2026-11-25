@@ -35,7 +35,10 @@ public class GetReviewableArtistAppointmentsHandler(IAppDbContext db)
             .Where(x => !db.Reviews.Any(r => r.AppointmentId == x.Appointment.Id && r.ArtistId == artist.Id))
             .OrderByDescending(x => x.Appointment.Date)
             .Select(x => new ReviewableAppointmentResponse(
-                x.Appointment.Id, x.Appointment.Date, x.Appointment.DurationMinutes))
+                x.Appointment.Id, x.Appointment.Date, x.Appointment.DurationMinutes,
+                // S01: the zone of the appointment's own studio. Studio carries no query filter, so this read
+                // needs no IgnoreQueryFilters.
+                db.Studios.Where(s => s.Id == x.Appointment.StudioId).Select(s => s.Timezone).FirstOrDefault()))
             .ToListAsync(ct);
     }
 }

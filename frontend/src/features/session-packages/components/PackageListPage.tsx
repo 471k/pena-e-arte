@@ -148,7 +148,7 @@ export function PackageListPage() {
               type="button"
               aria-label={`${pkg.name} is ${pkg.isActive ? "Active" : "Inactive"}. ${pkg.isActive ? "Deactivate" : "Activate"}`}
               onClick={() => toggleActive(pkg.id, pkg)}
-              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Badge variant="outline" className={cnActive(pkg.isActive)}>
                 {pkg.isActive ? "Active" : "Inactive"}

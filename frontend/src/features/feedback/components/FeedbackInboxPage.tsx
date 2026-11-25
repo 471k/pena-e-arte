@@ -15,6 +15,9 @@ import {
 import { FEEDBACK_TYPE, FEEDBACK_STATUS } from "../feedback.types";
 import type { FeedbackReportResponse, FeedbackType, FeedbackStatus } from "../feedback.types";
 import { SupportTicketThread } from "./SupportTicketThread";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { ActionReceiptArea } from "@/features/platform/components/ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, useReportReceipt } from "@/features/platform/components/receipts";
 
 const STATUS_FILTERS = ["all", ...Object.values(FEEDBACK_STATUS)] as const;
 
@@ -70,14 +73,18 @@ function FeedbackCard({ report }: FeedbackCardProps) {
   const [adminNote, setAdminNote] = useState(report.adminNote ?? "");
   const [pendingStatus, setPendingStatus] = useState<FeedbackStatus | null>(null);
   const [updateStatus, { isLoading }] = useUpdateFeedbackStatusMutation();
+  // D04: the receipt goes to the page; a report can leave the current view once its status changes.
+  const reportReceipt = useReportReceipt();
 
   async function handleStatusClick(status: FeedbackStatus) {
     setPendingStatus(status);
     try {
       await updateStatus({ id: report.id, status, adminNote: adminNote.trim() || null }).unwrap();
-      toast.success("Updated.");
-    } catch {
-      toast.error("Failed to update.");
+      // Never the note's text: it is internal, and a receipt is read in more places than the note (#371, #435).
+      reportReceipt(makeReceipt(`Feedback from ${report.studioName} is now ${status}.`, AUDIT_ACTIONS.feedbackStatusUpdated));
+    } catch (err) {
+      // The status choice and the internal note both stay as typed (D04).
+      toast.error(extractErrorMessage(err, "Failed to update."));
     } finally {
       setPendingStatus(null);
     }
@@ -302,9 +309,11 @@ export function FeedbackInboxPage() {
           </div>
         )}
 
-        {!isLoading && !isError && reports?.map((report) => (
-          <FeedbackCard key={report.id} report={report} />
-        ))}
+        <ActionReceiptArea>
+          {!isLoading && !isError && reports?.map((report) => (
+            <FeedbackCard key={report.id} report={report} />
+          ))}
+        </ActionReceiptArea>
 
       </main>
     </div>

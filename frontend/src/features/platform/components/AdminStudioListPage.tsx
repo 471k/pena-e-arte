@@ -34,6 +34,9 @@ import type { PlatformSubscriptionResponse } from "@/features/platform/platform.
 import { useGetAdminPlansQuery } from "@/features/billing/billingApi";
 import type { PlanResponse } from "@/features/billing/billing.types";
 import { ActivationReceiptNotice, CashActivationForm, type ActivationReceipt } from "./CashActivationForm";
+import { ActionReceiptArea } from "./ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, useReportReceipt } from "./receipts";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { CancelSubscriptionReview } from "./CancelSubscriptionReview";
 import { ExtendTrialReview } from "./ExtendTrialReview";
 import { CASH_ACTIVATABLE, TRIAL_EXTENDABLE, knowSubscriptionStatus, type SubscriptionKnowledge } from "./subscriptionKnowledge";
@@ -159,6 +162,8 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
   const canCancel      = subKnown && CANCELLABLE.has(subStatus);
   const anyExpanded    = extending || activating || confirming || confirmPlatform !== null;
 
+  // D04: the receipt goes to the page, because the row can leave a filtered list after the action.
+  const reportReceipt = useReportReceipt();
   const trialDate    = sub?.trialExpiresAt ?? studio.trialExpiresAt;
   const trialExpired = new Date(trialDate) < new Date();
 
@@ -166,9 +171,11 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
     try {
       if (confirmPlatform === "suspend")   await suspend(studio.id).unwrap();
       if (confirmPlatform === "unsuspend") await unsuspend(studio.id).unwrap();
-      toast.success(confirmPlatform === "suspend" ? "Studio suspended" : "Studio reinstated");
-    } catch {
-      toast.error(confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio");
+      reportReceipt(confirmPlatform === "suspend"
+        ? makeReceipt(`${studio.name} is suspended.`, AUDIT_ACTIONS.studioSuspended, studio.id)
+        : makeReceipt(`${studio.name} is reinstated.`, AUDIT_ACTIONS.studioUnsuspended, studio.id));
+    } catch (err) {
+      toast.error(extractErrorMessage(err, confirmPlatform === "suspend" ? "Failed to suspend studio" : "Failed to reinstate studio"));
     } finally {
       setConfirmPlatform(null);
     }
@@ -343,7 +350,7 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
             idSuffix={studio.id}
             status={subStatus}
             currentTrialEnd={trialDate ?? null}
-            onDone={() => setExtending(false)}
+            onDone={(r) => { setExtending(false); reportReceipt(r); }}
             onBack={() => setExtending(false)}
           />
         )}
@@ -372,7 +379,7 @@ function StudioRow({ studio, sub, plans, listSearch, onOpen, knowledge, subsChec
             studioId={studio.id}
             studioName={studio.name}
             idSuffix={studio.id}
-            onDone={() => setConfirming(false)}
+            onDone={(r) => { setConfirming(false); reportReceipt(r); }}
             onBack={() => setConfirming(false)}
           />
         )}
@@ -635,6 +642,7 @@ export function AdminStudioListPage() {
         )}
 
         <div ref={listRef} className="space-y-4">
+          <ActionReceiptArea>
           {!isLoading && !studiosError && groups.map((group) => (
             <div key={group.status} className="space-y-3">
               {groups.length > 1 && (
@@ -667,6 +675,7 @@ export function AdminStudioListPage() {
               ))}
             </div>
           ))}
+          </ActionReceiptArea>
         </div>
 
         {!isLoading && !studiosError && totalPages > 1 && (

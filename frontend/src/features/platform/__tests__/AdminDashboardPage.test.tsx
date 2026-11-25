@@ -479,3 +479,25 @@ describe("AdminDashboardPage", () => {
     expect(link).toHaveAttribute("href", "/platform/studios?focus=s1");
   });
 });
+
+describe("D04: the at-risk row's receipt", () => {
+  it("extending a grace-period studio leaves a receipt that stays after the studio leaves the at-risk list", async () => {
+    let extended = false;
+    server.use(
+      http.patch("http://localhost/api/v1/platform/subscriptions/:studioId/trial", () => { extended = true; return HttpResponse.json({}); }),
+      // After the extension the studio is Trialing again, so the at-risk list no longer holds it.
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json(extended ? SUBSCRIPTIONS.map((s) => s.studioId === "s1" ? { ...s, status: "Trialing" } : s) : SUBSCRIPTIONS)),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    const row = (await screen.findByText("GracePeriod Studio")).closest(".border-b") as HTMLElement;
+    await user.click(within(row).getByRole("button", { name: /extend trial/i }));
+    await user.click(within(row).getByRole("button", { name: /^extend trial$/i }));
+    const receipt = (await screen.findByText(/trial extended by 7 days for gracePeriod studio/i)).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=s1&action=Studio.TrialExtended");
+    await waitFor(() => expect(screen.queryByText("GracePeriod Studio")).not.toBeInTheDocument());
+    expect(screen.getByText(/trial extended by 7 days for gracePeriod studio/i)).toBeInTheDocument();
+  });
+});

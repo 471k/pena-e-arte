@@ -13,7 +13,7 @@ export function BrandMark() {
     <Link
       to="/discover"
       aria-label="TattooOS — Discover studios"
-      className="flex items-center gap-2 focus-visible:outline-none
+      className="flex items-center gap-2 focus-visible:outline-hidden
                  focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
                  rounded-sm"
     >
@@ -100,7 +100,7 @@ export function AuthenticatedNav({ user, role }: AuthenticatedNavProps) {
         className="h-8 w-8 rounded-full bg-violet-600/20 border border-violet-500/40
                    text-violet-800 dark:text-violet-300 text-xs font-semibold flex items-center justify-center
                    hover:bg-violet-600/30 transition-colors
-                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                   focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
         {initials}
       </button>
@@ -165,6 +165,10 @@ export function AuthenticatedNav({ user, role }: AuthenticatedNavProps) {
 // ── PublicPageHeader ────────────────────────────────────────────────────────────
 // Self-contained sticky header for public portfolio pages (StudioPortfolioPage,
 // ArtistPortfolioPage). Reads auth state from Redux internally — no props needed.
+// Not sticky on a short viewport (short-viewport, max-height 30rem; see index.css), like Discover's: at 400%
+// zoom (320x256) it and the quick-book bar left a
+// 114px band, shorter than a 138px portfolio tile, so a focused tile could never be fully visible (WCAG 2.4.11).
+// The quick-book bar stays pinned: it is the booking path.
 
 export function PublicPageHeader() {
   const token = useAppSelector((s) => s.auth.token);
@@ -173,7 +177,7 @@ export function PublicPageHeader() {
 
   return (
     <header
-      className="sticky top-0 z-[100] border-b bg-background/95 backdrop-blur-sm"
+      className="sticky short-viewport:relative top-0 z-[100] border-b bg-background/95 backdrop-blur-sm"
       aria-label="Site header"
     >
       <div className="flex items-center justify-between px-4 py-2.5">
@@ -213,7 +217,7 @@ export function PublicPageHeader() {
                            bg-violet-500/5
                            hover:bg-violet-500/15 hover:text-violet-800 dark:hover:text-violet-300
                            transition-colors
-                           focus-visible:outline-none focus-visible:ring-2
+                           focus-visible:outline-hidden focus-visible:ring-2
                            focus-visible:ring-violet-500"
               >
                 Register studio

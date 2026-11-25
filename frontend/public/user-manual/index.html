@@ -692,7 +692,7 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <div class="callout callout-tip"><strong>Tip:</strong> the studio owner can reply publicly to any review directly from this same page when signed in.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> "Get Directions" opens Google Maps in a new tab — on a phone, this hands off straight to the Google Maps app if it's installed.</div>
-<div class="callout callout-tip"><strong>Reviews aren't one-and-done:</strong> you can leave a new review every time you have a completed appointment at a studio — it's not capped to one review per client, ever. Pick which visit you're reviewing if you have more than one eligible one.</div>
+<div class="callout callout-tip"><strong>Reviews aren't one-and-done:</strong> you can leave a new review every time you have a completed appointment at a studio — it's not capped to one review per client, ever. Pick which visit you're reviewing if you have more than one eligible one. Each visit is listed by its date on the studio's calendar, so it matches the studio's records even if you're in another time zone.</div>
 <div class="crosslinks">See also: <a href="#guest-artist-portfolio">Artist profile page</a>, <a href="#client-book">Book an appointment</a></div>
 </section>
 
@@ -1583,7 +1583,7 @@ ol.steps li { margin: 6px 0; }
 <ol class="steps">
 <li>Click <span class="step-title">Report this artist</span> / <span class="step-title">Report this studio</span> below the Reviews section.</li>
 <li>Pick a <span class="step-title">Category</span> — a small amber dot marks the five categories that are escalated immediately.</li>
-<li>Pick <span class="step-title">Which visit does this relate to?</span> — every real appointment you have there is listed, whatever its status.</li>
+<li>Pick <span class="step-title">Which visit does this relate to?</span> — every real appointment you have there is listed, whatever its status, by its date on the studio's calendar (so it matches the studio's records even if you're in another time zone).</li>
 <li>Describe <span class="step-title">What happened?</span> in at least 20 characters, and optionally attach up to 3 screenshots or short video clips as evidence.</li>
 <li>Click <span class="step-title">Submit Report</span>.</li>
 </ol>
@@ -3313,7 +3313,7 @@ ol.steps li { margin: 6px 0; }
 <h3>Steps</h3>
 <ol class="steps">
 <li>Click <span class="step-title">New schedule</span>, pick an artist, a fixed amount, weekly or monthly, and a first charge date.</li>
-<li>Charges appear automatically as they come due — no action needed to create them.</li>
+<li>Charges appear automatically as they come due — no action needed to create them. Charge dates are calendar dates, not times, so they show the same day wherever you or the artist view them from.</li>
 <li>Once you've collected the rent yourself (cash, transfer, etc.), click <span class="step-title">Mark settled</span> on that charge.</li>
 </ol>
 <div class="callout callout-warn"><strong>Note:</strong> this never charges anyone's card — it's a bookkeeping record only.</div>
@@ -3992,6 +3992,7 @@ ol.steps li { margin: 6px 0; }
 <li>"Discounts this month" sums referral discounts and credits actually applied to paid invoices — it doesn't reduce MRR (MRR is contracted revenue).</li>
 </ul>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> extending a trial from At-Risk Studios leaves a green receipt above the list that stays until you dismiss it, even once the studio has left the list, with a link to its entry in the audit log.</div>
 </section>
 
 <section id="admin-studios" data-role="admin">
@@ -4027,6 +4028,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-warn"><strong>Warning:</strong> suspending a studio makes it inaccessible to its own clients and staff immediately — use only for policy violations or non-payment beyond the grace period. It also pauses the studio's card billing; the period already paid isn't refunded, and reactivating resumes billing at the next renewal date rather than crediting the suspended time back.</div>
 <div class="callout callout-tip"><strong>Shareable:</strong> the status and plan filters and the page are in the page's address, so reloading, going back, or sending the link to another admin opens the same view. The search box isn't: what you type can be a person's name, so it never goes in an address and is cleared when you reload.</div>
 <div class="crosslinks">See also: <a href="#admin-studio-detail">Studio detail</a>, <a href="#admin-subscriptions">Subscription oversight</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-studio-detail" data-role="admin">
@@ -4059,6 +4061,7 @@ ol.steps li { margin: 6px 0; }
 <li>Use the <span class="step-title">Referral codes</span> card to generate, deactivate, reactivate, or delete this studio's referral code without leaving the page.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-referrals">Manage platform referral codes</a>, <a href="#admin-impersonation">Impersonate a studio</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-impersonation" data-role="admin">
@@ -4085,7 +4088,7 @@ ol.steps li { margin: 6px 0; }
 <li>You start on the studio's schedule and can look at its appointments, artists, clients and settings. The banner shows <span class="step-title">Viewing as {studio}</span>, a <span class="step-title">Read-only</span> label, the reason you gave, and the time left. Screen readers hear the time left only at 10, 5 and 1 minutes and at expiry. A second tab shows "Reason: not available in this tab"; the reason is still on the session.</li>
 <li>Pages whose only job is to change something (new artist, client, design, service or deposit rule, booking, the intake form builder) show a short read-only note instead of the form.</li>
 <li>On the pages you can open, buttons that would change something (confirm, cancel or reschedule an appointment, edit or archive a client, edit or delete an artist or a deposit rule, every Save in Studio Settings) stay visible but turned off; hover over one, or move to it with the Tab key, and it says it's a read-only support session. Reading still works: tabs, filters and the schedule's dates.</li>
-<li>Click <span class="step-title">End session</span> in the banner when finished, or let it run out — either way you're returned to your own admin session.</li>
+<li>Click <span class="step-title">End session</span> in the banner when finished, or let it run out — either way you're returned to your own admin session. Ending it takes you to that studio's page with a green receipt linking its entry in the audit log. If the server can't record the end, you still get your own session back and the message says why. While a session runs, the banner is its record: the studio, your reason and the time left.</li>
 </ol>
 <div class="callout callout-warn"><strong>Read-only:</strong> every write action is blocked during a session — no appointment, client, artist, or settings change can be made while impersonating, full stop.</div>
 <div class="callout callout-warn"><strong>Hidden data:</strong> client medical/PII (profile, tattoo records, intake and consent forms) and every financial surface (payments, billing, revenue reports) stay completely inaccessible for the whole session, even to view.</div>
@@ -4149,6 +4152,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-warning"><strong>Note:</strong> Free, Starter, Growth and Premium are reset from code on every deploy. To change one, create a new plan instead of editing it. Retired plans (like Pro) show a Retired badge and can't be bought.</div>
 <div class="callout callout-warning"><strong>Note:</strong> a price that studios are subscribed to can't be changed or deleted until every subscriber on it has been billing-amount-snapshotted (this happens automatically as each one's subscription is created, checked out, or updated). Once snapshotted, the price can be changed — existing subscribers keep their own billed price (grandfathered), and only new sign-ups see the new amount. A linked Stripe price must match the amount and billing interval exactly.</div>
 <div class="crosslinks">See also: <a href="#owner-subscribe">Owner: choose / change plan</a>, <a href="#ref-subscription-plans">Subscription plans</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-subscriptions" data-role="admin">
@@ -4181,6 +4185,7 @@ ol.steps li { margin: 6px 0; }
 </ol>
 <p><strong>Good to know:</strong> Step 1 lists any cash-billed studios it assumed pay their plan's monthly price — check those are right. Step 2 only seeds subscriptions that are active now, so a month before a since-cancelled subscription can read lower than the old estimate.</p>
 <div class="crosslinks">See also: <a href="#admin-studios">Studio list</a>, <a href="#admin-dashboard">Platform overview</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-referrals" data-role="admin">
@@ -4208,6 +4213,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">Delete</span> a code permanently — only allowed if it has zero redemptions.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-referral">Owner: referral programme</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-reports" data-role="admin">
@@ -4231,6 +4237,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click <span class="step-title">Generate Report</span> to queue an out-of-cycle report immediately (60-second cooldown between triggers).</li>
 </ol>
 <div class="crosslinks">See also: <a href="#admin-dashboard">Platform overview</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-feedback" data-role="admin">
@@ -4261,6 +4268,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#admin-dashboard">Platform overview</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> a status change leaves a green receipt at the top of the list with a link to the audit log. It never shows your internal note. If it fails, your note and choice stay as they were and the message says why.</div>
 </section>
 
 <section id="admin-conduct-reports" data-role="admin">
@@ -4289,6 +4297,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click a status button (<span class="step-title">Open</span> / <span class="step-title">Reviewing</span> / <span class="step-title">Resolved</span> / <span class="step-title">Dismissed</span>) to update it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-conduct-reports">Owner: conduct reports</a>, <a href="#admin-feedback">Feedback inbox</a></div>
+<div class="callout callout-tip"><strong>Receipts:</strong> each action on this page leaves a green receipt that stays until you dismiss it: what changed, the time (UTC), and a link to its entry in the audit log. If an action fails, the message gives the server's reason, and anything you typed is kept.</div>
 </section>
 
 <section id="admin-help-insights" data-role="admin">
@@ -4366,6 +4375,7 @@ ol.steps li { margin: 6px 0; }
 <div class="callout callout-tip"><strong>Tip:</strong> entries never store names, emails, or free text — only IDs, roles, and structural values. The studio's name and a staff actor's name are looked up when you view the log, so they show the current name: someone renamed since appears under their new name. A client is never named here, only "Client" and an id. The name is the first name on the person's account, so "No name on file" means the account has none.</div>
 <div class="callout callout-tip"><strong>Tip:</strong> running a <span class="step-title">Data maintenance</span> backfill on the Subscriptions page is recorded here too, as a platform-wide entry (target "Platform") named <code>Platform.BilledAmountsBackfilled</code> or <code>Platform.RevenueLedgerBackfilled</code>.</div>
 <div class="crosslinks">See also: <a href="#owner-studio-profile">Owner: studio profile (Recent studio activity)</a>, <a href="#admin-impersonation">Impersonate a studio</a></div>
+<div class="callout callout-tip"><strong>From a receipt:</strong> the green receipts on the admin pages link here, filtered to that action (and to the studio, when there is one).</div>
 </section>
 
 <section id="ref-design-statuses" data-role="reference">
@@ -4461,7 +4471,7 @@ ol.steps li { margin: 6px 0; }
 <li><span class="step-title">How do I get a client account without a studio?</span> Sign up directly at <a href="#guest-register-client">client sign up</a> without following a studio's link — you'll pick a studio afterward via Discover.</li>
 <li><span class="step-title">What's the difference between an intake form and a consent form?</span> Intake forms capture medical/health history; consent forms are a legal digital signature acknowledging the tattoo procedure's risks, generated as a PDF.</li>
 <li><span class="step-title">Can artists see each other's clients?</span> Yes, within the same studio — client, design, and schedule data is shared studio-wide among artists and owners.</li>
-<li><span class="step-title">What happens when a studio's trial ends without subscribing?</span> It enters a Grace Period (read-only), then risks losing access entirely if not resolved — see <a href="#ref-subscription-plans">Subscription plans</a>.</li>
+<li><span class="step-title">What happens when a studio's trial ends without subscribing?</span> It enters a 7-day Grace Period (read-only). When that ends, the subscription is cancelled and the studio loses access until it subscribes. That is not a suspension, which only a platform admin does, by hand. See <a href="#ref-subscription-plans">Subscription plans</a>.</li>
 <li><span class="step-title">Why does a banner say changes can't be saved right now?</span> (Artists and clients.) The studio's subscription needs attention, so the app won't save new bookings or edits for now. Only the studio owner can fix it; owners see the studio's own message with a <span class="step-title">Manage subscription</span> link to <a href="#owner-billing">Billing</a>, while artists and clients get a short explanation and no link, since Billing is for owners. Clients who need to book or change an appointment meanwhile should contact the studio directly.</li>
 <li><span class="step-title">Who can suspend a studio?</span> Only the platform team (Admin role) — see <a href="#admin-studios">Studio list</a>. This is separate from billing status.</li>
 <li><span class="step-title">How do referral codes work?</span> A studio shares a link; a new studio that registers with that code gets a free month once it subscribes. See <a href="#owner-referral">Referral programme</a>.</li>

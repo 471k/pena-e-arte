@@ -7297,7 +7297,10 @@ docs/03's rule that ornamental lettering is for the wordmark only. Spec:
   propagate. In Tailwind v4 it reaches only the bare `rounded` utility (42 uses) and the toasts. The ~320
   `rounded-sm/-md/-lg/-xl` uses read `--radius-*`, so those are set to 3px too. `rounded-xs` stays 2px for
   nested corners, and `rounded-full` is unchanged.
-  **This is our mapping and a known divergence from the prototype.** It is not "radius 3px per docs/03".
+  ~~**This is our mapping and a known divergence from the prototype.** It is not "radius 3px per docs/03".~~
+  **Corrected 24 Nov: the app conforms, and this is not a divergence.** `docs/03`'s only radius line is
+  "Radius baseline: 3px", and the package calls its visual sample a reference, not a specification. The
+  prototype reading below is kept as the record of why it was once framed otherwise; don't reintroduce it.
   The four-role CSS uses `border-radius` exactly twice, both `var(--ah-radius)`: on buttons and on
   inputs/selects/textareas. Panels (cards), badges, dialogs, notices, receipts and message bubbles have
   **no radius at all**, so the prototype is square-cornered with 3px on two control types. We chose 3px
@@ -8036,6 +8039,125 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
 - **Proven by the count, measured the same way before and after** (Playwright Chromium, owner `/clients` at 1280,
   first Tab from the top of the document): `main` reached the first page control on **Tab 24 (23 stops before
   it)**. With the link it is **Tab, Enter, Tab (1 stop before it)**.
+
+## Grace period: the write gate is TenantMiddleware, and it is already right (a premise corrected three times) — 2026-11-24
+
+- **GracePeriod** is reached only from `TrialExpiryJob`, guarded on `Trialing`. It is the read-only window after a
+  trial for a studio that has **never paid**. A failed payment produces `PastDue`, from the Stripe webhook handlers.
+- **The write gate is `TenantMiddleware.EnforceAsync`.** In GracePeriod it refuses `WriteMethods` with a
+  `SubscriptionRequiredException`, which `ExceptionMiddleware` maps to 402. `TenantMiddlewareTests`'s grace-period
+  POST/PUT/DELETE tests are the regression guard.
+- **`SubscriptionAccessService.IsPassThrough` is a caching predicate, not the gate.** Leave GracePeriod in it:
+  removing it would stop caching a pass-through state and cost a database read per request for every studio in grace.
+- **Phi's answer (24 Nov decision form): keep the lock.** Server, UI (#444's `READ_ONLY_STATUSES`), the dashboard
+  banner and Help agree. No code changed. The only correction was Help's trial FAQ, which said the studio is
+  "suspended" afterwards: `GracePeriodEndJob` sets `Cancelled` and never touches `Studio.IsActive`. Suspension is a
+  separate state that only an admin sets, by hand.
+
+## Corner radius: the flat 3px scale stays (Phi, 24 Nov) — 2026-11-24
+
+- Phi's answer on the decision form: leave it. The 3px mapping from slice 5 stands as recorded there. Do not reopen
+  `--radius*` in `index.css` without a new decision.
+
+## D04 in full: every admin action leaves a receipt and shows the server's reason (Phi, 24 Nov) — 2026-11-24
+
+- **Phi's answer on the decision form: build it in full.** That means bound errors *and* receipts for the 19 admin
+  actions beyond cash activation, rather than the cheaper middle option.
+- **One implementation.** `platform/components/ActionReceipt.tsx` (the `ActionReceiptNotice` and `ActionReceiptArea`
+  components) and `receipts.ts` (types, `auditLogHref`, `makeReceipt`, the hooks, and `AUDIT_ACTIONS`). Cash activation's
+  notice now renders through it too. A receipt names the entity and its resulting state, gives the UTC time, and
+  links `/platform/audit-log?studioId=…&action=…`. It stays until dismissed.
+- **`AUDIT_ACTIONS` is pinned to `AuditActions.cs`** by a test that reads the C# file. A drifted name would link to
+  an empty audit log, which reads as "nothing was recorded".
+- **Where the receipt lives depends on whether its row can disappear.**
+  - Page-level (`ActionReceiptArea` and `useReportReceipt`) where a row can leave the list: an at-risk studio that
+    goes back to Trialing, a filtered row, a deleted code.
+  - Router state where the page navigates away: a saved plan lands on the plan list, and an ended support session
+    lands on the studio's page.
+  - Outside an area, the hook falls back to a toast rather than dropping the receipt.
+- **Starting a support session has no receipt.** It navigates into the support view, where the persistent banner
+  (studio, reason, time left) is the durable record. Ending one has a receipt. When the server can't record the end,
+  the admin still gets their own session back and is told why, and no receipt claims it ended.
+- **Errors:** each formerly bare `catch {` now passes the server's message through `extractErrorMessage`, with the
+  old sentence as the fallback. `describeLoadError` is for failed reads, so it isn't used for actions. Typed input
+  survives a failure. **The feedback receipt never includes the internal note's text** (the same field as the #371
+  leak).
+
+## The visit pickers carry their studio's zone; booth rent's dates are left alone (S01's tail) — 2026-11-24
+
+- **The two "which visit" pickers now name the studio's day.** `ReviewableAppointmentResponse` and
+  `ReportableAppointmentResponse` gained `StudioTimezone`, read per row from the appointment's own studio (a
+  correlated subquery: `Studio` has no query filter, so no `IgnoreQueryFilters` was added). The review form and the
+  conduct-report dialog format through `shared/utils/visitDate.ts`, which calls `formatStudioTime`; a null zone
+  reads "Time unavailable", never the viewer's zone. A client in another zone could otherwise be shown the wrong day
+  and pick the wrong visit. Pinned by a MySQL integration test (`VisitPickerStudioZoneIntegrationTests`) because the
+  in-memory double would accept a projection MySQL could not translate.
+- **Booth rent: the question asked was whether anything reconciles, groups or reports booth-rent charges by a
+  studio-calendar period. The answer is no.** Read at `e98f433c`: `BoothRentChargeJob` writes the row,
+  `GetBoothRentChargesHandler` only sorts by `ChargedDate`, `MarkBoothRentChargeSettledCommand` finds a charge by id,
+  and `StudioCurrencyLock` only asks whether any charge exists. No export, ledger, earnings figure or report reads
+  booth-rent charges. So the money clause of the rule does not apply, and **`BoothRentManagementPage.tsx` and
+  `MyBoothRentSection.tsx` were not changed**. S01 stays Partial on that one row.
+- **What the reading found instead: these dates are date-only.** The owner sets the first charge with a
+  `type="date"` input, sent as `new Date("YYYY-MM-DD").toISOString()`, which is UTC midnight. Both commands copy it
+  unchanged, and the job advances it by whole days (`AddDays(7)`) or months (`AddMonths(1)`), so every
+  `NextChargeDate` and `ChargedDate` the UI can produce is UTC midnight of a date the owner picked. That is the rule's
+  third kind, and the matching formatter is `formatDateOnly`. **The studio zone would have been wrong too:** in any
+  studio west of UTC, UTC midnight falls on the previous evening, so it would print the day before for weekly rent,
+  which is exactly the sharp case. Not applied here because the instruction gated any change on the reconciliation
+  answer; it waits for a ruling. One caveat for that ruling: the API does not truncate the value, so a caller other
+  than this form could store a time of day.
+
+## Booth-rent dates are date-only; a studio-zone treatment was considered and rejected (S01 closes) — 2026-11-25
+
+Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's dates are left alone").
+
+- **The rule:** `BoothRentSchedule.NextChargeDate` and `BoothRentCharge.ChargedDate` are calendar dates, not
+  instants. Both booth-rent screens (`BoothRentManagementPage.tsx`, `MyBoothRentSection.tsx`) print them through
+  `formatDateOnly` (`shared/utils/studioDay.ts`), which formats in UTC, so the stored date comes out unchanged in
+  every zone. **No zone conversion of any kind:** a date-only value has no zone to convert into.
+- **Why they are date-only:** the owner picks the first charge in a `type="date"` input, sent as
+  `new Date("YYYY-MM-DD").toISOString()` (UTC midnight). The create and update commands copy it unchanged, and
+  `BoothRentChargeJob` advances it by `AddDays(7)` or `AddMonths(1)`, which keeps UTC midnight.
+- **The three backend readers** (read at `e98f433c`): `GetBoothRentChargesHandler` sorts by `ChargedDate`,
+  `MarkBoothRentChargeSettledCommand` finds a charge by id, and `StudioCurrencyLock` only asks whether any charge
+  exists (`AnyAsync`). `BoothRentChargeJob` is the writer. Nothing groups, reconciles, exports or reports booth-rent
+  charges by a studio-calendar period, so no reader depends on which "day" a charge falls on in a zone.
+- **Rejected: formatting in the studio's zone.** This was the first instinct for a money-adjacent date, because
+  appointment times follow the studio's zone. It is wrong here. UTC midnight in any studio WEST of UTC is the previous
+  evening, so the studio zone would print the day before. For weekly rent that is the sharp case: a charge due Monday
+  shown as Sunday. Formatting in the viewer's zone (the old code) fails the same way for any viewer west of UTC. **The
+  next person to look at a money-adjacent date should check first whether it is an instant or a calendar date.** Only
+  an instant has a zone.
+- **Guard:** `features/booth-rent/__tests__/boothRentDates.test.tsx` renders both screens with month-end dates
+  (1 Nov, 1 Dec) and a studio in `America/New_York`, and asserts the stored day and the absence of the day before.
+  The nightly zone sweep runs it at UTC+14 and UTC-11 as well as UTC. Mutation checks: the old viewer-zone formatter
+  fails the UTC-11 leg (UTC+14 cannot see it, since UTC midnight plus 14 hours is the same date), and a studio-zone
+  formatter fails at every runner zone.
+- **Open, specified and not built:** the write path does not truncate, so a non-UI caller could store a time of day
+  and make this assumption false for that row. See `spec-booth-rent-date-only-write-guard-2026-11-25.md`.
+- **S01 is Present** with this and the visit pickers (2026-11-24 entry above).
+
+## `InitialsGlyph`: the initials are decorative, not part of the accessible name — 2026-11-25
+
+- **What it does:** where a person has no photo, their initials are drawn by `InitialsGlyph`
+  (`shared/components/InitialsGlyph.tsx`) as CSS-generated content (`::before { content: attr(data-initials) }`) on
+  an `aria-hidden="true"` span. It is used in the booking form's artist picker (a Radix select option) and in
+  `UserChip`.
+- **Why:** WCAG 2.5.3 Label in Name asks that a control's visible label be part of its accessible name. With the
+  initials as a text node the visible label read "RC Rafaela Costa", so axe flagged the option. The photo the initials
+  stand in for is an `alt=""` image, which is decorative. Drawing the initials gives the fallback the same standing.
+- **Rejected: putting the initials into the accessible name** ("RC Rafaela Costa"). That would satisfy the tool, but a
+  screen-reader user would hear two letters before every artist's name, and nobody says the initials aloud to voice
+  control. That is worse for exactly the people 2.5.3 exists to serve. **This was built for the user, not to get
+  around the tool:** the alternative that pleases the tool is the worse one for the user.
+- **Checked: is the generated content exposed?** Desktop asked because several screen readers announce
+  pseudo-element `content`. In Chromium's **native** accessibility tree (`Accessibility.getFullAXTree` over CDP,
+  25 Nov), a button holding the glyph is named " Rafaela Costa" with no "RC" node, and `innerText` has no "RC". The
+  control case (the same glyph without `aria-hidden`) is named "RC Rafaela Costa" with an exposed "RC" text node, so
+  the probe does see generated content when it is exposed. What hides it is `aria-hidden` on the host: accessible-name
+  computation skips hidden nodes, generated content included. **Firefox and WebKit were not checked** (neither is
+  installed on the probe machine). Keep `aria-hidden="true"` on the host; removing it would expose the letters.
 
 ## Saved booking drafts keep everything but the safety notes (Phi, 24 Nov) — 2026-11-24
 

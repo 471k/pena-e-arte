@@ -271,7 +271,7 @@ describe("MyStudiosPage", () => {
   it("renders a 'Join another' button in the list area when studios exist", async () => {
     renderPage();
     await screen.findByText("Alpha Ink");
-    const joinBtn = screen.getByRole("button", { name: /discover more studios to join/i });
+    const joinBtn = screen.getByRole("button", { name: /^join another studio$/i });
     expect(joinBtn).toBeInTheDocument();
   });
 
@@ -281,7 +281,7 @@ describe("MyStudiosPage", () => {
     );
     renderPage();
     await screen.findByText(/no studios yet/i);
-    expect(screen.queryByRole("button", { name: /discover more studios to join/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^join another studio$/i })).not.toBeInTheDocument();
   });
 
   // ── External link accessibility ───────────────────────────────────────────────

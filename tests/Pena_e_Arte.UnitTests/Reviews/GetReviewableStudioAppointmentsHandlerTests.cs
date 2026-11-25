@@ -131,4 +131,22 @@ public class GetReviewableStudioAppointmentsHandlerTests
 
         result.Should().BeEmpty();
     }
+
+    // S01: the picker names the visit's day on the studio's calendar, so the zone must be the appointment's own
+    // studio's, not a default. Kiritimati (UTC+14) is far from both the default and any test runner's zone.
+    [Fact]
+    public async Task Carries_the_appointments_studio_time_zone()
+    {
+        Studio studio = await SeedStudio();
+        Guid authorId = Guid.NewGuid();
+        await SeedAppointment(studio.Id, authorId);
+        Studio studioRow = await _db.Studios.FindAsync(studio.Id) ?? throw new InvalidOperationException();
+        studioRow.Timezone = "Pacific/Kiritimati";
+        await _db.SaveChangesAsync();
+
+        List<ReviewableAppointmentResponse> result = await CreateSut().Handle(
+            new GetReviewableStudioAppointmentsQuery(studio.Slug, authorId), CancellationToken.None);
+
+        result.Should().ContainSingle().Which.StudioTimezone.Should().Be("Pacific/Kiritimati");
+    }
 }

@@ -16,8 +16,8 @@ import type { ReportableAppointment } from "@/features/conduct-reports/conductRe
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 const ELIGIBLE_APPOINTMENTS: ReportableAppointment[] = [
-  { id: "appt-1", date: "2026-08-01T10:00:00.000Z", durationMinutes: 60, status: "Completed" },
-  { id: "appt-2", date: "2026-08-10T10:00:00.000Z", durationMinutes: 90, status: "Pending" },
+  { id: "appt-1", date: "2026-08-01T10:00:00.000Z", durationMinutes: 60, status: "Completed", studioTimezone: "Europe/Tirane" },
+  { id: "appt-2", date: "2026-08-10T10:00:00.000Z", durationMinutes: 90, status: "Pending", studioTimezone: "Europe/Tirane" },
 ];
 
 const server = setupServer(
@@ -75,6 +75,25 @@ describe("ConductReportDialog", () => {
     expect(screen.getByRole("option", { name: /^discrimination$/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /poor service quality/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /^other$/i })).toBeInTheDocument();
+  });
+
+  it("S01: names each visit's day on the studio's calendar, not the viewer's", async () => {
+    // 11:00 UTC on 1 Aug is already 2 Aug in Kiritimati (UTC+14) and still 1 Aug in Pago Pago (UTC-11), whatever
+    // zone the test runs in. A missing zone says so rather than falling back to the viewer's.
+    server.use(
+      http.get("http://localhost/api/v1/public/artists/maria-silva/reports/reportable-appointments", () =>
+        HttpResponse.json([
+          { id: "a1", date: "2026-08-01T11:00:00.000Z", durationMinutes: 60, status: "Completed", studioTimezone: "Pacific/Kiritimati" },
+          { id: "a2", date: "2026-08-01T11:00:00.000Z", durationMinutes: 60, status: "Completed", studioTimezone: "Pacific/Pago_Pago" },
+          { id: "a3", date: "2026-08-01T11:00:00.000Z", durationMinutes: 60, status: "Completed", studioTimezone: null },
+        ] satisfies ReportableAppointment[])),
+    );
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(await screen.findByRole("combobox", { name: /which visit does this relate to/i }));
+    expect(await screen.findByRole("option", { name: "2 Aug 2026 — Completed" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "1 Aug 2026 — Completed" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Time unavailable — Completed" })).toBeInTheDocument();
   });
 
   it("submit is disabled until an appointment is picked", async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from "react";
+import { useNavigate } from "react-router-dom";
 import { X, Eye, LogOut, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/app/hooks";
@@ -7,6 +8,8 @@ import { clearImpersonationScopeError } from "@/features/ui/uiSlice";
 import { useEndImpersonationSessionMutation } from "@/features/platform/platformApi";
 import { LiveAnnouncement } from "@/shared/components/LiveAnnouncement";
 import { expiryAnnouncement, formatRemaining, msUntil } from "@/shared/utils/supportSessionTime";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { AUDIT_ACTIONS, makeReceipt } from "@/features/platform/components/receipts";
 
 /// Persistent, unmissable "Viewing as {studio}" banner for an active Support Impersonation
 /// session — deliberately NOT dismissible (no close button), present at the layout root
@@ -16,6 +19,7 @@ import { expiryAnnouncement, formatRemaining, msUntil } from "@/shared/utils/sup
 /// countdown out of the accessibility tree's live announcements except at thresholds.
 export function ImpersonationBanner() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const impersonation = useAppSelector((s) => s.auth.impersonation);
   const scopeError = useAppSelector((s) => s.ui.impersonationScopeError);
   const [endSession, { isLoading: ending }] = useEndImpersonationSessionMutation();
@@ -34,15 +38,26 @@ export function ImpersonationBanner() {
   const msLeft = msUntil(impersonation.expiresAt);
 
   async function handleEndSession() {
+    const { studioId, studioName } = impersonation!;
+    let serverEnded = true;
     try {
       await endSession(impersonation!.sessionId).unwrap();
-    } catch {
+    } catch (err) {
       // Even if the API call fails (e.g. the session already expired server-side), the
       // admin must still get their own session back client-side — never strand them on
-      // an impersonation token that no longer works.
+      // an impersonation token that no longer works. The server's reason is shown, not swallowed (D04).
+      serverEnded = false;
+      toast.error(extractErrorMessage(err, "The server couldn't record the end of the session; it still expires on its own."));
     }
     dispatch(endImpersonation());
-    toast.success("Impersonation session ended.");
+    // D04: the receipt lands on the studio's page, where the session was started.
+    if (serverEnded) {
+      navigate(`/platform/studios/${studioId}`, {
+        state: { receipt: makeReceipt(`The support session in ${studioName} has ended.`, AUDIT_ACTIONS.supportSessionEnded, studioId) },
+      });
+    } else {
+      navigate(`/platform/studios/${studioId}`);
+    }
   }
 
   return (

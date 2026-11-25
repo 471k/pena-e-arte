@@ -15,6 +15,7 @@ import { AdminStudioListPage } from "@/features/platform/components/AdminStudioL
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import type { PlatformSubscriptionResponse } from "@/features/platform/platform.types";
 import type { PlanResponse } from "@/features/billing/billing.types";
+import { toast } from "sonner";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -883,5 +884,32 @@ describe("AdminStudioListPage", () => {
       await user.click(within(banner).getByRole("button", { name: /retry/i }));
       await waitFor(() => expect(screen.queryByText("Subscription unknown")).not.toBeInTheDocument());
     });
+  });
+});
+
+describe("D04: receipts and the server's reason", () => {
+  it("suspending from a row leaves a page-level receipt linking the audit log", async () => {
+    server.use(http.patch("http://localhost/api/v1/studios/s3/suspend", () => new HttpResponse(null, { status: 204 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ink Soul");
+    await user.click(screen.getAllByRole("button", { name: /^suspend$/i })[0]);
+    await user.click(screen.getByRole("button", { name: /yes/i }));
+    const receipt = (await screen.findByText("Trialing Studio is suspended.")).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=s3&action=Studio.Suspended");
+  });
+
+  it("a failed suspend shows the server's reason", async () => {
+    const error = vi.spyOn(toast, "error");
+    server.use(http.patch("http://localhost/api/v1/studios/s3/suspend", () =>
+      HttpResponse.json({ message: "This studio is already suspended." }, { status: 422 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("Ink Soul");
+    await user.click(screen.getAllByRole("button", { name: /^suspend$/i })[0]);
+    await user.click(screen.getByRole("button", { name: /yes/i }));
+    await waitFor(() => expect(error).toHaveBeenCalledWith("This studio is already suspended."));
+    error.mockRestore();
   });
 });

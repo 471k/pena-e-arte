@@ -204,7 +204,7 @@ describe("FeedbackInboxPage", () => {
     await waitFor(() => expect(captured).toMatchObject({ status: "Reviewing" }));
   });
 
-  it("shows a success toast after a status update", async () => {
+  it("a status update leaves a receipt linking the audit log, without the internal note's text", async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText("Broken button");
@@ -214,7 +214,10 @@ describe("FeedbackInboxPage", () => {
     const card = within(toggle.parentElement!);
     await user.click(card.getByRole("button", { name: /^reviewing$/i }));
 
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Updated."));
+    const receipt = (await screen.findByText(/is now Reviewing/)).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?action=Feedback.StatusUpdated");
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("shows an empty state when there is no feedback", async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, vi } from "vitest";
 import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
@@ -15,6 +15,7 @@ import { AdminStudioDetailPage } from "@/features/platform/components/AdminStudi
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import type { PlatformSubscriptionResponse, PlatformReferralCodeResponse } from "@/features/platform/platform.types";
 import type { PlanResponse } from "@/features/billing/billing.types";
+import { toast } from "sonner";
 
 // ── Fake JWT helper ────────────────────────────────────────────────────────────
 // decodeToken() (used by authSlice's startImpersonation reducer) calls jwt-decode,
@@ -700,5 +701,48 @@ describe("AdminStudioDetailPage", () => {
       await user.click(within(receipt).getByRole("button", { name: /dismiss this receipt/i }));
       expect(screen.queryByText(/subscription activated for ink soul/i)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("D04: receipts and the server's reason", () => {
+  it("suspending leaves a receipt with the studio, the new state and the audit-log link", async () => {
+    server.use(http.patch("http://localhost/api/v1/studios/s1/suspend", () => new HttpResponse(null, { status: 204 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    await user.click(screen.getByRole("button", { name: /suspend studio/i }));
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    const receipt = (await screen.findByText("Ink Soul is suspended.")).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=s1&action=Studio.Suspended");
+    expect(within(receipt).getByRole("button", { name: "Dismiss this receipt" })).toBeInTheDocument();
+  });
+
+  it("a failed suspend shows the server's reason, not a generic line", async () => {
+    const error = vi.spyOn(toast, "error");
+    server.use(http.patch("http://localhost/api/v1/studios/s1/suspend", () =>
+      HttpResponse.json({ message: "This studio is already suspended." }, { status: 422 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("Ink Soul");
+    await user.click(screen.getByRole("button", { name: /suspend studio/i }));
+    await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => expect(error).toHaveBeenCalledWith("This studio is already suspended."));
+    error.mockRestore();
+  });
+
+  it("a support session that just ended lands here with its receipt", async () => {
+    render(
+      <Provider store={makeStore()}>
+        <MemoryRouter initialEntries={[{ pathname: "/platform/studios/s1", state: { receipt: {
+          summary: "The support session in Ink Soul has ended.", action: "ImpersonationSession.Ended",
+          studioId: "s1", at: "2026-11-24T18:00:00Z" } } }]}>
+          <Routes><Route path="/platform/studios/:studioId" element={<AdminStudioDetailPage />} /></Routes>
+        </MemoryRouter>
+      </Provider>,
+    );
+    const receipt = (await screen.findByText("The support session in Ink Soul has ended.")).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=s1&action=ImpersonationSession.Ended");
   });
 });

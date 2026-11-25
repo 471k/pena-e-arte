@@ -23,6 +23,7 @@ import { useCategorizedImageUpload, ACCEPTED_IMAGE_TYPES } from "@/shared/hooks/
 import { useDebouncedSlotCheckArgs } from "@/shared/hooks/useDebouncedSlotCheckArgs";
 import { cn }              from "@/shared/utils/cn";
 import { Money }           from "@/shared/components/Money";
+import { InitialsGlyph }   from "@/shared/components/InitialsGlyph";
 import type { MoneyStudio } from "@/shared/hooks/useEurAllRate";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { generateUuid }    from "@/shared/utils/uuid";
@@ -164,13 +165,11 @@ function ArtistAvatar({ artist }: { artist: ArtistResponse }) {
   }
 
   return (
-    <span
-      aria-hidden="true"
+    <InitialsGlyph
+      initials={initials}
       className="h-6 w-6 rounded-full bg-violet-600/20 text-violet-800 dark:text-violet-300
                  text-[9px] font-semibold flex items-center justify-center shrink-0"
-    >
-      {initials}
-    </span>
+    />
   );
 }
 
@@ -180,7 +179,7 @@ function ArtistSelectItem({ artist }: { artist: ArtistResponse }) {
     <SelectPrimitive.Item
       value={artist.id}
       className="relative flex w-full cursor-default select-none items-center rounded-sm
-                 py-1.5 pl-8 pr-2 text-sm outline-none
+                 py-1.5 pl-8 pr-2 text-sm outline-none focus:outline-hidden
                  focus:bg-accent focus:text-accent-foreground
                  data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
     >
@@ -964,7 +963,7 @@ export function BookAppointmentForm() {
                       onChange={(e) => setArtistSearch(e.target.value)}
                       className="w-full rounded-sm border-0 bg-muted/50 px-2 py-1
                                  text-xs placeholder:text-muted-foreground
-                                 focus:outline-none focus:ring-1 focus:ring-ring"
+                                 focus:outline-hidden focus:ring-1 focus:ring-ring"
                       aria-label="Search artists"
                     />
                   </div>

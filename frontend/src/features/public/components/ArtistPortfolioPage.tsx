@@ -308,7 +308,7 @@ function PortfolioGrid({
           onClick={() => onImageClick(item)}
           className="mb-3 break-inside-avoid block w-full group relative
                      overflow-hidden rounded-lg cursor-zoom-in
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+                     focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring
                      focus-visible:ring-offset-1"
           aria-label={`View portfolio image ${i + 1} of ${images.length} by ${artistName}`}
         >

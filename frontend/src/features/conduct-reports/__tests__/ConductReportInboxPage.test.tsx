@@ -10,6 +10,7 @@ import authReducer from "@/features/auth/authSlice";
 import { conductReportsApi } from "@/features/conduct-reports/conductReportsApi";
 import { ConductReportInboxPage } from "@/features/conduct-reports/components/ConductReportInboxPage";
 import type { ConductReportResponse } from "@/features/conduct-reports/conductReports.types";
+import { MemoryRouter } from "react-router-dom";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -58,7 +59,10 @@ function makeStore() {
 function renderPage() {
   render(
     <Provider store={makeStore()}>
-      <ConductReportInboxPage />
+      {/* The receipt links the audit log, so the page needs a router, as it always has in the app. */}
+      <MemoryRouter>
+        <ConductReportInboxPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -127,5 +131,30 @@ describe("ConductReportInboxPage", () => {
 
     const matches = await screen.findAllByText(/reported by jane doe/i);
     expect(matches.length).toBeGreaterThan(0);
+  });
+});
+
+describe("D04: receipts and the server's reason", () => {
+  it("a status change leaves a page-level receipt linking the audit log", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const toggle = await screen.findByRole("button", { name: /sexual misconduct/i, expanded: false });
+    await user.click(toggle);
+    await user.click(within(toggle.parentElement!).getByRole("button", { name: /^resolved$/i }));
+    const receipt = (await screen.findByText("The conduct report filed at Ink Studio is now Resolved.")).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=s1&action=ConductReport.StatusUpdated");
+  });
+
+  it("a failed status change shows the server's reason", async () => {
+    const { toast } = await import("sonner");
+    server.use(http.patch("http://localhost/api/v1/conduct-reports/:id/status", () =>
+      HttpResponse.json({ message: "This report is already closed." }, { status: 422 })));
+    const user = userEvent.setup();
+    renderPage();
+    const toggle = await screen.findByRole("button", { name: /sexual misconduct/i, expanded: false });
+    await user.click(toggle);
+    await user.click(within(toggle.parentElement!).getByRole("button", { name: /^resolved$/i }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This report is already closed."));
   });
 });
