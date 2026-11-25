@@ -7,8 +7,10 @@
 > C10 and the four keyboard journeys pass.** 400% reflow and forced-colors focus FAILED on 24-25 Nov, each with a
 > named cause. Both were fixed in #464 and **re-run on main at `5901b4aa` on 25 Nov: 400% reflow now passes and
 > forced-colors focus passes**, with the before-numbers kept beside them. The switch thumb was fixed in #465 and
-> re-run on main at `62c88f4b`, so **the app's own controls pass in forced colors**. One third-party stop stays
-> open: Google's sign-in button iframe, when their script loads. **Every §3b probe is Chromium-only.**
+> re-run on main at `62c88f4b`, so **forced colors passes for the app's own controls**. Google's sign-in button is
+> its own row: the "0x0 Tab stop" first recorded was the button's **failure state on an origin Google refuses**;
+> on production it renders and shows a visible focus ring with and without forced colors (§3b, measured 25 Nov).
+> **Every §3b probe is Chromium-only.**
 
 - **From:** Claude Code, run 23–24 Nov 2026 (Europe/Paris). **Held for Desktop's review.**
 - **What this is:** evidence, not a build. **A row with no evidence is a fail, not a blank** (Desktop's rule). Most
@@ -23,7 +25,7 @@
 
 | Environment | What was run | What was seen | Verdict |
 |---|---|---|---|
-| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); the switch thumb fixed in #465 (re-run on main); **open: one third-party stop (Google's sign-in iframe)**; dialogs and downloads not covered |
+| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); the switch thumb fixed in #465 (re-run on main); Google's sign-in button measured on the production origin as its own row (§3b); dialogs and downloads not covered |
 | **Windows Edge** | §3 keyboard probes (S03 record opening, form error focus) | Both pass, same as Chromium | **Partial**: keyboard probes only; no 200% pass, no downloads |
 | **Firefox desktop** | **Blocked — needs Playwright's Firefox build** (a download, not a device): Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
 | **macOS Safari** | **Blocked — needs a physical device** (a Mac) | — | **Fail (no evidence)** |
@@ -175,7 +177,10 @@ crash, which first read as 814px of sideways scroll: a probe artefact, not a fin
   (public 14, owner 12, client 9, artist and admin 8). It can be dismissed, so it is not a reflow fail; recorded
   because at 400% it hides half the screen until then.
 
-### Forced-colors mode (Windows contrast themes): **Pass on main for the app's own controls since #464 + #465; one third-party stop open** (was **Fail**, 24-25 Nov)
+### Forced colors, the app's own controls: **Pass** on main since #464 + #465 (was **Fail**, 24-25 Nov: 4 of 11 sign-in, 10 of 25 booking, 7 of 25 dashboard and 7 of 25 schedule stops with no indicator; now 0 of 86). Chromium only.
+
+This row covers what the app draws. Google's sign-in button is a separate row below, because conformance is a
+property of the page as delivered, third-party content included, so a Pass here does not say anything about it.
 
 **Coverage: Chromium only**, with `forced-colors: active` emulated. That is a mild limit for this row, because
 Windows contrast themes are used overwhelmingly through Edge and Chrome, both Chromium. It still says nothing about
@@ -202,17 +207,47 @@ outlined track, on = a Highlight track with a HighlightText thumb and check. The
 (`code-session-scratch-2026-11-24/rulings-2026-11-25/switch/`). The focus probe on main still reads 0 of 25 on
 the booking page.
 
-**One third-party stop, recorded and not ours to fix here:** in the `62c88f4b` re-run, Google's "Continue with
-Google" script (GSI, loaded from `accounts.google.com`) had loaded on `/login` and injected an iframe that is 0x0
-and still takes a Tab stop, with no visible indicator: **12 stops, 1 without an indicator, and that one is the
-iframe.** In the `5901b4aa` run the script had not loaded, so that run read 11 stops and 0. It is Google's widget,
-it appears only when their script loads, and none of the app's own controls are affected. It is flagged for a
-decision rather than counted as a pass or silently dropped.
+**Verdict: the app's own controls pass in forced colors** (0 of 86 stops with no indicator across the four pages,
+and the switch readable in both states).
 
-**Verdict: the app's own controls pass in forced colors** (focus visible on 0 failures across the four pages, and
-the switch readable in both states). The GSI iframe stop is open as a third-party item.
+The findings further below are the **before** state and are kept as the record.
 
-The findings below are the **before** state and are kept as the record.
+### Focus visible, third-party Google Sign-In: **Pass on the production origin** (Chromium), with one residual in our own code. Was recorded **Open** on 25 Nov.
+
+**What was first recorded (kept as the record):** in the `62c88f4b` forced-colors re-run, Google's script had
+loaded on `/login` and its iframe was **0x0, took a Tab stop, and had no visible indicator** (12 stops, 1 without,
+and that one was the iframe). In the `5901b4aa` run the script had not loaded: 11 stops, 0 without. Desktop ruled
+the row Open, neither passed nor dropped, pending a look at the render options.
+
+**What the look found (25 Nov ~13:30 Paris, Playwright Chromium, probes outside the repo in
+`code-session-scratch-2026-11-24/rulings-2026-11-25/gsi/`):**
+
+- **The 0x0 iframe is the button itself, not an extra element.** It is `accounts.google.com/gsi/button`, titled
+  with the button's label. On the local probe origin Google logs *"The given origin is not allowed for the given
+  client ID"* and never sizes it. All the §3b probes ran on a local origin, so they all saw the failure state.
+- **No configuration changes that.** Rendered fresh on the local origin, all ten variants stayed 0x0 with
+  `tabIndex` 0: the current options (`standard`, `filled_black`, `large`, `continue_with`, `rectangular`, width
+  300); `type: "icon"`; `theme: "outline"` + `size: "medium"`; `shape: "pill"` with no width; `itp_support: true`;
+  `use_fedcm_for_button: true`; `use_fedcm_for_prompt: false`; `ux_mode: "redirect"`; `ux_mode: "popup"`;
+  `locale: "en"`. The size depends on the origin being allowed, not on a render option.
+- **On production (`app.tattooos.co/login`, read-only: loaded and tabbed, never clicked) the button renders 418x44
+  within 300 ms and is an ordinary Tab stop**, between "Sign in" and "Sign up".
+- **Its focus is visible in both modes.** Pixel comparison of the button's box, unfocused against focused: they
+  differ in both, and the screenshots show a 2px ring around the button when focused, with and without
+  `forced-colors: active`. The ring is **Google's, drawn inside their frame**: the outer `<iframe>` computes
+  `outline: none` and does not match `:focus-visible`, because focus moves into Google's document. So the
+  guarantee rests on Google's styling, which we cannot test from outside beyond this.
+- **Side observation, not a fail:** in forced colors the unfocused button has no boundary at all. Its text still
+  identifies it as a control.
+
+**Residual, ours:** when Google refuses to render the button (wrong origin, or their service failing), the 0x0
+iframe is a Tab stop for up to **2.5 s**, until `GoogleSignInButton`'s render check marks it failed and hides
+the container (`display: none`, which removes the stop; confirmed: the Tab walk at +5 s on the local origin has no
+iframe stop). Closing that window would mean keeping our own container `visibility: hidden` until the iframe
+measures non-zero. It changes only our DOM, not Google's. **Proposed, not built:** it touches the sign-in
+component and only matters while Google's button is already broken.
+
+**`tabindex="-1"` on Google's iframe was not tried and is not proposed.** Nothing found here needs it.
 
 Chromium with `forced-colors: active` emulated (confirmed with `matchMedia`). Sign-in, the client booking page, and
 the owner dashboard and schedule.
