@@ -4,7 +4,10 @@
 > reader. **Slice 9 cannot be completed from an agent session:** no amount of further autonomous work closes
 > them. That takes a person with an iPhone, an Android phone, a tablet, a Mac, and NVDA, VoiceOver and TalkBack.
 > Firefox needs Playwright's Firefox build. **The four rows a session could run were run on 24-25 Nov (§3b):
-> C10 and the four keyboard journeys pass; 400% reflow and forced-colors mode FAIL**, each with a named cause.
+> C10 and the four keyboard journeys pass.** 400% reflow and forced-colors focus FAILED on 24-25 Nov, each with a
+> named cause. Both were fixed in #464 and **re-run on main at `5901b4aa` on 25 Nov: 400% reflow now passes and
+> forced-colors focus passes**, with the before-numbers kept beside them. Forced colors keeps **one open item,
+> the switch thumb** (#465), so that row is not yet a pass. **Every §3b probe is Chromium-only.**
 
 - **From:** Claude Code, run 23–24 Nov 2026 (Europe/Paris). **Held for Desktop's review.**
 - **What this is:** evidence, not a build. **A row with no evidence is a fail, not a blank** (Desktop's rule). Most
@@ -19,7 +22,7 @@
 
 | Environment | What was run | What was seen | Verdict |
 |---|---|---|---|
-| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run, except 400% reflow and forced colors (§3b, both Fail)**; dialogs and downloads not covered |
+| **Windows Chromium** | §2 200% pass at 8 widths, 4 roles + public pages; §3 keyboard probes; §3b C10, the four journeys, 400% reflow and forced colors; e2e at 390px 100%/200%; axe suite (`accessibility.spec.ts`, axe 4.14 since the-rest run) | See §2–§3b | **Pass for what was run**, since #464 for 400% reflow and forced-colors focus (§3b, both Fail before it, re-run on main 25 Nov); **open: the switch thumb in forced colors** (#465); dialogs and downloads not covered |
 | **Windows Edge** | §3 keyboard probes (S03 record opening, form error focus) | Both pass, same as Chromium | **Partial**: keyboard probes only; no 200% pass, no downloads |
 | **Firefox desktop** | **Blocked — needs Playwright's Firefox build** (a download, not a device): Firefox 160.0.1 is installed but Playwright's Firefox build isn't, and installing it is a new download not taken in an autonomous run | — | **Fail (no evidence)** |
 | **macOS Safari** | **Blocked — needs a physical device** (a Mac) | — | **Fail (no evidence)** |
@@ -123,7 +126,25 @@ Note: the probe's instant reading flagged the Date & Time field (`datetime-local
 settles, the same field carries the 4px ring (`rgb(100, 48, 168) 0 0 0 4px`), and a screenshot shows the ring and
 the browser's highlighted day segment. Counted as visible, and recorded so nobody re-finds it.
 
-### 400% reflow (WCAG 1.4.10), 1280x1024: **Fail**
+### 400% reflow (WCAG 1.4.10), 1280x1024: **Pass on main since #464** (was **Fail**, 24-25 Nov)
+
+**Coverage: Chromium only** (Playwright's headless shell). Firefox and WebKit were not run, so this verdict says
+nothing about them.
+
+**After #464, re-run on main at `5901b4aa` (25 Nov ~04:50 Paris), the same probe, fixtures and stops:**
+
+| Page | Stops | Before (24-25 Nov, main without #464) | After (main `5901b4aa`) |
+|---|---|---|---|
+| `/discover` | 59 | **20 entirely hidden** under the 234px sticky header | **0 hidden, 0 partly covered** |
+| `/artist/{slug}` | 57 | **3 entirely hidden** (the studio link, "Powered by TattooOS") | **0 hidden, 0 partly covered** |
+| `/s/{slug}` | 57 | **1 entirely hidden** (the in-page "Book an Appointment" link) | **0 hidden, 0 partly covered** |
+| `/schedule`, owner, 14 appointments | 89 | **27 entirely hidden and 38 partly covered**, among them Confirm, Decline, Reschedule, Cancel, Mark no-show and Complete on the session cards, the artist filter and the Dashboard link | **0 hidden, 0 partly covered** |
+
+What changed: measured `scroll-padding` for pinned chrome (W3C C43), with a floor at the signed-in shell header's
+height so a failed measurement cannot silently give 0. The three headers that wrap tall (Discover, the public
+studio/artist header, Schedule) also unpin on a **short** viewport (max-height 480px). The quick-book bar stays
+pinned. The free band on the studio and artist pages is 187px against 138px portfolio tiles. Sideways scroll stays
+0px. The findings below are the **before** state and are kept as the record.
 
 400% of 1280x1024 is a 320x256 CSS px viewport at 100% text. 26 pages: the public and auth pages and every role's
 pages from §2, with the public studio and artist pages on real fixtures. Under the empty fallback mock those two
@@ -147,14 +168,36 @@ crash, which first read as 814px of sideways scroll: a probe artefact, not a fin
   behind the 56px app header and the Schedule's own header, which wraps to 137px. The hidden ones include Confirm,
   Decline, Reschedule, Cancel, Mark no-show and Complete on the session cards, the artist filter and the Dashboard
   link. Same probe, same day, on main: `/discover` 20 hidden of 59, `/artist/{slug}` 3 of 57, `/s/{slug}` 1 of 57.
-- **Fix proposed in #464 (held for Desktop's review), not on main.** On that branch the same probe reads 0 hidden
-  and 0 partly covered on all four pages (262 stops), and the forced-colors probe reads 0 stops without an indicator
-  (86 stops). This document's verdicts stay **Fail** until #464 merges and the probes are re-run on main.
+- **Fixed by #464, merged 25 Nov as `5901b4aa`,** and re-run on main (the table above): 0 of 262 stops hidden or
+  partly covered. The verdict changed only after the re-run on main, not when the branch passed.
 - **The cookie banner** covers 137 of 256px until it is dismissed, and "Got it" is 8 to 14 Tab presses from the top
   (public 14, owner 12, client 9, artist and admin 8). It can be dismissed, so it is not a reflow fail; recorded
   because at 400% it hides half the screen until then.
 
-### Forced-colors mode (Windows contrast themes): **Fail**
+### Forced-colors mode (Windows contrast themes): **focus Pass on main since #464; the switch thumb still Fail** (was **Fail**, 24-25 Nov)
+
+**Coverage: Chromium only**, with `forced-colors: active` emulated. That is a mild limit for this row, because
+Windows contrast themes are used overwhelmingly through Edge and Chrome, both Chromium. It still says nothing about
+Firefox.
+
+**After #464, re-run on main at `5901b4aa` (25 Nov ~04:45 Paris):** focus-indicator probe, which now also
+requires the outline colour not to be transparent:
+
+| Page | Before (24 Nov) | After (main `5901b4aa`) |
+|---|---|---|
+| Sign-in | **4 of 11** stops with no visible indicator | **0 of 11** |
+| Client booking | **10 of 25** (incl. "Skip to content", the artist picker, the switch) | **0 of 25** |
+| Owner dashboard | **7 of 25** | **0 of 25** |
+| Owner schedule | **7 of 25** | **0 of 25** |
+
+Outlines compute to the forced system colour. "Skip to content" is outlined (screenshot). Filled buttons keep their
+shape (`forced-colors:border`).
+
+**Still open, so the row is not a pass:** the `ToggleSwitch` thumb vanishes in forced colors (measured: a Canvas
+thumb on a Canvas track). The track's outline survives, so the off state reads as an empty pill and the on state
+only by its check. Desktop ruled this **not accepted**, and it gets its own PR: #465.
+
+The findings below are the **before** state and are kept as the record.
 
 Chromium with `forced-colors: active` emulated (confirmed with `matchMedia`). Sign-in, the client booking page, and
 the owner dashboard and schedule.
