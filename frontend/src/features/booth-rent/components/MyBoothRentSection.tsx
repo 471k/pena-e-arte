@@ -3,9 +3,13 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useStudioCurrency } from "@/shared/hooks/useStudioCurrency";
 import { useGetBoothRentSchedulesQuery, useGetBoothRentChargesQuery } from "../boothRentApi";
 import { Money } from "@/shared/components/Money";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
+// Booth-rent dates are DATE-ONLY: saved as UTC midnight from a date input and advanced by whole days or
+// months, so they are printed as the date itself. Neither the viewer's zone nor the studio's may move them;
+// west of UTC either would print the day before. See "Booth-rent dates are date-only" in architecture.md.
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return formatDateOnly(iso, { day: "numeric", month: "short", year: "numeric" });
 }
 
 /** Artist's own read-only booth-rent schedule + charge history — embedded on /earnings, next to
