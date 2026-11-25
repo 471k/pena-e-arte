@@ -165,7 +165,8 @@ export function AuthenticatedNav({ user, role }: AuthenticatedNavProps) {
 // ── PublicPageHeader ────────────────────────────────────────────────────────────
 // Self-contained sticky header for public portfolio pages (StudioPortfolioPage,
 // ArtistPortfolioPage). Reads auth state from Redux internally — no props needed.
-// Not sticky below page-sm (420px), like Discover's: at 400% zoom (320x256) it and the quick-book bar left a
+// Not sticky on a short viewport (short-viewport, max-height 30rem; see index.css), like Discover's: at 400%
+// zoom (320x256) it and the quick-book bar left a
 // 114px band, shorter than a 138px portfolio tile, so a focused tile could never be fully visible (WCAG 2.4.11).
 // The quick-book bar stays pinned: it is the booking path.
 
@@ -176,7 +177,7 @@ export function PublicPageHeader() {
 
   return (
     <header
-      className="relative page-sm:sticky top-0 z-[100] border-b bg-background/95 backdrop-blur-sm"
+      className="sticky short-viewport:relative top-0 z-[100] border-b bg-background/95 backdrop-blur-sm"
       aria-label="Site header"
     >
       <div className="flex items-center justify-between px-4 py-2.5">

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { pinnedExtents, type PinnedBox } from "../usePinnedChromeScrollPadding";
 
 // The rules behind 2.4.11's scroll-padding. jsdom has no layout, so the boxes are written out; the real-browser
@@ -46,5 +47,25 @@ describe("pinnedExtents", () => {
     const { top, bottom } = pinnedExtents([box({ top: "0px", height: 120 }), box({ position: "fixed", bottom: "0px", height: 100 })], VW, VH);
     expect(top + bottom).toBeLessThanOrEqual(Math.round(VH * 0.6) + 1);
     expect(top).toBeGreaterThan(bottom);
+  });
+});
+
+// The floor lives in index.css (`html:has(header[data-pinned-shell])`) and is checked in a real browser by
+// e2e/pinned-chrome-floor.spec.ts; jsdom resolves neither :has() nor max(). What jsdom CAN hold is the marker the
+// floor keys on: if a layout's shell header loses it, that layout silently loses its floor.
+describe("the scroll-padding floor's marker", () => {
+  const LAYOUTS = ["AdminLayout", "ArtistLayout", "ClientLayout", "OwnerLayout"] as const;
+
+  it.each(LAYOUTS)("%s's pinned h-14 shell header carries data-pinned-shell", (name) => {
+    const src = readFileSync(`src/layouts/${name}.tsx`, "utf8");
+    const headers = src.match(/<header\b[^>]*>/g) ?? [];
+    const shell = headers.filter((h) => /\bh-14\b/.test(h) && /\bsticky\b/.test(h));
+    expect(shell, `${name}: exactly one pinned h-14 header`).toHaveLength(1);
+    expect(shell[0]).toContain("data-pinned-shell");
+  });
+
+  it("index.css floors the top padding at the shell header's height, only where the marker is present", () => {
+    const css = readFileSync("src/index.css", "utf8");
+    expect(css).toMatch(/html:has\(header\[data-pinned-shell\]\)\s*\{\s*scroll-padding-top:\s*max\(var\(--pinned-top, 0px\), 3\.5rem\);/);
   });
 });

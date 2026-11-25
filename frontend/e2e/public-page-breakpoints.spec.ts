@@ -128,6 +128,37 @@ test("public product pages: no sideways scroll at ten widths", async ({ page }) 
   expect(errors, "page errors").toEqual([]);
 });
 
+// WCAG 2.4.11: the public headers unpin on a SHORT viewport (short-viewport, max-height 30rem in index.css), not a
+// narrow one. 400% zoom on 1280x1024 (320x256) and a landscape phone (844x390) unpin; a portrait phone (390x844)
+// keeps its pinned header. 479/481 sit on either side of the 480px threshold. The quick-book bar stays fixed
+// in every case: it is the booking path.
+const HEIGHT_CASES = [
+  { name: "400% zoom", width: 320, height: 256, pinned: false },
+  { name: "landscape phone", width: 844, height: 390, pinned: false },
+  { name: "just under the threshold", width: 390, height: 479, pinned: false },
+  { name: "just over the threshold", width: 390, height: 481, pinned: true },
+  { name: "portrait phone", width: 390, height: 844, pinned: true },
+] as const;
+
+test("public headers pin by viewport height, and the quick-book bar always stays pinned", async ({ page }) => {
+  test.setTimeout(120_000);
+  await mocks(page);
+  const position = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).position);
+  for (const route of ROUTES) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(route);
+    await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 15_000 });
+    for (const c of HEIGHT_CASES) {
+      await page.setViewportSize({ width: c.width, height: c.height });
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      expect(await position("header"), `${route} header, ${c.name} (${c.width}x${c.height})`).toBe(c.pinned ? "sticky" : "relative");
+      if (route !== "/discover" && c.width < 1100) {
+        expect(await position('[aria-label="Quick book bar"]'), `${route} quick-book bar, ${c.name}`).toBe("fixed");
+      }
+    }
+  }
+});
+
 // 6e's tail: the studio page had no booking button on screen below 1100 (its Book button sits in the aside, which
 // stacks after the portfolio); the artist page did. Both now use one QuickBookBar. Scrolled to the very bottom, the
 // footer must sit above the bar, not under it, at both text sizes.

@@ -60,6 +60,12 @@ export function pinnedExtents(boxes: readonly PinnedBox[], vw: number, vh: numbe
   return { top: Math.round(top), bottom: Math.round(bottom) };
 }
 
+// The FLOOR is not here but in index.css: on a page with the signed-in shell header (`data-pinned-shell`), the
+// top padding is max(this measurement, the header's 3.5rem), so a measurement that yields nothing, finds less, or
+// never runs (an exception, nothing laid out yet) cannot drop it to 0. It is structural rather than a flat
+// constant because a flat floor over-pads pages with no top chrome: on the public pages at 400% it pushed a 138 px
+// portfolio tile 7 px under the quick-book bar.
+
 // Tailwind's own classes, including responsive variants (page-lg:sticky). Dialogs and Radix popovers position
 // themselves with `fixed` too but scroll on their own, so their subtrees are excluded.
 const CANDIDATES = '.sticky, .fixed, [class*=":sticky"], [class*=":fixed"]';

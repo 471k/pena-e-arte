@@ -334,9 +334,10 @@ export function DiscoverPage() {
       <DiscoverMeta />
 
       {/* ── Sticky header ───────────────────────────────────────────────── */}
-      {/* Not sticky below page-sm (420px): at 400% zoom (320x256) this header is 234px tall and would leave 22px
-          of the viewport for the page and for any focused control (WCAG 2.4.11). */}
-      <header className="relative page-sm:sticky top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
+      {/* Not sticky on a short viewport (short-viewport, max-height 30rem; see index.css): at 400% zoom (320x256)
+          this header is 234px tall and would leave 22px of the viewport for the page and for any focused control
+          (WCAG 2.4.11). A portrait phone has the height, so it stays pinned there. */}
+      <header className="sticky short-viewport:relative top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
         {/* Top row: brand + nav */}
         <div className="flex items-center justify-between px-4 py-2.5">
           <BrandMark />
