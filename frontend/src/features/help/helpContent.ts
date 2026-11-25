@@ -1912,7 +1912,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "Track what each artist owes for booth rent — a bookkeeping record only, not an automatic card charge.",
     steps: [
       "Go to Booth Rent and click \"New schedule\" to set a fixed rent amount, weekly or monthly, for an artist.",
-      "Every day, any schedule that's come due gets a new charge row automatically, and the schedule's next charge date advances.",
+      "Every day, any schedule that's come due gets a new charge row automatically, and the schedule's next charge date advances. Charge dates are calendar dates, not times, so they show the same day wherever you or the artist view them from.",
       "Once you've collected the rent from the artist outside the app (cash, bank transfer, etc.), click \"Mark settled\" on that charge.",
       "An artist can see their own schedule and charge history on their My Earnings page.",
     ],

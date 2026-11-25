@@ -8105,3 +8105,54 @@ overflowed before #441 too), but Phase 2's "zero sideways scroll" held only belo
   which is exactly the sharp case. Not applied here because the instruction gated any change on the reconciliation
   answer; it waits for a ruling. One caveat for that ruling: the API does not truncate the value, so a caller other
   than this form could store a time of day.
+
+## Booth-rent dates are date-only; a studio-zone treatment was considered and rejected (S01 closes) — 2026-11-25
+
+Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's dates are left alone").
+
+- **The rule:** `BoothRentSchedule.NextChargeDate` and `BoothRentCharge.ChargedDate` are calendar dates, not
+  instants. Both booth-rent screens (`BoothRentManagementPage.tsx`, `MyBoothRentSection.tsx`) print them through
+  `formatDateOnly` (`shared/utils/studioDay.ts`), which formats in UTC, so the stored date comes out unchanged in
+  every zone. **No zone conversion of any kind:** a date-only value has no zone to convert into.
+- **Why they are date-only:** the owner picks the first charge in a `type="date"` input, sent as
+  `new Date("YYYY-MM-DD").toISOString()` (UTC midnight). The create and update commands copy it unchanged, and
+  `BoothRentChargeJob` advances it by `AddDays(7)` or `AddMonths(1)`, which keeps UTC midnight.
+- **The three backend readers** (read at `e98f433c`): `GetBoothRentChargesHandler` sorts by `ChargedDate`,
+  `MarkBoothRentChargeSettledCommand` finds a charge by id, and `StudioCurrencyLock` only asks whether any charge
+  exists (`AnyAsync`). `BoothRentChargeJob` is the writer. Nothing groups, reconciles, exports or reports booth-rent
+  charges by a studio-calendar period, so no reader depends on which "day" a charge falls on in a zone.
+- **Rejected: formatting in the studio's zone.** This was the first instinct for a money-adjacent date, because
+  appointment times follow the studio's zone. It is wrong here. UTC midnight in any studio WEST of UTC is the previous
+  evening, so the studio zone would print the day before. For weekly rent that is the sharp case: a charge due Monday
+  shown as Sunday. Formatting in the viewer's zone (the old code) fails the same way for any viewer west of UTC. **The
+  next person to look at a money-adjacent date should check first whether it is an instant or a calendar date.** Only
+  an instant has a zone.
+- **Guard:** `features/booth-rent/__tests__/boothRentDates.test.tsx` renders both screens with month-end dates
+  (1 Nov, 1 Dec) and a studio in `America/New_York`, and asserts the stored day and the absence of the day before.
+  The nightly zone sweep runs it at UTC+14 and UTC-11 as well as UTC. Mutation checks: the old viewer-zone formatter
+  fails the UTC-11 leg (UTC+14 cannot see it, since UTC midnight plus 14 hours is the same date), and a studio-zone
+  formatter fails at every runner zone.
+- **Open, specified and not built:** the write path does not truncate, so a non-UI caller could store a time of day
+  and make this assumption false for that row. See `spec-booth-rent-date-only-write-guard-2026-11-25.md`.
+- **S01 is Present** with this and the visit pickers (2026-11-24 entry above).
+
+## `InitialsGlyph`: the initials are decorative, not part of the accessible name — 2026-11-25
+
+- **What it does:** where a person has no photo, their initials are drawn by `InitialsGlyph`
+  (`shared/components/InitialsGlyph.tsx`) as CSS-generated content (`::before { content: attr(data-initials) }`) on
+  an `aria-hidden="true"` span. It is used in the booking form's artist picker (a Radix select option) and in
+  `UserChip`.
+- **Why:** WCAG 2.5.3 Label in Name asks that a control's visible label be part of its accessible name. With the
+  initials as a text node the visible label read "RC Rafaela Costa", so axe flagged the option. The photo the initials
+  stand in for is an `alt=""` image, which is decorative. Drawing the initials gives the fallback the same standing.
+- **Rejected: putting the initials into the accessible name** ("RC Rafaela Costa"). That would satisfy the tool, but a
+  screen-reader user would hear two letters before every artist's name, and nobody says the initials aloud to voice
+  control. That is worse for exactly the people 2.5.3 exists to serve. **This was built for the user, not to get
+  around the tool:** the alternative that pleases the tool is the worse one for the user.
+- **Checked: is the generated content exposed?** Desktop asked because several screen readers announce
+  pseudo-element `content`. In Chromium's **native** accessibility tree (`Accessibility.getFullAXTree` over CDP,
+  25 Nov), a button holding the glyph is named " Rafaela Costa" with no "RC" node, and `innerText` has no "RC". The
+  control case (the same glyph without `aria-hidden`) is named "RC Rafaela Costa" with an exposed "RC" text node, so
+  the probe does see generated content when it is exposed. What hides it is `aria-hidden` on the host: accessible-name
+  computation skips hidden nodes, generated content included. **Firefox and WebKit were not checked** (neither is
+  installed on the probe machine). Keep `aria-hidden="true"` on the host; removing it would expose the letters.
