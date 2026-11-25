@@ -27,7 +27,7 @@ const EMPTY_LIST: ReviewListResponse = { reviews: [], averageRating: null, revie
 // Defaults to a single eligible visit so most tests exercise the form directly,
 // without needing to interact with the "which visit?" picker.
 const ELIGIBLE_APPOINTMENT: ReviewableAppointmentResponse =
-  { id: "appt-1", date: "2026-05-01T00:00:00Z", durationMinutes: 60 };
+  { id: "appt-1", date: "2026-05-01T00:00:00Z", durationMinutes: 60, studioTimezone: "Europe/Tirane" };
 const mockReviewableAppointmentsResult =
   { data: [ELIGIBLE_APPOINTMENT] as ReviewableAppointmentResponse[], isLoading: false };
 
@@ -330,11 +330,24 @@ describe("ReviewSection — appointment eligibility gate", () => {
 
   it("shows a picker when there are multiple eligible appointments", () => {
     mockReviewableAppointmentsResult.data = [
-      { id: "appt-1", date: "2026-05-01T00:00:00Z", durationMinutes: 60 },
-      { id: "appt-2", date: "2026-01-15T00:00:00Z", durationMinutes: 90 },
+      { id: "appt-1", date: "2026-05-01T00:00:00Z", durationMinutes: 60, studioTimezone: "Europe/Tirane" },
+      { id: "appt-2", date: "2026-01-15T00:00:00Z", durationMinutes: 90, studioTimezone: "Europe/Tirane" },
     ];
     renderSection();
     expect(screen.getByLabelText(/which visit are you reviewing/i)).toBeInTheDocument();
+  });
+
+  it("S01: names each visit's day on the studio's calendar, not the viewer's", () => {
+    // 11:00 UTC on 1 May is already 2 May in Kiritimati (UTC+14) and still 1 May in Pago Pago (UTC-11). Whatever
+    // zone the test runs in, each option shows its own studio's day; a missing zone says so instead of guessing.
+    mockReviewableAppointmentsResult.data = [
+      { id: "appt-1", date: "2026-05-01T11:00:00Z", durationMinutes: 60, studioTimezone: "Pacific/Kiritimati" },
+      { id: "appt-2", date: "2026-05-01T11:00:00Z", durationMinutes: 60, studioTimezone: "Pacific/Pago_Pago" },
+      { id: "appt-3", date: "2026-05-01T11:00:00Z", durationMinutes: 60, studioTimezone: null },
+    ];
+    renderSection();
+    const options = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(options).toEqual(["2 May 2026", "1 May 2026", "Time unavailable"]);
   });
 
   it("submits the review with the selected appointmentId", async () => {

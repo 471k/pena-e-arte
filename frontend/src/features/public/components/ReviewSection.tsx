@@ -6,6 +6,7 @@ import { Button }   from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { StarRating, InteractiveStarRating } from "@/shared/components/ui/StarRating";
 import { useRespondToReviewMutation } from "@/features/reviews/reviewsApi";
+import { formatVisitDate } from "@/shared/utils/visitDate";
 import {
   useGetStudioReviewsQuery,
   useGetArtistReviewsQuery,
@@ -160,12 +161,6 @@ interface ReviewFormProps {
   token:   string | null;
   target:  "studio" | "artist" | "tattoo";
   imageId?: string;
-}
-
-function formatVisitDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
 }
 
 function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
@@ -330,7 +325,7 @@ function ReviewForm({ slug, token, target, imageId }: ReviewFormProps) {
                        focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {eligibleAppointments.map((a) => (
-              <option key={a.id} value={a.id}>{formatVisitDate(a.date)}</option>
+              <option key={a.id} value={a.id}>{formatVisitDate(a)}</option>
             ))}
           </select>
         </div>

@@ -248,7 +248,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: [
       "Go to the studio's page (/s/{slug}) or the artist's page (/artist/{slug}) and scroll to \"Reviews\".",
       "If you have a completed appointment there that you haven't reviewed yet, the \"Write a review\" form appears.",
-      "If you have more than one eligible visit, pick which one you're reviewing from the dropdown.",
+      "If you have more than one eligible visit, pick which one you're reviewing from the dropdown. Each visit is listed by its date on the studio's calendar, so it matches the studio's records even if you're in another time zone.",
       "Pick a star rating and write your review (minimum 10 characters), then click \"Post Review\".",
     ],
     tips: [
@@ -2367,7 +2367,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "File a report about a serious issue with an artist or studio — scam, sexual misconduct, unsafe hygiene practices, harassment, discrimination, or poor service — reviewed by our platform team, not shown publicly.",
     steps: [
       "Go to the studio's page (/s/{slug}) or the artist's page (/artist/{slug}) and scroll below Reviews to \"Report this artist\" / \"Report this studio\".",
-      "Pick a category and the appointment your report relates to.",
+      "Pick a category and the appointment your report relates to. Each appointment is listed by its date on the studio's calendar, so it matches the studio's records even if you're in another time zone.",
       "Describe what happened in your own words (minimum 20 characters), and optionally attach up to 3 screenshots or short video clips as evidence.",
       "Click \"Submit Report\".",
     ],

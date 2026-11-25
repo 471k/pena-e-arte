@@ -99,7 +99,7 @@ test.describe("Artist Social tab", () => {
     const list = page.getByRole("list", { name: "Connected accounts" });
     await expect(list.getByRole("listitem")).toHaveCount(5);
     await expect(page.getByRole("button", { name: "Connect Instagram" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Get Facebook verification code" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Get verification code for Facebook" })).toBeVisible();
     await expect(list).not.toContainText("—");
     await expectAxeClean(page);
   });

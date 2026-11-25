@@ -15,10 +15,11 @@ import {
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
-function violationSummary(violations: { id: string; help: string; nodes: unknown[] }[]): string {
+// Names the failing nodes, not only how many: a count alone says a rule broke but not where.
+function violationSummary(violations: { id: string; help: string; nodes: { target: unknown[] }[] }[]): string {
   if (violations.length === 0) return "";
   return violations
-    .map((v) => `- [${v.id}] ${v.help} (${v.nodes.length} node${v.nodes.length === 1 ? "" : "s"})`)
+    .map((v) => `- [${v.id}] ${v.help} (${v.nodes.length} node${v.nodes.length === 1 ? "" : "s"}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)
     .join("\n");
 }
 

@@ -315,7 +315,7 @@ export function MyStudiosPage() {
                 variant="ghost"
                 className="shrink-0 h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
                 onClick={() => navigate("/discover")}
-                aria-label="Discover more studios to join"
+                aria-label="Join another studio"
               >
                 <Plus className="h-3 w-3" aria-hidden />
                 Join another
