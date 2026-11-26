@@ -41,12 +41,21 @@ describe("UserMenu", () => {
     const { unmount } = render(
       <Provider store={makeStore()}><MemoryRouter><UserMenu onLogout={vi.fn()} context={<span>Tinta &amp; Alma · Owner</span>} /></MemoryRouter></Provider>,
     );
-    await user.click(screen.getByRole("button", { name: "User menu" }));
+    await user.click(screen.getByRole("button", { name: /user menu$/i }));
     expect(screen.getByText("Tinta & Alma · Owner")).toBeInTheDocument();
     unmount();
     renderMenu();
-    await user.click(screen.getByRole("button", { name: "User menu" }));
+    await user.click(screen.getByRole("button", { name: /user menu$/i }));
     expect(screen.queryByText(/·/)).toBeNull();
+  });
+
+  it("WCAG 2.5.3: the button's name carries the name and role it shows, in order, then says it is the user menu", () => {
+    renderMenu();
+    const button = screen.getByRole("button", { name: /user menu$/i });
+    expect(button).toHaveAccessibleName("Gabriel, Admin, user menu");
+    // The visible text is exactly the name then the role (the initial is drawn, see InitialsGlyph, so it is no text).
+    // Read as one string, the way a name-from-text check reads it: the two words must stay two words.
+    expect((button.textContent ?? "").trim()).toBe("Gabriel Admin");
   });
 
   it("renders the user display name", () => {

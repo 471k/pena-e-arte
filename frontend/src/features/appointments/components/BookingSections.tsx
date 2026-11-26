@@ -33,7 +33,7 @@ export function BookingSection({ id, number, title, description, showBack, onBac
           id={headingId(id)}
           tabIndex={-1}
           className="scroll-mt-24 rounded-sm text-sm font-semibold tracking-tight
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                     focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="text-muted-foreground">{number}.</span> {title}
         </h2>
@@ -80,7 +80,7 @@ export function BookingReview({ id, number, groups, onChange, deposit, request, 
           id={headingId(id)}
           tabIndex={-1}
           className="scroll-mt-24 rounded-sm text-sm font-semibold tracking-tight
-                     focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                     focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="text-muted-foreground">{number}.</span> Review your request
         </h2>

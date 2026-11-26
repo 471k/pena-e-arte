@@ -58,17 +58,32 @@ listing no memory. The summary line ends `_quarantine/ not listed` to say so.
 
 **The order matters: lock first, then the switch.**
 
-1. **Lock rule on the bucket's `_quarantine/` prefix, 30 days.** A Cloudflare account setting (dashboard → R2
-   → bucket → Settings → Bucket Lock Rules, or the API's `PUT /accounts/{account}/r2/buckets/{bucket}/lock`).
-   Rule: prefix `_quarantine/`, condition Age, 2,592,000 seconds (30 days), enabled.
+1. **Lock rule on the bucket's `_quarantine/` prefix, 14 days, and a lifecycle rule that expires it at 15 days.**
+   Phi's decision (23 Nov): the quarantine runs with **no person in the path**. Both are Cloudflare bucket settings.
+   - **Lock:** dashboard → R2 → bucket → Settings → Bucket Lock Rules, or the API's
+     `PUT /accounts/{account}/r2/buckets/{bucket}/lock`. Rule: prefix `_quarantine/`, condition Age,
+     **1,209,600 seconds (14 days)**, enabled.
+   - **Lifecycle:** dashboard → R2 → bucket → Settings → Object lifecycle rules, or
+     `PUT /accounts/{account}/r2/buckets/{bucket}/lifecycle`. Rule: prefix `_quarantine/`, delete objects
+     **15 days** after creation.
+   - **The lifecycle period must exceed the lock. The one day of margin is the whole safeguard.** Set both to 14 and
+     the expiry is refused while the object is still locked, so the object lingers with nothing reporting it.
+     Change one, change the other.
    - Production bucket: **`pena-e-arte-prod`**. Staging: `pena-e-arte-staging`.
-   - Read the rules back afterwards. Today both buckets read `[]`.
+   - Read both rules back afterwards. Staging holds both since 24 Nov (replacing the first `quarantine-30d`);
+     production holds neither yet.
    - **Production needs Phi's go**, given with the current value read back first.
    - **Verified on staging (23 Nov 2026):**
      - Lock rules are prefix-scoped, so the lock never touches live files outside `_quarantine/`.
      - A copy's lock age counts from the copy, not from the original upload.
-     - A DELETE of a locked object returns 409.
+     - A DELETE of a locked object returns 409 through the S3 API. Through Cloudflare's REST API the same refusal
+       is **HTTP 200** with `success: false` and error 10069 ("locked by the bucket policy"), so read the body.
      - Removing the rule unlocks at once.
+   - **First run and restore rehearsed on staging (24 Nov 2026):** the 05:30 UTC run matched the filed
+     prediction on every field (moved 1, the 75-byte `backup-test` PNG; 0 copy failed, 0 not verified, 0 kept).
+     The copy kept the ETag, and the lock refused its deletion. The restore below was then run for real:
+     report-only first, a server-side copy back, size and ETag equal on both copies. Only then were the lock
+     (14 days) and the lifecycle (15 days) put in place of `quarantine-30d`.
 2. **The switch:** add `OrphanedObjectSweep__Mode: "Quarantine"` to that environment's
    `k8s/overlays/<env>/api-config-patch.yaml` in a PR. CD applies ConfigMaps and restarts the API, so the next
    05:30 UTC run uses it. This is a production-config change: hold it for Phi on production.
@@ -113,26 +128,23 @@ reader got it wrong), or someone asks for a removed file back.
    `curl --aws-sigv4` helper using the pod's own `CloudflareR2__*` variables (never printed), or any S3 client
    with the app's token. Content type and metadata come with the copy.
 4. **Check:**
-   - the restored object's size equals the quarantine copy's;
+   - the restored object's size **and ETag** equal the quarantine copy's (a HEAD on each; a length alone is
+     not an identity);
    - the public address `https://media.tattooos.co/<original key>` returns 200 (portfolio images only;
      private files are signed reads, so check them through the app's own screen instead);
    - the screen that shows it renders it.
 5. **Leave the quarantine copy alone.** It is locked, and it is the undo for the restore.
 
-## What "our code can't delete from quarantine" means, and erasure
+## What the lock and the expiry mean, and erasure
 
-- **The lock is a Cloudflare account permission.** The app's R2 tokens are object-level and can't change lock
-  rules. So **our code can't delete from quarantine while the rule is on. Someone with Cloudflare lock
-  permission can,** by removing the rule, which unlocks every quarantined object at once.
-- **Erasure requests:** if a client asks to be erased and one of their files is in quarantine, deleting it
-  needs **a person with Cloudflare lock permission**, not just the app:
-  1. remove the rule;
-  2. delete the object;
-  3. put the rule back.
-
-  This is a process requirement, not a conflict with the one-month response window. It is part of the open
-  Legal question about storage locations (the live bucket, backups, logs, `_quarantine/`, and saved drafts if
-  those are ever built). **Don't shorten the 30 days to make this easier:** the recovery window is the point.
+- **For 14 days nothing can delete a quarantined object**, our code included: the app's R2 tokens are
+  object-level and can't change lock rules. That is the recovery window for a wrong verdict.
+- **At 15 days the lifecycle rule deletes it.** No code and no person is involved, and nothing has to remember.
+- **Erasure requests (specified, not built; it waits for the Legal answer):** the erasure path deletes a client's
+  objects directly, the live ones at once, rather than leaving them for the sweep to find. A file of theirs that
+  is already in quarantine is gone by day 15 at the latest, with no step that needs a person. It is part of the
+  open Legal question about storage locations (the live bucket, backups, logs, `_quarantine/`, and saved drafts
+  if those are ever built).
 - **Backups:** `r2-export` (06:00 UTC) copies the whole bucket into `pena-e-arte-prod-backup` and never deletes
   there. So the backup already holds the original key from before the move, and it will also hold the
   quarantine copy. Quarantine changes nothing about the backup's erasure question.

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, DatabaseZap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { ActionReceiptNotice } from "./ActionReceipt";
+import { AUDIT_ACTIONS, useActionReceipt } from "./receipts";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
@@ -96,21 +99,24 @@ export function DataMaintenanceCard() {
   const [billedResult, setBilledResult] = useState<BackfillBilledAmountsResponse | null>(null);
   const [ledgerResult, setLedgerResult] = useState<BackfillRevenueLedgerResponse | null>(null);
 
+  // D04: each run leaves a receipt linking its audit entry, beside the counts each step already shows.
+  const receipt = useActionReceipt();
+
   async function handleBilled() {
     try {
       setBilledResult(await runBilled().unwrap());
-      toast.success("Billed-amount backfill finished");
-    } catch {
-      toast.error("Billed-amount backfill failed");
+      receipt.show("The billed-amount backfill finished. The counts are under step 1.", AUDIT_ACTIONS.billedAmountsBackfilled);
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Billed-amount backfill failed"));
     }
   }
 
   async function handleLedger() {
     try {
       setLedgerResult(await runLedger().unwrap());
-      toast.success("Revenue-ledger backfill finished");
-    } catch {
-      toast.error("Revenue-ledger backfill failed");
+      receipt.show("The revenue-ledger backfill finished. The counts are under step 2.", AUDIT_ACTIONS.revenueLedgerBackfilled);
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Revenue-ledger backfill failed"));
     }
   }
 
@@ -126,7 +132,8 @@ export function DataMaintenanceCard() {
           Both are safe to run again — only data that is still missing is filled in.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        {receipt.receipt && <ActionReceiptNotice receipt={receipt.receipt} onDismiss={receipt.dismiss} />}
         <ol className="space-y-5">
           <BackfillStep
             step={1}

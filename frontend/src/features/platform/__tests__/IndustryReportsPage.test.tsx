@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -267,7 +267,8 @@ describe("IndustryReportsPage", () => {
       screen.getByRole("button", { name: /trigger industry report generation now/i })
     );
 
-    expect(await screen.findByText(/failed to queue — try again/i)).toBeInTheDocument();
+    // D04: the server's own reason, not a generic "failed".
+    expect(await screen.findByText(/server error try again/i)).toBeInTheDocument();
     expect(screen.queryByText(/queued — report will appear shortly/i)).not.toBeInTheDocument();
   });
 
@@ -313,5 +314,18 @@ describe("IndustryReportsPage", () => {
     );
     renderPage();
     expect(await screen.findByText(/failed to load plan usage report/i)).toBeInTheDocument();
+  });
+});
+
+describe("D04: the trigger's receipt", () => {
+  it("queuing a report leaves a receipt linking the audit log", async () => {
+    server.use(http.post("http://localhost/api/v1/platform/reports/industry/trigger", () => new HttpResponse(null, { status: 202 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("May 2026");
+    await user.click(screen.getByRole("button", { name: /trigger industry report generation now/i }));
+    const receipt = (await screen.findByText(/an industry report is queued/i)).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?action=Platform.IndustryReportTriggered");
   });
 });

@@ -12,6 +12,7 @@ import uiReducer from "@/features/ui/uiSlice";
 import { paymentsApi } from "@/features/payments/paymentsApi";
 import { UnsettledPaymentsSection } from "@/features/payments/components/UnsettledPaymentsSection";
 import type { UnsettledPaymentItem, UnsettledPaymentsResponse } from "@/features/payments/payment.types";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 const NOW = new Date();
 const hoursFromNow = (h: number) => new Date(NOW.getTime() + h * 3_600_000).toISOString();
@@ -56,6 +57,8 @@ const RESPONSE: UnsettledPaymentsResponse = {
 };
 
 const server = setupServer(
+  // The studio's zone: every date on these pages is on the studio's calendar (formatInStudioTimezone.ts).
+  http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ id: "s-001", timezone: "Europe/Tirane", currency: "EUR" })),
   http.get("http://localhost/api/v1/payments/unsettled", () => HttpResponse.json(RESPONSE)),
 );
 
@@ -65,8 +68,8 @@ afterAll(() => server.close());
 
 function renderSection() {
   const store = configureStore({
-    reducer: { auth: authReducer, ui: uiReducer, [paymentsApi.reducerPath]: paymentsApi.reducer },
-    middleware: (gd) => gd().concat(paymentsApi.middleware),
+    reducer: { auth: authReducer, ui: uiReducer, [paymentsApi.reducerPath]: paymentsApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer },
+    middleware: (gd) => gd().concat(paymentsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       auth: { user: { id: "u-001", email: "owner@test.com" }, token: "fake-token", tenantId: "s-001", role: "owner", pendingReferralCode: null, impersonation: null } as any,
@@ -131,6 +134,21 @@ describe("UnsettledPaymentsSection (E05b-2, O06)", () => {
     await screen.findAllByTestId("unsettled-item");
     expect(screen.queryByText(/total/i)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /dashboard under needs you/i })).toHaveAttribute("href", "/dashboard");
+  });
+
+  it("a row's session date is on the studio's calendar", async () => {
+    // 12:00 UTC on 24 Nov is 02:00 on 25 Nov in Kiritimati (UTC+14).
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () =>
+        HttpResponse.json({ id: "s-001", timezone: "Pacific/Kiritimati", currency: "EUR" })),
+      http.get("http://localhost/api/v1/payments/unsettled", () => HttpResponse.json({
+        ...RESPONSE,
+        groups: RESPONSE.groups.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i, appointmentDate: "2026-11-24T12:00:00Z" })) })),
+      })),
+    );
+    renderSection();
+    const disagrees = await screen.findByTestId("unsettled-group-ProviderDisagrees");
+    expect(await within(disagrees).findByText(/Session 25 Nov 2026/)).toBeInTheDocument();
   });
 
   it("each row opens its payment", async () => {

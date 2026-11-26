@@ -13,12 +13,21 @@ import { useLayoutEffect, useRef, useState, type RefObject } from "react";
  *
  * Before the first layout effect, and wherever there is no layout (jsdom: every width is 0), it reads as not
  * folded: a zero width means "not measured", never "narrow".
+ *
+ * The rem threshold is a floor, not the whole rule. From 640px up the header adds the Owner/Artist switch, the
+ * studio's name and wider gaps, so the inline controls need far more room than on a phone: at 200% text a 768px
+ * window overflowed by 446px with the threshold alone (slice 9's pass, 23 Nov). So when the header is unfolded and
+ * its content overflows, it folds and remembers how wide the inline layout needed to be; it unfolds only once the
+ * header is at least that wide. The remembered width only grows, so it can't flip back and forth.
  */
 export function useHeaderFold<T extends HTMLElement>(belowRem: number): { ref: RefObject<T | null>; folded: boolean } {
   const ref = useRef<T>(null);
   const [folded, setFolded] = useState(false);
+  // The width in rem the inline layout has been seen to need. Starts at the measured floor.
+  const neededRem = useRef(belowRem);
 
   useLayoutEffect(() => {
+    neededRem.current = Math.max(neededRem.current, belowRem);
     const el = ref.current;
     if (!el) return;
 
@@ -26,7 +35,16 @@ export function useHeaderFold<T extends HTMLElement>(belowRem: number): { ref: R
       if (!el) return;
       const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const widthRem = el.getBoundingClientRect().width / rootPx;
-      setFolded(widthRem > 0 && widthRem < belowRem);
+      if (widthRem <= 0) {
+        setFolded(false);
+        return;
+      }
+      if (!folded && el.scrollWidth > el.clientWidth + 1) {
+        neededRem.current = Math.max(neededRem.current, el.scrollWidth / rootPx);
+        setFolded(true);
+        return;
+      }
+      setFolded(widthRem < neededRem.current);
     }
 
     measure();
@@ -42,11 +60,14 @@ export function useHeaderFold<T extends HTMLElement>(belowRem: number): { ref: R
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     observer.observe(probe);
+    // Content that arrives later (the studio's name, a pending-invite bell) widens the children, not the header.
+    for (const child of Array.from(el.children)) observer.observe(child);
     return () => {
       observer.disconnect();
       probe.remove();
     };
-  }, [belowRem]);
+    // Re-run when the fold changes, so the overflow check reads the layout that is actually rendered.
+  }, [belowRem, folded]);
 
   return { ref, folded };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,6 +39,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Badge } from "@/shared/components/ui/badge";
 import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
+import { SUPPORT_VIEW_READ_ONLY_REASON, useSupportView } from "@/shared/hooks/useSupportView";
 import { SpecializationsField } from "@/shared/components/SpecializationsField";
 import { TATTOO_STYLE_OPTIONS } from "@/shared/constants/tattooStyles";
 import {
@@ -79,6 +80,8 @@ import { ArtistScheduleEditor } from "./ArtistScheduleEditor";
 import { ArtistSocialTab } from "./ArtistSocialTab";
 import { SITE_URL } from "@/shared/constants/legalEntity";
 import { Money } from "@/shared/components/Money";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 
 // Keep in sync with TattooStyle.cs constants on the backend.
 const STYLE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -133,8 +136,13 @@ function isValidTab(value: string | null): value is ArtistDetailTab {
 }
 
 function DesignCatalogControls({ design, currency }: { design: DesignResponse; currency: string | undefined }) {
-  const [markAsCatalogItem, { isLoading }] = useMarkDesignAsCatalogItemMutation();
+  const [markAsCatalogItem, { isLoading: saving }] = useMarkDesignAsCatalogItemMutation();
   const [priceInput, setPriceInput] = useState(design.price != null ? String(design.price) : "");
+  // D05 4b: in a support session the flag and price stay visible, disabled, and say why.
+  const supportView = useSupportView();
+  const reasonId = useId();
+  const isLoading = saving || supportView;
+  const describedBy = supportView ? reasonId : undefined;
 
   async function handleToggle(next: boolean) {
     const price = next ? (parseFloat(priceInput) || null) : null;
@@ -164,6 +172,7 @@ function DesignCatalogControls({ design, currency }: { design: DesignResponse; c
           type="checkbox"
           checked={design.isCatalogItem}
           disabled={isLoading}
+          aria-describedby={describedBy}
           onChange={(e) => void handleToggle(e.target.checked)}
           className="h-3.5 w-3.5 rounded border-input accent-primary"
         />
@@ -180,6 +189,7 @@ function DesignCatalogControls({ design, currency }: { design: DesignResponse; c
             onChange={(e) => setPriceInput(e.target.value)}
             onBlur={() => void handlePriceBlur()}
             disabled={isLoading}
+            aria-describedby={describedBy}
             className="h-7 w-24 text-xs pl-6"
           />
         ) : (
@@ -192,10 +202,12 @@ function DesignCatalogControls({ design, currency }: { design: DesignResponse; c
             onChange={(e) => setPriceInput(e.target.value)}
             onBlur={() => void handlePriceBlur()}
             disabled={isLoading}
+            aria-describedby={describedBy}
             className="h-7 w-24 text-xs"
           />
         )
       )}
+      {supportView && <span id={reasonId} className="sr-only">{SUPPORT_VIEW_READ_ONLY_REASON}</span>}
     </div>
   );
 }
@@ -205,8 +217,11 @@ export function ArtistDetailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const canManage = usePermission(Role.Owner);
+  const supportView = useSupportView();
   const isArtistRole = usePermission(Role.Artist);
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
+  // Appointment dates are on the studio's calendar (S01): pending until the zone loads, never the browser's.
+  const { zone } = useStudioZone();
 
   const { data: artist, isLoading, isError } = useGetArtistByIdQuery(id!);
   const { currency: studioCurrency } = useStudioCurrency();
@@ -481,10 +496,10 @@ export function ArtistDetailPage() {
             </Button>
           ) : (canManage || isOwnProfile) && (
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
+              <SubscriptionGatedButton variant="outline" size="sm" onClick={startEdit} className="gap-1.5">
                 <Pencil className="h-3.5 w-3.5" />
                 Edit
-              </Button>
+              </SubscriptionGatedButton>
               {canManage && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -634,7 +649,7 @@ export function ArtistDetailPage() {
                       <span className="truncate">{artist.email}</span>
                     </div>
                     {canManage && !isOwnProfile && (
-                      <Button
+                      <SubscriptionGatedButton
                         variant="ghost"
                         size="sm"
                         className="gap-1.5 shrink-0 text-xs h-7"
@@ -647,7 +662,7 @@ export function ArtistDetailPage() {
                           <Send className="h-3.5 w-3.5" />
                         )}
                         Resend invite
-                      </Button>
+                      </SubscriptionGatedButton>
                     )}
                   </div>
 
@@ -704,6 +719,14 @@ export function ArtistDetailPage() {
             <TabsContent value="portfolio" className="mt-4">
               {canManagePortfolio && (
                 <div className="flex justify-end mb-3">
+                  {supportView ? (
+                    // D05 4b: a menu trigger can't be blocked by a reason (Radix opens on pointer-down, and the
+                    // Button only stops the click), so in a support session this is a plain button that says why.
+                    <SubscriptionGatedButton variant="outline" size="sm" className="gap-1.5">
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      Add image
+                    </SubscriptionGatedButton>
+                  ) : (
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -738,6 +761,7 @@ export function ArtistDetailPage() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </div>
               )}
 
@@ -780,7 +804,7 @@ export function ArtistDetailPage() {
                             type="button"
                             aria-label="Remove image"
                             onClick={() => void removePortfolioImage(imageId)}
-                            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="absolute top-1.5 right-1.5 rounded-full bg-black/60 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                           >
                             <X className="h-3.5 w-3.5 text-white" />
                           </button>
@@ -866,13 +890,13 @@ export function ArtistDetailPage() {
                     <Link
                       key={appt.id}
                       to={`/appointments/${appt.id}`}
-                      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+                      className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
                     >
                       <Card className="hover:bg-muted/40 transition-colors">
                         <CardContent className="p-3 flex items-center justify-between gap-3">
                           <div className="space-y-1 min-w-0">
                             <p className="text-sm font-medium">
-                              {formatDate(appt.date)}
+                              {formatStudioTime(appt.date, { day: "numeric", month: "short", year: "numeric" }, zone)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {appt.durationMinutes} min
@@ -908,7 +932,7 @@ export function ArtistDetailPage() {
                     <Card key={design.id} className="hover:bg-muted/40 transition-colors">
                       <Link
                         to={`/designs/${design.id}`}
-                        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t-lg"
+                        className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-t-lg"
                       >
                         <CardContent className="p-3 flex items-center justify-between gap-3">
                           <div className="min-w-0">
@@ -966,7 +990,7 @@ export function ArtistDetailPage() {
             >
               Cancel
             </Button>
-            <Button
+            <SubscriptionGatedButton
               variant="destructive"
               onClick={onDelete}
               disabled={isDeleting}
@@ -979,7 +1003,7 @@ export function ArtistDetailPage() {
               ) : (
                 isOwnProfile ? "Stop working as an artist" : "Delete"
               )}
-            </Button>
+            </SubscriptionGatedButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

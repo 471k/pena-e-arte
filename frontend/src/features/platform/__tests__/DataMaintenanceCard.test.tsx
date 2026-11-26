@@ -96,9 +96,13 @@ describe("DataMaintenanceCard", () => {
     await user.click(screen.getByRole("button", { name: /run: billed-amount snapshot/i }));
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));
 
-    const result = await screen.findByRole("status");
+    const result = await screen.findByText(/3 card-billed updated/);
     expect(result).toHaveTextContent("3 card-billed updated, 1 skipped (not found in Stripe), 1 cash-billed snapshotted.");
     expect(calls).toEqual(["billed"]);
+    // D04: a receipt that stays, linking the run's audit entry.
+    const receipt = screen.getByText(/the billed-amount backfill finished/i).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?action=Platform.BilledAmountsBackfilled");
 
     const link = screen.getByRole("link", { name: "Ink & Iron Studio" });
     expect(link).toHaveAttribute("href", `/platform/studios/${CASH_STUDIO_ID}`);
@@ -114,8 +118,11 @@ describe("DataMaintenanceCard", () => {
     await user.click(screen.getByRole("button", { name: /run: revenue ledger/i }));
     await user.click(screen.getByRole("button", { name: /^confirm$/i }));
 
-    const result = await screen.findByRole("status");
+    const result = await screen.findByText(/9 subscriptions seeded/);
     expect(result).toHaveTextContent("9 subscriptions seeded, 0 already in the ledger, 16 not currently billing.");
+    const receipt = screen.getByText(/the revenue-ledger backfill finished/i).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?action=Platform.RevenueLedgerBackfilled");
     expect(calls).toEqual(["ledger"]);
   });
 

@@ -34,7 +34,7 @@ export function DesignCard({ design }: DesignCardProps) {
       <CardContent className="p-4 flex items-center gap-4">
         <Link
           to={`/designs/${design.id}`}
-          className="flex items-center gap-4 flex-1 min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+          className="flex items-center gap-4 flex-1 min-w-0 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
             <Palette className="h-5 w-5 text-muted-foreground" />

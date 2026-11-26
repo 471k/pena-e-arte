@@ -4,18 +4,20 @@ import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { useGetMyEarningsQuery } from "../reportsApi";
-import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
-import { withStudioTimeZone } from "@/shared/utils/formatInStudioTimezone";
+import { formatStudioTime, type StudioZone } from "@/shared/utils/formatInStudioTimezone";
+import { useStudioZone } from "@/features/studios/useStudioZone";
 import { formatCurrency } from "@/shared/utils/formatCurrency";
 import { RevenueTrendChart } from "./RevenueTrendChart";
 import { MyBoothRentSection } from "@/features/booth-rent/components/MyBoothRentSection";
 import { describeArtistArrangement } from "@/features/studios/payModel";
 import type { ArtistEarningsResponse, EarningsPaymentLine } from "../report.types";
 
-function formatDate(iso: string | null, studioTimezone: string | undefined): string {
+// Both dates are studio-zone, "Paid" included although it looks like a record: an artist reconciles earnings against
+// the studio's books by the studio's operating day (the zone rule in formatInStudioTimezone.ts). Pending until the
+// zone loads, never the browser's zone.
+function formatDate(iso: string | null, zone: StudioZone): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(
-    "en-GB", withStudioTimeZone({ day: "numeric", month: "short", year: "numeric" }, studioTimezone));
+  return formatStudioTime(iso, { day: "numeric", month: "short", year: "numeric" }, zone);
 }
 
 /**
@@ -92,7 +94,7 @@ export function MyEarningsPage() {
   useDocumentMeta({ title: "My Earnings — TattooOS", canonical: "/earnings" });
 
   const { data, isLoading, isError, error, refetch } = useGetMyEarningsQuery();
-  const { data: studio } = useGetMyStudioQuery();
+  const { zone } = useStudioZone();
 
   // A 404 here means the caller (an owner who hasn't enabled their own artist profile, or
   // no longer has one) has no Artist row to attribute earnings to — not a transient failure,
@@ -199,10 +201,10 @@ export function MyEarningsPage() {
                             before the session (A07a cleanup, finding 5). */}
                         <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
                           <span data-testid="earnings-line-dates">
-                            Paid <time dateTime={line.paidAt}>{formatDate(line.paidAt, studio?.timezone)}</time>
+                            Paid <time dateTime={line.paidAt}>{formatDate(line.paidAt, zone)}</time>
                             {" · "}
                             Session {line.appointmentDate
-                              ? <time dateTime={line.appointmentDate}>{formatDate(line.appointmentDate, studio?.timezone)}</time>
+                              ? <time dateTime={line.appointmentDate}>{formatDate(line.appointmentDate, zone)}</time>
                               : "—"}
                           </span>
                           <ClientPaid line={line} currency={data.currency} />

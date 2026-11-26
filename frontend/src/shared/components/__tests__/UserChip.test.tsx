@@ -31,9 +31,13 @@ describe("UserChip", () => {
     expect(screen.getByText("Alice Smith")).toBeInTheDocument();
   });
 
-  it("renders initials when no avatar image is provided", () => {
+  it("draws the initial as a picture, not as text (WCAG 2.5.3: it must not count as label text)", () => {
     renderChip({ id: "u1", email: "bob@example.com", name: "Bob Jones" }, "artist");
-    expect(screen.getByText("B")).toBeInTheDocument();
+    const glyph = document.querySelector("[data-initials]");
+    expect(glyph).toHaveAttribute("data-initials", "B");
+    expect(glyph).toHaveAttribute("aria-hidden", "true");
+    expect(glyph?.textContent).toBe("");
+    expect(screen.queryByText("B")).toBeNull();
   });
 
   it("falls back to email prefix when name is absent", () => {

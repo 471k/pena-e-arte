@@ -147,7 +147,7 @@ function ArtistCard({ artist }: { artist: PublicArtistSummary }) {
     <Link
       to={`/artist/${artist.slug}`}
       aria-label={`View ${artist.name}'s portfolio`}
-      className="block focus-visible:outline-none
+      className="block focus-visible:outline-hidden
                  focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
                  rounded-lg"
     >
@@ -455,7 +455,7 @@ export function StudioPortfolioPage() {
                       onClick={() => setLightboxUrl(url)}
                       className="mb-3 break-inside-avoid block w-full group relative
                                  overflow-hidden rounded-lg cursor-zoom-in
-                                 focus-visible:outline-none focus-visible:ring-2
+                                 focus-visible:outline-hidden focus-visible:ring-2
                                  focus-visible:ring-ring focus-visible:ring-offset-1"
                       aria-label={`View portfolio image ${i + 1} of ${studio.galleryImages.length}`}
                     >

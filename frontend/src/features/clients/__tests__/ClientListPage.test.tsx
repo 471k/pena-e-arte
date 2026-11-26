@@ -16,6 +16,8 @@ import type { ClientResponse } from "@/features/clients/clientsApi";
 import { artistsApi } from "@/features/artists/artistsApi";
 import type { ArtistResponse } from "@/features/artists/artistsApi";
 import { ClientListPage } from "@/features/clients/components/ClientListPage";
+import { billingApi } from "@/features/billing/billingApi";
+import { studiosApi } from "@/features/studios/studiosApi";
 
 vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
   downloadAuthenticatedFile: vi.fn().mockResolvedValue(undefined),
@@ -79,6 +81,10 @@ const server = setupServer(
     new HttpResponse(null, { status: 204 })),
   http.post("http://localhost/api/v1/clients/:id/restore", () =>
     new HttpResponse(null, { status: 204 })),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
+  http.get("http://localhost/api/v1/studios/me", () =>
+    HttpResponse.json({ id: "s-001", isActive: true, timezone: "Europe/Tirane", currency: "EUR" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -90,12 +96,13 @@ afterAll(() => server.close());
 function makeStore(role: string = "owner") {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, [studiosApi.reducerPath]: studiosApi.reducer,
       auth: authReducer,
       ui:   uiReducer,
       [clientsApi.reducerPath]: clientsApi.reducer,
       [artistsApi.reducerPath]: artistsApi.reducer,
     },
-    middleware: (gd) => gd().concat(clientsApi.middleware, artistsApi.middleware),
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware, clientsApi.middleware, artistsApi.middleware),
     preloadedState: {
       auth: {
         user: { id: "u1", email: "owner@ink.test" },

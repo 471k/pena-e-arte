@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
 import { useSearchParams } from "react-router-dom";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { useAppSelector } from "@/app/hooks";
@@ -30,8 +31,9 @@ function OwnerReportCard({ report }: { report: ConductReportResponse }) {
     try {
       await updateStatus({ id: report.id, status }).unwrap();
       toast.success("Updated.");
-    } catch {
-      toast.error("Failed to update.");
+    } catch (err) {
+      // The owner's page: the server's reason, e.g. a severity only the platform may resolve (D04's bound errors).
+      toast.error(extractErrorMessage(err, "Failed to update."));
     } finally {
       setPendingStatus(null);
     }

@@ -121,6 +121,17 @@
   --breakpoint-page-lg: 68.75rem;
 }
 
+/* A SHORT viewport, by height (WCAG 2.4.11, 25 Nov). The three page headers that wrap tall (Discover, the
+   public studio/artist header, Schedule) are pinned except here: `sticky short-viewport:relative`. The failure
+   this prevents is a pinned header covering a focused control when there is little height to spare (256 px at
+   400% zoom on 1280x1024), so the condition is the viewport's height, not its width; a portrait phone keeps
+   its pinned header. 30rem = 480 px: above the tallest pinned header measured (234 px, Discover at 320 px
+   wide, so a pinned header never takes more than half the height), above every landscape phone (~360-430 px,
+   which unpin) and below every portrait phone (667 px and up, which stay pinned). rem, like the breakpoints
+   above, so a larger default text size, which also makes the headers taller, moves it with them. The
+   quick-book bar is NOT under this rule: it stays pinned everywhere, because it is the booking path. */
+@custom-variant short-viewport (@media (max-height: 30rem));
+
 /* `@theme` only registers the DEFAULT (light) token values above and generates the
    corresponding utility classes at build time — it cannot itself be conditionally scoped.
    Tailwind v4 silently collapses a `@theme` block nested inside `@media` into the same
@@ -276,6 +287,23 @@ body:has([data-theme="after-hours"]) [data-sonner-toaster] {
    DialogContent element itself as a direct child of <body>, so an unlayered `color` here
    would beat any `text-*` utility on that dialog (unlayered styles outrank every layer). */
 @layer base {
+  /* WCAG 2.4.11 Focus Not Obscured: how much of the viewport sticky/fixed chrome covers, so a control the
+     browser scrolls into view on focus lands clear of it (W3C technique C43). The values are measured at
+     runtime by PinnedChromeScrollPadding (shared/hooks/usePinnedChromeScrollPadding.ts); 0 until it runs. */
+  html {
+    scroll-padding-top: var(--pinned-top, 0px);
+    scroll-padding-bottom: var(--pinned-bottom, 0px);
+  }
+  /* The FLOOR: a page with the signed-in shell header (the four layouts' `h-14` header, marked
+     `data-pinned-shell`) never pads the top by less than that header, whatever the measurement says - nothing
+     found, too little, or no measurement at all because the hook threw. The measurement failed silently once
+     (it dropped the 137 px Schedule header), so the one piece of chrome known to be there is held structurally.
+     Only where it exists: a flat floor on every page pushed a 138 px portfolio tile under the public pages'
+     quick-book bar at 400% zoom. 3.5rem matches h-14, so it grows with the text size as the header does. */
+  html:has(header[data-pinned-shell]) {
+    scroll-padding-top: max(var(--pinned-top, 0px), 3.5rem);
+  }
+
   [data-theme="after-hours"],
   body:has([data-theme="after-hours"]) > :not(#root),
   body:has([data-theme="after-hours"]) [data-sonner-toaster] {

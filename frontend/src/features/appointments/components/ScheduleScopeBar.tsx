@@ -54,7 +54,7 @@ export function ScheduleScopeBar({
               id={selectId}
               value={selectedId}
               onChange={(e) => onFilterChange(e.target.value === STUDIO_VALUE ? null : e.target.value)}
-              className="h-8 max-w-[14rem] rounded-md border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-8 max-w-[14rem] rounded-md border bg-background px-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
             >
               <option value={STUDIO_VALUE}>All artists (whole studio)</option>
               {selectedMissing && <option value={selectedId}>Selected artist</option>}

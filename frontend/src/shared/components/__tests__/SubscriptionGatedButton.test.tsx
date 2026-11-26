@@ -68,4 +68,13 @@ describe("SubscriptionGatedButton", () => {
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip.textContent).toMatch(/suspended/i);
   });
+
+  it("in a support session it refuses with the read-only support reason (D05 phase 4b)", () => {
+    mockGuard.mockReturnValue({ isReadOnly: true, cause: "support" });
+    renderButton();
+    const button = screen.getByRole("button", { name: "Click me" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAccessibleDescription(
+      "This is a read-only support session: changes are turned off. End the session to make changes as yourself.");
+  });
 });

@@ -82,6 +82,18 @@ public class StoredObjectReferenceReaderTests
     }
 
     [Fact]
+    public async Task Source12_BookingDraftAttachment()
+    {
+        // A saved draft's photos must stay protected: the draft lives as long as the sweep's minimum age.
+        string key = Key("appointments/pending/u/AreaPhoto");
+        _db.BookingDrafts.Add(new BookingDraft { StudioId = _studioId, UserId = Guid.NewGuid(), ExpiresAt = DateTime.UtcNow.AddDays(7) });
+        _db.BookingDraftAttachments.Add(new BookingDraftAttachment { StudioId = _studioId, DraftId = Guid.NewGuid(), ImageUrl = Url(key) });
+        await _db.SaveChangesAsync();
+
+        (await Read()).IsReferenced(key).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Source5_ConductReport_EveryAttachment()
     {
         string key = Key("conduct-reports/pending/s");

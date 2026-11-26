@@ -446,7 +446,7 @@ public class EmailRenderer : IEmailRenderer
         </html>
         """;
 
-    public string RenderGuestBookingEmailCollision(string studioName) =>
+    public string RenderGuestBookingEmailCollision(string studioName, string? resumeUrl = null) =>
         $"""
         <!DOCTYPE html>
         <html>
@@ -455,14 +455,33 @@ public class EmailRenderer : IEmailRenderer
           <h1 style="color:#7c3aed">Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</h1>
           <p>Someone tried to book an appointment at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
           using this email address, which already has an account on TattooOS.</p>
-          <p>If that was you, please sign in and book from there — your existing account already has
-          everything needed to manage a booking.</p>
+        {(resumeUrl is null ? CollisionSignInParagraph : CollisionResumeBlock(resumeUrl))}
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
             If you don't recognize this activity, no action is needed — nothing was booked or changed
             on your account.
           </p>
         </body>
         </html>
+        """;
+
+    private const string CollisionSignInParagraph =
+        """
+          <p>If that was you, please sign in and book from there — your existing account already has
+          everything needed to manage a booking.</p>
+        """;
+
+    // C05: the link carries a resume token in its fragment. Nothing is attached to the account until the person
+    // follows it AND signs in, which is why the paragraph says to sign in rather than promising the booking is saved.
+    private static string CollisionResumeBlock(string resumeUrl) =>
+        $"""
+          <p>If that was you, you don't have to start again: sign in with this email address and pick up the
+          request where you left off.</p>
+          <a href="{System.Net.WebUtility.HtmlEncode(resumeUrl)}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none">
+            Continue your booking request
+          </a>
+          <p style="color:#6b7280;font-size:13px">What you entered is kept for seven days, except your answer to
+          "Anything else I should know?", because it can hold health details. Nothing is booked until you send the
+          request.</p>
         """;
 
     public string RenderChangeEmailConfirmation(string confirmUrl) =>

@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Pena_e_Arte.Application.Appointments.Commands;
+using Pena_e_Arte.Application.BookingDrafts;
 using Pena_e_Arte.Application.Common;
 using Pena_e_Arte.Application.Persistence;
 using Pena_e_Arte.Application.Waitlists.Commands;
@@ -35,6 +36,8 @@ public class CreateGuestAppointmentHandler(
     IEmailRenderer emailRenderer,
     INotificationService notifications,
     IAppSettings appSettings,
+    IBookingDraftResumeTokens resumeTokens,
+    TimeProvider time,
     ILogger<CreateGuestAppointmentHandler> logger)
     : IRequestHandler<CreateGuestAppointmentCommand, GuestBookingAckResponse>
 {
@@ -88,9 +91,22 @@ public class CreateGuestAppointmentHandler(
         Guid? existingUserId = await identity.GetUserIdByEmailAsync(req.Email, ct);
         if (existingUserId is not null)
         {
+            // C05: keep what they typed as an UNCLAIMED draft and put a resume link in the notice. A failure here
+            // must not change what the caller sees, exactly like the email failure below: the notice then goes out
+            // without a link. Never log the email address.
+            string? resumeUrl = null;
             try
             {
-                string body = emailRenderer.RenderGuestBookingEmailCollision(studio.Name);
+                resumeUrl = await SaveUnclaimedDraftAsync(studio, existingUserId.Value, req.Booking, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to save the unclaimed booking draft on the guest-booking email-collision path");
+            }
+
+            try
+            {
+                string body = emailRenderer.RenderGuestBookingEmailCollision(studio.Name, resumeUrl);
                 await notifications.SendEmailAsync(
                     req.Email, $"Booking attempt at {studio.Name}", body, ct);
             }
@@ -230,6 +246,78 @@ public class CreateGuestAppointmentHandler(
     // RequireNonAlphanumeric=false, plus the framework defaults RequireUppercase/RequireLowercase=true.
     // 28 chars drawn from a mixed pool with one guaranteed char from each required class satisfies
     // this with wide margin — the exact policy may tighten over time, margin absorbs that.
+    /// <summary>
+    /// C05: saves what an anonymous caller typed as an UNCLAIMED draft for the account their email belongs to, and
+    /// returns the resume link for the notice, or null when no link should be sent. The draft is stored now because
+    /// the typed content has nowhere else to live until the link is followed; the token governs VISIBILITY, not
+    /// storage. An unclaimed draft is invisible to its owner (GetMyBookingDraftQuery reads ClaimedAt != null), so
+    /// nothing is attached to an account the caller has not proven control of: Decision #3 above still holds.
+    ///
+    /// Rulings (Desktop, C05 spec, 25 Nov 2026):
+    /// - a CLAIMED draft at this studio is never overwritten: a stranger must not destroy work the owner saved
+    ///   themselves. No token is minted and the notice goes out unchanged. An UNCLAIMED draft is replaced.
+    /// - the safety notes are never stored: GuestBookingDraftPayload does not name them and BookingDraftRules
+    ///   checks the result, the same exclusion every draft goes through.
+    /// Also: only an account with the client role gets a draft. Drafts and the resume route are ClientOnly, so a
+    /// staff account could never claim one and a stranger's text would sit for seven days with no use.
+    /// </summary>
+    private async Task<string?> SaveUnclaimedDraftAsync(
+        Studio studio, Guid userId, CreateAppointmentRequest booking, CancellationToken ct)
+    {
+        IReadOnlyList<string> roles = await identity.GetUserRolesAsync(userId, ct);
+        if (!roles.Contains("client", StringComparer.OrdinalIgnoreCase)) return null;
+
+        string? payload = GuestBookingDraftPayload.From(booking, studio.Timezone);
+        if (payload is null
+            || !BookingDraftRules.IsJsonObject(payload)
+            || BookingDraftRules.HoldsExcludedField(payload))
+        {
+            return null;
+        }
+
+        // Tenant-scoped by the global query filter (SetTenant above): this studio only.
+        BookingDraft? existing = await db.BookingDrafts
+            .Include(d => d.Attachments)
+            .FirstOrDefaultAsync(d => d.UserId == userId, ct);
+        if (existing is { ClaimedAt: not null }) return null;
+        if (existing is not null)
+        {
+            // A new row, not an update, so a link sent for the replaced draft stops matching (new id).
+            db.BookingDraftAttachments.RemoveRange(existing.Attachments);
+            db.BookingDrafts.Remove(existing);
+        }
+
+        DateTime now = time.GetUtcNow().UtcDateTime;
+        // Whole seconds: CreatedAt is carried in the token as ticks and compared after a database round trip.
+        DateTime createdAt = new(now.Ticks - (now.Ticks % TimeSpan.TicksPerSecond), DateTimeKind.Utc);
+        BookingDraft draft = new()
+        {
+            StudioId = studio.Id,
+            UserId = userId,
+            PayloadJson = payload,
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt,
+            ExpiresAt = createdAt + BookingDraft.Lifetime,
+            ClaimedAt = null,
+        };
+        foreach (AppointmentImageRequest image in booking.Images ?? [])
+        {
+            draft.Attachments.Add(new BookingDraftAttachment
+            {
+                StudioId = studio.Id,
+                DraftId = draft.Id,
+                ImageUrl = image.Url,
+                Category = Enum.Parse<AppointmentAttachmentCategory>(image.Category),
+            });
+        }
+        db.BookingDrafts.Add(draft);
+        await db.SaveChangesAsync(ct);
+
+        // The token goes in the URL FRAGMENT, which browsers never send to a server, so it stays out of Cloudflare,
+        // ingress and request logs (the C09 rule). The studio slug is not a secret: the email names the studio.
+        return $"{appSettings.BaseUrl}/booking-drafts/resume?studio={Uri.EscapeDataString(studio.Slug)}#t={resumeTokens.Mint(draft)}";
+    }
+
     private static string GenerateRandomPassword()
     {
         const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";

@@ -1218,7 +1218,9 @@ Never add a new one without updating this table and the Decisions Log.
 | 52 | `StartImpersonationHandler`, `EndImpersonationSessionHandler`, `GetImpersonationSessionsHandler` | AdminOnly cross-tenant `Studio`/`ImpersonationSession` lookups — the calling admin's own JWT carries no `tenant_id` claim while starting/ending/browsing sessions (they are not impersonating yet, or ever, for these three commands themselves), so the normal tenant filter would match nothing | AdminOnly |
 | 53 | `GetNotificationsQuery` (admin branch) | Cross-tenant `NotificationLog` read — the admin's own `tenant_id` claim would otherwise silently scope this to one arbitrary studio instead of returning every `RecipientType.Admin` row platform-wide | AdminOnly |
 | 54 | `StudioCurrencyLock.IsLockedAsync` (`Payment`, `GiftCard`, `PackagePurchase`, `BoothRentCharge`) | The tenant filter also hides soft-deleted rows, but a soft-deleted payment/gift-card/package-purchase/booth-rent-charge still means money moved in this currency — the lock must see those rows too. Mitigation: explicit `StudioId == tenant.StudioId` predicate on every one of the four queries; read-only `AnyAsync`; no data returned. Used by `UpdateStudioCurrencyCommand` (rejects a change once locked) and every `StudioResponse`/`GET /studios/me` builder (`CurrencyLocked` field) | OwnerOnly (the change) / whoever can already read the StudioResponse (the read) |
-| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
+| 55 | `StoredObjectReferenceReader.ReadAsync` (`PortfolioImage`, `TattooRecord`, `DesignRevision`, `AppointmentAttachment`, `IntakeForm`, `ConsentForm`, `Artist`, and since 24 Nov `BookingDraftAttachment`, source 12) | Cross-tenant, platform-wide read of the stored-object reference columns (Phase 0 table) for `OrphanedObjectSweepJob`, a Hangfire job with no tenant: under the filter every object would look unreferenced. **Deliberately WITHOUT `DeletedAt == null`**, the stated exception to the 14 Nov rule: a soft-deleted row still points at its object and can be restored, so it must protect it (same choice as `GuestPendingUploadCleanupJob`). Mitigation: projects the URL columns only, returns a set of object keys, nothing per row; never reaches an endpoint; proved on real MySQL under job conditions (`StoredObjectReferenceReaderIntegrationTests`) | Hangfire job (no caller) |
+| 56 | `BookingDraftExpiryJob.RunAsync` (`BookingDraft`, `BookingDraftAttachment`) | Cross-tenant delete of booking drafts past their seven days (S04, Phi's decision) by a Hangfire job with no tenant: under the filter it would find nothing and drafts would outlive their promised life. Mitigation: one predicate (`ExpiresAt <= now`), deletes only, returns a count; never reaches an endpoint | Hangfire job (no caller) |
+| 57 | `ClientDataErasure.ExecuteAsync` (`BookingDraft`, `BookingDraftAttachment`) | Erasure deletes the person's saved booking drafts at once in **every** studio, the same fan-out as the consent forms and profiles above it (Phi's decision: erasure deletes drafts immediately). Mitigation: scoped by the erased login's `UserId`, deletes only; reached only through the two existing erasure commands (OwnerOnly for a studio's client, ClientOnly for one's own) | OwnerOnly / ClientOnly |
 
 Entries #27–#38 were added 2026-07-20 during the Final self-review checklist pass of
 the full-app master audit — they were all pre-existing, legitimate `IgnoreQueryFilters()`
@@ -7295,7 +7297,10 @@ docs/03's rule that ornamental lettering is for the wordmark only. Spec:
   propagate. In Tailwind v4 it reaches only the bare `rounded` utility (42 uses) and the toasts. The ~320
   `rounded-sm/-md/-lg/-xl` uses read `--radius-*`, so those are set to 3px too. `rounded-xs` stays 2px for
   nested corners, and `rounded-full` is unchanged.
-  **This is our mapping and a known divergence from the prototype.** It is not "radius 3px per docs/03".
+  ~~**This is our mapping and a known divergence from the prototype.** It is not "radius 3px per docs/03".~~
+  **Corrected 24 Nov: the app conforms, and this is not a divergence.** `docs/03`'s only radius line is
+  "Radius baseline: 3px", and the package calls its visual sample a reference, not a specification. The
+  prototype reading below is kept as the record of why it was once framed otherwise; don't reintroduce it.
   The four-role CSS uses `border-radius` exactly twice, both `var(--ah-radius)`: on buttons and on
   inputs/selects/textareas. Panels (cards), badges, dialogs, notices, receipts and message bubbles have
   **no radius at all**, so the prototype is square-cornered with 3px on two control types. We chose 3px
@@ -7952,3 +7957,316 @@ extension.**
 **Why not built:** Phase 7 verifies, it doesn't build. It's a one-line refusal of the same kind Phi already decided
 twice, so it should be a short decision, not a design question. **Rollback cost of leaving it:** an admin can
 extend a `NoSubscription` studio, see a success toast, and the studio stays locked out.
+
+## The header also folds when its content overflows (S05 follow-up, slice 9's pass) — 2026-11-23
+
+Slice 9's 200% pass found #441's fold calibrated on the phone layout only. From 640px up the header adds the
+Owner/Artist switch, the studio's name, wider gaps and the account chip's name, so at 200% text an owner's header
+overflowed by 446px at 768, 214 at 1024 and 138 at 1100 (artist: 92 at 768). Not a regression (those widths
+overflowed before #441 too), but Phase 2's "zero sideways scroll" held only below 640.
+
+- **`useHeaderFold` now also folds on measured overflow.** Unfolded, if the header's content is wider than the
+  header, it folds and remembers how wide the inline layout needed to be; it unfolds only once the header is that
+  wide. The remembered width only grows, so it can't flip back and forth. The rem threshold stays as the floor, so
+  the phone behaviour #441 measured is unchanged. Children are observed too: content that arrives later widens
+  them, not the header.
+- **Folded means phone-like at any width:** the header's Owner/Artist switch goes (the drawer carries it) and the
+  account chip shows only the avatar.
+- **The tour's switch step opens the drawer when folded**, from the same `folded` value, not only below 640 by media
+  query; otherwise it would time out looking for the header copy (#430's failure).
+
+## Write controls say why they are off during a support view (D05 phase 4b) — 2026-11-23
+
+- **One default, not forty marks.** `useSubscriptionGuard` gains the cause `"support"` (an admin's support session,
+  `useSupportView`), which takes precedence over suspension and subscription because the server refuses every
+  write in the session whatever the studio's state. `SubscriptionGatedButton` shows `SUPPORT_VIEW_READ_ONLY_REASON`
+  for it. The write controls on the pages that do load in a session became `SubscriptionGatedButton`, so the
+  default is right and cannot rot; a `writes` prop set at each call site would have been wrong by default.
+- **Disabled with a reason, not hidden.** A vanished control reads as a bug to the admin; a visible, turned-off one
+  says what is happening. The Button keeps focus and its `aria-describedby` reason (slice 6a).
+- **Controls that aren't Buttons** (the artist picker `Select`, the flash-catalog checkbox and price, the branding
+  switch, the client list's row-menu items) are disabled in a session with the same sentence attached by
+  `aria-describedby`. A menu trigger can't be blocked by a reason (Radix opens on pointer-down; the Button only stops
+  the click), so the artist portfolio's "Add image" menu renders as a plain gated button during a session.
+- **Server-side refusal stays** the real protection (`ImpersonationAllowList`); this only stops offering an action
+  that cannot work.
+- Reads are untouched: tabs, filters, the schedule's dates, Export CSV, Add to Calendar, copy buttons.
+- Side effect, intended: the same controls are now also gated for an owner whose studio is read-only for
+  subscription reasons (GracePeriod), which the server already refuses.
+
+## Extend trial refuses a studio with no subscription row (NoSubscription) — 2026-11-24
+
+- **The defect:** `ExtendTrialHandler` moved `Studio.TrialExpiresAt` when the studio had no `Subscription` row and
+  reported success. Access never reads that column: `SubscriptionAccessService` reads only the `Subscription` row and
+  treats a missing one as data corruption, and `TenantMiddleware` answers 402 on every request. So the extension
+  granted nothing.
+- **The fix:** the handler refuses `NoSubscription` the way it already refuses PastDue and Cancelled: a 422 whose
+  message names what does restore access. The frontend's `TRIAL_EXTENDABLE` drops it, so none of the four entry
+  points offers it. The dashboard's at-risk row lists only GracePeriod and PastDue, so it could never show one.
+- **Kept on purpose:** `NoSubscription` stays in `CASH_ACTIVATABLE`, because `ActivateSubscriptionManuallyHandler`
+  creates the missing row, and that is the actual fix for such a studio. Removing it from both sets would leave
+  the admin with no way forward.
+- **Not part of this change:** whether the admin dashboard's stats count a studio with no row as a trial studio. That
+  is Desktop's §C, verified separately against the source and a real row. It is a reporting question, not this refusal.
+
+## Which zone a date is shown in: studio, reader, or none (S01's rule) — 2026-11-24
+
+- **The rule:** a date that locates something in the studio's operating day follows the **studio's** zone. A date
+  that records when something happened follows the **reader's**. It is written above `formatStudioTime` in
+  `shared/utils/formatInStudioTimezone.ts`, where the next person writing a date will see it.
+- **Money placed in a studio period counts as the first kind.** MyEarnings' "Paid" and the payment list's paid date
+  look like record timestamps but are studio-zone, because they are reconciled, or filtered (`GetPaymentsQuery`'s
+  From/To on PaidAt), by the studio's day. The test is what the date is used for, not whether it is a timestamp.
+- **Date-only values follow neither zone.** A date of birth, a closure day or a tattoo record's date is stored as
+  UTC midnight, so it is printed with `formatDateOnly` (pinned to UTC). The viewer's zone would show the day
+  before anywhere west of UTC. CI runs in UTC, where this is invisible, so such tests pin the viewer's zone with
+  `src/test/viewerZone.ts`.
+- **The audit behind it** is `docs/claude/s01-zone-audit-2026-11-24.md`: 61 files, each with a verdict, the safe
+  ones included.
+
+## Skip to content on every signed-in layout (WCAG 2.4.1 Bypass Blocks) — 2026-11-24
+
+- **The failure:** on every staff page a keyboard user crossed 23 Tab stops (the header's controls and every sidebar
+  entry) before reaching the page. Landmarks satisfy 2.4.1 for screen-reader users, but not for a sighted keyboard
+  user. Slice 9 recorded it as a finding. It is fixed rather than documented, because a release document listing a
+  defect that could have been fixed in the same run is the worse outcome.
+- **The fix:** one shared `SkipToContent` (`shared/components/SkipToContent.tsx`) is the first element of all four
+  role layouts. It is visually hidden until focused, then shown top-left. Its target is each layout's content
+  wrapper (`id="main-content"`, `tabIndex={-1}`), a `div` rather than a `main`, because pages render their own
+  `<main>` and a second one would nest.
+- **It focuses the target itself instead of following `#main-content`.** Following the hash would add a history entry
+  inside the SPA.
+- **Proven by the count, measured the same way before and after** (Playwright Chromium, owner `/clients` at 1280,
+  first Tab from the top of the document): `main` reached the first page control on **Tab 24 (23 stops before
+  it)**. With the link it is **Tab, Enter, Tab (1 stop before it)**.
+
+## Grace period: the write gate is TenantMiddleware, and it is already right (a premise corrected three times) — 2026-11-24
+
+- **GracePeriod** is reached only from `TrialExpiryJob`, guarded on `Trialing`. It is the read-only window after a
+  trial for a studio that has **never paid**. A failed payment produces `PastDue`, from the Stripe webhook handlers.
+- **The write gate is `TenantMiddleware.EnforceAsync`.** In GracePeriod it refuses `WriteMethods` with a
+  `SubscriptionRequiredException`, which `ExceptionMiddleware` maps to 402. `TenantMiddlewareTests`'s grace-period
+  POST/PUT/DELETE tests are the regression guard.
+- **`SubscriptionAccessService.IsPassThrough` is a caching predicate, not the gate.** Leave GracePeriod in it:
+  removing it would stop caching a pass-through state and cost a database read per request for every studio in grace.
+- **Phi's answer (24 Nov decision form): keep the lock.** Server, UI (#444's `READ_ONLY_STATUSES`), the dashboard
+  banner and Help agree. No code changed. The only correction was Help's trial FAQ, which said the studio is
+  "suspended" afterwards: `GracePeriodEndJob` sets `Cancelled` and never touches `Studio.IsActive`. Suspension is a
+  separate state that only an admin sets, by hand.
+
+## Corner radius: the flat 3px scale stays (Phi, 24 Nov) — 2026-11-24
+
+- Phi's answer on the decision form: leave it. The 3px mapping from slice 5 stands as recorded there. Do not reopen
+  `--radius*` in `index.css` without a new decision.
+
+## D04 in full: every admin action leaves a receipt and shows the server's reason (Phi, 24 Nov) — 2026-11-24
+
+- **Phi's answer on the decision form: build it in full.** That means bound errors *and* receipts for the 19 admin
+  actions beyond cash activation, rather than the cheaper middle option.
+- **One implementation.** `platform/components/ActionReceipt.tsx` (the `ActionReceiptNotice` and `ActionReceiptArea`
+  components) and `receipts.ts` (types, `auditLogHref`, `makeReceipt`, the hooks, and `AUDIT_ACTIONS`). Cash activation's
+  notice now renders through it too. A receipt names the entity and its resulting state, gives the UTC time, and
+  links `/platform/audit-log?studioId=…&action=…`. It stays until dismissed.
+- **`AUDIT_ACTIONS` is pinned to `AuditActions.cs`** by a test that reads the C# file. A drifted name would link to
+  an empty audit log, which reads as "nothing was recorded".
+- **Where the receipt lives depends on whether its row can disappear.**
+  - Page-level (`ActionReceiptArea` and `useReportReceipt`) where a row can leave the list: an at-risk studio that
+    goes back to Trialing, a filtered row, a deleted code.
+  - Router state where the page navigates away: a saved plan lands on the plan list, and an ended support session
+    lands on the studio's page.
+  - Outside an area, the hook falls back to a toast rather than dropping the receipt.
+- **Starting a support session has no receipt.** It navigates into the support view, where the persistent banner
+  (studio, reason, time left) is the durable record. Ending one has a receipt. When the server can't record the end,
+  the admin still gets their own session back and is told why, and no receipt claims it ended.
+- **Errors:** each formerly bare `catch {` now passes the server's message through `extractErrorMessage`, with the
+  old sentence as the fallback. `describeLoadError` is for failed reads, so it isn't used for actions. Typed input
+  survives a failure. **The feedback receipt never includes the internal note's text** (the same field as the #371
+  leak).
+
+## The visit pickers carry their studio's zone; booth rent's dates are left alone (S01's tail) — 2026-11-24
+
+- **The two "which visit" pickers now name the studio's day.** `ReviewableAppointmentResponse` and
+  `ReportableAppointmentResponse` gained `StudioTimezone`, read per row from the appointment's own studio (a
+  correlated subquery: `Studio` has no query filter, so no `IgnoreQueryFilters` was added). The review form and the
+  conduct-report dialog format through `shared/utils/visitDate.ts`, which calls `formatStudioTime`; a null zone
+  reads "Time unavailable", never the viewer's zone. A client in another zone could otherwise be shown the wrong day
+  and pick the wrong visit. Pinned by a MySQL integration test (`VisitPickerStudioZoneIntegrationTests`) because the
+  in-memory double would accept a projection MySQL could not translate.
+- **Booth rent: the question asked was whether anything reconciles, groups or reports booth-rent charges by a
+  studio-calendar period. The answer is no.** Read at `e98f433c`: `BoothRentChargeJob` writes the row,
+  `GetBoothRentChargesHandler` only sorts by `ChargedDate`, `MarkBoothRentChargeSettledCommand` finds a charge by id,
+  and `StudioCurrencyLock` only asks whether any charge exists. No export, ledger, earnings figure or report reads
+  booth-rent charges. So the money clause of the rule does not apply, and **`BoothRentManagementPage.tsx` and
+  `MyBoothRentSection.tsx` were not changed**. S01 stays Partial on that one row.
+- **What the reading found instead: these dates are date-only.** The owner sets the first charge with a
+  `type="date"` input, sent as `new Date("YYYY-MM-DD").toISOString()`, which is UTC midnight. Both commands copy it
+  unchanged, and the job advances it by whole days (`AddDays(7)`) or months (`AddMonths(1)`), so every
+  `NextChargeDate` and `ChargedDate` the UI can produce is UTC midnight of a date the owner picked. That is the rule's
+  third kind, and the matching formatter is `formatDateOnly`. **The studio zone would have been wrong too:** in any
+  studio west of UTC, UTC midnight falls on the previous evening, so it would print the day before for weekly rent,
+  which is exactly the sharp case. Not applied here because the instruction gated any change on the reconciliation
+  answer; it waits for a ruling. One caveat for that ruling: the API does not truncate the value, so a caller other
+  than this form could store a time of day.
+
+## Booth-rent dates are date-only; a studio-zone treatment was considered and rejected (S01 closes) — 2026-11-25
+
+Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's dates are left alone").
+
+- **The rule:** `BoothRentSchedule.NextChargeDate` and `BoothRentCharge.ChargedDate` are calendar dates, not
+  instants. Both booth-rent screens (`BoothRentManagementPage.tsx`, `MyBoothRentSection.tsx`) print them through
+  `formatDateOnly` (`shared/utils/studioDay.ts`), which formats in UTC, so the stored date comes out unchanged in
+  every zone. **No zone conversion of any kind:** a date-only value has no zone to convert into.
+- **Why they are date-only:** the owner picks the first charge in a `type="date"` input, sent as
+  `new Date("YYYY-MM-DD").toISOString()` (UTC midnight). The create and update commands copy it unchanged, and
+  `BoothRentChargeJob` advances it by `AddDays(7)` or `AddMonths(1)`, which keeps UTC midnight.
+- **The three backend readers** (read at `e98f433c`): `GetBoothRentChargesHandler` sorts by `ChargedDate`,
+  `MarkBoothRentChargeSettledCommand` finds a charge by id, and `StudioCurrencyLock` only asks whether any charge
+  exists (`AnyAsync`). `BoothRentChargeJob` is the writer. Nothing groups, reconciles, exports or reports booth-rent
+  charges by a studio-calendar period, so no reader depends on which "day" a charge falls on in a zone.
+- **Rejected: formatting in the studio's zone.** This was the first instinct for a money-adjacent date, because
+  appointment times follow the studio's zone. It is wrong here. UTC midnight in any studio WEST of UTC is the previous
+  evening, so the studio zone would print the day before. For weekly rent that is the sharp case: a charge due Monday
+  shown as Sunday. Formatting in the viewer's zone (the old code) fails the same way for any viewer west of UTC. **The
+  next person to look at a money-adjacent date should check first whether it is an instant or a calendar date.** Only
+  an instant has a zone.
+- **Guard:** `features/booth-rent/__tests__/boothRentDates.test.tsx` renders both screens with month-end dates
+  (1 Nov, 1 Dec) and a studio in `America/New_York`, and asserts the stored day and the absence of the day before.
+  The nightly zone sweep runs it at UTC+14 and UTC-11 as well as UTC. Mutation checks: the old viewer-zone formatter
+  fails the UTC-11 leg (UTC+14 cannot see it, since UTC midnight plus 14 hours is the same date), and a studio-zone
+  formatter fails at every runner zone.
+- **Open, specified and not built:** the write path does not truncate, so a non-UI caller could store a time of day
+  and make this assumption false for that row. See `spec-booth-rent-date-only-write-guard-2026-11-25.md`.
+- **S01 is Present** with this and the visit pickers (2026-11-24 entry above).
+
+## `InitialsGlyph`: the initials are decorative, not part of the accessible name — 2026-11-25
+
+- **What it does:** where a person has no photo, their initials are drawn by `InitialsGlyph`
+  (`shared/components/InitialsGlyph.tsx`) as CSS-generated content (`::before { content: attr(data-initials) }`) on
+  an `aria-hidden="true"` span. It is used in the booking form's artist picker (a Radix select option) and in
+  `UserChip`.
+- **Why:** WCAG 2.5.3 Label in Name asks that a control's visible label be part of its accessible name. With the
+  initials as a text node the visible label read "RC Rafaela Costa", so axe flagged the option. The photo the initials
+  stand in for is an `alt=""` image, which is decorative. Drawing the initials gives the fallback the same standing.
+- **Rejected: putting the initials into the accessible name** ("RC Rafaela Costa"). That would satisfy the tool, but a
+  screen-reader user would hear two letters before every artist's name, and nobody says the initials aloud to voice
+  control. That is worse for exactly the people 2.5.3 exists to serve. **This was built for the user, not to get
+  around the tool:** the alternative that pleases the tool is the worse one for the user.
+- **Checked: is the generated content exposed?** Desktop asked because several screen readers announce
+  pseudo-element `content`. In Chromium's **native** accessibility tree (`Accessibility.getFullAXTree` over CDP,
+  25 Nov), a button holding the glyph is named " Rafaela Costa" with no "RC" node, and `innerText` has no "RC". The
+  control case (the same glyph without `aria-hidden`) is named "RC Rafaela Costa" with an exposed "RC" text node, so
+  the probe does see generated content when it is exposed. What hides it is `aria-hidden` on the host: accessible-name
+  computation skips hidden nodes, generated content included. **Firefox and WebKit were not checked** (neither is
+  installed on the probe machine). Keep `aria-hidden="true"` on the host; removing it would expose the letters.
+
+## Saved booking drafts keep everything but the safety notes (Phi, 24 Nov) — 2026-11-24
+
+- **Phi's answer on the decision form: exclude the safety field.** "Anything else I should know?" (`safetyNotes`)
+  invites medical details, so a draft never holds the key at all, not even empty. Everything else is kept. Phi chose
+  exclusion over an opt-in, so there is no consent control. Legal permits drafts with health answers excluded.
+- **Server-side, by Phi's choice on 24 Nov** (S04: keep health answers and body photos out of general browser storage).
+  `BookingDraft` holds the form JSON and `BookingDraftAttachment.ImageUrl` the photos. They are owned by the login
+  (`UserId`) at one studio, under the tenant filter, one per person per studio, and ClientOnly
+  (`/api/v1/booking-drafts/mine`).
+  - **Lifetime:** seven days from the last save (Phi's earlier decision). Expired drafts read as none, and
+    `BookingDraftExpiryJob` deletes them daily (IQF #56).
+  - **Deleted** on send, on "Start over", and at once on erasure in every studio (`ClientDataErasure`, IQF #57).
+- **The exclusion is enforced three times:**
+  1. The form builds the payload field by field, never by spreading the intake.
+  2. The validator refuses a payload carrying `safetyNotes` at any depth and in any case.
+  3. The handler checks again, rather than trusting the pipeline with the one rule that keeps health data out.
+- **Photos have their own column so the orphan sweep counts them** (source 12 of `StoredObjectReferenceReader`). A draft
+  lives exactly as long as the sweep's minimum age, so without this a live draft's photos could be moved.
+- **The exit guard still counts the safety field**, although the draft doesn't keep it. Leaving loses that answer
+  for good, so the warning is right.
+- **Guests: not built.** The options are in `docs/claude/spec-guest-booking-draft-open-question-2026-11-24.md`. No
+  decision has been taken.
+
+## C05: a guest booking whose email already has an account is kept as an UNCLAIMED draft, resumed by token plus sign-in (Phi, option B) — 2026-11-25
+
+- **What C05 is:** the collision path, not a guest abandoning a form. `CreateGuestAppointmentCommand`'s
+  `existingUserId is not null` branch refuses the booking and returns the same `Ack` as a real booking, so the
+  endpoint cannot be used to test which emails have accounts (Decision #3). The person in this flow always has an
+  account, so nothing here uses browser storage for content.
+- **The draft is stored at collision time, and the token governs VISIBILITY, not storage.** What was typed has
+  nowhere else to live between the attempt and the click. `BookingDraft.ClaimedAt` is null for these rows, and
+  `GetMyBookingDraftQuery` reads `ClaimedAt != null`, so an unclaimed draft is invisible to its owner. Decision #3's
+  rule is about ATTACHING ("never silently attach a booking to an account the caller hasn't proven control of"), and
+  a row the owner cannot see is not attached. `ResumeBookingDraftCommand` attaches it only with BOTH proofs: the
+  token (the mailbox) and a client sign-in to that studio (the account). That one predicate is what makes the design
+  safe; it has a test of its own and a mutation check.
+- **The timing side-channel narrows rather than widens.** `:82-87` accepts that the collision path is faster than the
+  real-booking path. The draft write (a role lookup, a draft lookup, one insert) moves the collision path TOWARD the
+  real path. No artificial delay was added. The response itself is unchanged and a MySQL test proves the two
+  branches serialise to the same bytes.
+- **Accepted residual (Phi, in choosing B):** a stranger's text is stored for up to seven days even if the link is
+  never followed. It is what was typed minus the safety notes (`GuestBookingDraftPayload` never names them, and
+  `BookingDraftRules` checks the result: the same exclusion as every draft). `BookingDraftExpiryJob` removes it.
+- **Rulings (Desktop, spec §5):** a stranger's attempt never overwrites a CLAIMED draft (no token, the original
+  notice); an UNCLAIMED one is replaced by a new row, so an older link stops matching. The migration backfills
+  existing drafts as claimed (`ClaimedAt = CreatedAt`), proven against real MySQL by migrating up from #460.
+- **Token:** `BookingDraftResumeTokens` copies `WaitlistClaimTokens` (Data Protection over the shared ring, purpose
+  `BookingDraft.Resume.v1`, payload `draftId|studioId|CreatedAt ticks`, base64url, 2,048-character cap, not
+  time-limited). CreatedAt is written in whole seconds so the ticks survive the database. The link is
+  `/booking-drafts/resume?studio=<slug>#t=<token>`: the token in the fragment (no server logs it), the slug in the
+  query because the page must switch to that studio before the tenant-filtered claim can see the draft.
+- **Departures from the spec, for the record:**
+  1. **Expired is told apart from the token alone.** The spec asked both for one not-found shape covering an expired
+     draft (§6) and for expired to get its own message (§7). The token carries its CreatedAt, so "expired" is
+     decided before any row is read and says nothing about the row, the account or the caller, only the link's age.
+     Every row-dependent failure (gone, past its time, someone else's, another studio) is one identical 404.
+  2. **ClientOnly, not ClientAndAbove,** like the rest of `/api/v1/booking-drafts` and like switch-studio, which the
+     page calls first: only a client can see a draft, so only a client may claim one. For the same reason the
+     collision branch writes a draft only for an account with the client role.
+  3. **Signing in drops the fragment,** so while signed out the page keeps the token in `sessionStorage` (one tab)
+     and removes it once the server has answered. It is the token, not the content.
+- **Not changed:** the collision response, `IWaitlistClaimTokens`, #460's exclusion, life and deletion rules, and
+  `StoredObjectReferenceReader` source 12, which reads `BookingDraftAttachment.ImageUrl` regardless of claim state,
+  so an unclaimed draft's photos are protected from the orphan sweep already. The race-path collision (two
+  simultaneous first bookings with one new email) still sends the original notice with no link.
+- **Recorded at review (Desktop approved #467, 25 Nov), so the next reader doesn't re-derive these:**
+  1. **The C05 spec's §6 and §7 are superseded by the code.** §6 asked for one not-found shape covering an expired
+     draft, and §7 asked for a separate expired message. Both can't hold. The code decides expiry from the token
+     alone, before any row is read (`ResumeBookingDraftCommand`, `BookingDraftResumeRef.ExpiresAt`). A token is
+     only sent to the address that already owns the account, so the one thing "expired" can tell its holder is the
+     age of their own link. Every row-dependent failure (gone, past its time, someone else's, another studio)
+     stays one identical 404. **The case the spec missed:** after seven days the row may already have been deleted
+     by `BookingDraftExpiryJob`. That is exactly when an "expired" message is still owed, and a design that read
+     the row first could only answer "not found". Don't reconcile the code back to the spec.
+  2. **An account without the client role (an owner or artist login) that collides gets the plain notice, with
+     no link and no draft.** This is intended, not a bug. Drafts and the resume route are `ClientOnly`, so a staff
+     account could never claim the draft. Saving one would keep a stranger's text for seven days with no possible
+     use (`CreateGuestAppointmentCommand.SaveUnclaimedDraftAsync` checks the role before writing anything). The
+     response is still the same `Ack` in every branch.
+  3. **`BookingDraftResumeTokens.Mint` throws unless `CreatedAt` is in whole seconds.** This guard is not
+     arbitrary, and it must not be relaxed into a silent truncation. The token carries `CreatedAt` as .NET ticks
+     (100 ns), and `Matches` compares them exactly with the row as read back. The column is `datetime(6)`, so the
+     seventh digit doesn't survive the database (MySQL rounds it, or truncates it, depending on the driver and the
+     `sql_mode`). A token minted from a sub-second value would therefore never match its own row: the link would
+     404 for its whole life. The caller truncates before saving, so the tracked value, the stored value and every
+     later read agree. `Mint` throws to catch a caller that forgot. Truncating inside `Mint` would only hide the
+     mismatch. The same rule, for the same reason, applies to `Waitlist.NotifiedAt` and the waitlist claim
+     token. The reason is also in `Mint`'s doc comment.
+
+## D08's paging trigger, measured: the admin studio list passes 1 s at about 20 studios, and the cause is a per-row query — 2026-11-25
+
+- **What changed:** documentation only. D08's backlog row (slice 8's end-of-slice report) said "~300 studios, or the
+  list endpoint's p95 over 1 s". Neither half had been measured: the list has never been opened in production.
+  Measured on staging on 25 Nov (studios seeded with subscriptions and no images, the staging bucket listed before
+  and after and identical, everything removed afterwards): `GET /api/v1/studios` takes about **51 ms per studio,
+  linearly, so it passes 1 s at about 20 studios** and takes about 25.6 s at 500.
+- **Why it is slow:** `GetStudiosHandler` runs `StudioCurrencyLock.IsLockedAsync` for every row, four `EXISTS`
+  queries each, so about 2,001 round trips at 500 studios. None of the three pages that call this endpoint reads
+  the `CurrencyLocked` field it computes. Server paging would hide the cost (10 rows a page), but the cost is
+  the per-row query, not the list size, so the paging row's premise ("pages in the browser until scale demands")
+  is not what limits this endpoint. **Not fixed in this change.** The fix (drop the per-row check from the list
+  response, or compute it in one grouped query per table) is a code change for a later decision.
+- **What is fine:** `GET /api/v1/platform/subscriptions` (one query with includes) stays under 200 ms
+  server-side at 500 studios. Both admin lists page 10 rows in the browser; at 500 the search box and Next page
+  stay responsive, and the subscription oversight page and admin dashboard are ready in 0.8-1.5 s (up to 3.9 s
+  at a 4x CPU throttle). The browser does not hurt first; the backend does.
+- **`admin-list-p95-slow` is dormant, not healthy.** It reads production only and needs at least 3 requests in
+  an hour. With no production traffic on those routes it has no series and evaluates to OK. Nobody should read
+  its silence as a signal before the page is used. Run against staging during the measurement, the same
+  expression returned 10, so it does trip on real traffic. It reports 10 because 10 s is the histogram's top
+  bucket. The alert is not changed.

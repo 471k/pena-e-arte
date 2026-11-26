@@ -13,6 +13,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { PlatformReferralPage } from "@/features/platform/components/PlatformReferralPage";
 import type { PlatformReferralCodeResponse } from "@/features/platform/platform.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
+import { toast } from "sonner";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -475,5 +476,32 @@ describe("PlatformReferralPage", () => {
     renderPage();
     await screen.findByText("INK2026");
     expect(screen.getByText(/referral codes give studios/i)).toBeInTheDocument();
+  });
+});
+
+describe("D04: receipts and the server's reason", () => {
+  it("deactivating leaves a receipt naming the code and its studio, linking the audit log", async () => {
+    server.use(http.patch("http://localhost/api/v1/platform/referral-codes/ref-1/deactivate", () => new HttpResponse(null, { status: 204 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("INK2026");
+    await user.click(screen.getAllByRole("button", { name: /deactivate/i })[0]);
+    await user.click(screen.getByRole("button", { name: /yes, deactivate/i }));
+    const receipt = (await screen.findByText("Code INK2026 (Ink Soul) is deactivated.")).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=s1&action=ReferralCode.Deactivated");
+  });
+
+  it("a failed deactivate shows the server's reason", async () => {
+    const error = vi.spyOn(toast, "error");
+    server.use(http.patch("http://localhost/api/v1/platform/referral-codes/ref-1/deactivate", () =>
+      HttpResponse.json({ message: "That code is already inactive." }, { status: 422 })));
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("INK2026");
+    await user.click(screen.getAllByRole("button", { name: /deactivate/i })[0]);
+    await user.click(screen.getByRole("button", { name: /yes, deactivate/i }));
+    await waitFor(() => expect(error).toHaveBeenCalledWith("That code is already inactive."));
+    error.mockRestore();
   });
 });

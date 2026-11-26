@@ -19,7 +19,7 @@ function specializationLabel(style: string): string {
 
 export function ArtistCard({ artist }: ArtistCardProps) {
   return (
-    <Link to={`/artists/${artist.id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
+    <Link to={`/artists/${artist.id}`} className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg">
       <Card className="hover:bg-muted/40 transition-colors">
         <CardContent className="p-4 flex items-start gap-4">
           <Avatar className="shrink-0">

@@ -78,7 +78,7 @@ function StudioCard({ studio }: { studio: NearbyStudioResponse }) {
   return (
     <Link
       to={`/s/${studio.slug}`}
-      className="block rounded-lg focus-visible:outline-none
+      className="block rounded-lg focus-visible:outline-hidden
                  focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
     >
       <Card className="hover:border-border/80 hover:shadow-md hover:shadow-black/20
@@ -334,7 +334,10 @@ export function DiscoverPage() {
       <DiscoverMeta />
 
       {/* ── Sticky header ───────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
+      {/* Not sticky on a short viewport (short-viewport, max-height 30rem; see index.css): at 400% zoom (320x256)
+          this header is 234px tall and would leave 22px of the viewport for the page and for any focused control
+          (WCAG 2.4.11). A portrait phone has the height, so it stays pinned there. */}
+      <header className="sticky short-viewport:relative top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
         {/* Top row: brand + nav */}
         <div className="flex items-center justify-between px-4 py-2.5">
           <BrandMark />
@@ -366,7 +369,7 @@ export function DiscoverPage() {
                              bg-violet-500/5
                              hover:bg-violet-500/15 hover:text-violet-800 dark:hover:text-violet-300
                              transition-colors
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
+                             focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-violet-500">
                   Register studio
                 </Link>
               </>
@@ -401,7 +404,7 @@ export function DiscoverPage() {
                   onChange={(e) => setKeywordInput(e.target.value)}
                   aria-label="Search tattoo styles or artist names"
                   className="w-full h-9 pl-8 pr-3 rounded-md border bg-background text-xs
-                             focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+                             focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-1
                              placeholder:text-muted-foreground"
                 />
               </div>
@@ -418,7 +421,7 @@ export function DiscoverPage() {
                 onKeyDown={(e) => { if (e.key === "Enter") void handleLocationSearch(); }}
                 aria-label="Search for a city to discover artists"
                 className="w-full h-9 pl-8 pr-3 rounded-md border bg-background text-xs
-                           focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+                           focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-1
                            placeholder:text-muted-foreground"
               />
             </div>
@@ -587,7 +590,7 @@ export function DiscoverPage() {
                     onChange={(e) => setRadiusKm(parseInt(e.target.value, 10) as Radius)}
                     aria-label="Search radius"
                     className="h-9 rounded-md border bg-background px-3 text-sm text-foreground
-                               focus:outline-none focus:ring-2 focus:ring-ring"
+                               focus:outline-hidden focus:ring-2 focus:ring-ring"
                   >
                     {RADII.map((r) => (
                       <option key={r} value={r}>{r} km</option>

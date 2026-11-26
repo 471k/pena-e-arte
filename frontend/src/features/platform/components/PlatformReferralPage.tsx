@@ -22,6 +22,9 @@ import {
   useGenerateReferralCodeForStudioMutation,
 } from "@/features/platform/platformApi";
 import type { PlatformReferralCodeResponse } from "@/features/platform/platform.types";
+import { extractErrorMessage } from "@/shared/utils/extractErrorMessage";
+import { ActionReceiptArea } from "./ActionReceipt";
+import { AUDIT_ACTIONS, makeReceipt, useReportReceipt } from "./receipts";
 
 function fmt(date: string | Date): string {
   return new Date(date).toLocaleDateString("en-GB", {
@@ -66,6 +69,8 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
   const [deactivate, { isLoading: deactivating_ }] = useDeactivateReferralCodeMutation();
   const [reactivate, { isLoading: reactivating_ }] = useReactivateReferralCodeMutation();
   const [deleteFn,   { isLoading: deleting_     }] = useDeleteReferralCodeMutation();
+  // D04: the receipt goes to the page; a deleted code's row is gone afterwards.
+  const reportReceipt = useReportReceipt();
 
   async function handleCopy() {
     await navigator.clipboard.writeText(code.shareUrl);
@@ -76,29 +81,29 @@ export function ReferralCodeRow({ code }: ReferralCodeRowProps) {
   async function handleDeactivate() {
     try {
       await deactivate(code.id).unwrap();
-      toast.success("Code deactivated");
+      reportReceipt(makeReceipt(`Code ${code.code} (${code.studioName}) is deactivated.`, AUDIT_ACTIONS.referralCodeDeactivated, code.studioId));
       setDeactivating(false);
-    } catch {
-      toast.error("Failed to deactivate code");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to deactivate code"));
     }
   }
 
   async function handleReactivate() {
     try {
       await reactivate(code.id).unwrap();
-      toast.success("Code reactivated");
+      reportReceipt(makeReceipt(`Code ${code.code} (${code.studioName}) is active again.`, AUDIT_ACTIONS.referralCodeReactivated, code.studioId));
       setReactivating(false);
-    } catch {
-      toast.error("Failed to reactivate code");
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to reactivate code"));
     }
   }
 
   async function handleDelete() {
     try {
       await deleteFn(code.id).unwrap();
-      toast.success("Code deleted");
-    } catch {
-      toast.error("Failed to delete code");
+      reportReceipt(makeReceipt(`Code ${code.code} (${code.studioName}) is deleted.`, AUDIT_ACTIONS.referralCodeDeleted, code.studioId));
+    } catch (err) {
+      toast.error(extractErrorMessage(err, "Failed to delete code"));
     }
   }
 
@@ -298,15 +303,17 @@ function GenerateCodeForm({ onClose }: GenerateFormProps) {
   const [expiresAt, setExpiresAt] = useState("");
   const { data: studios = [] } = useGetStudiosQuery();
   const [generate, { isLoading }] = useGenerateReferralCodeForStudioMutation();
+  const reportReceipt = useReportReceipt();
 
   async function handleGenerate() {
     if (!studioId) return;
     try {
-      await generate({ studioId, expiresAt: expiresAt || undefined }).unwrap();
-      toast.success("Referral code generated");
+      const created = await generate({ studioId, expiresAt: expiresAt || undefined }).unwrap();
+      reportReceipt(makeReceipt(`Referral code ${created.code} generated for ${created.studioName}.`, AUDIT_ACTIONS.referralCodeGenerated, created.studioId));
       onClose();
-    } catch {
-      toast.error("Failed to generate code");
+    } catch (err) {
+      // The studio and expiry stay as chosen (D04).
+      toast.error(extractErrorMessage(err, "Failed to generate code"));
     }
   }
 
@@ -418,6 +425,7 @@ export function PlatformReferralPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-4 space-y-3">
+        <ActionReceiptArea>
 
         <p className="text-xs text-muted-foreground">
           Referral codes give studios a shareable link for recruiting new tenants.
@@ -438,7 +446,7 @@ export function PlatformReferralPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-8 w-full rounded-md border border-input bg-background
                            px-3 text-xs placeholder:text-muted-foreground
-                           focus:outline-none focus:ring-1 focus:ring-ring"
+                           focus:outline-hidden focus:ring-1 focus:ring-ring"
                 aria-label="Search referral codes"
               />
             </div>
@@ -511,6 +519,7 @@ export function PlatformReferralPage() {
         {!isLoading && !isError && filtered.map((code) => (
           <ReferralCodeRow key={code.id} code={code} />
         ))}
+        </ActionReceiptArea>
 
       </main>
     </div>

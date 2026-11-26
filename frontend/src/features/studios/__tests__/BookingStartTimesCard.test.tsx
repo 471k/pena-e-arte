@@ -8,6 +8,7 @@ import { setupServer } from "msw/node";
 import authReducer from "@/features/auth/authSlice";
 import { studiosApi } from "@/features/studios/studiosApi";
 import { BookingStartTimesCard } from "@/features/studios/components/BookingStartTimesCard";
+import { billingApi } from "@/features/billing/billingApi";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -20,6 +21,8 @@ const server = setupServer(
     saved = await request.json();
     return HttpResponse.json({ ...(saved as object), allowedStepMinutes: [15, 30, 60] });
   }),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -28,8 +31,9 @@ afterAll(() => server.close());
 
 function renderCard() {
   const store = configureStore({
-    reducer: { auth: authReducer, [studiosApi.reducerPath]: studiosApi.reducer },
-    middleware: (gd) => gd().concat(studiosApi.middleware),
+    reducer: {
+      [billingApi.reducerPath]: billingApi.reducer, auth: authReducer, [studiosApi.reducerPath]: studiosApi.reducer },
+    middleware: (gd) => gd().concat(billingApi.middleware, studiosApi.middleware),
   });
   render(<Provider store={store}><BookingStartTimesCard /></Provider>);
 }

@@ -120,8 +120,11 @@ public interface IEmailRenderer
     /// Sent instead of <see cref="RenderGuestBookingWelcome"/> when a guest-checkout email
     /// collides with an existing platform account — the sole disambiguation channel now that
     /// the HTTP response is identical either way (enumeration-resistance fix, 2026-09-01).
+    /// C05: with <paramref name="resumeUrl"/>, it also offers to pick the booking up after signing in. Without it
+    /// (no draft was saved: an existing claimed draft, a non-client account, or a failed write) the email is the
+    /// original one, word for word.
     /// </summary>
-    string RenderGuestBookingEmailCollision(string studioName);
+    string RenderGuestBookingEmailCollision(string studioName, string? resumeUrl = null);
 
     string RenderChangeEmailConfirmation(string confirmUrl);
 

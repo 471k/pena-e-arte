@@ -32,8 +32,35 @@ public class RedisConnectionWaitTests
         _ = connection.Received(4).IsConnected;
     }
 
+    /// <summary>
+    /// Gives up at the maximum, asserted as a poll count, not as elapsed time: an elapsed-time bound on a shared
+    /// runner measures the runner (2.68 s against a 2 s cap on 24 Nov skipped a deploy). The clock steps 20 ms per
+    /// read, so with a 200 ms maximum the wait sees 20, 40 ... 200 ms elapsed and checks the connection exactly ten
+    /// times: one fewer means it gave up early, more means the deadline arithmetic drifted, and a wait that never
+    /// gave up would hang until the 10 s guard fails it.
+    /// </summary>
     [Fact]
     public async Task GivesUpAfterTheMaximum_WhenRedisStaysDown()
+    {
+        IConnectionMultiplexer connection = Substitute.For<IConnectionMultiplexer>();
+        connection.IsConnected.Returns(false);
+        SteppingMonotonicClock clock = new(stepPerRead: TimeSpan.FromMilliseconds(20));
+
+        await RedisConnectionWait.WaitUntilConnectedAsync(
+                connection, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(1), CancellationToken.None, clock)
+            .WaitAsync(TimeSpan.FromSeconds(10));
+
+        _ = connection.Received(10).IsConnected;
+    }
+
+    /// <summary>
+    /// SMOKE CHECK on the real clock, kept deliberately loose. The poll-count test above proves the deadline; this
+    /// one only catches a real regression the stepping clock cannot see, such as a wait that ignores its maximum.
+    /// The 2.68 s seen on 24 Nov was a real stall on a busy runner, which is why the bound is 10 s, not 2 s: a
+    /// failure here is a hang worth reading, not a slow runner.
+    /// </summary>
+    [Fact]
+    public async Task SmokeCheck_GivesUpOnTheRealClock_WellWithinTenSeconds()
     {
         IConnectionMultiplexer connection = Substitute.For<IConnectionMultiplexer>();
         connection.IsConnected.Returns(false);
@@ -41,8 +68,9 @@ public class RedisConnectionWaitTests
 
         await RedisConnectionWait.WaitUntilConnectedAsync(connection, TimeSpan.FromMilliseconds(200), TimeSpan.FromMilliseconds(20));
 
+        // The lower bound is safe on any runner: the wait itself measures at least 200 ms on the monotonic clock.
         sw.Elapsed.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(180))
-            .And.BeLessThan(TimeSpan.FromSeconds(2));
+            .And.BeLessThan(TimeSpan.FromSeconds(10));
     }
 
     /// <summary>

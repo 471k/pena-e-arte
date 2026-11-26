@@ -54,7 +54,7 @@ export function SettingsGroup({ id, title, summary, open, onToggle, collapsible 
           aria-labelledby={titleId}
           aria-describedby={summaryId}
           onClick={onToggle}
-          className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left rounded-xl hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full flex items-start justify-between gap-3 px-4 py-3 text-left rounded-xl hover:bg-muted/60 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="min-w-0">
             <span id={titleId} className="block text-sm font-semibold text-foreground">{title}</span>

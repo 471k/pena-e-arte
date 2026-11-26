@@ -20,7 +20,7 @@ public sealed record StoredObjectReferences(
 /// The one place that answers "is this stored object referenced by anything?" for the orphaned-object
 /// sweep (docs/claude/overnight-prompt-orphaned-object-cleanup-2026-11-15.md, Phase 1).
 ///
-/// Its sources are exactly the 11 columns of the Phase 0 table (claude-shared
+/// Its sources are the 11 columns of the Phase 0 table, plus BookingDraftAttachment.ImageUrl (source 12, 24 Nov), (claude-shared
 /// code-report-orphaned-object-phase0-2026-11-15.md §1), found as a superset over every string column of
 /// the model minus the ones that cannot hold a reference. A new column that stores an object's address
 /// MUST be added here, or the sweep will treat its objects as orphans; StoredObjectReferenceReaderTests
@@ -61,6 +61,13 @@ public class StoredObjectReferenceReader(IAppDbContext db, IR2Service r2)
 
         // 4. AppointmentAttachment.ImageUrl — every pending/ prefix, guest-pending/, and copied designs/.
         values.AddRange(await db.AppointmentAttachments.IgnoreQueryFilters()
+            .Select(a => a.ImageUrl).ToListAsync(ct));
+
+        // 12. BookingDraftAttachment.ImageUrl (24 Nov 2026): the photos of a saved booking draft, uploaded under
+        // pending/ before the booking exists. A draft lives seven days from its last save, the same as this sweep's
+        // minimum age, so without this source a draft's photos could be moved while the draft is still valid.
+        // Expired drafts count until BookingDraftExpiryJob removes them: a source only ever protects more.
+        values.AddRange(await db.BookingDraftAttachments.IgnoreQueryFilters()
             .Select(a => a.ImageUrl).ToListAsync(ct));
 
         // Sources 5, 6 and 11 take NO IgnoreQueryFilters() because ConductReport, FeedbackReport and Studio have

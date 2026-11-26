@@ -23,6 +23,7 @@ import {
 } from "../clientsApi";
 import { ALL_BODY_ZONES, FRONT_ZONES, BACK_ZONES } from "./BodyMap";
 import { FileUploadField, IMAGE_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 const editSchema = z.object({
   description:  z.string().min(1, "Required").max(2000, "Max 2000 characters"),
@@ -37,9 +38,8 @@ function resolveLocation(id: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
+  // A date with no time of day, stored as UTC midnight: printed in UTC (see formatDateOnly).
+  return formatDateOnly(iso, { day: "numeric", month: "long", year: "numeric" });
 }
 
 function toDateInput(iso: string): string {
@@ -256,7 +256,7 @@ export function TattooRecordDetailPage() {
                 rows={4}
                 {...register("description")}
                 className={cn(
-                  "flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
+                  "flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-none",
                   errors.description && "border-destructive",
                 )}
               />
@@ -271,7 +271,7 @@ export function TattooRecordDetailPage() {
                 id="tr-edit-bodyLocation"
                 {...register("bodyLocation")}
                 className={cn(
-                  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
                   errors.bodyLocation && "border-destructive",
                 )}
               >

@@ -20,6 +20,7 @@ import {
   parseRate,
   SELECT_CLS,
 } from "../payModel";
+import { SubscriptionGatedButton } from "@/shared/components/SubscriptionGatedButton";
 
 /**
  * How the studio's artists are paid unless an artist has their own terms (DEC10, A07a). Every studio
@@ -206,10 +207,10 @@ export function StudioPayModelCard() {
               </div>
             </div>
 
-            <Button onClick={() => void onSave()} disabled={saving} className="gap-2">
+            <SubscriptionGatedButton onClick={() => void onSave()} disabled={saving} className="gap-2">
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
               Save artist pay
-            </Button>
+            </SubscriptionGatedButton>
           </>
         )}
       </CardContent>

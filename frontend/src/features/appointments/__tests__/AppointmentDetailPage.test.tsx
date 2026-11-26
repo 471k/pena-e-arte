@@ -20,6 +20,16 @@ import { downloadAuthenticatedFile } from "@/shared/utils/downloadAuthenticatedF
 import type { AppointmentResponse } from "@/features/appointments/appointment.types";
 import { Role } from "@/shared/types/roles";
 import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
+import { billingApi } from "@/features/billing/billingApi";
+
+// D05 phase 4b: whether an admin's support session is active, switched per test. The module's real constant (the
+// reason sentence) is kept; only the one-line hook is replaced.
+let supportSession = false;
+vi.mock("@/shared/hooks/useSupportView", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/hooks/useSupportView")>()),
+  useSupportView: () => supportSession,
+}));
+
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/shared/utils/downloadAuthenticatedFile", () => ({
@@ -141,6 +151,8 @@ const server = setupServer(
       artistId: body.artistId, artistName: "New Artist",
     });
   }),
+  // SubscriptionGatedButton reads the subscription and the studio (D05 phase 4b): an active owner by default.
+  http.get("http://localhost/api/v1/billing/subscription", () => HttpResponse.json({ status: "Active" })),
 );
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
@@ -162,6 +174,7 @@ function toStudioDatetimeLocalForTest(iso: string): string {
 function makeStore(role: Role = Role.Artist) {
   return configureStore({
     reducer: {
+      [billingApi.reducerPath]: billingApi.reducer,
       auth:                          authReducer,
       ui:                            uiReducer,
       [appointmentsApi.reducerPath]: appointmentsApi.reducer,
@@ -169,7 +182,7 @@ function makeStore(role: Role = Role.Artist) {
       [artistsApi.reducerPath]:      artistsApi.reducer,
       [studiosApi.reducerPath]:      studiosApi.reducer,
     },
-    middleware: (gd) => gd().concat(
+    middleware: (gd) => gd().concat(billingApi.middleware, 
       appointmentsApi.middleware, remindersApi.middleware, artistsApi.middleware, studiosApi.middleware),
     preloadedState: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -677,5 +690,27 @@ describe("AppointmentDetailPage — first paint (S01)", () => {
       hour: "2-digit", minute: "2-digit", timeZone: "America/New_York",
     });
     expect(await screen.findByText(expected)).toBeInTheDocument();
+  });
+});
+
+describe("D05 phase 4b: write controls during a support session", () => {
+  afterEach(() => { supportSession = false; });
+
+  it("a write control is shown but turned off, saying why, during a support session, and on outside one", async () => {
+    supportSession = true;
+    const first = renderPage("appt-001");
+    await Promise.resolve();
+    const gated = await screen.findByRole("button", { name: /^reschedule$/i }, { timeout: 5000 });
+    expect(gated).toHaveAttribute("aria-disabled", "true");
+    expect(gated).toHaveAccessibleDescription(
+      "This is a read-only support session: changes are turned off. End the session to make changes as yourself.");
+    void first;
+    cleanup();
+
+    supportSession = false;
+    renderPage("appt-001");
+    await Promise.resolve();
+    const open = await screen.findByRole("button", { name: /^reschedule$/i }, { timeout: 5000 });
+    expect(open).not.toHaveAttribute("aria-disabled", "true");
   });
 });

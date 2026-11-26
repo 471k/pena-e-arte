@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { TourStep } from "@/shared/components/OnboardingTour";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
@@ -38,6 +39,7 @@ import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery 
 import { useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
 const ONBOARDING_REDIRECT_KEY = "solo-owner-onboarding-redirect-done";
 
@@ -249,20 +251,29 @@ export function OwnerLayout() {
   }
 
   const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.owner);
+  // Folded, the header's Owner/Artist switch is gone and the drawer carries it, as below sm. So the tour's switch
+  // step opens the drawer whenever the header is folded too, decided from the value that hides the header copy
+  // (#430's rule), not left to time out looking for it.
+  const onBeforeOwnerTourStep = useCallback((step: TourStep) => {
+    onBeforeTourStep(step);
+    if (headerFolded && step.inNavDrawerBelowSm) setNavOpen(true);
+  }, [onBeforeTourStep, headerFolded, setNavOpen]);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
+      <SkipToContent />
       <SuspensionBanner studio={studio} />
       <ReadOnlyBanner />
       <PlanLimitBanner />
       <SoloStudioPublishBanner studio={studio} />
-      <header ref={headerRef} className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header ref={headerRef} data-pinned-shell className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
         {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone). */}
         {!headerFolded && <Wordmark />}
         <StudioContextLabel variant="header" />
 
-        {hasArtistProfile && myArtist && (
+        {/* Folded, the header switch goes and the drawer's copy (below) carries it, as on a phone. */}
+        {hasArtistProfile && myArtist && !headerFolded && (
           <div className="hidden sm:flex ml-2 shrink-0">
             <ArtistModeSwitcher artistId={myArtist.id} />
           </div>
@@ -285,20 +296,24 @@ export function OwnerLayout() {
 
         {/* ownerTourFacts: the values that render ArtistModeSwitcher, SoloStudioPublishBanner and
             StudioJoinInviteBell, so the tour and its targets can't disagree. The invite bell stays outside the fold:
-            it renders only while invites are pending and carries that count, like the notification bell. */}
+            it renders only while invites are pending and carries that count, like the notification bell.
+            Phi's list of what stays in the bar named four items, and this bell is not
+            on it. But the list's reason was that anything carrying unread state stays visible, and the invite bell
+            meets that reason. Following the reason over the letter is right when the letter was shorthand for it,
+            so don't move this into the More menu to match the list. */}
         <HeaderActions
           folded={headerFolded}
           onFeedback={() => setFeedbackOpen(true)}
           showMessages
-          help={{ onBeforeTourStep, onTourEnd, ownerTourFacts }}
+          help={{ onBeforeTourStep: onBeforeOwnerTourStep, onTourEnd, ownerTourFacts }}
           pinned={<StudioJoinInviteBell enabled={!!studio?.isSolo} />}
-          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} compact={headerFolded} />}
         />
       </header>
 
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
-        <div className="flex-1 min-w-0">
+        <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
           {/* Staff screens show lek next to euro for Albanian EUR studios (spec Q3, 2026-10-26). */}
           <MoneyStudioContext.Provider value={moneyStudio}>
             <Outlet />

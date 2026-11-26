@@ -245,6 +245,9 @@ public class WaitlistClaimJourneyIntegrationTests(DatabaseFixture fixture)
         CreateGuestAppointmentHandler handler = new(
             db, tenant, identity, Locker(), _jobs, _realtime, RoutingSender(db), _planLimits,
             renderer, Substitute.For<INotificationService>(), settings,
+            new Pena_e_Arte.Infrastructure.Services.BookingDrafts.BookingDraftResumeTokens(
+                new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider()),
+            TimeProvider.System,
             NullLogger<CreateGuestAppointmentHandler>.Instance);
 
         await handler.Handle(new CreateGuestAppointmentCommand(studio.Slug, new CreateGuestAppointmentRequest(

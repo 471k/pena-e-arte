@@ -8,6 +8,8 @@ public interface IAppDbContext
     // Tenant-scoped
     DbSet<Appointment> Appointments { get; }
     DbSet<AppointmentAttachment> AppointmentAttachments { get; }
+    DbSet<BookingDraft> BookingDrafts { get; }
+    DbSet<BookingDraftAttachment> BookingDraftAttachments { get; }
     DbSet<DepositRule> DepositRules { get; }
     DbSet<Service> Services { get; }
     DbSet<PromoCode> PromoCodes { get; }

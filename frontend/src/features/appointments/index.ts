@@ -3,6 +3,7 @@ export { BookPage } from "./components/BookPage";
 export { AppointmentDetailPage } from "./components/AppointmentDetailPage";
 export { ClientAppointmentDetailPage } from "./components/ClientAppointmentDetailPage";
 export { MyBookingsPage } from "./components/MyBookingsPage";
+export { BookingDraftResumePage } from "./components/BookingDraftResumePage";
 export { DepositStatusBadge } from "./components/DepositStatusBadge";
 export { appointmentsApi } from "./appointmentsApi";
 export {

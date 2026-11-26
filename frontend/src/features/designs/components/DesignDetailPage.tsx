@@ -338,7 +338,7 @@ function EarlierVersions({ children, count }: { children: ReactNode; count: numb
     <div className="space-y-3">
       <button
         type="button"
-        className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/40 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((v) => !v)}

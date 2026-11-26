@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch, type Resolver, type Control, type UseFormRegister, type UseFormSetValue } from "react-hook-form";
 import { useNavigate, useParams, useBlocker, Link } from "react-router-dom";
 import { toast } from "sonner";
+import { AUDIT_ACTIONS, makeReceipt, type ActionReceipt } from "./receipts";
 import { useDocumentMeta } from "@/shared/utils/useDocumentMeta";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -230,9 +231,10 @@ export function PlanEditPage() {
   // its predicate closure is only refreshed on the next render, so it could still see
   // the pre-reset isDirty=true. Deferring the navigate to an effect guarantees it runs
   // after the reset's re-render has already committed with isDirty=false.
-  const [navigateAfterSave, setNavigateAfterSave] = useState(false);
+  // D04: the plan list shows the save's receipt, carried in router state, since this page closes on success.
+  const [navigateAfterSave, setNavigateAfterSave] = useState<ActionReceipt | null>(null);
   useEffect(() => {
-    if (navigateAfterSave) navigate("/platform/plans");
+    if (navigateAfterSave) navigate("/platform/plans", { state: { receipt: navigateAfterSave } });
   }, [navigateAfterSave, navigate]);
 
   const watchedMonthlyEnabled = useWatch({ control, name: "monthly.enabled" });
@@ -266,18 +268,19 @@ export function PlanEditPage() {
       prioritySupport:          values.prioritySupport,
     };
 
+    let savedReceipt: ActionReceipt;
     try {
       if (isEditMode && planId) {
-        await updatePlan({ id: planId, ...payload }).unwrap();
-        toast.success("Plan updated");
+        const saved = await updatePlan({ id: planId, ...payload }).unwrap();
+        savedReceipt = makeReceipt(`Plan "${saved.name}" is updated.`, AUDIT_ACTIONS.planUpdated);
       } else {
-        await createPlan(payload).unwrap();
-        toast.success("Plan created");
+        const saved = await createPlan(payload).unwrap();
+        savedReceipt = makeReceipt(`Plan "${saved.name}" is created.`, AUDIT_ACTIONS.planCreated);
       }
       // Clear dirty state so the unsaved-changes blocker doesn't fire; the actual
       // navigation is deferred to an effect (see navigateAfterSave above).
       reset(values, { keepDirty: false });
-      setNavigateAfterSave(true);
+      setNavigateAfterSave(savedReceipt);
     } catch (err) {
       setSubmitError(extractErrorMessage(err));
       toast.error(isEditMode ? "Failed to update plan" : "Failed to create plan");

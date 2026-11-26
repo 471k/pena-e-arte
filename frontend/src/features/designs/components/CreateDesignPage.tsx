@@ -13,7 +13,7 @@ import { useCreateDesignMutation } from "../designsApi";
 
 const SELECT_CLS = cn(
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
-  "ring-offset-background focus-visible:outline-none focus-visible:ring-2",
+  "ring-offset-background focus-visible:outline-hidden focus-visible:ring-2",
   "focus-visible:ring-ring focus-visible:ring-offset-2",
   "disabled:cursor-not-allowed disabled:opacity-50"
 );
@@ -21,7 +21,7 @@ const SELECT_CLS = cn(
 const TEXTAREA_CLS = cn(
   "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
   "ring-offset-background placeholder:text-muted-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
   "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
 );
 

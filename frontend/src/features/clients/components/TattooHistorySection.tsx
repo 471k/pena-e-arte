@@ -39,6 +39,7 @@ import {
 import type { TattooRecordResponse } from "../clientsApi";
 import { ALL_BODY_ZONES, FRONT_ZONES, BACK_ZONES } from "./BodyMap";
 import { FileUploadField, IMAGE_ACCEPTED_TYPES } from "@/shared/components/FileUploadField";
+import { formatDateOnly } from "@/shared/utils/studioDay";
 
 const addSchema = z.object({
   description:  z.string().min(1, "Required").max(2000, "Max 2000 characters"),
@@ -54,9 +55,8 @@ function resolveLocation(id: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  // A date with no time of day, stored as UTC midnight: printed in UTC (see formatDateOnly).
+  return formatDateOnly(iso, { day: "numeric", month: "short", year: "numeric" });
 }
 
 function TattooRecordCard({
@@ -76,7 +76,7 @@ function TattooRecordCard({
     <div className="relative group">
       <Link
         to={`/clients/${clientId}/tattoos/${record.id}`}
-        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+        className="block focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
       >
         <Card className="hover:bg-muted/40 transition-colors">
           <CardContent className="p-4 flex items-start gap-3">

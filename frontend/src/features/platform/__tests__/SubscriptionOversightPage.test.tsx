@@ -333,6 +333,18 @@ describe("SubscriptionOversightPage", () => {
     expect(screen.getByRole("button", { name: /activate subscription for closed studio/i })).toBeInTheDocument();
   });
 
+  it("a studio with no subscription row is not offered Extend trial, and keeps Activate (24 Nov)", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () =>
+        HttpResponse.json([{ ...SUBS[1], studioId: "n1", studioName: "Rowless Studio", subscriptionId: null, status: "NoSubscription", planName: null }]),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Rowless Studio");
+    expect(screen.queryByRole("button", { name: /extend trial|grant extension/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /activate subscription for rowless studio/i })).toBeInTheDocument();
+  });
+
   it("shows aria-label with studio name on Extend Trial button", async () => {
     renderPage();
     await screen.findByText("Trialing Studio");
@@ -666,3 +678,35 @@ function quoteFor(fields: Record<string, unknown>) {
     }),
   );
 }
+
+describe("D04: dunning exclusion's receipt and reason", () => {
+  const OVERDUE = { ...SUBS[1], studioId: "pd1", studioName: "Overdue Studio", status: "PastDue", dunningExcludedManually: false };
+
+  it("excluding a studio from dunning leaves a receipt that says access is unchanged", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([OVERDUE])),
+      http.post("http://localhost/api/v1/platform/studios/pd1/subscription/dunning-exclusion", () => new HttpResponse(null, { status: 204 })),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /exclude overdue studio from dunning/i }));
+    const receipt = (await screen.findByText(/overdue studio is excluded from dunning reminders\. its access is unchanged\./i)).closest("[role='status']") as HTMLElement;
+    expect(within(receipt).getByRole("link", { name: /view in the audit log/i }))
+      .toHaveAttribute("href", "/platform/audit-log?studioId=pd1&action=Subscription.DunningExclusionChanged");
+  });
+
+  it("a failed exclusion shows the server's reason", async () => {
+    const { toast } = await import("sonner");
+    const error = vi.spyOn(toast, "error");
+    server.use(
+      http.get("http://localhost/api/v1/platform/subscriptions", () => HttpResponse.json([OVERDUE])),
+      http.post("http://localhost/api/v1/platform/studios/pd1/subscription/dunning-exclusion", () =>
+        HttpResponse.json({ message: "Only a past-due studio can be excluded." }, { status: 422 })),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /exclude overdue studio from dunning/i }));
+    await waitFor(() => expect(error).toHaveBeenCalledWith("Only a past-due studio can be excluded."));
+    error.mockRestore();
+  });
+});

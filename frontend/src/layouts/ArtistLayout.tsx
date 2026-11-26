@@ -25,6 +25,7 @@ import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports"
 import { useChatHub } from "@/features/messaging";
 import { Wordmark } from "@/shared/components/Wordmark";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
 export function ArtistLayout() {
   const dispatch = useAppDispatch();
@@ -60,10 +61,11 @@ export function ArtistLayout() {
   const { ref: headerRef, folded: headerFolded } = useHeaderFold<HTMLElement>(HEADER_FOLD_BELOW_REM.artist);
   return (
     <div data-theme="after-hours" className="min-h-screen flex flex-col bg-background">
+      <SkipToContent />
       <SuspensionBanner role="artist" />
       <ReadOnlyBanner />
       <PlanLimitBanner />
-      <header ref={headerRef} className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      <header ref={headerRef} data-pinned-shell className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         <PenLine className="h-5 w-5" />
         {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone). */}
@@ -77,13 +79,13 @@ export function ArtistLayout() {
           onFeedback={() => setFeedbackOpen(true)}
           showMessages
           help={{ onBeforeTourStep, onTourEnd }}
-          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} />}
+          userMenu={<UserMenu onLogout={handleLogout} context={<StudioContextLabel variant="drawer" />} compact={headerFolded} />}
         />
       </header>
 
       <div className="flex flex-1 min-h-0">
         <AppSidebar sections={navSections} revealTourId={revealTourId} />
-        <div className="flex-1 min-w-0">
+        <div id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 min-w-0 focus:outline-none">
           {/* Staff screens show lek next to euro for Albanian EUR studios (spec Q3, 2026-10-26). */}
           <MoneyStudioContext.Provider value={moneyStudio}>
             <Outlet />

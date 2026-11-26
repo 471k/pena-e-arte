@@ -12,6 +12,8 @@ import {
   type UnsettledPaymentGroup,
   type UnsettledPaymentItem,
 } from "../payment.types";
+import { useStudioZone } from "@/features/studios/useStudioZone";
+import { formatStudioTime } from "@/shared/utils/formatInStudioTimezone";
 
 /**
  * "Not settled yet" (E05b-2, O06): the card payments the daily reconciliation check hasn't settled, on the
@@ -51,9 +53,9 @@ function formatDateTime(iso: string): string {
   });
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
+// The session date is on the studio's calendar (formatInStudioTimezone.ts). "Last checked" and the auto-cancel
+// deadline above are instants and stay in the reader's zone.
+const SESSION_DATE_FORMAT: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 
 function AmountLine({ item, kind }: { item: UnsettledPaymentItem; kind: UnsettledPaymentKind }) {
   // Each label says exactly what the number is: a hold isn't money received, an unpaid order isn't owed.
@@ -97,17 +99,18 @@ function CheckLine({ item, generatedAt }: { item: UnsettledPaymentItem; generate
 }
 
 function ItemRow({ item, kind, generatedAt }: { item: UnsettledPaymentItem; kind: UnsettledPaymentKind; generatedAt: string }) {
+  const { zone } = useStudioZone();
   return (
     <li className="px-4 py-2.5">
       <Link
         to={`/payments/${item.appointmentId}`}
-        className="block space-y-0.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="block space-y-0.5 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="unsettled-item"
       >
         <span className="flex flex-wrap items-baseline justify-between gap-x-3">
           <span className="text-sm font-medium">{item.clientName || "—"}</span>
           <span className="text-xs text-muted-foreground">
-            Session {formatDate(item.appointmentDate)}
+            Session {formatStudioTime(item.appointmentDate, SESSION_DATE_FORMAT, zone)}
             {item.appointmentStatus === "Cancelled" ? " (cancelled)" : ""}
           </span>
         </span>
