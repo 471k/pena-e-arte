@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { configureStore } from "@reduxjs/toolkit";
@@ -76,6 +77,34 @@ describe("booth-rent dates are date-only in every zone", () => {
     expect((await screen.findAllByText("1 Nov 2026")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/30 Nov 2026/)).not.toBeInTheDocument();
     expect(screen.queryByText(/31 Oct 2026/)).not.toBeInTheDocument();
+  });
+
+  // The write side: the dialog sends the date input's own "YYYY-MM-DD", which the API binds as a DateOnly.
+  // It used to send new Date(value).toISOString(); that happened to be UTC midnight, but it sent an instant
+  // where the contract now means a date, and the API would reject it with a 400.
+  it("the New schedule dialog sends the picked calendar date as YYYY-MM-DD, not an instant", async () => {
+    let posted: Record<string, unknown> | null = null;
+    server.use(
+      http.get("http://localhost/api/v1/artists", () =>
+        HttpResponse.json([{ id: "ar-1", firstName: "Artist", lastName: "One" }]),
+      ),
+      http.post("http://localhost/api/v1/booth-rent/schedules", async ({ request }) => {
+        posted = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(SCHEDULE, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithStore(<BoothRentManagementPage />, Role.Owner);
+
+    await user.click(await screen.findByRole("button", { name: /new schedule/i }));
+    await user.click(screen.getByRole("combobox", { name: "Artist" }));
+    await user.click(await screen.findByRole("option", { name: "Artist One" }));
+    await user.type(screen.getByLabelText(/^Amount/), "120");
+    fireEvent.change(screen.getByLabelText("First charge date"), { target: { value: "2026-12-01" } });
+    await user.click(screen.getByRole("button", { name: /create schedule/i }));
+
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted).toMatchObject({ artistId: "ar-1", nextChargeDate: "2026-12-01" });
   });
 
   it("the artist's own section shows the same dates", async () => {

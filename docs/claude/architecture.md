@@ -8116,9 +8116,10 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
   instants. Both booth-rent screens (`BoothRentManagementPage.tsx`, `MyBoothRentSection.tsx`) print them through
   `formatDateOnly` (`shared/utils/studioDay.ts`), which formats in UTC, so the stored date comes out unchanged in
   every zone. **No zone conversion of any kind:** a date-only value has no zone to convert into.
-- **Why they are date-only:** the owner picks the first charge in a `type="date"` input, sent as
-  `new Date("YYYY-MM-DD").toISOString()` (UTC midnight). The create and update commands copy it unchanged, and
-  `BoothRentChargeJob` advances it by `AddDays(7)` or `AddMonths(1)`, which keeps UTC midnight.
+- **Why they are date-only:** the owner picks the first charge in a `type="date"` input and the dialog sends that
+  `"YYYY-MM-DD"` as is (since 2026-11-26; before, `new Date(value).toISOString()`, also UTC midnight). The create and
+  update commands store it as that day's midnight UTC, and `BoothRentChargeJob` advances it by `AddDays(7)` or
+  `AddMonths(1)`, which keeps UTC midnight.
 - **The three backend readers** (read at `e98f433c`): `GetBoothRentChargesHandler` sorts by `ChargedDate`,
   `MarkBoothRentChargeSettledCommand` finds a charge by id, and `StudioCurrencyLock` only asks whether any charge
   exists (`AnyAsync`). `BoothRentChargeJob` is the writer. Nothing groups, reconciles, exports or reports booth-rent
@@ -8134,8 +8135,17 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
   The nightly zone sweep runs it at UTC+14 and UTC-11 as well as UTC. Mutation checks: the old viewer-zone formatter
   fails the UTC-11 leg (UTC+14 cannot see it, since UTC midnight plus 14 hours is the same date), and a studio-zone
   formatter fails at every runner zone.
-- **Open, specified and not built:** the write path does not truncate, so a non-UI caller could store a time of day
-  and make this assumption false for that row. See `spec-booth-rent-date-only-write-guard-2026-11-25.md`.
+- **Write side enforced (2026-11-26):** `CreateBoothRentScheduleRequest` and `UpdateBoothRentScheduleRequest` take
+  `NextChargeDate` as a `DateOnly`, so a value with a time or an offset is a 400 at binding and never reaches a
+  handler. Both commands write it through `BoothRentDates.ToChargeDate` (`Application/BoothRent/BoothRentDates.cs`),
+  the one place that turns a date into the stored `DateTime`: midnight, `Kind=Utc`. The column stays `DateTime`.
+  **Rejected: keeping `DateTime` and truncating to `.Date`.** `2026-12-01T00:00:00+01:00` binds as `Kind=Local` and
+  has already become 23:00 the previous day by the time a handler could truncate it, so truncation keeps the wrong
+  day. Guards: `BoothRentScheduleDateContractTests` (binding with minimal APIs' own serializer options, and
+  `ToChargeDate`'s `Kind`), the create/update integration tests reading the stored value back from MySQL, and the
+  dialog test asserting the posted body. Before the change: 0 POST or PUT to `/booth-rent/schedules` in Loki in either
+  environment since about 15 Oct, and an API key cannot reach these routes (`ExternalApiAccess` is a separate,
+  read-only surface whose scheme carries no role). See `spec-booth-rent-date-only-write-guard-2026-11-25.md`.
 - **S01 is Present** with this and the visit pickers (2026-11-24 entry above).
 
 ## `InitialsGlyph`: the initials are decorative, not part of the accessible name — 2026-11-25

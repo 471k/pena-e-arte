@@ -55,7 +55,8 @@ function NewScheduleDialog() {
       artistId,
       amountFixed: Number(amount),
       frequency,
-      nextChargeDate: new Date(nextChargeDate).toISOString(),
+      // The input's own "YYYY-MM-DD". The API takes a DateOnly and rejects a time or offset.
+      nextChargeDate,
       isActive: true,
     });
     if ("data" in result) {

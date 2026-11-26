@@ -27,7 +27,7 @@ public class UpdateBoothRentScheduleHandler(IAppDbContext db)
 
         schedule.AmountFixed = req.AmountFixed;
         schedule.Frequency = Enum.Parse<RentFrequency>(req.Frequency);
-        schedule.NextChargeDate = req.NextChargeDate;
+        schedule.NextChargeDate = BoothRentDates.ToChargeDate(req.NextChargeDate);
         schedule.IsActive = req.IsActive;
         schedule.UpdatedAt = DateTime.UtcNow;
 
