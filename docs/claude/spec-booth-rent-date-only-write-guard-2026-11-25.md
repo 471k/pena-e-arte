@@ -2,7 +2,8 @@
 
 - **Date:** 2026-11-25
 - **Author:** Claude Code, at Desktop's instruction (`desktop-instructions-rulings-and-gate-fixes-2026-11-25.md` §6)
-- **Status:** SPECIFIED, NOT BUILT. It touches stored money-adjacent data, so it needs a decision first.
+- **Status:** BUILT 2026-11-26 as recommended in §4 point 2 (`DateOnly` in both request contracts, `BoothRentDates.ToChargeDate`).
+  The §5 count was still owed when the PR opened; its result is in the PR and decides whether anything beyond the contract is needed.
 - **Read at:** `origin/main` after #461 (`00c3a542`)
 
 ## 1. Why this exists
