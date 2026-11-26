@@ -107,7 +107,7 @@ export const PLATFORM_TERMS_CLAUSES: ReadonlyArray<LegalClause> = [
     heading: "16. Availability, support and changes",
     paragraphs: [
       `We work to keep the service running and fix faults quickly, but we do not promise it will never be interrupted. We announce planned maintenance in advance. Support is by email (${LEGAL_CONTACT_EMAIL}) and in-app chat. Chat is staffed Monday to Friday, 10:00 to 18:00 Tirana time, and email is answered within one business day.`,
-      "We may change or retire features. If a change removes a core feature of your plan, we give 30 days’ notice and a pro-rata refund of the unused paid period if you cancel because of it.",
+      "We may change or retire features.",
     ],
   },
   {
