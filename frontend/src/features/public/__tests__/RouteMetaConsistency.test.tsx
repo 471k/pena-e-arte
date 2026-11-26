@@ -17,6 +17,7 @@ import {
   ContactPage,
   PrivacyPolicyPage,
   TermsOfServicePage,
+  ClientTermsPage,
   RefundPolicyPage,
 } from "@/features/public";
 import { ROUTE_META, SITE_URL } from "@/shared/seo/siteRoutes";
@@ -60,6 +61,7 @@ const PAGES: ReadonlyArray<readonly [StaticRoutePath, ReactElement]> = [
   ["/contact", <ContactPage key="ct" />],
   ["/privacy", <PrivacyPolicyPage key="pv" />],
   ["/terms", <TermsOfServicePage key="t" />],
+  ["/client-terms", <ClientTermsPage key="ct2" />],
   ["/refund-policy", <RefundPolicyPage key="r" />],
 ];
 

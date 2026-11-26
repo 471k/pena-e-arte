@@ -219,6 +219,18 @@ describe("HelpMenu", () => {
     expect(await screen.findByLabelText(/subject/i)).toBeInTheDocument();
   });
 
+  // Platform Terms §16 promises studios in-app support, so the panel must reach the owner too,
+  // not only the client the test above uses (checked 26 Nov 2026 for the legal-pages PR).
+  it("Contact Support tab shows the request form to a studio owner", async () => {
+    const user = userEvent.setup();
+    renderMenu("owner" as Role);
+
+    await user.click(screen.getByRole("button", { name: /open help menu/i }));
+    await user.click(screen.getByRole("tab", { name: /contact support/i }));
+
+    expect(await screen.findByLabelText(/subject/i)).toBeInTheDocument();
+  });
+
   it("Contact Support tab shows the ticket thread when an open ticket exists", async () => {
     server.use(
       http.get("http://localhost/api/v1/feedback/mine", () => HttpResponse.json([{

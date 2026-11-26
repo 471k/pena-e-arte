@@ -68,6 +68,10 @@ export const ROUTE_META = {
     title: "Terms of Service — TattooOS",
     description: "The terms governing your use of TattooOS.",
   },
+  "/client-terms": {
+    title: "Client Terms of Use — TattooOS",
+    description: "The terms for booking a tattoo with a studio through TattooOS.",
+  },
   "/refund-policy": {
     title: "Refund Policy — TattooOS",
     description: "How deposits, cancellations, and no-shows are handled on TattooOS.",

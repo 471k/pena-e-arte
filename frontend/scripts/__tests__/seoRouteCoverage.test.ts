@@ -17,6 +17,7 @@ const PUBLIC_INDEXABLE: ReadonlySet<string> = new Set([
   "contact",
   "privacy",
   "terms",
+  "client-terms",
   "refund-policy",
   "discover",
   "map",

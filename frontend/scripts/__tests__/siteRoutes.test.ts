@@ -55,7 +55,7 @@ describe("siteRoutes manifest", () => {
 
     // The sitemap lists "/" plus every static route except the legal pages, which stay indexable
     // but are deliberately not listed.
-    const legal = new Set(["/privacy", "/terms", "/refund-policy"]);
+    const legal = new Set(["/privacy", "/terms", "/client-terms", "/refund-policy"]);
     const expected = ["/", ...STATIC_ROUTES.map((r) => r.path).filter((p) => !legal.has(p))].sort();
 
     expect(sitemapPaths).toEqual(expected);

@@ -338,12 +338,21 @@ describe("public policy routes", () => {
     expect(testRouter.state.location.pathname).toBe("/privacy");
   });
 
-  it("renders the real Terms of Service page at /terms", async () => {
+  // /terms carries the Platform Terms for Studios since 26 Nov 2026; the footer still labels it "Terms of Service".
+  it("renders the Platform Terms for Studios at /terms", async () => {
     const testRouter = renderAt("/terms");
     expect(
-      await screen.findByRole("heading", { name: /terms of service/i }),
+      await screen.findByRole("heading", { level: 1, name: "Platform Terms for Studios" }),
     ).toBeInTheDocument();
     expect(testRouter.state.location.pathname).toBe("/terms");
+  });
+
+  it("renders the Client Terms of Use at /client-terms", async () => {
+    const testRouter = renderAt("/client-terms");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Client Terms of Use" }),
+    ).toBeInTheDocument();
+    expect(testRouter.state.location.pathname).toBe("/client-terms");
   });
 
   it("renders Refund Policy at /refund-policy and Contact at /contact", async () => {

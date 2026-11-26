@@ -11,9 +11,11 @@ import {
   HomePage,
   PrivacyPolicyPage,
   TermsOfServicePage,
+  ClientTermsPage,
   RefundPolicyPage,
   ContactPage,
 } from "@/features/public";
+import { FINAL_LEGAL_COPY, HAS_FINAL_LEGAL_COPY } from "@/features/public/legal/legalFlags";
 
 function renderPublic(ui: ReactElement) {
   const store = configureStore({
@@ -38,6 +40,7 @@ describe("public content pages", () => {
     ["Home", <HomePage key="h" />],
     ["Privacy", <PrivacyPolicyPage key="p" />],
     ["Terms", <TermsOfServicePage key="t" />],
+    ["Client Terms", <ClientTermsPage key="ct" />],
     ["Refund", <RefundPolicyPage key="r" />],
     ["Contact", <ContactPage key="c" />],
   ])("%s renders with the public header and site footer and no console errors", (_name, ui) => {
@@ -63,16 +66,56 @@ describe("public content pages", () => {
     // Home's own content should link to Privacy/Terms/Refund/Contact exactly once, from the footer.
     expect(screen.getAllByRole("link", { name: "Privacy Policy" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Terms of Service" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Client Terms" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Refund Policy" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Contact" })).toHaveLength(1);
   });
 
-  it("Privacy Policy names special-category health data and the planned payment sub-processors", () => {
+  it("Privacy Policy names special-category health data, the roles and the sub-processors", () => {
     renderPublic(<PrivacyPolicyPage />);
-    expect(screen.getAllByText(/special-category/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/medical notes and allergies/i)).toBeInTheDocument();
+    // The page writes "Health data (special category)"; GDPR Art. 9 term, with or without the hyphen.
+    expect(screen.getAllByText(/Health data \(special.category\)/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/The studio is the controller/i)).toBeInTheDocument();
     expect(screen.getByText(/Payment provider \(POK\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/\[LAWYER REVIEW REQUIRED\]/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hetzner \(Germany\)/i)).toBeInTheDocument();
+    // The old "standard body-art record-retention period" sentence was unsupported and must stay gone.
+    expect(screen.queryByText(/standard body-art record-retention/i)).not.toBeInTheDocument();
+  });
+
+  it("the four legal pages carry no lawyer-review banner while their flags are final, and link Client Terms once", () => {
+    expect(HAS_FINAL_LEGAL_COPY).toBe(true);
+    expect(FINAL_LEGAL_COPY).toEqual({ terms: true, clientTerms: true, privacy: true });
+    for (const ui of [
+      <PrivacyPolicyPage key="p" />,
+      <TermsOfServicePage key="t" />,
+      <ClientTermsPage key="c" />,
+      <RefundPolicyPage key="r" />,
+    ]) {
+      renderPublic(ui);
+      expect(screen.queryByText(/\[LAWYER REVIEW REQUIRED\]/i)).not.toBeInTheDocument();
+      // The amber banner is the only role="alert" these pages can render.
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("link", { name: "Client Terms" })).toHaveLength(1);
+      cleanup();
+    }
+  });
+
+  it("Platform Terms state the lek prices, the 14-day trial and the yearly refund example", () => {
+    renderPublic(<TermsOfServicePage />);
+    expect(screen.getByText(/Solo 2,000, Studio 4,500 and Studio Plus 9,000 ALL/)).toBeInTheDocument();
+    expect(screen.getByText(/14-day trial with all features and no card/)).toBeInTheDocument();
+    // All four points of the 45,000 ALL example in Platform Terms §8, in the order the clause states them.
+    expect(
+      screen.getByText(
+        /Cancelling in month 1 refunds 40,500, in month 3 refunds 31,500, in month 6 refunds 18,000, and from month 10 refunds nothing/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/within 48 hours of confirming it/)).toBeInTheDocument();
+  });
+
+  it("Client Terms say the studio, not TattooOS, is the service provider", () => {
+    renderPublic(<ClientTermsPage />);
+    expect(screen.getByText(/your agreement for the tattoo is with the studio, not with TattooOS/)).toBeInTheDocument();
   });
 
   it("Refund Policy states the 48-hour default window and deposit facts from the live code", () => {

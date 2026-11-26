@@ -247,8 +247,8 @@ export function ClientRegisterPage() {
 
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   By creating an account you agree to our{" "}
-                  <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
-                    Terms of Service
+                  <Link to="/client-terms" className="underline underline-offset-2 hover:text-foreground">
+                    Client Terms of Use
                   </Link>{" "}
                   and{" "}
                   <Link to="/privacy" className="underline underline-offset-2 hover:text-foreground">

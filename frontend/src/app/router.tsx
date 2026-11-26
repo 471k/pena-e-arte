@@ -41,7 +41,7 @@ import {
   LiveTrafficPage,
 } from "@/features/platform";
 import { FeedbackInboxPage } from "@/features/feedback";
-import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage, ContactPage, UnsubscribePage, InstagramDataDeletionPage, NotFoundPage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
+import { StudioPortfolioPage, ArtistPortfolioPage, SharedDesignPage, EmbedPage, DiscoverPage, HomePage, PrivacyPolicyPage, TermsOfServicePage, ClientTermsPage, RefundPolicyPage, ContactPage, UnsubscribePage, InstagramDataDeletionPage, NotFoundPage, FeaturesPage, PricingPage, UseCaseBookingPage, UseCaseDepositsPage, UseCaseConsentFormsPage, FaqPage } from "@/features/public";
 import { ConductReportsPage, ConductReportInboxPage } from "@/features/conduct-reports";
 import { MessagesInboxPage } from "@/features/messaging";
 import { WaitlistQueuePage, MyWaitlistPage, WaitlistClaimPage } from "@/features/waitlist";
@@ -190,6 +190,7 @@ export const routes = [
   // CatchAllRedirect silently bounced /privacy and /terms to /discover.
   { path: "/privacy",         element: <PrivacyPolicyPage /> },
   { path: "/terms",           element: <TermsOfServicePage /> },
+  { path: "/client-terms",    element: <ClientTermsPage /> },
   { path: "/refund-policy",   element: <RefundPolicyPage /> },
   { path: "/contact",         element: <ContactPage /> },
   { path: "/features",        element: <FeaturesPage /> },
