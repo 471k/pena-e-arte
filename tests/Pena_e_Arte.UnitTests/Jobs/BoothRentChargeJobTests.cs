@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Pena_e_Arte.Application.BoothRent;
 using Pena_e_Arte.Domain.Entities;
 using Pena_e_Arte.Domain.Enums;
 using Pena_e_Arte.Infrastructure.Jobs;
@@ -63,6 +64,23 @@ public class BoothRentChargeJobTests
 
         _db.BoothRentSchedules.Single(s => s.Id == schedule.Id).NextChargeDate
             .Should().BeCloseTo(due.AddMonths(1), TimeSpan.FromSeconds(1));
+    }
+
+    // A schedule written through the date-only contract (BoothRentDates) stays at midnight UTC through
+    // the job, so every charge it creates is a calendar date too.
+    [Theory]
+    [InlineData(RentFrequency.Weekly)]
+    [InlineData(RentFrequency.Monthly)]
+    public async Task RunAsync_MidnightSchedule_ChargeAndNextDateStayAtMidnightUtc(RentFrequency frequency)
+    {
+        await SeedArtist();
+        DateTime due = BoothRentDates.ToChargeDate(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)));
+        BoothRentSchedule schedule = await SeedSchedule(frequency, due);
+
+        await CreateSut().RunAsync();
+
+        _db.BoothRentCharges.Single(c => c.BoothRentScheduleId == schedule.Id).ChargedDate.Should().Be(due);
+        _db.BoothRentSchedules.Single(s => s.Id == schedule.Id).NextChargeDate.TimeOfDay.Should().Be(TimeSpan.Zero);
     }
 
     [Fact]

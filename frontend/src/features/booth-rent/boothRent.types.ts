@@ -21,6 +21,7 @@ export interface CreateBoothRentScheduleRequest {
   artistId:       string;
   amountFixed:    number;
   frequency:      RentFrequency;
+  /** A calendar date, "YYYY-MM-DD". The API binds it as a DateOnly; a time or an offset is a 400. */
   nextChargeDate: string;
   isActive:       boolean;
 }
@@ -28,6 +29,7 @@ export interface CreateBoothRentScheduleRequest {
 export interface UpdateBoothRentScheduleRequest {
   amountFixed:    number;
   frequency:      RentFrequency;
+  /** A calendar date, "YYYY-MM-DD". The API binds it as a DateOnly; a time or an offset is a 400. */
   nextChargeDate: string;
   isActive:       boolean;
 }

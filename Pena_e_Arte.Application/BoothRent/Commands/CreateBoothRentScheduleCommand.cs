@@ -30,7 +30,7 @@ public class CreateBoothRentScheduleHandler(IAppDbContext db, ICurrentTenant ten
             ArtistId = artist.Id,
             AmountFixed = req.AmountFixed,
             Frequency = Enum.Parse<RentFrequency>(req.Frequency),
-            NextChargeDate = req.NextChargeDate,
+            NextChargeDate = BoothRentDates.ToChargeDate(req.NextChargeDate),
             IsActive = req.IsActive,
         };
 
