@@ -338,7 +338,7 @@ describe("public policy routes", () => {
     expect(testRouter.state.location.pathname).toBe("/privacy");
   });
 
-  // /terms carries the Platform Terms for Studios since 26 Nov 2026; the footer still labels it "Terms of Service".
+  // /terms carries the Platform Terms for Studios since 26 Nov 2026; the footers label it "Studio Terms" since 27 Nov.
   it("renders the Platform Terms for Studios at /terms", async () => {
     const testRouter = renderAt("/terms");
     expect(

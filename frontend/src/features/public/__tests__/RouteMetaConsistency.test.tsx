@@ -78,6 +78,22 @@ describe("static page metadata matches the route manifest", () => {
     expect(headContent('meta[property="og:url"]', "content")).toBe(`${SITE_URL}${path}`);
   });
 
+  // The test above checks the title against the MANIFEST and never against the page itself, so a page
+  // headed "Platform Terms for Studios" shipped with the tab title "Terms of Service" and CI could not see
+  // it (found 26-27 Nov 2026). This checks that the h1 and the route title name the same audience.
+  // Deliberately the audience word, not string equality: the title carries " — TattooOS" and the h1 does
+  // not, and an equality check would invite someone to weaken it.
+  it.each([
+    ["/terms", "Studio", <TermsOfServicePage key="t" />],
+    ["/client-terms", "Client", <ClientTermsPage key="c" />],
+  ] as const)("%s: the h1 and the route title both name the audience %s", (path, audience, ui) => {
+    renderPage(ui);
+    const h1 = document.querySelector("h1")?.textContent ?? "";
+    expect(h1).toContain(audience);
+    expect(ROUTE_META[path].title).toContain(audience);
+    expect(document.title).toContain(audience);
+  });
+
   it("names the apex as canonical regardless of the host the page is served from", () => {
     // jsdom serves from http://localhost; the canonical must still be the production apex.
     renderPage(<FeaturesPage />);

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { PublicContentLayout } from "./PublicContentLayout";
 import { LawyerReviewBanner } from "./LawyerReviewBanner";
 import { ROUTE_META } from "@/shared/seo/siteRoutes";
@@ -14,6 +15,15 @@ export function TermsOfServicePage() {
       canonicalPath="/terms"
     >
       <h1 className="text-2xl font-semibold tracking-tight">Platform Terms for Studios</h1>
+      {/* Audience signpost for people who arrive by direct link (old bookmark, search result),
+          where relabelling the site's own links cannot reach them. Mirrored on ClientTermsPage. */}
+      <p className="mt-2 text-sm text-muted-foreground">
+        Not a studio? These terms do not apply to you — see the{" "}
+        <Link to="/client-terms" className="underline underline-offset-2 hover:text-foreground">
+          Client Terms of Use
+        </Link>
+        .
+      </p>
       <LegalVersionLine lastUpdated={LEGAL_LAST_UPDATED} version={LEGAL_VERSION} />
 
       <div className="mt-6">
