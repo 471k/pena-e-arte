@@ -143,9 +143,12 @@ describe("public content pages", () => {
     expect(screen.getByRole("link", { name: "Client Terms of Use" })).toHaveAttribute("href", "/client-terms");
   });
 
-  it("/client-terms tells a studio reader these terms are not theirs and links the Studio Terms", () => {
+  // Not a mirror of the /terms signpost: a studio owner booking for themselves is a client, so
+  // "these terms do not apply to you" would be false on /client-terms.
+  it("/client-terms points a studio reader to the Studio Terms without saying these terms are not theirs", () => {
     renderPublic(<ClientTermsPage />);
-    expect(screen.getByText(/Running a studio\? These terms do not apply to you/)).toBeInTheDocument();
+    expect(screen.getByText(/Running a studio\? Your agreement with TattooOS is the/)).toBeInTheDocument();
+    expect(screen.queryByText(/Running a studio\? These terms do not apply to you/)).not.toBeInTheDocument();
     const main = screen.getByRole("heading", { level: 1, name: "Client Terms of Use" }).parentElement!;
     expect(within(main).getByRole("link", { name: "Studio Terms" })).toHaveAttribute("href", "/terms");
   });
