@@ -245,24 +245,33 @@ export function LoginPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Legal footer — pinned to viewport bottom */}
-        <footer className="absolute bottom-6 left-0 right-0 text-center text-xs text-foreground/65">
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
-            <a href="/privacy" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
-              Privacy Policy
-            </a>
-            <span aria-hidden="true" className="text-border select-none">·</span>
-            <a href="/terms" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
-              Terms of Service
-            </a>
-            <span aria-hidden="true" className="text-border select-none">·</span>
-            <a href="mailto:support@tattooos.co" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
-              Contact support
-            </a>
-          </div>
-        </footer>
       </div>
+
+      {/* Legal footer, in normal flow as the last child of the page column. flex-1 on the
+          content above pushes it to the bottom of a tall viewport; on a short or zoomed one it
+          sits below the card and the page scrolls. It was absolute (bottom-6) inside the
+          centred container, and at 320-375px its wrapped links overlapped "Register your
+          studio", so a tap there opened the wrong legal document (27 Nov 2026). Do not put it
+          back inside the overflow-hidden container: there the overlap would become clipping. */}
+      <footer className="px-4 pb-6 text-center text-xs text-foreground/65">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
+          <a href="/privacy" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Privacy Policy
+          </a>
+          <span aria-hidden="true" className="text-border select-none">·</span>
+          <a href="/terms" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Studio Terms
+          </a>
+          <span aria-hidden="true" className="text-border select-none">·</span>
+          <a href="/client-terms" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Client Terms
+          </a>
+          <span aria-hidden="true" className="text-border select-none">·</span>
+          <a href="mailto:support@tattooos.co" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+            Contact support
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

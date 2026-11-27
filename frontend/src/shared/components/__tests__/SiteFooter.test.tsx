@@ -22,7 +22,7 @@ describe("SiteFooter", () => {
 
   it.each([
     ["Privacy Policy", "/privacy"],
-    ["Terms of Service", "/terms"],
+    ["Studio Terms", "/terms"],
     ["Client Terms", "/client-terms"],
     ["Refund Policy", "/refund-policy"],
     ["Contact", "/contact"],

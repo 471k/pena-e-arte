@@ -65,7 +65,7 @@ describe("public content pages", () => {
     // The footer (SiteFooter, asserted elsewhere by role "contentinfo") already carries these —
     // Home's own content should link to Privacy/Terms/Refund/Contact exactly once, from the footer.
     expect(screen.getAllByRole("link", { name: "Privacy Policy" })).toHaveLength(1);
-    expect(screen.getAllByRole("link", { name: "Terms of Service" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Studio Terms" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Client Terms" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Refund Policy" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Contact" })).toHaveLength(1);
@@ -132,5 +132,24 @@ describe("public content pages", () => {
     expect(screen.getByText(/refunded in full,\s+whatever the timing/i)).toBeInTheDocument();
     // Refund policy is REAL copy, so it must NOT carry the lawyer-review banner.
     expect(screen.queryByText(/\[LAWYER REVIEW REQUIRED\]/i)).not.toBeInTheDocument();
+  });
+
+  // /terms is the studio B2B contract (clause 3: "You are not a consumer for these terms"). Someone who
+  // arrives there by a direct link is out of reach of any relabelled link, so each terms page names
+  // its audience and points at the other one (27 Nov 2026).
+  it("/terms tells a non-studio reader these terms are not theirs and links the Client Terms of Use", () => {
+    renderPublic(<TermsOfServicePage />);
+    expect(screen.getByText(/Not a studio\? These terms do not apply to you/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Client Terms of Use" })).toHaveAttribute("href", "/client-terms");
+  });
+
+  // Not a mirror of the /terms signpost: a studio owner booking for themselves is a client, so
+  // "these terms do not apply to you" would be false on /client-terms.
+  it("/client-terms points a studio reader to the Studio Terms without saying these terms are not theirs", () => {
+    renderPublic(<ClientTermsPage />);
+    expect(screen.getByText(/Running a studio\? Your agreement with TattooOS is the/)).toBeInTheDocument();
+    expect(screen.queryByText(/Running a studio\? These terms do not apply to you/)).not.toBeInTheDocument();
+    const main = screen.getByRole("heading", { level: 1, name: "Client Terms of Use" }).parentElement!;
+    expect(within(main).getByRole("link", { name: "Studio Terms" })).toHaveAttribute("href", "/terms");
   });
 });
