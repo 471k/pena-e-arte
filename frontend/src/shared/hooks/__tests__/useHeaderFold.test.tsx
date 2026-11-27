@@ -57,4 +57,29 @@ describe("useHeaderFold", () => {
     act(() => { observers.forEach((fire) => fire()); });
     expect(screen.getByTestId("header")).toHaveTextContent("folded");
   });
+
+  it("re-measures when a child mounts later, even if nothing already observed resizes", async () => {
+    // Brand master 1.0.0: the brand is shrink-0, so the owner's Owner/Artist switch arriving after /artists/me
+    // overflowed the header without any observed element changing size.
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+    setLayout(1024, 32);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1024);
+    vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return this.querySelector("[data-late]") ? 1221 : 1024;
+    });
+    function LateChild() {
+      const { ref, folded } = useHeaderFold<HTMLDivElement>(24);
+      return <div ref={ref} data-testid="header">{folded ? "folded" : "inline"}</div>;
+    }
+    render(<LateChild />);
+    expect(screen.getByTestId("header")).toHaveTextContent("inline");
+
+    await act(async () => {
+      const late = document.createElement("span");
+      late.setAttribute("data-late", "");
+      screen.getByTestId("header").appendChild(late);
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("header")).toHaveTextContent("folded");
+  });
 });

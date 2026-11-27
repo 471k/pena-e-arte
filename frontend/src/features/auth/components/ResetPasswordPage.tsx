@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, CheckCircle, Loader2, Pencil, PenLine } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router-dom";
@@ -14,7 +14,7 @@ import { Label } from "@/shared/components/ui/label";
 import { PasswordInput } from "@/shared/components/ui/password-input";
 import { PasswordMatchIndicator } from "@/shared/components/ui/password-match-indicator";
 import { useResetPasswordMutation } from "../authApi";
-import { Wordmark } from "@/shared/components/Wordmark";
+import { TattooOSLogo } from "@/shared/components/TattooOSLogo";
 
 const schema = z.object({
   email:       z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -95,10 +95,8 @@ export function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex items-center gap-2">
-            <PenLine className="h-8 w-8" />
-            <Wordmark className="text-2xl" />
-          </div>
+          {/* Brand master 1.0.0 header lockup (189x32). m-2 keeps the package's 8px clear space. */}
+          <TattooOSLogo variant="header" className="m-2" />
         </div>
 
         <Card>

@@ -1,0 +1,6 @@
+# Brand master 1.0.0 assets are byte-exact copies of the mastered package (hashes in
+# docs/claude/architecture.md, Decisions Log 2026-11-27). The root .gitattributes gives SVG
+# `text=auto`, which on a Windows checkout with core.autocrlf would rewrite LF to CRLF and
+# break the hash match. Never let git touch their bytes.
+favicon.svg -text
+brand/** -text

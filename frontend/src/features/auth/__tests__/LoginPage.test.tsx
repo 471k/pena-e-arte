@@ -273,10 +273,14 @@ describe("LoginPage", () => {
     await screen.findByTestId("artist-home");
   });
 
-  it("renders the TattooOS brand mark", () => {
+  it("renders the TattooOS brand mark once in the hero, as an image named TattooOS", () => {
     renderPage();
     const heroSection = screen.getByText(/run your studio\. book clients\. manage your team\./i).parentElement!;
-    expect(within(heroSection).getByText("TattooOS")).toBeInTheDocument();
+    expect(within(heroSection).getAllByRole("img", { name: "TattooOS" })).toHaveLength(1);
+    // Brand master 1.0.0 header lockup, and no second "TattooOS" text beside it.
+    expect(within(heroSection).getByRole("img", { name: "TattooOS" }).getAttribute("src"))
+      .toBe("/brand/after-hours/1.0.0/lockups/header-on-light.svg");
+    expect(within(heroSection).queryByText("TattooOS")).not.toBeInTheDocument();
   });
 
   it("does not render the generic credential subtitle", () => {
@@ -435,10 +439,10 @@ describe("LoginPage", () => {
     expect(screen.getByRole("link", { name: /contact support/i })).toBeInTheDocument();
   });
 
-  it("PenLine icon has aria-hidden to suppress screen reader announcement", () => {
+  it("the hero brand adds no tab stop", () => {
     renderPage();
     const heroSection = screen.getByText(/run your studio\. book clients\. manage your team\./i).parentElement!;
-    expect(within(heroSection).getByText("TattooOS")).toBeInTheDocument();
+    expect(heroSection.querySelectorAll("a, button, input, [tabindex]")).toHaveLength(0);
   });
 
   it("honours ?redirect= after successful login instead of going to role home", async () => {

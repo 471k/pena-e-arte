@@ -1,49 +1,82 @@
 /**
- * Generates frontend/public/og-image.png (1200x630), the default social-preview image referenced by
- * index.html and the per-route metadata (https://tattooos.co/og-image.png).
+ * Puts the approved default social-preview image in place and proves it is the approved one.
  *
- * THIS IS A PLACEHOLDER brand asset: wordmark + tagline on a dark background, nothing more. Replace
- * frontend/public/og-image.png with real artwork when marketing supplies it (keep it 1200x630 and
- * under ~300 KB). Run manually — not part of `pnpm build`:
+ * frontend/public/og-image.png (1200x630) is the default share image referenced by index.html and the
+ * per-route metadata (https://tattooos.co/og-image.png). Since brand master 1.0.0 (After Hours, 27 Nov
+ * 2026) it is the package's mastered link preview, committed unchanged as
+ * frontend/brand-assets/after-hours-1.0.0/link-preview.png. This script no longer DRAWS anything: it
+ * copies that committed source over public/og-image.png, then checks that the two files' SHA-256 match
+ * and that the PNG really is 1200x630 (read from its IHDR header, no image library). It exits non-zero
+ * on any mismatch. Run manually; not part of `pnpm build`:
  *
- *   node scripts/generate-og-image.mjs
+ *   node scripts/generate-og-image.mjs           copy, then verify
+ *   node scripts/generate-og-image.mjs --check   verify only, change nothing
  *
- * Uses the Chromium that @playwright/test already installs (no new dependency).
+ * To change the artwork, commit a new approved source from a new brand master version and point
+ * SOURCE at it. Never hand-edit public/og-image.png.
  */
-import { chromium } from "@playwright/test";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const TAGLINE = "Booking & studio management for tattoo shops";
-const SUBLINE = "Online booking · Deposits · Digital consent forms";
-
-const html = `<!doctype html>
-<html><head><meta charset="utf-8" /><style>
-  html, body { margin: 0; width: 1200px; height: 630px; }
-  body {
-    display: flex; flex-direction: column; justify-content: center; padding: 0 96px; box-sizing: border-box;
-    background: radial-gradient(1100px 520px at 88% -10%, #3b1d7a 0%, rgba(59,29,122,0) 60%), #0b0b0f;
-    color: #f5f3ff; font-family: Georgia, "Times New Roman", serif;
-  }
-  .bar { width: 96px; height: 8px; border-radius: 4px; background: #863bff; margin-bottom: 44px; }
-  .brand { font-size: 132px; font-weight: 700; letter-spacing: -3px; line-height: 1; }
-  .tag { margin-top: 36px; font-size: 46px; line-height: 1.25; color: #e9e3ff; max-width: 1010px; }
-  .sub { margin-top: 28px; font-size: 30px; color: #a78bfa; }
-  .host { position: absolute; right: 96px; bottom: 56px; font-size: 30px; color: #8b8aa0; }
-</style></head><body>
-  <div class="bar"></div>
-  <div class="brand">TattooOS</div>
-  <div class="tag">${TAGLINE}</div>
-  <div class="sub">${SUBLINE}</div>
-  <div class="host">tattooos.co</div>
-</body></html>`;
+import { createHash } from "node:crypto";
+import { copyFileSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const out = join(here, "..", "public", "og-image.png");
 
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
-await page.setContent(html);
-await page.screenshot({ path: out, type: "png", clip: { x: 0, y: 0, width: 1200, height: 630 } });
-await browser.close();
-console.log(`wrote ${out}`);
+export const SOURCE = join(here, "..", "brand-assets", "after-hours-1.0.0", "link-preview.png");
+export const TARGET = join(here, "..", "public", "og-image.png");
+export const EXPECTED_WIDTH = 1200;
+export const EXPECTED_HEIGHT = 630;
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** Hex SHA-256 of a buffer. */
+export function sha256(buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
+}
+
+/**
+ * Width and height from a PNG's IHDR chunk, which the format requires to come first: the 8-byte
+ * signature, then a 4-byte length, the type "IHDR", and width and height as big-endian uint32.
+ * Throws if the buffer is not a PNG.
+ */
+export function pngSize(buffer) {
+  if (buffer.length < 24 || !buffer.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("not a PNG file");
+  if (buffer.toString("latin1", 12, 16) !== "IHDR") throw new Error("PNG has no leading IHDR chunk");
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+/** Problems with the target compared with the source; an empty list means it is the approved image. */
+export function verifyOgImage(sourceBuffer, targetBuffer) {
+  const problems = [];
+  const sourceHash = sha256(sourceBuffer);
+  const targetHash = sha256(targetBuffer);
+  if (sourceHash !== targetHash) problems.push(`hash mismatch: source ${sourceHash}, og-image ${targetHash}`);
+  try {
+    const { width, height } = pngSize(targetBuffer);
+    if (width !== EXPECTED_WIDTH || height !== EXPECTED_HEIGHT) {
+      problems.push(`og-image is ${width}x${height}, expected ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT}`);
+    }
+  } catch (error) {
+    problems.push(`og-image: ${error.message}`);
+  }
+  return { sourceHash, targetHash, problems };
+}
+
+/** Copies source over target unless checkOnly, then verifies. Returns the verification result. */
+export function syncOgImage({ source = SOURCE, target = TARGET, checkOnly = false } = {}) {
+  if (!checkOnly) copyFileSync(source, target);
+  return verifyOgImage(readFileSync(source), readFileSync(target));
+}
+
+function main() {
+  const checkOnly = process.argv.includes("--check");
+  const { sourceHash, problems } = syncOgImage({ checkOnly });
+  if (problems.length > 0) {
+    for (const problem of problems) console.error(problem);
+    process.exit(1);
+  }
+  console.log(`${checkOnly ? "verified" : "copied and verified"} ${TARGET}`);
+  console.log(`sha256 ${sourceHash} (${EXPECTED_WIDTH}x${EXPECTED_HEIGHT})`);
+}
+
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) main();

@@ -8280,3 +8280,47 @@ Supersedes the booth-rent half of the 2026-11-24 entry above ("booth rent's date
   its silence as a signal before the page is used. Run against staging during the measurement, the same
   expression returned 10, so it does trip on real traffic. It reports 10 because 10 s is the histogram's top
   bucket. The alert is not changed.
+
+## Brand master 1.0.0 (After Hours identity) integrated on branch `feat/brand-master-1-0-0`, PR open and unmerged — 2026-11-27
+
+- **What:** the TattooOS After Hours brand master 1.0.0 package replaces the old pen icon plus wordmark on the
+  public header (`BrandMark`, so also `GuestAuthHeader` and Discover), the four auth heroes (login, client
+  sign-up, forgot and reset password), the owner, artist and client headers (`RoleHeaderBrand`), the admin header
+  (micro mark beside "Platform Admin", which stays the visible and accessible label) and the embed's "Powered by
+  TattooOS" attribution (now the powered-by badge inside the same link, same `href`, `target`, `rel` and the same
+  `showPlatformBranding` condition). One shared component, `shared/components/TattooOSLogo.tsx`, serves every
+  variant from `/brand/after-hours/1.0.0/`; it is presentation only (no link, no handler, never a tab stop) and
+  follows `prefers-color-scheme` through a `<picture>` source, like the app's palette.
+- **Assets:** 45 files copied byte for byte from the package's `deployment-map.json`: the 36 mark and lockup SVGs,
+  `favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, the two `any` and two maskable manifest icons,
+  `public/og-image.png` and its committed source `frontend/brand-assets/after-hours-1.0.0/link-preview.png`. The
+  map's 46th entry, `engraved-master.png`, is marked optional and was not copied. Every destination's SHA-256
+  equals the map's, in the working copy and in the committed blob (table in the implementation report).
+  `frontend/public/.gitattributes` sets `-text` on `favicon.svg` and `brand/**` because the root `text=auto` would
+  let a Windows checkout rewrite the SVGs' line endings and break that equality.
+- **Chrome colour `#19161D`:** `index.html` `theme-color` (was `#7c3aed`) and `manifest.json` `theme_color` and
+  `background_color` (was `#7c3aed` / `#09090b`). The icon links carry `?v=1.0.0`. Manifest identity (name,
+  short_name, start_url, display) is unchanged so installed apps are not orphaned. Maskable icons are separate
+  manifest entries (web.dev guidance).
+- **`scripts/generate-og-image.mjs` no longer draws anything.** It copies the committed master over
+  `public/og-image.png` and verifies SHA-256 and the 1200x630 IHDR size, failing on any mismatch, so running it
+  can never restore the old placeholder. `DEFAULT_OG_IMAGE` and the prerender are unchanged.
+- **Left alone on purpose:** `SiteFooter`, `HomePage`, `PublicContentLayout` (the package marks them limited
+  surfaces), tenant branding, the palette and `index.css`. `/map` (`StudioMapPage`) and `/register`
+  (`RegisterStudioPage`, tenant-owned `studios/**`) still show the old pen plus wordmark: outside this change's
+  scope. `Wordmark` keeps three consumers (those two pages and `HomePage`), so it and `font-wordmark` stay.
+- **Where the small lockup gives way to the micro mark is measured, not the package's single 360px rule.** The
+  controls keep their room first. Role headers: below 640px the owner and artist headers need 413px with the
+  small lockup and the client header 377px; from 640px the owner header needs 706px. `TattooOSLogo.css` swaps to
+  the micro mark by container query on the header's content box below those widths (minus the header's padding),
+  on top of the package's sub-360px rule. Public headers: Discover needs 386px and the portfolio header 410px
+  signed out, so `BrandMark` takes `fullFrom` (360 default, 390 Discover, 416 portfolio). Folded headers show the
+  micro mark only.
+- **`useHeaderFold` now also watches children that mount later** (a `MutationObserver` on the header's child
+  list). The owner's Owner/Artist switch arrives after `/artists/me`; before, the shrinkable wordmark absorbed it
+  and its resize happened to trigger a measure. The brand is `shrink-0` now, nothing observed resized, and at
+  1024px with 200% text the owner header overflowed 197px instead of folding.
+- **Package defect, 1.0.1 requested:** the eight `lockups/stacked-*` and `lockups/powered-by-*` SVGs have no
+  `viewBox` and no `<title>`. Copied unchanged. Chrome scales the powered-by badge correctly at 124px (checked at
+  4x device scale against the native 104x28), so it ships at the package's 124px; Firefox and Safari were not
+  available to check.

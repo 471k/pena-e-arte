@@ -4,38 +4,51 @@ import { useAppDispatch, useAppSelector } from "@/app/hooks";
 import { getRoleRedirectPath }           from "@/app/router";
 import { logout }                        from "@/features/auth/authSlice";
 import type { Role }                     from "@/shared/types/roles";
-import { Wordmark } from "@/shared/components/Wordmark";
+import { TattooOSLogo } from "@/shared/components/TattooOSLogo";
 
 // ── Brand mark ─────────────────────────────────────────────────────────────────
 
-export function BrandMark() {
+/**
+ * Where the small lockup gives way to the 20px micro mark, per header. Measured for brand master 1.0.0
+ * (27 Nov 2026, Chrome, signed out, which is each header's widest nav) as the narrowest window with no
+ * sideways scroll: Discover ("Map · Sign in · Sign up · Register studio") needs 386px, the portfolio
+ * pages' header ("Discover · Sign in · …") 410px; the guest auth header ("Discover" only) fits at 320px
+ * and keeps the package's own sub-360px rule. Static class strings so Tailwind generates them.
+ */
+const BRAND_SWAP = {
+  360: { full: "inline-flex max-[359px]:hidden", micro: "hidden max-[359px]:inline-flex" },
+  390: { full: "inline-flex max-[389px]:hidden", micro: "hidden max-[389px]:inline-flex" },
+  416: { full: "inline-flex max-[415px]:hidden", micro: "hidden max-[415px]:inline-flex" },
+} as const;
+
+interface BrandMarkProps {
+  /** Window width (px) from which the small lockup shows; below it, the micro mark. */
+  fullFrom?: keyof typeof BRAND_SWAP;
+}
+
+export function BrandMark({ fullFrom = 360 }: BrandMarkProps) {
+  const swap = BRAND_SWAP[fullFrom];
   return (
     <Link
       to="/discover"
       aria-label="TattooOS — Discover studios"
-      className="flex items-center gap-2 focus-visible:outline-hidden
+      // min-h-11 makes the link a 44px target; -my-1.5 lets those 44px reach into the header's own
+      // py-2.5, so the row (sized by the 32px nav links) and the header height do not change.
+      className="flex min-h-11 -my-1.5 items-center focus-visible:outline-hidden
                  focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1
                  rounded-sm"
     >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="12" y1="2" x2="12" y2="18" />
-        <path d="M10 16 L12 22 L14 16" />
-        <circle cx="12" cy="5" r="2" fill="currentColor" stroke="none" />
-        <line x1="8" y1="9" x2="16" y2="9" />
-      </svg>
-      {/* Hidden below 360px, as in the app shell's header: signed out, "Discover · Sign in · Sign up · Register
-          studio" ran 39px past a 320px screen (found by slice 6e's pass; 1.4.10 reflow). The link keeps its
-          aria-label and the pen mark, so it is still named and visible. */}
-      <Wordmark className="text-sm max-[359px]:hidden" />
+      {/* Brand master 1.0.0. The link's aria-label names it, so both images are decorative. The
+          small lockup (141px) gives way to the micro mark where the header's nav needs the room
+          (1.4.10 reflow: the old wordmark was hidden below 360px for the same reason, after it ran
+          39px past a 320px screen). The visibility classes sit on wrappers because
+          TattooOSLogo.css sets the logo's own display. */}
+      <span className={swap.full}>
+        <TattooOSLogo variant="small" decorative />
+      </span>
+      <span className={swap.micro}>
+        <TattooOSLogo variant="micro" height={20} decorative />
+      </span>
     </Link>
   );
 }
@@ -181,7 +194,7 @@ export function PublicPageHeader() {
       aria-label="Site header"
     >
       <div className="flex items-center justify-between px-4 py-2.5">
-        <BrandMark />
+        <BrandMark fullFrom={416} />
 
         <nav className="flex items-center gap-1" aria-label="Site navigation">
           <Link

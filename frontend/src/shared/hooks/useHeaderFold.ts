@@ -62,8 +62,20 @@ export function useHeaderFold<T extends HTMLElement>(belowRem: number): { ref: R
     observer.observe(probe);
     // Content that arrives later (the studio's name, a pending-invite bell) widens the children, not the header.
     for (const child of Array.from(el.children)) observer.observe(child);
+    // A child that MOUNTS later (the owner's Owner/Artist switch, once /artists/me answers) resizes nothing that is
+    // already observed when its neighbours cannot shrink, so it would never trigger a measure: watch it arrive.
+    // Before brand master 1.0.0 the shrinkable wordmark absorbed the new child and its resize happened to
+    // trigger the measure; the brand is shrink-0 now (owner, 1024px at 200% text overflowed 197px without this).
+    const mutations = typeof MutationObserver === "undefined" ? null : new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of Array.from(record.addedNodes)) if (node instanceof Element) observer.observe(node);
+      }
+      measure();
+    });
+    mutations?.observe(el, { childList: true });
     return () => {
       observer.disconnect();
+      mutations?.disconnect();
       probe.remove();
     };
     // Re-run when the fold changes, so the overflow check reads the layout that is actually rendered.

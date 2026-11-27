@@ -3,7 +3,7 @@ import type { TourStep } from "@/shared/components/OnboardingTour";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays, LayoutDashboard, Users, UserSquare, Palette, CreditCard,
-  Receipt, Settings, PenLine, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
+  Receipt, Settings, BarChart3, ImagePlus, ShieldAlert, MessageCircle, Wallet,
   ListOrdered, ListChecks, Banknote, Gift, Package as PackageIcon,
   Megaphone, Tag, DollarSign, FileText,
 } from "lucide-react";
@@ -37,7 +37,7 @@ import type { OwnerTourFacts } from "@/features/help/tours/ownerTour";
 import { useGetMyJoinInvitesQuery } from "@/features/auth/authApi";
 import { useGetMyStudioConductReportsQuery, useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { useChatHub } from "@/features/messaging";
-import { Wordmark } from "@/shared/components/Wordmark";
+import { RoleHeaderBrand } from "@/shared/components/RoleHeaderBrand";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
 import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
@@ -267,9 +267,9 @@ export function OwnerLayout() {
       <SoloStudioPublishBanner studio={studio} />
       <header ref={headerRef} data-pinned-shell className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
-        <PenLine className="h-5 w-5" />
-        {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone). */}
-        {!headerFolded && <Wordmark />}
+        {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone): the brand
+            shrinks to the micro mark. */}
+        <RoleHeaderBrand folded={headerFolded} fit="owner" />
         <StudioContextLabel variant="header" />
 
         {/* Folded, the header switch goes and the drawer's copy (below) carries it, as on a phone. */}

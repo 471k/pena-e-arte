@@ -41,16 +41,17 @@ async function signInAsOwner(page: Page, opts: { width: number; studioName?: str
 }
 
 test.describe("S08: which studio this is", () => {
-  test("from md up the header names the studio right after the wordmark", async ({ page }) => {
+  test("from md up the header names the studio right after the brand", async ({ page }) => {
     await signInAsOwner(page, { width: 1280 });
     await page.goto("/dashboard");
 
     const header = page.locator("header").first();
     const name = header.getByText("Tinta & Alma", { exact: true });
     await expect(name).toBeVisible();
-    const wordmark = await header.getByText("TattooOS", { exact: true }).boundingBox();
+    // Brand master 1.0.0: the brand is one role="img" named TattooOS (the small lockup at this width), not text.
+    const brand = await header.getByRole("img", { name: "TattooOS" }).boundingBox();
     const nameBox = await name.boundingBox();
-    expect(wordmark && nameBox && nameBox.x > wordmark.x + wordmark.width).toBeTruthy();
+    expect(brand && nameBox && nameBox.x > brand.x + brand.width).toBeTruthy();
   });
 
   test("a long studio name truncates but stays readable, and the header doesn't overflow at 768px", async ({ page }) => {
