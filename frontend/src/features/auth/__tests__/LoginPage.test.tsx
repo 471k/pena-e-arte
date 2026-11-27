@@ -408,9 +408,26 @@ describe("LoginPage", () => {
     expect(screen.getByRole("link", { name: /privacy policy/i })).toBeInTheDocument();
   });
 
-  it("renders the legal footer with Terms of Service link", () => {
+  it("renders the legal footer's four links, each to its own document", () => {
     renderPage();
-    expect(screen.getByRole("link", { name: /terms of service/i })).toBeInTheDocument();
+    const footer = screen.getByRole("contentinfo");
+    const links = within(footer).getAllByRole("link");
+    expect(links.map((a) => [a.textContent?.trim(), a.getAttribute("href")])).toEqual([
+      ["Privacy Policy", "/privacy"],
+      ["Studio Terms", "/terms"],
+      ["Client Terms", "/client-terms"],
+      ["Contact support", "mailto:support@tattooos.co"],
+    ]);
+  });
+
+  // Regression guard (27 Nov 2026): this page is the sign-in for EVERY role, and its only terms link
+  // used to be "Terms of Service" pointing at /terms, the studio B2B contract that tells its reader
+  // "You are not a consumer for these terms". A client signing in had no link to their own terms.
+  it("offers clients their own terms: the sign-in footer links /client-terms", () => {
+    renderPage();
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("link", { name: "Client Terms" })).toHaveAttribute("href", "/client-terms");
+    expect(within(footer).queryByRole("link", { name: /terms of service/i })).not.toBeInTheDocument();
   });
 
   it("renders the Contact support link in the footer", () => {

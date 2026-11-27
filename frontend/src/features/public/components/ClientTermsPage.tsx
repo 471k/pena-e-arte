@@ -15,6 +15,14 @@ export function ClientTermsPage() {
       canonicalPath="/client-terms"
     >
       <h1 className="text-2xl font-semibold tracking-tight">Client Terms of Use</h1>
+      {/* Audience signpost, the mirror of the one on TermsOfServicePage. */}
+      <p className="mt-2 text-sm text-muted-foreground">
+        Running a studio? These terms do not apply to you — see the{" "}
+        <Link to="/terms" className="underline underline-offset-2 hover:text-foreground">
+          Studio Terms
+        </Link>
+        .
+      </p>
       <LegalVersionLine lastUpdated={LEGAL_LAST_UPDATED} version={LEGAL_VERSION} />
 
       <div className="mt-6">

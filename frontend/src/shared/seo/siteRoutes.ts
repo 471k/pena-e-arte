@@ -65,8 +65,8 @@ export const ROUTE_META = {
     description: "How TattooOS collects, uses, and protects your personal data.",
   },
   "/terms": {
-    title: "Terms of Service — TattooOS",
-    description: "The terms governing your use of TattooOS.",
+    title: "Studio Terms — TattooOS",
+    description: "The terms between TattooOS and a studio that opens an account. Clients have their own terms.",
   },
   "/client-terms": {
     title: "Client Terms of Use — TattooOS",

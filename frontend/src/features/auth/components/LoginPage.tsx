@@ -254,7 +254,11 @@ export function LoginPage() {
             </a>
             <span aria-hidden="true" className="text-border select-none">·</span>
             <a href="/terms" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
-              Terms of Service
+              Studio Terms
+            </a>
+            <span aria-hidden="true" className="text-border select-none">·</span>
+            <a href="/client-terms" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
+              Client Terms
             </a>
             <span aria-hidden="true" className="text-border select-none">·</span>
             <a href="mailto:support@tattooos.co" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
