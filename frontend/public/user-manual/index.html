@@ -70,6 +70,18 @@ a { color: inherit; }
 }
 #topbar .brand { display:flex; align-items:center; gap:8px; font-weight:600; }
 #topbar .brand svg { width:20px; height:20px; }
+/* Brand master 1.0.0 micro mark: the dark-surface file by default (this manual is dark unless the
+   system or the theme toggle says light), the light-surface file otherwise. */
+#topbar .brand .brand-mark { width:20px; height:20px; display:block; }
+#topbar .brand .brand-mark-on-light { display:none; }
+@media (prefers-color-scheme: light) {
+  #topbar .brand .brand-mark-on-light { display:block; }
+  #topbar .brand .brand-mark-on-dark { display:none; }
+}
+:root[data-theme="dark"] #topbar .brand .brand-mark-on-light { display:none; }
+:root[data-theme="dark"] #topbar .brand .brand-mark-on-dark { display:block; }
+:root[data-theme="light"] #topbar .brand .brand-mark-on-light { display:block; }
+:root[data-theme="light"] #topbar .brand .brand-mark-on-dark { display:none; }
 #topbar .spacer { flex:1; }
 .icon-btn {
   background:none; border:1px solid var(--border); color:var(--text); border-radius:6px;
@@ -237,9 +249,8 @@ ol.steps li { margin: 6px 0; }
 
 <header id="topbar">
   <div class="brand">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <line x1="12" y1="2" x2="12" y2="18"/><path d="M10 16 L12 22 L14 16"/><circle cx="12" cy="5" r="2" fill="currentColor" stroke="none"/><line x1="8" y1="9" x2="16" y2="9"/>
-    </svg>
+    <img class="brand-mark brand-mark-on-dark" src="/brand/after-hours/1.0.0/marks/cartridge-micro-on-dark.svg" width="128" height="128" alt="" draggable="false">
+    <img class="brand-mark brand-mark-on-light" src="/brand/after-hours/1.0.0/marks/cartridge-micro-on-light.svg" width="128" height="128" alt="" draggable="false">
     TattooOS — User Manual
   </div>
   <div class="spacer"></div>
@@ -948,7 +959,7 @@ ol.steps li { margin: 6px 0; }
 <text x="236" y="226" font-size="9" font-weight="700">Our artists</text>
 <rect x="236" y="234" width="288" height="34" rx="4" fill="currentColor" fill-opacity="0.05"/>
 <rect x="236" y="272" width="288" height="34" rx="4" fill="currentColor" fill-opacity="0.05"/>
-<text x="236" y="450" font-size="8" fill-opacity="0.5">Powered by TattooOS</text>
+<rect x="322" y="436" width="116" height="20" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.25"/><circle cx="335" cy="446" r="5" fill="#863BFF" fill-opacity="0.7"/><text x="345" y="449" font-size="8" fill-opacity="0.6">Powered by TattooOS</text>
 </svg>
 </figure>
 <figcaption>Embed widget — designed to sit inside a 380×600px iframe on a third-party site</figcaption>
@@ -957,7 +968,7 @@ ol.steps li { margin: 6px 0; }
 <li>Cover photo, studio name, city, and description at the top.</li>
 <li>Click <span class="step-title">Book an Appointment</span> — this opens the full studio page in a new tab (since the booking form itself needs the full site).</li>
 <li>Browse the artist list below.</li>
-<li>A small "Powered by TattooOS" footer link is shown at the bottom, unless the studio has turned off <a href="#owner-branding">Platform branding</a> on a plan that allows it.</li>
+<li>A small "Powered by TattooOS" badge (the TattooOS logo, linking to TattooOS) is shown at the bottom, unless the studio has turned off <a href="#owner-branding">Platform branding</a> on a plan that allows it.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#owner-embed">Owner: embed code</a>, <a href="#owner-branding">Owner: branding</a></div>
 </section>
@@ -3394,7 +3405,7 @@ ol.steps li { margin: 6px 0; }
 <tr><td>Business details</td><td>Studio URL, the studio details form (name, phone, NIPT, street address, country, map location, timezone), <a href="#owner-social-verification">Social Media</a></td></tr>
 <tr><td>Hours and closures</td><td>Studio hours, Booking start times (how far apart the open times clients are offered are: every session length by default, or every 15 or 30 minutes or hour), Studio closures</td></tr>
 <tr><td>Payments and artist pay</td><td><a href="#owner-studio-currency">Currency</a>, Card deposits — POK, <a href="#owner-artist-pay-model">How artists get paid</a></td></tr>
-<tr><td>Online booking</td><td><a href="#owner-embed">Booking widget</a>, <a href="#owner-branding">Platform branding</a> (the "Powered by TattooOS" line on the widget), Marketing QR code</td></tr>
+<tr><td>Online booking</td><td><a href="#owner-embed">Booking widget</a>, <a href="#owner-branding">Platform branding</a> (the "Powered by TattooOS" badge on the widget), Marketing QR code</td></tr>
 <tr><td>Notifications</td><td><a href="#owner-notifications-prefs">Notification preferences</a></td></tr>
 <tr><td>Integrations</td><td>Developer — API access, Developer — Webhooks</td></tr>
 <tr><td>Referral programme</td><td><a href="#owner-referral">Referral programme</a></td></tr>
@@ -3629,7 +3640,7 @@ ol.steps li { margin: 6px 0; }
 <li>Click the copy icon to copy the iframe snippet.</li>
 <li>Paste it into your own website's HTML.</li>
 <li>Click <span class="step-title">Open preview</span> to see how it will look first.</li>
-<li>The widget's small "Powered by TattooOS" line follows your <a href="#owner-branding">Platform branding</a> switch. Its Book button opens your studio page on tattooos.co, which always shows the line.</li>
+<li>The widget's small "Powered by TattooOS" badge follows your <a href="#owner-branding">Platform branding</a> switch. Its Book button opens your studio page on tattooos.co, which always credits TattooOS.</li>
 </ol>
 <div class="crosslinks">See also: <a href="#guest-embed">Guest: embedded booking widget</a>, <a href="#owner-branding">Branding</a></div>
 </section>

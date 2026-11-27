@@ -130,6 +130,16 @@ describe("AdminLayout", () => {
     expect(screen.queryByText("TattooOS")).not.toBeInTheDocument();
   });
 
+  it("shows the TattooOS micro mark beside Platform Admin, decorative, so the label stays the only name", () => {
+    renderLayout();
+    const banner = screen.getByRole("banner");
+    const mark = banner.querySelector('img[src$="/brand/after-hours/1.0.0/marks/cartridge-micro-on-light.svg"]');
+    expect(mark).not.toBeNull();
+    expect(mark?.getAttribute("alt")).toBe("");
+    expect(within(banner).queryByRole("img", { name: "TattooOS" })).not.toBeInTheDocument();
+    expect(within(banner).getByText("Platform Admin")).toBeInTheDocument();
+  });
+
   it("renders all admin nav links, categorised (Notifications moved to bell icon)", async () => {
     const user = userEvent.setup();
     renderLayout();

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { PenLine } from "lucide-react";
 import { ReadOnlyBanner } from "@/shared/components/ReadOnlyBanner";
 import { PlanLimitBanner } from "@/shared/components/PlanLimitBanner";
 import { SuspensionBanner } from "@/shared/components/SuspensionBanner";
@@ -23,7 +22,7 @@ import { useGetMyStudioQuery } from "@/features/studios/studiosApi";
 import { MoneyStudioContext } from "@/shared/components/moneyStudioContext";
 import { useGetMyConductReportsAsArtistQuery } from "@/features/conduct-reports";
 import { useChatHub } from "@/features/messaging";
-import { Wordmark } from "@/shared/components/Wordmark";
+import { RoleHeaderBrand } from "@/shared/components/RoleHeaderBrand";
 import { StudioContextLabel } from "@/shared/components/StudioContextLabel";
 import { MAIN_CONTENT_ID, SkipToContent } from "@/shared/components/SkipToContent";
 
@@ -67,9 +66,9 @@ export function ArtistLayout() {
       <PlanLimitBanner />
       <header ref={headerRef} data-pinned-shell className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
-        <PenLine className="h-5 w-5" />
-        {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone). */}
-        {!headerFolded && <Wordmark />}
+        {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone): the brand
+            shrinks to the micro mark. */}
+        <RoleHeaderBrand folded={headerFolded} fit="artist" />
         <StudioContextLabel variant="header" />
 
         <NavDrawer sections={navSections} title="TattooOS" context={<StudioContextLabel variant="drawer" />} open={navOpen} onOpenChange={setNavOpen} revealTourId={revealTourId} modal={navModal} />

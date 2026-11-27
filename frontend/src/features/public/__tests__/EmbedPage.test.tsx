@@ -74,7 +74,7 @@ const STUDIO: PublicStudioResponse = {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function renderPage() {
-  render(
+  return render(
     <MemoryRouter>
       <EmbedPage />
     </MemoryRouter>,
@@ -117,16 +117,27 @@ describe("EmbedPage", () => {
   });
 
   // The embed is on the studio's own website, so it follows the studio's branding switch (14 Nov 2026).
-  it("shows the Powered by TattooOS line while the studio's branding switch is on", () => {
+  it("shows the Powered by TattooOS badge while the studio's branding switch is on", () => {
     renderPage();
-    expect(screen.getByRole("link", { name: "Powered by TattooOS" })).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Powered by TattooOS" });
+    // Destination unchanged by the brand master; only the artwork changed.
+    expect(link.getAttribute("href")).toBe("https://app.tattooos.co");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    // Brand master 1.0.0 powered-by lockup, decorative: the link's aria-label is its one name.
+    const img = link.querySelector("img");
+    expect(img?.getAttribute("src")).toBe("/brand/after-hours/1.0.0/lockups/powered-by-on-light.svg");
+    expect(img?.getAttribute("alt")).toBe("");
+    expect(screen.getAllByRole("link", { name: /powered by tattooos/i })).toHaveLength(1);
   });
 
-  it("leaves the line out when the studio has turned branding off", () => {
+  it("leaves the badge out when the studio has turned branding off", () => {
     mockUseGetPublicStudioQuery.mockReturnValue({
       data: { ...STUDIO, showPlatformBranding: false }, isLoading: false, isError: false,
     });
-    renderPage();
+    const { container } = renderPage();
+    expect(screen.queryByRole("link", { name: /powered by tattooos/i })).not.toBeInTheDocument();
+    expect(container.querySelector('img[src*="powered-by"]')).toBeNull();
     expect(screen.queryByText(/powered by tattooos/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Book an Appointment/i })).toBeInTheDocument();
   });

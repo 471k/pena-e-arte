@@ -340,7 +340,7 @@ export function DiscoverPage() {
       <header className="sticky short-viewport:relative top-0 z-[100] border-b bg-background/95 backdrop-blur-sm">
         {/* Top row: brand + nav */}
         <div className="flex items-center justify-between px-4 py-2.5">
-          <BrandMark />
+          <BrandMark fullFrom={390} />
 
           <nav className="flex items-center gap-1" aria-label="Site navigation">
             <Link to="/map"

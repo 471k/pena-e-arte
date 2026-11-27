@@ -1697,7 +1697,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Click \"Open preview\" to see what the widget looks like before embedding it.",
     ],
     tips: [
-      "The widget shows a small \"Powered by TattooOS\" line at the bottom while Platform branding is on. Turning it off (on plans that allow it) removes the line from the widget too. Its \"Book an Appointment\" button opens your studio page on tattooos.co, which always shows the line.",
+      "The widget shows a small \"Powered by TattooOS\" badge (the TattooOS logo, linking to TattooOS) at the bottom while Platform branding is on. Turning it off (on plans that allow it) removes the badge from the widget too. Its \"Book an Appointment\" button opens your studio page on tattooos.co, which always credits TattooOS.",
     ],
     relatedArticleIds: ["owner-branding"],
   },

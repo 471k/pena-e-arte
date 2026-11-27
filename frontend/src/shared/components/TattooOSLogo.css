@@ -1,0 +1,74 @@
+/* Brand master 1.0.0 (After Hours): brand geometry only. Sets no application font and no
+   semantic colour. Unlayered on purpose (as in the package), so a Tailwind display utility on
+   the same element would lose to it: put responsive visibility on a wrapper instead. */
+.tattooos-logo {
+  display: inline-flex;
+  flex: none;
+  vertical-align: middle;
+}
+.tattooos-logo > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The role headers' brand: the small lockup, swapped for the micro mark below 360px so the
+   header's controls keep their room on the narrowest phones. One accessible name lives on the
+   outer .tattooos-role-brand element; both inner presentations are decorative. */
+.tattooos-role-brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+.tattooos-role-brand__micro {
+  display: none;
+}
+@media (max-width: 359px) {
+  .tattooos-role-brand__full {
+    display: none;
+  }
+  .tattooos-role-brand__micro {
+    display: inline-flex;
+  }
+}
+
+/* The controls keep their room first (brand master 1.0.0 integration, measured 27 Nov 2026 in
+   Chrome at 100% text, with each role's largest header: the owner's Owner/Artist switch and the
+   studio name included). The header width each role needs with the small lockup, padding included:
+     below 640px  owner 413, artist 413, client 377   (micro mark: 292 / 292 / 256)
+     640px and up owner 706, artist 528, client 472   (micro mark: 585 / 407 / 351)
+   Where the header is narrower than that, the micro mark shows instead, so the small lockup never
+   pushes a control into "More". A container query measures the header's CONTENT box (the layouts
+   mark the header `@container`), so each threshold is the need, rounded up for a few pixels of
+   slack (416 / 384 / 712), minus the header's padding (px-4 = 32px below 640, sm:px-6 = 48px above).
+   Thresholds are px on purpose: the lockup is an image and does not grow with text size; at larger
+   text sizes the header folds (useHeaderFold) and RoleHeaderBrand shows the micro mark anyway. */
+@container (max-width: 383.98px) {
+  .tattooos-role-brand[data-fit="owner"] .tattooos-role-brand__full,
+  .tattooos-role-brand[data-fit="artist"] .tattooos-role-brand__full {
+    display: none;
+  }
+  .tattooos-role-brand[data-fit="owner"] .tattooos-role-brand__micro,
+  .tattooos-role-brand[data-fit="artist"] .tattooos-role-brand__micro {
+    display: inline-flex;
+  }
+}
+@container (max-width: 351.98px) {
+  .tattooos-role-brand[data-fit="client"] .tattooos-role-brand__full {
+    display: none;
+  }
+  .tattooos-role-brand[data-fit="client"] .tattooos-role-brand__micro {
+    display: inline-flex;
+  }
+}
+@media (min-width: 640px) {
+  @container (max-width: 663.98px) {
+    .tattooos-role-brand[data-fit="owner"] .tattooos-role-brand__full {
+      display: none;
+    }
+    .tattooos-role-brand[data-fit="owner"] .tattooos-role-brand__micro {
+      display: inline-flex;
+    }
+  }
+}

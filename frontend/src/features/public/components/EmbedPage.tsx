@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { CalendarDays, MapPin } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { TattooOSLogo } from "@/shared/components/TattooOSLogo";
 import { useGetPublicStudioQuery, type PublicArtistSummary } from "../publicApi";
 
 const EMBED_BASE = import.meta.env.VITE_PUBLIC_URL ?? window.location.origin;
@@ -134,9 +135,11 @@ export function EmbedPage() {
             href="https://app.tattooos.co"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-muted-foreground hover:underline"
+            aria-label="Powered by TattooOS"
+            // Brand master 1.0.0 badge. min-h-11: a 44px target around the 33px-tall lockup.
+            className="inline-flex min-h-11 items-center text-xs text-muted-foreground hover:underline"
           >
-            Powered by TattooOS
+            <TattooOSLogo variant="poweredBy" decorative />
           </a>
         </footer>
       )}

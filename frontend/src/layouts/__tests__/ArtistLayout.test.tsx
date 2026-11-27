@@ -163,9 +163,14 @@ describe("ArtistLayout", () => {
     expect(within(aside).queryByRole("button", { name: /collapse sidebar/i })).not.toBeInTheDocument();
   });
 
-  it("renders the brand name", () => {
+  it("names the TattooOS brand once in the header, and the brand adds no tab stop", () => {
     renderLayout();
-    expect(screen.getByText("TattooOS")).toBeInTheDocument();
+    const banner = screen.getByRole("banner");
+    // Brand master 1.0.0: one role="img" named TattooOS; the lockup/micro images inside are decorative.
+    expect(within(banner).getAllByRole("img", { name: "TattooOS" })).toHaveLength(1);
+    const brand = within(banner).getByRole("img", { name: "TattooOS" });
+    expect(brand.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
+    expect(brand.querySelectorAll('img[alt=""]').length).toBeGreaterThan(0);
   });
 
   it("renders the static artist nav links, categorised", async () => {
