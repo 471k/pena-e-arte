@@ -46,7 +46,36 @@ public class GetPlatformStatsHandlerTests
         PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
 
         result.TotalStudios.Should().Be(2); // both active and suspended count toward total
-        result.TrialStudios.Should().Be(1); // only the active studio (no sub, trial running)
+        // Neither is a trial: the active one has no Subscription row, which access treats as data corruption
+        // (TenantMiddleware answers 402 on every request), whatever Studio.TrialExpiresAt says.
+        result.TrialStudios.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_StudioWithoutSubscriptionRow_IsNotCountedAsTrialing_EvenWithAFutureTrialDate()
+    {
+        // Stats vs access (run 2, item K): SubscriptionAccessService reads only the Subscription row, and a
+        // missing one is a 402 on every request (TenantMiddleware). Counting it as trialing reported a studio the
+        // platform refuses as a healthy trial, and inflated the conversion denominator.
+        Studio noRow = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(10));
+        // Control: a real trial in the same run, so a zero above can't come from the test seeing no trials at all.
+        Studio trial = SeedStudio(isActive: true, trialExpiresAt: DateTime.UtcNow.AddDays(10));
+        await _db.SaveChangesAsync();
+        _db.Subscriptions.Add(new Subscription
+        {
+            StudioId = trial.Id,
+            Status = SubscriptionStatus.Trialing,
+            TrialExpiresAt = DateTime.UtcNow.AddDays(10),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(10),
+        });
+        await _db.SaveChangesAsync();
+
+        PlatformStatsResponse result = await CreateSut().Handle(new GetPlatformStatsQuery(), default);
+
+        result.TrialStudios.Should().Be(1, "only the studio with a Trialing row is let in by access");
+        result.TrialConversionRate.Should().Be(0); // 0 active / (0 active + 1 trial + 0 grace)
+        result.TotalStudios.Should().Be(2, "the studio without a row still exists and still counts in the total");
+        noRow.Subscription.Should().BeNull();
     }
 
     [Fact]

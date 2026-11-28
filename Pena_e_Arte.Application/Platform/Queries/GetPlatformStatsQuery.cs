@@ -41,9 +41,12 @@ public class GetPlatformStatsHandler(IAppDbContext db, ILogger<GetPlatformStatsH
 
         int totalStudios = studios.Count;
         int activeSubscriptions = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Active);
-        int trialStudios = active.Count(s =>
-            s.Subscription?.Status == SubscriptionStatus.Trialing
-            || (s.Subscription is null && s.TrialExpiresAt > now));
+        // Counts what access lets in, no more (28 Nov, run 2 item K). SubscriptionAccessService reads only the
+        // Subscription row, and TenantMiddleware answers 402 on every request when it is missing (data corruption),
+        // whatever Studio.TrialExpiresAt says. Such a studio used to be counted here as trialing, so the dashboard
+        // reported a studio the platform refuses as a healthy trial. It now falls in no status bucket (it is still
+        // in TotalStudios), the same as before for any studio whose row is missing.
+        int trialStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Trialing);
         int gracePeriodStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.GracePeriod);
         int pastDueStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.PastDue);
         int cancelledStudios = active.Count(s => s.Subscription?.Status == SubscriptionStatus.Cancelled);
