@@ -63,7 +63,8 @@ function Actions({
   const moreLabel = unread > 0 ? `More: help, messages and more, ${unread} unread messages` : "More: help, messages and more";
 
   return (
-    <div className="ml-auto flex items-center gap-1 sm:gap-3">
+    // gap-[4px], not gap-1: px spacing so 200% text doesn't double it (see the layouts' header comment).
+    <div className="ml-auto flex items-center gap-[4px] sm:gap-3">
       {!useMore && onFeedback && (
         <Button
           variant="ghost" size="icon" className="h-8 w-8"

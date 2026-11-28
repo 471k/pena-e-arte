@@ -110,6 +110,49 @@ for (const textSize of ["100%", "200%"] as const) {
   }
 }
 
+// 200% text on the narrowest phones (28 Nov 2026): the header's rem padding and gaps doubled and pushed the account
+// menu 68px past a 320px screen (28px at 360px), and its open panel (w-56, 448px at 200%) started 132px off the left
+// edge. The header now spaces in px and the panel is capped at the screen width. This checks the header and its
+// account menu; page content below the header is not part of it (the client's empty state still overflows at 320px).
+for (const width of [320, 360] as const) {
+  for (const role of ROLES) {
+    test(`${role.name} at ${width}px and 200% text: the header and its open account menu stay on screen`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.addInitScript(() => {
+        document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.fontSize = "200%"; });
+      });
+      await mockApiFallback(page);
+      if (role.path) {
+        const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+        await page.route(`**/api/v1/artists/${ARTIST_ID}`, (route) => route.fulfill(json(ARTIST)));
+        await page.route("**/api/v1/artists/me", (route) => route.fulfill(json(ARTIST)));
+        await page.route(`**/api/v1/artists/${ARTIST_ID}/schedule`, (route) => route.fulfill(json({ schedule: [], timeOff: [] })));
+      }
+      await loginAs(page, role.token, role.email, role.landing);
+      if (role.path) await page.goto(role.path);
+      const header = page.locator("header").first();
+      await expect(header).toBeVisible();
+
+      await expect.poll(() => header.evaluate((el) => el.scrollWidth - el.clientWidth),
+        { message: "the header scrolls sideways" }).toBeLessThanOrEqual(0);
+      const headerRight = await page.evaluate(() => Math.max(
+        ...Array.from(document.querySelector("header")!.querySelectorAll("*")).map((el) => el.getBoundingClientRect().right)));
+      expect(headerRight, "a header control sits past the viewport edge").toBeLessThanOrEqual(width);
+
+      const userMenu = header.getByRole("button", { name: /user menu$/i });
+      await userMenu.click();
+      const logOut = page.getByRole("button", { name: /log out/i });
+      await expect(logOut).toBeVisible();
+      const panel = await logOut.evaluate((el) => {
+        const box = el.closest("div.absolute")!.getBoundingClientRect();
+        return { left: box.left, right: box.right };
+      });
+      expect(panel.left, "the open account menu starts off the left edge").toBeGreaterThanOrEqual(0);
+      expect(panel.right, "the open account menu ends past the right edge").toBeLessThanOrEqual(width);
+    });
+  }
+}
+
 // From 640px up the header also carries the Owner/Artist switch, the studio's name and wider gaps, so a fixed rem
 // threshold calibrated on a phone let a 768px window at 200% text overflow by 446px (slice 9's pass, 23 Nov). The
 // header now also folds when its content overflows.

@@ -69,6 +69,13 @@ function renderActions(props: { folded: boolean; feedback?: boolean; messages?: 
 }
 
 describe("HeaderActions (S05: the header at 200% text)", () => {
+  it("spaces its controls in px, so 200% text does not double the gaps (320px phone)", () => {
+    renderActions({ folded: true });
+    const row = screen.getByRole("button", { name: "User menu" }).parentElement!;
+    expect(row.className).toContain("gap-[4px]");
+    expect(row.className).not.toMatch(/(^| )gap-1( |$)/);
+  });
+
   it("with room, every control is inline and there is no More menu", async () => {
     renderActions({ folded: false });
 

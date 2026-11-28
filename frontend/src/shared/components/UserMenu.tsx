@@ -29,14 +29,18 @@ export function UserMenu({ onLogout, context, compact = false }: { onLogout: () 
         aria-label={accessibleName}
         aria-expanded={open}
         aria-haspopup="true"
-        className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="flex items-center gap-[4px] rounded-md px-[8px] py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
         <UserChip compact={compact} />
-        <ChevronDown className="h-3 w-3 text-muted-foreground/70" />
+        {/* The padding, gap and this decorative chevron are px so 200% text does not double them: together with the
+            header's own px spacing that keeps this menu on a 320px screen (they were 32px of its 68px overflow). */}
+        <ChevronDown className="size-[12px] text-muted-foreground/70" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-56 rounded-md border bg-background shadow-md z-50 py-1">
+        // max-w keeps the open menu on screen: w-56 is 448px at 200% text, which put its left edge 132px off a
+        // 320px screen with the labels cut off. Capped, it ends 28px from the left edge at 320px and 16px at 360px.
+        <div className="absolute right-0 top-full mt-1 w-56 max-w-[calc(100vw-32px)] rounded-md border bg-background shadow-md z-50 py-1">
           {context && <div className="px-3 py-2 border-b mb-1 empty:hidden">{context}</div>}
           <Link
             to="/account/change-password"
