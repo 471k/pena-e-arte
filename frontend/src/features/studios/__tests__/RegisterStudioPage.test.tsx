@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, act, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, act, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -237,6 +237,37 @@ async function advanceToStep2(user: ReturnType<typeof userEvent.setup>, studioNa
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
+
+// Brand master 1.0.0 on /register (follow-up to #475; the studios exclusion is lifted for this page only).
+describe("RegisterStudioPage — brand", () => {
+  function hero(): HTMLElement {
+    return screen.getByText("Tattoo Studio Management").parentElement!;
+  }
+
+  it("shows the header lockup once above the card, named TattooOS, with no old pen or wordmark text", () => {
+    renderPage();
+    const brand = within(hero()).getAllByRole("img", { name: "TattooOS" });
+    expect(brand).toHaveLength(1);
+    expect(brand[0].getAttribute("src")).toBe("/brand/after-hours/1.0.0/lockups/header-on-light.svg");
+    expect(within(hero()).queryByText("TattooOS")).not.toBeInTheDocument();
+    expect(document.querySelector("svg.lucide-pen-line")).toBeNull();
+    expect(document.querySelector(".font-wordmark")).toBeNull();
+  });
+
+  it("narrow and wide: the same single lockup at every width (no width-dependent visibility)", () => {
+    renderPage();
+    const picture = within(hero()).getByRole("img", { name: "TattooOS" }).closest("picture")!;
+    expect(picture.className).not.toMatch(/hidden|max-\[|min-\[|sm:|md:|lg:/);
+    expect(picture.getAttribute("style")).toContain("width: 189px");
+  });
+
+  it("the hero brand is not a link and adds no tab stop; the guest header's brand link is unchanged", () => {
+    renderPage();
+    expect(hero().querySelectorAll("a, button, input, [tabindex]")).toHaveLength(0);
+    const link = screen.getByRole("link", { name: "TattooOS — Discover studios" });
+    expect(link.getAttribute("href")).toBe("/discover");
+  });
+});
 
 describe("RegisterStudioPage — step 1", () => {
   it("renders step 1 form fields", () => {

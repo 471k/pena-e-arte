@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, PenLine } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch, type Control, type UseFormSetValue } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -37,7 +37,7 @@ import { decodeToken } from "@/shared/utils/jwt";
 import { useRegisterStudioMutation } from "../studiosApi";
 import { useGetCountryDefaultCurrencyQuery, useGetVisitorGeoQuery } from "@/features/public/publicApi";
 import { registrationTimezoneId } from "@/shared/utils/timezones";
-import { Wordmark } from "@/shared/components/Wordmark";
+import { TattooOSLogo } from "@/shared/components/TattooOSLogo";
 
 const schema = z
   .object({
@@ -432,10 +432,8 @@ export function RegisterStudioPage() {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex items-center gap-2">
-              <PenLine className="h-8 w-8" />
-              <Wordmark className="text-2xl" />
-            </div>
+            {/* Brand master 1.0.0 header lockup (189x32), as on /login. m-2 keeps the package's 8px clear space. */}
+            <TattooOSLogo variant="header" className="m-2" />
             <p className="text-sm text-muted-foreground">Tattoo Studio Management</p>
           </div>
 

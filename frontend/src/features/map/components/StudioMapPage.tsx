@@ -2,10 +2,10 @@ import "leaflet/dist/leaflet.css";
 import { divIcon } from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link } from "react-router-dom";
-import { MapPin, PenLine } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { useGetStudioMapQuery } from "@/features/studios";
 import { buildGoogleMapsDirectionsUrl, hasPinnedLocation } from "@/shared/utils/googleMaps";
-import { Wordmark } from "@/shared/components/Wordmark";
+import { TattooOSLogo } from "@/shared/components/TattooOSLogo";
 
 const studioPin = divIcon({
   className: "",
@@ -27,9 +27,20 @@ export function StudioMapPage() {
   return (
     <div className="flex flex-col h-screen">
       <header className="flex items-center justify-between px-6 py-3 border-b bg-background shrink-0 z-[1000]">
-        <div className="flex items-center gap-2">
-          <PenLine className="h-5 w-5" />
-          <Wordmark />
+        {/* Brand master 1.0.0, the same lockup and swap as the other public headers (BrandMark in
+            PublicPageHeader). Not a link: this header's brand never was one, and its links stay as
+            they are. The small lockup needs a 323px window here (measured 28 Nov 2026, Chrome, at
+            100% text), so it keeps the package's own sub-360px rule: below 360px, the 20px micro
+            mark. Only one image is displayed at a time, so the page names "TattooOS" once, as the
+            old wordmark text did. The visibility classes sit on wrappers because TattooOSLogo.css
+            sets the logo's own display. */}
+        <div className="flex items-center">
+          <span className="inline-flex max-[359px]:hidden">
+            <TattooOSLogo variant="small" />
+          </span>
+          <span className="hidden max-[359px]:inline-flex">
+            <TattooOSLogo variant="micro" height={20} />
+          </span>
         </div>
         <nav className="flex items-center gap-3">
           <Link
