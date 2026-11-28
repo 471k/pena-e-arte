@@ -36,6 +36,23 @@ function renderMenu(onLogout = vi.fn()) {
 afterEach(cleanup);
 
 describe("UserMenu", () => {
+  it("keeps its padding, gap and chevron in px, so 200% text does not push it off a 320px header", () => {
+    renderMenu();
+    const button = screen.getByRole("button", { name: /user menu$/i });
+    expect(button.className).toContain("px-[8px]");
+    expect(button.className).toContain("gap-[4px]");
+    expect(button.className).not.toMatch(/(^| )(px-2|gap-1)( |$)/);
+    expect(button.querySelector("svg.lucide-chevron-down")!.getAttribute("class")).toContain("size-[12px]");
+  });
+
+  it("caps the open menu at the screen width, so 200% text can't push its labels off the left edge", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByRole("button", { name: /user menu$/i }));
+    const panel = screen.getByRole("button", { name: /log out/i }).closest("div.absolute")!;
+    expect(panel.className).toContain("max-w-[calc(100vw-32px)]");
+  });
+
   it("shows the studio-and-role line it is given at the top, and nothing extra without it (S08)", async () => {
     const user = userEvent.setup();
     const { unmount } = render(

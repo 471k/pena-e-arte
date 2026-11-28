@@ -265,7 +265,10 @@ export function OwnerLayout() {
       <ReadOnlyBanner />
       <PlanLimitBanner />
       <SoloStudioPublishBanner studio={studio} />
-      <header ref={headerRef} data-pinned-shell className="@container flex items-center gap-2 px-4 sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
+      {/* The header's padding and gaps are px, not rem: at 200% text on a 320px phone the rem spacing doubled and
+          pushed the account menu 68px off-screen (28px at 360px). Text and controls still scale; WCAG 1.4.4
+          asks for text to resize, not the space between controls. At 100% text 16px = 1rem, so nothing moves. */}
+      <header ref={headerRef} data-pinned-shell className="@container flex items-center gap-[8px] px-[16px] sm:px-6 h-14 border-b bg-background sticky top-0 z-20">
         <SidebarToggle />
         {/* Folded, the wordmark gives its room to the controls (S05: 200% text on a phone): the brand
             shrinks to the micro mark. */}
