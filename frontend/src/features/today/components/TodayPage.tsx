@@ -83,7 +83,7 @@ export function TodayPage() {
           <h1 className="text-xl font-semibold tracking-tight">Today</h1>
           {timeZone && <p className="text-sm text-muted-foreground">{dateLabel}</p>}
         </div>
-        <Button asChild variant="outline" size="sm" className="gap-1.5 self-start page-md:self-auto">
+        <Button asChild variant="outline" size="sm" wrapLabel className="gap-1.5 self-start page-md:self-auto">
           <Link to={scheduleHref}>
             <CalendarDays aria-hidden="true" className="h-4 w-4" />
             Open schedule

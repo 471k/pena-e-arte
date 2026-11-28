@@ -223,7 +223,8 @@ export function LocationPicker({ value, onChange, error, className }: LocationPi
 
         {/* Hint before any pin */}
         {!pin && !locating && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-background/90 backdrop-blur-sm border rounded-full px-3 py-1 text-xs text-muted-foreground shadow-sm pointer-events-none whitespace-nowrap">
+          // w-max with a cap, not nowrap: at 200% text the one-line pill was wider than the map (30px past a 320px screen).
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[1000] bg-background/90 backdrop-blur-sm border rounded-full px-3 py-1 text-xs text-center text-muted-foreground shadow-sm pointer-events-none w-max max-w-[calc(100%-24px)]">
             Click the map to pin your studio
           </div>
         )}

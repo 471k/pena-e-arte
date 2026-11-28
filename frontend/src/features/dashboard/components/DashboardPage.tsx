@@ -174,7 +174,7 @@ function TodaySection({
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-y-1 px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">Today</span>
@@ -329,16 +329,18 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* The date sits under the title, not beside the button: on a 390px phone the three in one row
-          made "Dashboard" touch the button and wrapped the date to three lines. */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b bg-background">
-        <div className="flex items-center gap-2 min-w-0">
+          made "Dashboard" touch the button and wrapped the date to three lines. The row wraps only when the
+          title block would drop under 7rem (200% text on a phone): the button then takes its own line and its
+          label may wrap, instead of running 100px off a 320px screen. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b bg-background">
+        <div className="flex items-center gap-2 basis-0 grow min-w-[min(7rem,100%)]">
           <LayoutDashboard className="h-5 w-5 shrink-0" />
           <div className="min-w-0">
             <span className="block font-semibold tracking-tight truncate">Dashboard</span>
             <span className="block text-xs text-muted-foreground truncate" data-testid="dashboard-date">{formatStudioTime(today, { weekday: "long", day: "numeric", month: "long" }, zone)}</span>
           </div>
         </div>
-        <Button size="sm" className="shrink-0" onClick={() => navigate("/schedule")}>
+        <Button size="sm" wrapLabel className="shrink-0" onClick={() => navigate("/schedule")}>
           + Book Appointment
         </Button>
       </div>
@@ -351,8 +353,9 @@ export function DashboardPage() {
         {/* E05a (O01): what needs a decision comes first; the counts and today's list follow. */}
         <OwnerExceptions />
 
-        {/* KPI stat cards */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* KPI stat cards: as many columns as fit at 5.5rem each. At 100% text that is three on a 320px phone,
+            as before; at 200% text the cards stack instead of shrinking to 69px with 3px for their label. */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,5.5rem),1fr))] gap-3">
           <StatCard
             label="Today"
             value={apptError ? null : todayAppts?.length ?? 0}

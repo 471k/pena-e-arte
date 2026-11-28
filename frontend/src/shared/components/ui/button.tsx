@@ -30,7 +30,18 @@ export const buttonVariants = cva(
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
       },
+      // Opt-in for a label that must never push past its container: on a narrow window or at 200% text it
+      // wraps onto a second line (the button grows taller) instead of overflowing sideways (WCAG 1.4.4/1.4.10).
+      // When it fits it is unchanged: one line, and min-h keeps the size's own height.
+      wrapLabel: {
+        true: "h-auto max-w-full whitespace-normal text-center",
+      },
     },
+    compoundVariants: [
+      { wrapLabel: true, size: "default", className: "min-h-10" },
+      { wrapLabel: true, size: "sm", className: "min-h-9 py-1.5" },
+      { wrapLabel: true, size: "lg", className: "min-h-11 py-2" },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
@@ -57,7 +68,7 @@ export interface ButtonProps
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading = false, disabledReason, onClick, children, ...props }, ref) => {
+  ({ className, variant, size, wrapLabel, asChild = false, loading = false, disabledReason, onClick, children, ...props }, ref) => {
     const reasonId = React.useId();
     const Comp = asChild ? Slot : "button";
     const blocked = loading || !!disabledReason;
@@ -73,7 +84,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const button = (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, wrapLabel, className }))}
         ref={ref}
         {...props}
         onClick={handleClick}

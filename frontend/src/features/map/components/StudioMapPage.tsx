@@ -26,7 +26,10 @@ export function StudioMapPage() {
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="flex items-center justify-between px-6 py-3 border-b bg-background shrink-0 z-[1000]">
+      {/* At 200% text on a phone the nav cannot sit beside the brand: the header wraps it onto its own row and
+          the nav wraps its links, instead of "Register your studio" running off-screen. Padding and gaps are px
+          so they do not double with the text. At 100% text the row is unchanged. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-[12px] gap-y-2 px-[24px] py-3 border-b bg-background shrink-0 z-[1000]">
         {/* Brand master 1.0.0, the same lockup and swap as the other public headers (BrandMark in
             PublicPageHeader). Not a link: this header's brand never was one, and its links stay as
             they are. The small lockup needs a 323px window here (measured 28 Nov 2026, Chrome, at
@@ -42,7 +45,7 @@ export function StudioMapPage() {
             <TattooOSLogo variant="micro" height={20} />
           </span>
         </div>
-        <nav className="flex items-center gap-3">
+        <nav className="flex flex-wrap items-center justify-end gap-x-[12px] gap-y-2">
           <Link
             to="/discover"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -57,7 +60,7 @@ export function StudioMapPage() {
           </Link>
           <Link
             to="/register"
-            className="text-sm font-medium bg-foreground text-background px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+            className="text-sm font-medium text-center bg-foreground text-background px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
           >
             Register your studio
           </Link>

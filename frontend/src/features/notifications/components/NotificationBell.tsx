@@ -54,7 +54,12 @@ export function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 rounded-md border bg-background shadow-lg z-[1100]">
+        // Below sm the panel is pinned to the header's edges (16px in, at most w-80, right-aligned) instead of
+        // the bell's right edge: the bell sits left of the account menu, so a bell-anchored w-80 started 416px
+        // off-screen on a 320px phone at 200% text. top-auto keeps it just under the bell (its static position).
+        // The header is the containing block (its @container is layout containment), so the edges are the
+        // header's, which spans the window.
+        <div className="absolute right-0 top-full mt-2 w-80 rounded-md border bg-background shadow-lg z-[1100] max-sm:fixed max-sm:top-auto max-sm:left-[16px] max-sm:right-[16px] max-sm:ml-auto max-sm:w-auto max-sm:max-w-80">
           <div className="px-3 py-2 border-b">
             <span className="text-sm font-medium">Notifications</span>
           </div>
