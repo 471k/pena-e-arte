@@ -439,6 +439,38 @@ describe("LoginPage", () => {
     expect(screen.getByRole("link", { name: /contact support/i })).toBeInTheDocument();
   });
 
+  // jsdom has no layout, so each link's line is stubbed: a link named in `secondLine` sits on a second line.
+  function stubFooterLines(secondLine: string[]) {
+    return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const below = this.tagName === "A" && secondLine.includes(this.textContent?.trim() ?? "");
+      const top = below ? 22 : 0;
+      return { top, bottom: top + 16, left: 0, right: 80, width: 80, height: 16, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+    });
+  }
+
+  function footerDots(): string[] {
+    const footer = screen.getByRole("contentinfo");
+    return Array.from(footer.querySelectorAll<HTMLElement>("span[aria-hidden='true']")).map((d) => d.style.visibility || "shown");
+  }
+
+  it("a wrapped footer hides the dot left dangling at the line break, and keeps the others", () => {
+    const spy = stubFooterLines(["Contact support"]);
+    renderPage();
+    // Privacy · Studio Terms · Client Terms [·] / Contact support
+    expect(footerDots()).toEqual(["shown", "shown", "hidden"]);
+    spy.mockRestore();
+  });
+
+  it("a footer on one line shows every dot, and the links and their order are unchanged", () => {
+    const spy = stubFooterLines([]);
+    renderPage();
+    expect(footerDots()).toEqual(["shown", "shown", "shown"]);
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getAllByRole("link").map((a) => a.textContent?.trim()))
+      .toEqual(["Privacy Policy", "Studio Terms", "Client Terms", "Contact support"]);
+    spy.mockRestore();
+  });
+
   it("the hero brand adds no tab stop", () => {
     renderPage();
     const heroSection = screen.getByText(/run your studio\. book clients\. manage your team\./i).parentElement!;
