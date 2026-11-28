@@ -22,7 +22,24 @@
 > pass on the release-candidate build, with the build named**, after the last change lands. The four caveats
 > stand as recorded.
 >
-> Every `docs/08` row has evidence, and none is a captured fail. What is still open:
+> **A CAPTURED DEFECT IN THE FROZEN BUILD, found 27 Nov after the sentence below was written.**
+> At **320 px**, on `d6075f3d` itself, a tap on “Register your studio” on `/login` **opens
+> “Terms of Service”** — the sign-in footer is `absolute bottom-6`, drawn over the card, and its links
+> collide with the bottom of the card's own controls. Measured in Chromium by Claude Code across 7
+> viewports. **It does not block launch** — 320 px is a small share of traffic, and the consequence is a
+> mis-navigation rather than data loss or a security exposure. **It is recorded because the sentence below
+> says no row is a captured fail, and on `d6075f3d` this one is.** Desktop's ruling, 27 Nov: known issue,
+> ships, fixed in the next release. **Fixed in #474, live 27 Nov:** #474 merged on 27 Nov as `0a8c8291`
+> with the sign-in footer in normal flow, so it no longer draws over the card, and Claude Code's per-line
+> tap test on `app.tattooos.co/login` then hits `/register` at 320x568, 320x256 and 375x667.
+>
+> **This adds a FOURTH caveat to the pass, beside the three already listed: the device pass did not
+> probe tap-target collisions at 320 px.** The pass is not wrong — it is a reported pass and it says
+> what it says. But “all rows pass” and “a tap at 320 px opens the wrong legal document” are both true
+> of `d6075f3d`, and until 27 Nov only the first was written down.
+>
+> Every `docs/08` row has evidence, and **on `d6075f3d` one is a captured fail (above; fixed in #474,
+> live 27 Nov)**. What is still open:
 > 1. **The device and assistive-technology rows are a REPORTED pass, not a captured one** (Phi, 24 Nov 17:10,
 >    §1), and it predates the current build (above). It has four caveats, carried unchanged: three versions
 >    inferred or unconfirmed, versions headed "latest version" rather than read off each device, no build named,
