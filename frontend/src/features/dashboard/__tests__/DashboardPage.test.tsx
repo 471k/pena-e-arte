@@ -704,6 +704,24 @@ describe("DashboardPage", () => {
     expect(card).toHaveTextContent(/Unpaid deposits \(7 days\)/);
     expect(card).not.toHaveTextContent(/Deposits Due/i);
   });
+
+  // At phone width the deposits label wraps in a third-width card. In a flex row centred on its middle, the icon sat
+  // between the lines and was squeezed to 0-7px wide (measured in Chrome, 28 Nov 2026). jsdom has no layout, so this
+  // pins the structure that keeps it on the first line: floated, one text-xs line tall, not shrinkable by flex.
+  it("each stat card's icon sits on the label's first line: floated, one line tall, and the label is plain text", async () => {
+    renderPage();
+    await screen.findByText("No appointments today.");
+    for (const id of ["stat-today", "stat-week", "stat-deposits"]) {
+      const row = screen.getByTestId(id).firstElementChild as HTMLElement;
+      expect(row.className).not.toMatch(/(^| )(flex|items-center)( |$)/);
+      const iconBox = row.firstElementChild as HTMLElement;
+      expect(iconBox.className).toContain("float-left");
+      expect(iconBox.className).toContain("h-4");
+      expect(iconBox).toHaveAttribute("aria-hidden", "true");
+      expect(iconBox.querySelector("svg")).not.toBeNull();
+    }
+    expect(screen.getByTestId("stat-deposits").firstElementChild).toHaveTextContent(/^Unpaid deposits \(7 days\)$/);
+  });
 });
 
 // S01: "today" and "this week" are the studio's days. The studio here is in Los Angeles, a zone that
