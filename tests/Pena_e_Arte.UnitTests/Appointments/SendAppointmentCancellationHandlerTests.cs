@@ -299,6 +299,8 @@ public class SendAppointmentCancellationHandlerTests
         body.Should().Contain("has been cancelled by the studio.");
         body.Should().Contain("Reply to this email to reach Ink &amp; Iron, or call +355 69 111 2222.");
         body.Should().Contain("href=\"https://app.example.test/s/ink-iron\"");
+        // Brand master 1.0.0 button pair, as in EmailRenderer: violet #863BFF with paper #F5F1E8 text (4.56:1).
+        body.Should().Contain("background:#863BFF;color:#F5F1E8;").And.NotContainEquivalentOf("#7c3aed");
         body.Should().Contain("Ink &amp; Iron &middot; Powered by TattooOS");
         body.Should().NotContain("Your Tattoo Studio").And.NotContain("please contact us");
         // Replies go to the studio owner.
