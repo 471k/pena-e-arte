@@ -17,7 +17,7 @@ import type {
 } from "@/features/appointments/appointment.types";
 import type { StudioResponse } from "@/features/studios/studiosApi";
 import { Role } from "@/shared/types/roles";
-import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
+import { STUDIO_TIME_PENDING, STUDIO_TIME_UNAVAILABLE } from "@/shared/utils/formatInStudioTimezone";
 
 // E04b (A04): the deposit consequence is shown before the no-show is committed, from the server's own
 // decision; confirm waits for it; the safe action has focus; the result shown afterwards is the
@@ -110,6 +110,17 @@ describe("NoShowConfirmDialog — before committing", () => {
     renderDialog();
     expect(screen.getByText("Mark Mira Hoxha as a no-show?")).toBeInTheDocument();
     expect(screen.getByText(STUDIO_TIME_PENDING)).toBeInTheDocument();
+    // 13:00 UTC on 4 Nov: a browser-zone span would start "Wed 4 Nov".
+    expect(screen.queryByText(/Wed 4 Nov/)).not.toBeInTheDocument();
+  });
+
+  it("when the studio's zone can't be read, the session says so instead of falling back to the browser's time", async () => {
+    server.use(http.get("http://localhost/api/v1/studios/me", () =>
+      HttpResponse.json({ message: "boom" }, { status: 500 })));
+    renderDialog();
+    expect(screen.getByText("Mark Mira Hoxha as a no-show?")).toBeInTheDocument();
+    expect(await screen.findByText(STUDIO_TIME_UNAVAILABLE)).toBeInTheDocument();
+    expect(screen.queryByText(STUDIO_TIME_PENDING)).not.toBeInTheDocument();
     // 13:00 UTC on 4 Nov: a browser-zone span would start "Wed 4 Nov".
     expect(screen.queryByText(/Wed 4 Nov/)).not.toBeInTheDocument();
   });

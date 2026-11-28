@@ -15,7 +15,7 @@ import { boothRentApi } from "@/features/booth-rent/boothRentApi";
 import { MyEarningsPage } from "@/features/reports/components/MyEarningsPage";
 import type { ArtistEarningsResponse } from "@/features/reports/report.types";
 import { Role } from "@/shared/types/roles";
-import { STUDIO_TIME_PENDING } from "@/shared/utils/formatInStudioTimezone";
+import { STUDIO_TIME_PENDING, STUDIO_TIME_UNAVAILABLE } from "@/shared/utils/formatInStudioTimezone";
 
 // ── Seed data ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +138,19 @@ describe("MyEarningsPage", () => {
     );
     renderPage();
     expect(await screen.findAllByText(STUDIO_TIME_PENDING)).not.toHaveLength(0);
+    // 09:00 UTC on 20 Jun: any browser-zone rendering says "20 Jun 2026".
+    expect(screen.queryByText("20 Jun 2026")).not.toBeInTheDocument();
+  });
+
+  it("when the studio's zone can't be read, the dates say so instead of falling back to the browser's date", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ message: "error" }, { status: 500 })),
+    );
+    renderPage();
+    // The earnings still load; only the two studio-calendar dates per line read as unavailable.
+    expect(await screen.findByText("Besa Klienti")).toBeInTheDocument();
+    expect(await screen.findByTestId("earnings-line-dates"))
+      .toHaveTextContent(`Paid ${STUDIO_TIME_UNAVAILABLE} · Session ${STUDIO_TIME_UNAVAILABLE}`);
     // 09:00 UTC on 20 Jun: any browser-zone rendering says "20 Jun 2026".
     expect(screen.queryByText("20 Jun 2026")).not.toBeInTheDocument();
   });
