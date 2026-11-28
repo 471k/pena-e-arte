@@ -112,8 +112,9 @@ for (const textSize of ["100%", "200%"] as const) {
 
 // 200% text on the narrowest phones (28 Nov 2026): the header's rem padding and gaps doubled and pushed the account
 // menu 68px past a 320px screen (28px at 360px), and its open panel (w-56, 448px at 200%) started 132px off the left
-// edge. The header now spaces in px and the panel is capped at the screen width. This checks the header and its
-// account menu; page content below the header is not part of it (the client's empty state still overflows at 320px).
+// edge. The header now spaces in px and the panel is capped at the screen width. This checks the header, its
+// account menu and its notification panel (w-80 anchored to the bell started 416px off a 320px screen; below sm it is
+// now pinned 16px inside the header's edges). Page content is checked in reflow-200-text.spec.ts.
 for (const width of [320, 360] as const) {
   for (const role of ROLES) {
     test(`${role.name} at ${width}px and 200% text: the header and its open account menu stay on screen`, async ({ page }) => {
@@ -149,6 +150,18 @@ for (const width of [320, 360] as const) {
       });
       expect(panel.left, "the open account menu starts off the left edge").toBeGreaterThanOrEqual(0);
       expect(panel.right, "the open account menu ends past the right edge").toBeLessThanOrEqual(width);
+
+      await page.keyboard.press("Escape");
+      const bell = header.getByRole("button", { name: /^View notifications/ });
+      await bell.click();
+      await expect(bell).toHaveAttribute("aria-expanded", "true");
+      const bellPanel = await bell.evaluate((el) => {
+        const box = el.parentElement!.querySelector(":scope > div")!.getBoundingClientRect();
+        return { left: box.left, right: box.right, top: box.top, bellBottom: el.getBoundingClientRect().bottom };
+      });
+      expect(bellPanel.left, "the open notification panel starts off the left edge").toBeGreaterThanOrEqual(0);
+      expect(bellPanel.right, "the open notification panel ends past the right edge").toBeLessThanOrEqual(width);
+      expect(bellPanel.top, "the open notification panel sits under the bell").toBeGreaterThanOrEqual(bellPanel.bellBottom);
     });
   }
 }

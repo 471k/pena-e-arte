@@ -60,7 +60,7 @@ export function ReferAFriendCard() {
           <code className="rounded-md border bg-muted px-3 py-2 text-sm font-mono tracking-wide">
             {referral.code}
           </code>
-          <Button type="button" variant="secondary" onClick={handleCopy}>
+          <Button type="button" variant="secondary" wrapLabel onClick={handleCopy}>
             Copy share link
           </Button>
         </div>

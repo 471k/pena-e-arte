@@ -643,8 +643,8 @@ export function ArtistDetailPage() {
             <TabsContent value="profile" className="mt-4 space-y-4">
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 basis-0 grow min-w-[min(6rem,100%)]">
                       <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">{artist.email}</span>
                     </div>

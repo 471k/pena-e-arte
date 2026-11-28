@@ -66,7 +66,7 @@ export function MyBookingsPage() {
                 icon={<CalendarPlus className="h-9 w-9" />}
                 heading="No bookings yet"
                 body="Book your first appointment and it will show here, with what to do before it and any deposit to pay."
-                action={<Button asChild size="sm"><Link to="/book">Book an appointment</Link></Button>}
+                action={<Button asChild size="sm" wrapLabel><Link to="/book">Book an appointment</Link></Button>}
               />
             </CardContent>
           </Card>

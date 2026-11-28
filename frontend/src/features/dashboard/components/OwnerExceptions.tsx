@@ -275,8 +275,8 @@ export function OwnerExceptions() {
         )}
 
         {!isLoading && errorMessage && (
-          <div className="px-4 pb-4 flex items-center justify-between gap-3">
-            <p className="text-sm text-destructive-text" role="alert">{errorMessage}</p>
+          <div className="px-4 pb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-destructive-text basis-0 grow min-w-[min(8rem,100%)]" role="alert">{errorMessage}</p>
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={isFetching} onClick={() => void refetch()}>
               <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
               Try again

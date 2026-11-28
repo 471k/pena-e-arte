@@ -81,8 +81,8 @@ export function SetupChecklist() {
     // Never fall back to "complete": say we couldn't check, and let the owner retry.
     return (
       <Card data-testid="setup-checklist">
-        <CardContent className="p-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground" role="alert">
+        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground basis-0 grow min-w-[min(8rem,100%)]" role="alert">
             We couldn't check your studio setup just now.
           </p>
           <Button size="sm" variant="outline" className="h-6 text-xs px-2 shrink-0" onClick={() => void refetch()}>

@@ -133,6 +133,21 @@ describe("NotificationBell", () => {
     expect(await screen.findByText("View all")).toBeInTheDocument();
   });
 
+  it("below sm the open panel is pinned inside the header's edges, not to the bell (it ran 416px off a 320px phone)", async () => {
+    // Where it lands is real layout and is checked in e2e/mobile-header.spec.ts; here: the classes that put it there.
+    const user = userEvent.setup();
+    renderBell();
+    const bell = screen.getByRole("button", { name: /notifications/i });
+    await user.click(bell);
+    await screen.findByText("View all");
+    const panel = bell.parentElement!.querySelector(":scope > div")!;
+    for (const cls of ["max-sm:fixed", "max-sm:top-auto", "max-sm:left-[16px]", "max-sm:right-[16px]", "max-sm:ml-auto", "max-sm:w-auto", "max-sm:max-w-80"]) {
+      expect(panel).toHaveClass(cls);
+    }
+    // From sm up it is unchanged: anchored to the bell's right edge.
+    expect(panel).toHaveClass("absolute", "right-0", "w-80");
+  });
+
   it("shows at most 5 recent notifications even when more exist", async () => {
     const user = userEvent.setup();
     renderBell();

@@ -429,7 +429,9 @@ export function RegisterStudioPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <GuestAuthHeader />
 
-      <div className="flex-1 flex items-center justify-center p-4">
+      {/* Page and card padding are px, the same as p-4/p-6 at 100% text, so at 200% text they do not double and
+          squeeze the form to 158px on a 320px phone. */}
+      <div className="flex-1 flex items-center justify-center p-[16px]">
         <div className="w-full max-w-md space-y-6">
           <div className="flex flex-col items-center gap-2 text-center">
             {/* Brand master 1.0.0 header lockup (189x32), as on /login. m-2 keeps the package's 8px clear space. */}
@@ -438,7 +440,7 @@ export function RegisterStudioPage() {
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="p-[24px]">
               <CardTitle>
                 {mode === "studio" ? "Register your studio" : "Register as an independent artist"}
               </CardTitle>
@@ -448,12 +450,14 @@ export function RegisterStudioPage() {
                   : "Just the basics — add your studio details later, once you're ready"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-[24px] pt-0">
               {!(mode === "studio" && step === 2) && (
+                // Two columns while each gets 7rem, else one: at 200% text "independent" alone is wider than half
+                // the card, and the label ran 30px off a 320px screen.
                 <div
                   role="group"
                   aria-label="Registration type"
-                  className="mb-4 grid grid-cols-2 gap-1 rounded-md border p-0.5 text-sm"
+                  className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-1 rounded-md border p-0.5 text-sm"
                 >
                   <button
                     type="button"
