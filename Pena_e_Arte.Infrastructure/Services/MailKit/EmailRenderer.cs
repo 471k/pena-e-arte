@@ -5,6 +5,9 @@ using Pena_e_Arte.Domain.Interfaces;
 
 namespace Pena_e_Arte.Infrastructure.Services.MailKit;
 
+// Brand master 1.0.0 email palette, inline styles only (email clients ignore most stylesheets): headings
+// #19161D on the white body (17.89:1); action buttons #863BFF with #F5F1E8 text (4.56:1). Both pass WCAG AA
+// 4.5:1. Violet is never used as text: 5.14:1 on white, but 3.48:1 where a client darkens the body to ink.
 public class EmailRenderer : IEmailRenderer
 {
     private static readonly string _confirmationTemplate =
@@ -301,7 +304,7 @@ public class EmailRenderer : IEmailRenderer
             <html>
             <head><meta charset="utf-8"><title>Tattoo Aftercare</title></head>
             <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-              <h1 style="color:#7c3aed">Aftercare Instructions</h1>
+              <h1 style="color:#19161D">Aftercare Instructions</h1>
               <p>Hi {System.Net.WebUtility.HtmlEncode(clientFirstName)},</p>
               <p>Thank you for your session with {System.Net.WebUtility.HtmlEncode(artistName)} at {System.Net.WebUtility.HtmlEncode(studioName)}!
               Here are your aftercare instructions to keep your new tattoo looking great:</p>
@@ -321,10 +324,10 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Confirm your email</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Confirm your TattooOS account</h1>
+          <h1 style="color:#19161D">Confirm your TattooOS account</h1>
           <p>Click the button below to verify your email address:</p>
           <a href="{System.Net.WebUtility.HtmlEncode(confirmationUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none">
             Confirm Email
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
@@ -341,13 +344,13 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>You've been added to {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Welcome to TattooOS</h1>
+          <h1 style="color:#19161D">Welcome to TattooOS</h1>
           <p>Hi {System.Net.WebUtility.HtmlEncode(artistFirstName)},</p>
           <p>You've been added as an artist at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>.
           You already have a TattooOS account, so you can sign in with your existing email and password right away —
           just switch to this studio from your account menu.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Reset your password (optional)
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
@@ -362,12 +365,12 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>You've been invited to {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Welcome to TattooOS</h1>
+          <h1 style="color:#19161D">Welcome to TattooOS</h1>
           <p>Hi {System.Net.WebUtility.HtmlEncode(artistFirstName)},</p>
           <p>You've been added as an artist at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>.
           Click the button below to set your password and activate your account.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Set your password
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
@@ -383,12 +386,12 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>{System.Net.WebUtility.HtmlEncode(studioName)} wants you to join</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">You've been invited to join a studio</h1>
+          <h1 style="color:#19161D">You've been invited to join a studio</h1>
           <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
           {(string.IsNullOrWhiteSpace(city) ? "" : $"in {System.Net.WebUtility.HtmlEncode(city)} ")}
           has invited you to join as an artist.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(manageInvitesUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Log in to review this invite
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
@@ -407,10 +410,10 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Reset your password</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Reset your password</h1>
+          <h1 style="color:#19161D">Reset your password</h1>
           <p>We received a request to reset your TattooOS password. Click the button below to choose a new one.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(resetUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Reset password
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
@@ -426,11 +429,11 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Your booking at {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Your booking request was sent!</h1>
+          <h1 style="color:#19161D">Your booking request was sent!</h1>
           <p><strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong> has received your booking request and
           will confirm it soon. We've also created an account for you so you can manage this booking.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(setPasswordUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Set your password
           </a>
           <p>You can also confirm your email address separately:</p>
@@ -452,7 +455,7 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</h1>
+          <h1 style="color:#19161D">Booking attempt at {System.Net.WebUtility.HtmlEncode(studioName)}</h1>
           <p>Someone tried to book an appointment at <strong>{System.Net.WebUtility.HtmlEncode(studioName)}</strong>
           using this email address, which already has an account on TattooOS.</p>
         {(resumeUrl is null ? CollisionSignInParagraph : CollisionResumeBlock(resumeUrl))}
@@ -476,7 +479,7 @@ public class EmailRenderer : IEmailRenderer
         $"""
           <p>If that was you, you don't have to start again: sign in with this email address and pick up the
           request where you left off.</p>
-          <a href="{System.Net.WebUtility.HtmlEncode(resumeUrl)}" style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none">
+          <a href="{System.Net.WebUtility.HtmlEncode(resumeUrl)}" style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none">
             Continue your booking request
           </a>
           <p style="color:#6b7280;font-size:13px">What you entered is kept for seven days, except your answer to
@@ -490,10 +493,10 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Confirm your new email</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Confirm your new email address</h1>
+          <h1 style="color:#19161D">Confirm your new email address</h1>
           <p>Someone requested to change the email on a TattooOS account to this address. Click the button below to confirm the switch.</p>
           <a href="{System.Net.WebUtility.HtmlEncode(confirmUrl)}" target="_top"
-             style="display:inline-block;background:#7c3aed;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
+             style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:12px 24px;border-radius:6px;text-decoration:none;margin:16px 0">
             Confirm new email
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
@@ -509,7 +512,7 @@ public class EmailRenderer : IEmailRenderer
         <html>
         <head><meta charset="utf-8"><title>Your email address was changed</title></head>
         <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h1 style="color:#7c3aed">Your account email was changed</h1>
+          <h1 style="color:#19161D">Your account email was changed</h1>
           <p>The email address on your TattooOS account was just changed to
           <strong>{System.Net.WebUtility.HtmlEncode(newEmail)}</strong>. You'll need to use that address to sign in from now on.</p>
           <p style="color:#6b7280;font-size:12px;margin-top:24px">
