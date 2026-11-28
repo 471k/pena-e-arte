@@ -60,6 +60,18 @@ public class EmailRendererBrandColourTests
     }
 
     [Fact]
+    public void StudioRegisteredAdmin_LinkIsUnderlinedInk_NotViolet()
+    {
+        // Admin-only email: its one link is text, so it is ink #19161D (17.89:1) and underlined, never violet text.
+        string html = Renderer.RenderStudioRegisteredAdmin(
+            "Ink Studio", "Tirana", "owner@example.test", null, new DateTime(2026, 12, 12, 0, 0, 0, DateTimeKind.Utc), false,
+            "https://app.tattooos.co/admin/studios/x");
+
+        html.Should().NotContainEquivalentOf("#7c3aed").And.NotContainEquivalentOf("#863BFF");
+        html.Should().Contain("style=\"color:#19161D;font-weight:600;text-decoration:underline\"");
+    }
+
+    [Fact]
     public void AcrossTheTemplates_TenHeadingsAndEightButtonsMoved_MatchingTheAudit()
     {
         // The two guest-collision variants share one heading, so it is counted once.

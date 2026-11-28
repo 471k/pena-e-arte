@@ -212,7 +212,7 @@ public class SendAppointmentCancellationHandler(
             : $"Questions? Reply to this email to reach {studioName}, or call {Encode(studio.PhoneNumber)}.";
         string rebook = studio is null || string.IsNullOrWhiteSpace(studio.Slug)
             ? ""
-            : $"""<p><a href="{Encode($"{appSettings.BaseUrl}/s/{studio.Slug}")}" target="_top" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none">Book another time</a></p>""";
+            : $"""<p><a href="{Encode($"{appSettings.BaseUrl}/s/{studio.Slug}")}" target="_top" style="display:inline-block;background:#863BFF;color:#F5F1E8;padding:10px 20px;border-radius:6px;text-decoration:none">Book another time</a></p>""";
         string footer = studio?.ShowPlatformBranding == false ? studioName : $"{studioName} &middot; Powered by TattooOS";
 
         return $"""
