@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach, afterAll } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -144,13 +144,18 @@ describe("MyEarningsPage", () => {
 
   it("when the studio's zone can't be read, the dates say so instead of falling back to the browser's date", async () => {
     server.use(
-      http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ message: "error" }, { status: 500 })),
+      http.get("http://localhost/api/v1/studios/me", async () => {
+        await new Promise((r) => setTimeout(r, 150));
+        return HttpResponse.json({ message: "error" }, { status: 500 });
+      }),
     );
     renderPage();
     // The earnings still load; only the two studio-calendar dates per line read as unavailable.
     expect(await screen.findByText("Besa Klienti")).toBeInTheDocument();
-    expect(await screen.findByTestId("earnings-line-dates"))
-      .toHaveTextContent(`Paid ${STUDIO_TIME_UNAVAILABLE} · Session ${STUDIO_TIME_UNAVAILABLE}`);
+    // The earnings can arrive before the studio's error (the delay above makes that the case every run, as it was
+    // on main's CI on 28 Nov): the line first reads pending, so wait for the text, not just the element.
+    await waitFor(() => expect(screen.getByTestId("earnings-line-dates"))
+      .toHaveTextContent(`Paid ${STUDIO_TIME_UNAVAILABLE} · Session ${STUDIO_TIME_UNAVAILABLE}`));
     // 09:00 UTC on 20 Jun: any browser-zone rendering says "20 Jun 2026".
     expect(screen.queryByText("20 Jun 2026")).not.toBeInTheDocument();
   });
