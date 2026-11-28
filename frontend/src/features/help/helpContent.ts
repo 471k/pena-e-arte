@@ -2018,7 +2018,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: "A snapshot of how the whole platform is doing — how many studios, how much revenue, and which studios need attention.",
     steps: [
       "View the KPI cards for totals (Total Studios, Active Subscriptions, MRR, ARPA).",
-      "View the pipeline cards (Trialing, Grace Period, Past Due, Cancelled).",
+      "View the pipeline cards (Trialing, Grace Period, Past Due, Cancelled). They count what the platform actually lets in: a studio with no subscription record is blocked on every request, so it isn't counted as Trialing whatever its trial date says. It still counts in Total Studios.",
       "Scroll to the MRR chart.",
       "Check \"At-Risk Studios\" and use \"Extend trial\" inline (it shows what extending will do before you confirm), or click through to that studio.",
       "Check \"Failed refunds\": every yearly-cancellation refund that failed, across all studios, newest first, with the studio, amount, when it failed, why, the Stripe invoice, and what to do next.",

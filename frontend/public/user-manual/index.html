@@ -4003,7 +4003,7 @@ ol.steps li { margin: 6px 0; }
 <figcaption>Platform overview — KPI cards, MRR chart, and at-risk studio list</figcaption>
 <h3>Steps</h3>
 <ol class="steps">
-<li>Review the three KPI rows: <span class="step-title">totals</span> (studios, active subs, MRR, ARPA), <span class="step-title">pipeline</span> (trialing, grace period, past due, cancelled), and <span class="step-title">health</span> (trial conversion, new this month, suspended).</li>
+<li>Review the three KPI rows: <span class="step-title">totals</span> (studios, active subs, MRR, ARPA), <span class="step-title">pipeline</span> (trialing, grace period, past due, cancelled), and <span class="step-title">health</span> (trial conversion, new this month, suspended). The pipeline counts what the platform actually lets in: a studio with no subscription record is blocked on every request, so it isn't counted as trialing whatever its trial date says. It still counts in the studio total.</li>
 <li>Click any KPI card to jump to the filtered studio/subscription list behind it.</li>
 <li>Use the <span class="step-title">3m / 6m / 12m</span> toggle on the MRR chart, and hover a point for the exact figure.</li>
 <li>In <span class="step-title">At-Risk Studios</span>, click <span class="step-title">Extend trial</span> to grant more days inline (it shows what extending will do before you confirm). A past-due studio has no Extend trial, because a new trial date wouldn't give it access back; use the arrow to open it and record a cash payment with <span class="step-title">Activate</span>, or wait for the owner to pay. The arrow jumps to that studio in the full list.</li>
