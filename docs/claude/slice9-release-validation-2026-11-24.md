@@ -1,6 +1,19 @@
 # Slice 9 / E07: validation and release evidence — 2026-11-24
 
-> **Verdict (25 Nov, Desktop's ruling): NOT MET.** The device and screen-reader pass reported on 24 November
+> **Verdict (27 Nov, Desktop's ruling): MET as reported.** Superseded the 25 Nov NOT MET below. On 26 November
+> Phi reported a pass **naming the build** — `d6075f3d121cdc90f6313ec5664a3b92ef0a3cbe`, the frozen release
+> candidate, which `origin/main` still points at. That was the single condition this gate was waiting on, and
+> it is satisfied. **The grade is REPORTED, not captured**, the same grade as 24 November, and three things it
+> does not carry stay visible rather than being argued away: no per-row observations for the three
+> screen-reader rows, no device or assistive-technology version strings for this run, and no statement of
+> whether the device rows were re-run on this build or carried over from 24 November. On that last point the
+> carry-over **would** be defensible — only the four static legal text pages changed between #472 and the
+> frozen build, which cannot plausibly alter a device result for the booking journey, the payment pages or the
+> schedule — but that is an inference these documents make, not something the report says. Full record and the
+> reasoning: `claude-shared\handoffs\device-pass-result-2026-11-24.md`.
+>
+> **Why the condition existed, kept rather than deleted (25 Nov, Desktop's ruling): NOT MET.** The device and
+> screen-reader pass reported on 24 November
 > predates the current build. No build was named, and main has since taken fourteen pull requests — #449, #453,
 > #455, #457–#461, #463–#465 and #467–#469 — including **#453 (the skip link, which merged 28 minutes after the
 > report and changed the first Tab stop on every staff page from 23 to 1)**, #464 (focus styling at 69 sites in 48
