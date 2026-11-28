@@ -14,6 +14,7 @@ import { studiosApi } from "@/features/studios/studiosApi";
 import { PaymentDetailPage } from "@/features/payments/components/PaymentDetailPage";
 import type { PaymentResponse } from "@/features/payments/payment.types";
 import { Role } from "@/shared/types/roles";
+import { STUDIO_TIME_UNAVAILABLE } from "@/shared/utils/formatInStudioTimezone";
 
 // S01 rule B: a record timestamp (when something happened) reads in the VIEWER's own zone, so the expected text is
 // computed with the same Intl call the component makes. A better fixture time can't replace this: the nightly sweep
@@ -218,6 +219,19 @@ describe("PaymentDetailPage", () => {
     // 15:00 UTC on 15 Jun. Any browser-zone rendering of it would contain "15 Jun 2026".
     expect(screen.queryByText(/15 Jun 2026/)).not.toBeInTheDocument();
     expect(screen.getAllByText(/…/).length).toBeGreaterThan(0);
+  });
+
+  it("when the studio's zone can't be read, its dates say so instead of falling back to the browser's time", async () => {
+    server.use(
+      http.get("http://localhost/api/v1/studios/me", () => HttpResponse.json({ message: "boom" }, { status: 500 })),
+    );
+    renderPage("appt-002");
+    expect(await screen.findByRole("heading", { name: /100/ })).toBeInTheDocument();
+    // Both studio-calendar dates (the booking and "Paid at") read as unavailable; the payment itself still shows.
+    expect(await screen.findByText(new RegExp(`Maria Silva · ${STUDIO_TIME_UNAVAILABLE}`))).toBeInTheDocument();
+    expect(screen.getAllByText(new RegExp(STUDIO_TIME_UNAVAILABLE)).length).toBeGreaterThanOrEqual(2);
+    // 15:00 UTC on 15 Jun. Any browser-zone rendering of it would contain "15 Jun 2026".
+    expect(screen.queryByText(/15 Jun 2026/)).not.toBeInTheDocument();
   });
 
   it("'Paid at' and the booking are on the studio's calendar", async () => {
