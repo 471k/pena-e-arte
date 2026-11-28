@@ -261,8 +261,14 @@ function StatCard({ label, value, icon, isLoading, testId }: StatCardProps) {
       className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1"
       data-testid={testId}
     >
-      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-        {icon}
+      {/* The icon sits on the label's FIRST line. A long label ("Unpaid deposits (7 days)") wraps in a third-width
+          card on a phone: with flex items-center the icon was centred between the lines and squeezed to 0-7px wide.
+          Floated, it keeps its size and shares the first line with the first word, and the lines below use the
+          card's full width, so the row needs no more room than before. Its box is one text-xs line tall (h-4), so
+          it is centred on that line at any text size. Where no word fits beside it (a 320px phone), the label
+          starts on the line below it. */}
+      <div className="text-xs font-medium text-muted-foreground">
+        <span className="float-left mr-1.5 flex h-4 items-center" aria-hidden="true">{icon}</span>
         {label}
       </div>
       {isLoading ? (
