@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
@@ -27,6 +27,38 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+/**
+ * Hides a footer separator dot when the links either side of it sit on different lines, so a wrapped footer never
+ * ends a line, or starts one, with a dangling "·" (seen at 280-430px, and at 200% text up to three per footer).
+ * Only `visibility` changes: the dot keeps its space, so hiding it can never change where the row wraps.
+ * Approved useLayoutEffect: it measures layout, it fetches nothing.
+ */
+function useHideWrappedSeparators(rowRef: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const separators = Array.from(row.querySelectorAll<HTMLElement>(":scope > span[aria-hidden='true']"));
+
+    function update() {
+      for (const dot of separators) {
+        const before = dot.previousElementSibling?.getBoundingClientRect();
+        const after = dot.nextElementSibling?.getBoundingClientRect();
+        // A later line starts at or below the bottom of the earlier one; 1px absorbs sub-pixel rounding.
+        const wrapped = !before || !after || after.top >= before.bottom - 1;
+        dot.style.visibility = wrapped ? "hidden" : "";
+      }
+    }
+
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    // The row's size changes when the window or the text size does; each link's size changes when the font loads.
+    const observer = new ResizeObserver(update);
+    observer.observe(row);
+    for (const child of Array.from(row.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [rowRef]);
+}
+
 export function LoginPage() {
   useDocumentMeta({
     title:       "Sign in — TattooOS",
@@ -36,6 +68,8 @@ export function LoginPage() {
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const footerLinksRef = useRef<HTMLDivElement>(null);
+  useHideWrappedSeparators(footerLinksRef);
   const [searchParams] = useSearchParams();
   const existingRole = useAppSelector((s) => s.auth.role);
   const [remember, setRemember] = useState(true);
@@ -252,7 +286,7 @@ export function LoginPage() {
           studio", so a tap there opened the wrong legal document (27 Nov 2026). Do not put it
           back inside the overflow-hidden container: there the overlap would become clipping. */}
       <footer className="px-4 pb-6 text-center text-xs text-foreground/65">
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
+        <div ref={footerLinksRef} className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
           <a href="/privacy" className="hover:text-foreground/70 transition-colors underline-offset-2 hover:underline">
             Privacy Policy
           </a>
